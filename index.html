@@ -30,7 +30,7 @@
   <!-- Google Identity Services (GIS) for Google Drive Auth -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body>
+<body class="view-new-transaction">
 
   <div id="app-container">
     <!-- Desktop Sidebar -->
@@ -44,7 +44,7 @@
       </div>
 
       <ul class="nav-links">
-        <li class="nav-item active">
+        <li class="nav-item">
           <a href="#" data-view="dashboard">
             <i data-lucide="layout-dashboard"></i>
             <span>Tổng Quan</span>
@@ -99,7 +99,7 @@
     <!-- Main Content Area -->
     <div class="main-wrapper">
       <!-- Top Sticky Header -->
-      <header class="app-header">
+      <header class="app-header" style="display: none;">
         <div class="header-left">
           <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo">
           <h2 id="header-page-title" class="page-title-badge">Tổng Quan Tài Chính</h2>
@@ -119,7 +119,7 @@
       </header>
 
       <!-- View: Dashboard (Tổng quan) -->
-      <main id="view-dashboard" class="page-view active">
+      <main id="view-dashboard" class="page-view">
         <!-- Stat Cards -->
         <div class="stats-grid">
           <div class="stat-card">
@@ -405,12 +405,12 @@
       </section>
 
       <!-- View: New / Edit Transaction (Trang Ghi Chép Mới) -->
-      <section id="view-new-transaction" class="page-view tx-page-view">
+      <section id="view-new-transaction" class="page-view tx-page-view active">
         <div class="tx-page-card-wrapper">
           <!-- Page Header: Back (Left), Custom Type Dropdown with Icons (Center), Check/Done (Right) -->
           <div class="tx-page-header">
             <div class="tx-header-left">
-              <button type="button" id="tx-header-back-btn" class="btn-icon tx-header-btn" onclick="window.app.goBack()" title="Trở lại (hoặc vuốt sang phải)">
+              <button type="button" id="tx-header-back-btn" class="btn-icon tx-header-btn" onclick="window.app.goBack()" title="Trở lại (hoặc vuốt sang phải)" style="display: none;">
                 <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
               </button>
               <button type="button" class="btn-icon tx-header-btn" onclick="UITransactions.openHistoryView()" title="Lịch sử ghi chép">
@@ -756,7 +756,7 @@
 
     <!-- Mobile Bottom Navigation Bar -->
     <nav class="mobile-bottom-nav">
-      <a href="#" class="mobile-nav-item active" data-view="dashboard">
+      <a href="#" class="mobile-nav-item" data-view="dashboard">
         <i data-lucide="layout-dashboard" style="width: 20px; height: 20px;"></i>
         <span>Tổng quan</span>
       </a>
@@ -766,7 +766,7 @@
       </a>
       
       <!-- Central Floating Action Button (Hình tròn) -->
-      <div id="fab-add-tx" class="mobile-nav-item fab-item">
+      <div id="fab-add-tx" class="mobile-nav-item fab-item active" data-view="new-transaction">
         <button class="fab-btn mobile-fab-center" title="Thêm giao dịch mới">
           <i data-lucide="plus" style="width: 24px; height: 24px;"></i>
         </button>

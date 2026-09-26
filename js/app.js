@@ -41,12 +41,13 @@ function showToast(message, type = 'info') {
 
 class App {
   constructor() {
-    this.currentView = 'dashboard';
+    this.currentView = 'new-transaction';
     this.activePrimaryView = 'dashboard'; // ONLY updated when user taps a primary nav tab
     this.previousView = 'dashboard'; // View trước khi mở new-transaction
     this.scrollPositions = {}; // Lưu tọa độ cuộn theo từng view
     this.isPrivacyMode = false;
     this.isBackTransitioning = false;
+    this.lastAddTabClickTime = 0;
   }
 
   async init() {
@@ -83,6 +84,12 @@ class App {
 
     // 8. Render initial data
     await this.refreshAll();
+
+    // Reset bản nháp khi đóng/mở lại app và khởi tạo sạch trang nhập liệu mặc định
+    if (window.UITransactions) {
+      window.UITransactions.clearDraft();
+      await window.UITransactions.resetForm('expense');
+    }
 
     // Render icons again after dynamic DOM render
     if (window.lucide) lucide.createIcons();
@@ -187,20 +194,53 @@ class App {
     // Global Action Buttons
     const fabBtn = document.getElementById('fab-add-tx');
     if (fabBtn) {
-      fabBtn.addEventListener('click', () => {
-        // activePrimaryView is already correctly set by nav tab clicks
-        window.UITransactions.openAddModal();
+      fabBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.handleInputTabClick();
       });
     }
 
     const headerAddBtn = document.getElementById('header-add-btn');
     if (headerAddBtn) {
-      headerAddBtn.addEventListener('click', () => window.UITransactions.openAddModal());
+      headerAddBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.handleInputTabClick();
+      });
     }
 
     const privacyBtn = document.getElementById('btn-privacy-toggle');
     if (privacyBtn) {
       privacyBtn.addEventListener('click', () => this.togglePrivacyMode());
+    }
+  }
+
+  handleInputTabClick() {
+    const now = Date.now();
+    const timeSinceLastClick = now - (this.lastAddTabClickTime || 0);
+    this.lastAddTabClickTime = now;
+
+    // Nếu bấm 2 lần trong vòng 2 giây (hoặc double tap)
+    if (timeSinceLastClick < 2000) {
+      if (window.UITransactions) {
+        window.UITransactions.clearDraft();
+        window.UITransactions.resetForm('expense');
+        showToast('Đã làm mới trang nhập liệu', 'info');
+        window.scrollTo(0, 0);
+        const activeView = document.getElementById('view-new-transaction');
+        if (activeView) activeView.scrollTop = 0;
+      }
+      this.lastAddTabClickTime = 0;
+      return;
+    }
+
+    // Nếu chưa ở trang nhập liệu -> Chuyển vào trang nhập liệu (giữ nguyên dữ liệu đang nhập dở)
+    if (this.currentView !== 'new-transaction') {
+      if (window.UITransactions) {
+        window.UITransactions.openAddModal();
+      }
+    } else {
+      // Đang ở trang nhập liệu mà mới bấm 1 lần -> Gợi ý bấm thêm lần nữa để làm mới
+      showToast('Bấm thêm lần nữa để làm mới trang nhập liệu', 'info');
     }
   }
 
@@ -520,7 +560,7 @@ class App {
       if (!isInputActive && !isModalOpen) {
         if (e.key === 'n' || e.key === 'N') {
           e.preventDefault();
-          window.UITransactions.openAddModal();
+          this.handleInputTabClick();
         } else if (e.key === 'p' || e.key === 'P') {
           e.preventDefault();
           this.togglePrivacyMode();
@@ -590,9 +630,11 @@ class App {
 
     if (tab) {
       this.switchView(tab);
+    } else {
+      this.switchView('new-transaction');
     }
     if (action === 'new-tx') {
-      setTimeout(() => window.UITransactions.openAddModal(), 300);
+      setTimeout(() => this.handleInputTabClick(), 300);
     }
   }
 
