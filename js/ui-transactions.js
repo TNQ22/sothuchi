@@ -427,10 +427,7 @@ const UITransactions = {
     if (dueRow) dueRow.style.display = 'none';
     const transferGroup = document.getElementById('tx-transfer-target-group');
     if (transferGroup) transferGroup.style.display = 'none';
-    const accLabel = document.getElementById('tx-account-label');
-    if (accLabel) {
-      accLabel.textContent = cat.type === 'expense' ? 'Trích Tiền Từ Ví' : 'Cộng Tiền Vào Ví';
-    }
+
 
     this.updateHeaderTypeDisplay(cat.type);
     this.renderQuickCategories();
@@ -453,7 +450,6 @@ const UITransactions = {
     const personSub = document.getElementById('tx-debt-person-sub');
     const curPerson = document.getElementById('tx-person-input')?.value;
     const transferGroup = document.getElementById('tx-transfer-target-group');
-    const accLabel = document.getElementById('tx-account-label');
     const typeSelector = document.getElementById('tx-type-selector');
     const catCard = document.getElementById('tx-category-section-card');
 
@@ -492,7 +488,7 @@ const UITransactions = {
         if (personDisplay) personDisplay.textContent = 'Chưa chọn người';
       }
 
-      if (accLabel) accLabel.textContent = 'Trích Tiền Từ Ví';
+
 
       this.closeCategoryPicker();
       this.openBorrowSelectPage();
@@ -530,7 +526,7 @@ const UITransactions = {
         if (personDisplay) personDisplay.textContent = 'Chưa chọn người';
       }
 
-      if (accLabel) accLabel.textContent = 'Cộng Tiền Vào Ví';
+
 
       this.closeCategoryPicker();
       this.openBorrowSelectPage();
@@ -551,7 +547,7 @@ const UITransactions = {
       if (subBox) subBox.textContent = `Số dư còn nợ: ${new Intl.NumberFormat('vi-VN').format(debtItem.remainingAmount)}đ`;
       if (personRow) personRow.style.display = 'none';
       if (dueRow) dueRow.style.display = 'none';
-      if (accLabel) accLabel.textContent = 'Nhận Tiền Vào Ví';
+
       const formattedRem = new Intl.NumberFormat('vi-VN').format(debtItem.remainingAmount);
       document.getElementById('tx-amount-input').value = formattedRem;
       const amountVal = document.getElementById('tx-amount-text');
@@ -575,7 +571,7 @@ const UITransactions = {
       if (subBox) subBox.textContent = `Số tiền cần trả: ${new Intl.NumberFormat('vi-VN').format(debtItem.remainingAmount)}đ`;
       if (personRow) personRow.style.display = 'none';
       if (dueRow) dueRow.style.display = 'none';
-      if (accLabel) accLabel.textContent = 'Trích Tiền Trả Nợ Từ Ví';
+
       const formattedRem = new Intl.NumberFormat('vi-VN').format(debtItem.remainingAmount);
       document.getElementById('tx-amount-input').value = formattedRem;
       const amountVal = document.getElementById('tx-amount-text');
@@ -616,8 +612,7 @@ const UITransactions = {
     if (catCard) catCard.style.display = 'none';
     document.getElementById('tx-debt-person-group').style.display = 'none';
     document.getElementById('tx-transfer-target-group').style.display = 'flex';
-    const accLabel = document.getElementById('tx-account-label');
-    if (accLabel) accLabel.textContent = 'Trích Từ Ví';
+
 
     this.closeCategoryPicker();
     if (window.lucide) lucide.createIcons();
@@ -1122,6 +1117,8 @@ const UITransactions = {
       }).join('');
       if (window.lucide) lucide.createIcons();
     }
+
+    await this.updateSelectedAccountDisplay();
   },
 
   toggleAccountDropdown(e) {
@@ -1146,6 +1143,20 @@ const UITransactions = {
     if (fromSelect) fromSelect.value = id;
     this.closeAccountDropdown();
     this.updateSelectedAccountDisplay();
+
+    // Cập nhật trạng thái hiển thị được chọn trong danh sách dropdown
+    const options = document.querySelectorAll('.tx-account-option');
+    options.forEach(opt => {
+      const isSelected = String(opt.dataset.id) === String(id);
+      opt.style.background = isSelected ? 'rgba(255,255,255,0.08)' : '';
+      const checkIcon = opt.querySelector('[data-lucide="check"], svg.lucide-check');
+      if (isSelected && !checkIcon) {
+        opt.insertAdjacentHTML('beforeend', '<i data-lucide="check" style="width:16px;height:16px;color:var(--primary);"></i>');
+        if (window.lucide) lucide.createIcons();
+      } else if (!isSelected && checkIcon) {
+        checkIcon.remove();
+      }
+    });
   },
 
 
@@ -1348,7 +1359,11 @@ const UITransactions = {
     const balanceEl = document.getElementById('tx-account-balance');
     if (!fromSelect || !bubble) return;
     const accId = Number(fromSelect.value);
-    if (!accId) return;
+    if (!accId) {
+      if (label) label.textContent = 'Chọn tài khoản';
+      if (balanceEl) balanceEl.textContent = 'Số dư: 0đ';
+      return;
+    }
     const acc = await db.accounts.get(accId);
     if (acc) {
       const iconMap = {
