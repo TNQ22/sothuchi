@@ -309,12 +309,22 @@ class App {
   }
 
   handleInputTabClick() {
+    // 1. Nếu chưa ở trang nhập liệu -> Chỉ chuyển vào trang nhập liệu (giữ nguyên dữ liệu), KHÔNG tính là 1 chạm để làm mới
+    if (this.currentView !== 'new-transaction') {
+      this.lastAddTabClickTime = 0;
+      if (window.UITransactions) {
+        window.UITransactions.openAddModal();
+      }
+      return;
+    }
+
+    // 2. Đang ở sẵn trong trang nhập liệu:
     const now = Date.now();
     const timeSinceLastClick = now - (this.lastAddTabClickTime || 0);
-    this.lastAddTabClickTime = now;
 
-    // Nếu bấm 2 lần trong vòng 2 giây (hoặc double tap)
-    if (timeSinceLastClick < 2000) {
+    // Nếu bấm lần 2 trong vòng 2 giây (double tap)
+    if (this.lastAddTabClickTime && timeSinceLastClick < 2000) {
+      this.lastAddTabClickTime = 0;
       if (window.UITransactions) {
         window.UITransactions.clearDraft();
         window.UITransactions.resetForm('expense');
@@ -323,23 +333,18 @@ class App {
         const activeView = document.getElementById('view-new-transaction');
         if (activeView) activeView.scrollTop = 0;
       }
-      this.lastAddTabClickTime = 0;
       return;
     }
 
-    // Nếu chưa ở trang nhập liệu -> Chuyển vào trang nhập liệu (giữ nguyên dữ liệu đang nhập dở)
-    if (this.currentView !== 'new-transaction') {
-      if (window.UITransactions) {
-        window.UITransactions.openAddModal();
-      }
-    } else {
-      // Đang ở trang nhập liệu mà mới bấm 1 lần -> Gợi ý bấm thêm lần nữa để làm mới
-      showToast('Bấm thêm lần nữa để làm mới trang nhập liệu', 'info');
-    }
+    // Lần chạm đầu tiên khi đang ở sẵn trong trang nhập liệu
+    this.lastAddTabClickTime = now;
+    showToast('Bấm thêm lần nữa để làm mới trang nhập liệu', 'info');
   }
 
   switchView(viewId, isBack = false) {
     if (!viewId) return;
+    // Chuyển trang/tab thì reset đếm lần chạm làm mới
+    this.lastAddTabClickTime = 0;
     const primaryViews = ['dashboard', 'accounts', 'budgets', 'settings', 'transactions', 'debts', 'analytics'];
     const isPrimary = primaryViews.includes(viewId);
     const isTxPage = ['new-transaction', 'category-picker', 'borrow-select'].includes(viewId);
