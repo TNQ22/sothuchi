@@ -273,8 +273,8 @@ class App {
       });
     });
 
-    // Mobile Bottom Nav Items
-    document.querySelectorAll('.mobile-nav-item').forEach(link => {
+    // Mobile Bottom Nav Items (Chỉ các tab điều hướng, KHÔNG bao gồm nút FAB thêm giao dịch)
+    document.querySelectorAll('.mobile-bottom-nav .mobile-nav-item:not(.fab-item)').forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
         const view = link.dataset.view;
@@ -285,11 +285,12 @@ class App {
       });
     });
 
-    // Global Action Buttons
+    // Global Action Buttons (Nút FAB thêm giao dịch)
     const fabBtn = document.getElementById('fab-add-tx');
     if (fabBtn) {
       fabBtn.addEventListener('click', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         this.handleInputTabClick();
       });
     }
