@@ -229,6 +229,10 @@ class App {
     // 1. Lưu vị trí cuộn của view hiện tại trước khi chuyển view
     if (this.currentView) {
       this.scrollPositions[this.currentView] = window.scrollY || document.documentElement.scrollTop || 0;
+      // Tự động lưu nháp giao dịch nếu đang rời khỏi trang ghi chép
+      if (this.currentView === 'new-transaction' && window.UITransactions) {
+        window.UITransactions.saveDraft();
+      }
     }
 
     // 2. Lưu previousView trước khi chuyển vào các trang con (ghi chép, danh mục, ...)
