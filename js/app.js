@@ -18,6 +18,10 @@ function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   if (!container) return;
 
+  // Giữ tối đa 1 thông báo để thanh gọn nhất và không chồng lấp giao diện
+  const existing = container.querySelectorAll('.toast');
+  existing.forEach(t => t.remove());
+
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   let iconName = 'info';
@@ -25,18 +29,108 @@ function showToast(message, type = 'info') {
   if (type === 'error') iconName = 'alert-triangle';
 
   toast.innerHTML = `
-    <i data-lucide="${iconName}" style="width: 18px; height: 18px; flex-shrink: 0;"></i>
+    <i data-lucide="${iconName}"></i>
     <span>${escapeHTML(message)}</span>
   `;
   container.appendChild(toast);
   if (window.lucide) lucide.createIcons();
 
-  setTimeout(() => {
+  let isDismissed = false;
+  let timer = null;
+
+  const dismiss = (direction = 'up') => {
+    if (isDismissed) return;
+    isDismissed = true;
+    if (timer) clearTimeout(timer);
+
+    toast.style.transition = 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease';
+    if (direction === 'left') {
+      toast.style.transform = 'translateX(-80px) scale(0.9)';
+    } else if (direction === 'right') {
+      toast.style.transform = 'translateX(80px) scale(0.9)';
+    } else {
+      toast.style.transform = 'translateY(-24px) scale(0.9)';
+    }
     toast.style.opacity = '0';
-    toast.style.transform = 'translateX(100%)';
-    toast.style.transition = 'all 0.3s ease';
-    setTimeout(() => toast.remove(), 300);
-  }, 3500);
+
+    setTimeout(() => {
+      if (toast.parentNode) toast.remove();
+    }, 200);
+  };
+
+  // 1. Tự động tắt sau 2 giây
+  timer = setTimeout(() => dismiss('up'), 2000);
+
+  // 2. Chạm hoặc click vào là tắt thông báo luôn
+  toast.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dismiss('up');
+  });
+
+  // 3. Hỗ trợ vuốt để tắt (Touch Swipe: vuốt lên, vuốt trái, vuốt phải)
+  let startX = 0;
+  let startY = 0;
+  let isTouching = false;
+
+  toast.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    isTouching = true;
+    toast.style.transition = 'none';
+  }, { passive: true });
+
+  toast.addEventListener('touchmove', (e) => {
+    if (!isTouching || e.touches.length !== 1) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const deltaX = currentX - startX;
+    const deltaY = currentY - startY;
+
+    // Hỗ trợ vuốt lên (deltaY < 0) hoặc vuốt sang 2 bên
+    if (deltaY < 0 || Math.abs(deltaX) > Math.abs(deltaY)) {
+      const translateY = Math.min(0, deltaY);
+      const opacity = Math.max(0.15, 1 - Math.max(Math.abs(deltaX), -deltaY) / 80);
+      toast.style.transform = `translate(${deltaX}px, ${translateY}px)`;
+      toast.style.opacity = String(opacity);
+    }
+  }, { passive: true });
+
+  toast.addEventListener('touchend', (e) => {
+    if (!isTouching) return;
+    isTouching = false;
+    const touch = e.changedTouches[0];
+    const deltaX = touch ? touch.clientX - startX : 0;
+    const deltaY = touch ? touch.clientY - startY : 0;
+
+    // Vuốt lên trên
+    if (deltaY < -15) {
+      dismiss('up');
+      return;
+    }
+    // Vuốt sang trái
+    if (deltaX < -25) {
+      dismiss('left');
+      return;
+    }
+    // Vuốt sang phải
+    if (deltaX > 25) {
+      dismiss('right');
+      return;
+    }
+
+    // Nếu chỉ chạm nhẹ hoặc chưa đủ ngưỡng -> phục hồi vị trí
+    toast.style.transition = 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease';
+    toast.style.transform = 'translate(0, 0)';
+    toast.style.opacity = '1';
+  }, { passive: true });
+
+  toast.addEventListener('touchcancel', () => {
+    isTouching = false;
+    toast.style.transition = 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease';
+    toast.style.transform = 'translate(0, 0)';
+    toast.style.opacity = '1';
+  }, { passive: true });
 }
 
 class App {
