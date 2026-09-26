@@ -1457,8 +1457,20 @@ const UITransactions = {
     if (txId) return;
 
     try {
-      const type = document.getElementById('tx-type-input')?.value || 'expense';
       const amount = document.getElementById('tx-amount-input')?.value || '0';
+      const note = document.getElementById('tx-note-input')?.value || '';
+      const person = document.getElementById('tx-person-input')?.value || '';
+      const borrowPerson = document.getElementById('tx-borrow-person-input')?.value || '';
+      const isBorrowed = document.getElementById('tx-is-borrowed-checkbox')?.checked || false;
+
+      // Nếu chưa nhập số tiền và chưa nhập ghi chú/người liên quan -> Xóa nháp rỗng
+      const isBlank = (!amount || amount === '0') && (!note || note.trim() === '') && !person && !borrowPerson && !isBorrowed;
+      if (isBlank) {
+        this.clearDraft();
+        return;
+      }
+
+      const type = document.getElementById('tx-type-input')?.value || 'expense';
       const amountText = document.getElementById('tx-amount-text')?.textContent || '0';
       const categoryId = document.getElementById('tx-category-id-input')?.value || '';
       const debtSubaction = document.getElementById('tx-debt-subaction-input')?.value || '';
@@ -1467,13 +1479,9 @@ const UITransactions = {
       const toAccountId = document.getElementById('tx-to-account-select')?.value || '';
       const date = document.getElementById('tx-date-input')?.value || '';
       const time = document.getElementById('tx-time-input')?.value || '';
-      const note = document.getElementById('tx-note-input')?.value || '';
       const fee = document.getElementById('tx-fee-input')?.value || '0';
-      const person = document.getElementById('tx-person-input')?.value || '';
       const dueDate = document.getElementById('tx-due-date-input')?.value || '';
       const dueDateRaw = document.getElementById('tx-due-date-input')?.dataset.rawDate || '';
-      const isBorrowed = document.getElementById('tx-is-borrowed-checkbox')?.checked || false;
-      const borrowPerson = document.getElementById('tx-borrow-person-input')?.value || '';
       const borrowDueDate = document.getElementById('tx-borrow-due-date-input')?.value || '';
       const borrowDueDateRaw = document.getElementById('tx-borrow-due-date-input')?.dataset.rawDate || '';
       const extraOpen = document.getElementById('extra-details-body')?.style.display !== 'none';
@@ -1502,7 +1510,8 @@ const UITransactions = {
         savedAt: Date.now()
       };
 
-      localStorage.setItem('stc_tx_draft', JSON.stringify(draft));
+      sessionStorage.setItem('stc_tx_draft', JSON.stringify(draft));
+      localStorage.removeItem('stc_tx_draft');
     } catch (e) {
       console.warn('Failed to save draft:', e);
     }
@@ -1510,13 +1519,17 @@ const UITransactions = {
 
   clearDraft() {
     try {
+      sessionStorage.removeItem('stc_tx_draft');
       localStorage.removeItem('stc_tx_draft');
     } catch (e) {}
   },
 
   async restoreDraft() {
     try {
-      const raw = localStorage.getItem('stc_tx_draft');
+      const raw = sessionStorage.getItem('stc_tx_draft') || localStorage.getItem('stc_tx_draft');
+      if (localStorage.getItem('stc_tx_draft')) {
+        localStorage.removeItem('stc_tx_draft');
+      }
       if (!raw) return false;
       const draft = JSON.parse(raw);
       if (!draft) return false;
