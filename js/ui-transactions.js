@@ -5,6 +5,7 @@
 
 const UITransactions = {
   currentFilterType: 'all',
+  formInitialized: false,
   searchKeyword: '',
   selectedCategory: null,
   activeKeypadInput: null,
@@ -126,7 +127,13 @@ const UITransactions = {
         e.stopImmediatePropagation();
         await this.handleFormSubmit();
       });
+      txForm.addEventListener('input', () => this.saveDraft());
+      txForm.addEventListener('change', () => this.saveDraft());
     }
+
+    window.addEventListener('beforeunload', () => {
+      if (window.UITransactions) window.UITransactions.saveDraft();
+    });
   },
 
   /* ==================== POPUP NUMERIC KEYPAD ==================== */
@@ -196,6 +203,7 @@ const UITransactions = {
     }
 
     modal.classList.remove('open');
+    this.saveDraft();
   },
 
   /* ==================== HEADER TYPE DROPDOWN ==================== */
@@ -218,7 +226,8 @@ const UITransactions = {
       income: { label: 'Thu tiền', icon: 'arrow-up-circle', color: '#10b981' },
       lend: { label: 'Cho vay', icon: 'arrow-up-right', color: '#3b82f6' },
       borrow: { label: 'Đi vay', icon: 'arrow-down-left', color: '#f59e0b' },
-      adjust: { label: 'Điều chỉnh số dư', icon: 'scale', color: '#a855f7' }
+      adjust: { label: 'Điều chỉnh số dư', icon: 'scale', color: '#a855f7' },
+      transfer: { label: 'Chuyển tiền', icon: 'arrow-right-left', color: '#0ea5e9' }
     }[type] || { label: 'Chi tiền', icon: 'arrow-down-circle', color: '#f43f5e' };
 
     const labelEl = document.getElementById('tx-type-current-label');
@@ -433,6 +442,7 @@ const UITransactions = {
     this.renderQuickCategories();
     this.closeCategoryPicker();
     if (window.lucide) lucide.createIcons();
+    this.saveDraft();
   },
 
   /* ==================== DEBT & TRANSFER SUB-ACTIONS ==================== */
@@ -582,6 +592,7 @@ const UITransactions = {
 
     this.closeCategoryPicker();
     if (window.lucide) lucide.createIcons();
+    this.saveDraft();
   },
 
   selectTransferAction() {
@@ -610,12 +621,14 @@ const UITransactions = {
 
     const catCard = document.getElementById('tx-category-section-card');
     if (catCard) catCard.style.display = 'none';
-    document.getElementById('tx-debt-person-group').style.display = 'none';
-    document.getElementById('tx-transfer-target-group').style.display = 'flex';
-
+    const debtGroup = document.getElementById('tx-debt-person-group');
+    if (debtGroup) debtGroup.style.display = 'none';
+    const transferGroup = document.getElementById('tx-transfer-target-group');
+    if (transferGroup) transferGroup.style.display = 'flex';
 
     this.closeCategoryPicker();
     if (window.lucide) lucide.createIcons();
+    this.saveDraft();
   },
 
   /* ==================== FULL CATEGORY PICKER (SUB-PAGE) ==================== */
@@ -859,6 +872,7 @@ const UITransactions = {
       }
 
       showToast(`Đã chọn: ${personName}`, 'info');
+      this.saveDraft();
       if (window.app) {
         window.app.switchView('new-transaction');
       }
@@ -887,6 +901,7 @@ const UITransactions = {
     }
 
     showToast(`Đã chọn: ${personName}`, 'info');
+    this.saveDraft();
     if (window.app) {
       window.app.switchView('new-transaction');
     }
@@ -912,6 +927,7 @@ const UITransactions = {
       dueDateInput.value = '';
       dueDateInput.dataset.rawDate = '';
     }
+    this.saveDraft();
   },
 
   toggleExtraDetails() {
@@ -926,6 +942,7 @@ const UITransactions = {
       body.style.display = 'none';
       if (chevron) chevron.style.transform = 'rotate(0deg)';
     }
+    this.saveDraft();
   },
 
   /* ==================== CATEGORY MANAGER CRUD ==================== */
@@ -1047,16 +1064,6 @@ const UITransactions = {
   },
 
   /* ==================== COLLAPSIBLE DETAILS (PHÍ & ĐI VAY) ==================== */
-  toggleExtraDetails() {
-    const body = document.getElementById('extra-details-body');
-    const chevron = document.getElementById('extra-details-chevron');
-    if (!body) return;
-    const isHidden = body.style.display === 'none';
-    body.style.display = isHidden ? 'block' : 'none';
-    if (chevron) {
-      chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
-    }
-  },
 
   toggleBorrowFields() {
     const cb = document.getElementById('tx-is-borrowed-checkbox');
@@ -1157,6 +1164,7 @@ const UITransactions = {
         checkIcon.remove();
       }
     });
+    this.saveDraft();
   },
 
 
@@ -1203,6 +1211,7 @@ const UITransactions = {
     } else if (type === 'adjust') {
       this.selectAdjustAction();
     }
+    this.saveDraft();
   },
 
   selectAdjustAction() {
@@ -1307,6 +1316,7 @@ const UITransactions = {
           if (dateInput) dateInput.value = d;
           if (timeInput) timeInput.value = t;
           this.updateDateTimeDisplays(d, t);
+          this.saveDraft();
         }
       });
     } else {
@@ -1328,6 +1338,7 @@ const UITransactions = {
           input.dataset.rawDate = d;
           const [y, m, day] = d.split('-');
           input.value = `${day}/${m}/${y}`;
+          this.saveDraft();
         }
       });
     }
@@ -1347,6 +1358,7 @@ const UITransactions = {
           input.dataset.rawDate = d;
           const [y, m, day] = d.split('-');
           input.value = `${day}/${m}/${y}`;
+          this.saveDraft();
         }
       });
     }
@@ -1438,11 +1450,208 @@ const UITransactions = {
     }
   },
 
+  /* ==================== FORM DRAFT AUTO-SAVE & RESTORE ==================== */
+  saveDraft() {
+    // Không lưu nháp nếu đang ở chế độ chỉnh sửa giao dịch cũ
+    const txId = document.getElementById('tx-id-input')?.value;
+    if (txId) return;
+
+    try {
+      const type = document.getElementById('tx-type-input')?.value || 'expense';
+      const amount = document.getElementById('tx-amount-input')?.value || '0';
+      const amountText = document.getElementById('tx-amount-text')?.textContent || '0';
+      const categoryId = document.getElementById('tx-category-id-input')?.value || '';
+      const debtSubaction = document.getElementById('tx-debt-subaction-input')?.value || '';
+      const linkedDebtId = document.getElementById('tx-linked-debt-id-input')?.value || '';
+      const accountId = document.getElementById('tx-account-select')?.value || '';
+      const toAccountId = document.getElementById('tx-to-account-select')?.value || '';
+      const date = document.getElementById('tx-date-input')?.value || '';
+      const time = document.getElementById('tx-time-input')?.value || '';
+      const note = document.getElementById('tx-note-input')?.value || '';
+      const fee = document.getElementById('tx-fee-input')?.value || '0';
+      const person = document.getElementById('tx-person-input')?.value || '';
+      const dueDate = document.getElementById('tx-due-date-input')?.value || '';
+      const dueDateRaw = document.getElementById('tx-due-date-input')?.dataset.rawDate || '';
+      const isBorrowed = document.getElementById('tx-is-borrowed-checkbox')?.checked || false;
+      const borrowPerson = document.getElementById('tx-borrow-person-input')?.value || '';
+      const borrowDueDate = document.getElementById('tx-borrow-due-date-input')?.value || '';
+      const borrowDueDateRaw = document.getElementById('tx-borrow-due-date-input')?.dataset.rawDate || '';
+      const extraOpen = document.getElementById('extra-details-body')?.style.display !== 'none';
+
+      const draft = {
+        type,
+        amount,
+        amountText,
+        categoryId,
+        debtSubaction,
+        linkedDebtId,
+        accountId,
+        toAccountId,
+        date,
+        time,
+        note,
+        fee,
+        person,
+        dueDate,
+        dueDateRaw,
+        isBorrowed,
+        borrowPerson,
+        borrowDueDate,
+        borrowDueDateRaw,
+        extraOpen,
+        savedAt: Date.now()
+      };
+
+      localStorage.setItem('stc_tx_draft', JSON.stringify(draft));
+    } catch (e) {
+      console.warn('Failed to save draft:', e);
+    }
+  },
+
+  clearDraft() {
+    try {
+      localStorage.removeItem('stc_tx_draft');
+    } catch (e) {}
+  },
+
+  async restoreDraft() {
+    try {
+      const raw = localStorage.getItem('stc_tx_draft');
+      if (!raw) return false;
+      const draft = JSON.parse(raw);
+      if (!draft) return false;
+
+      // 1. Populate accounts
+      await this.populateAccounts(draft.accountId || null, draft.toAccountId || null);
+
+      // 2. Type & Category / Subactions
+      const type = draft.type || 'expense';
+      document.getElementById('tx-type-input').value = type;
+      const typeSelector = document.getElementById('tx-type-selector');
+      if (typeSelector) typeSelector.value = type;
+      this.updateHeaderTypeDisplay(type);
+      this.updateAmountColor(type);
+
+      // 3. Category / Debt action / Transfer / Adjust
+      if (type === 'transfer') {
+        this.selectTransferAction();
+      } else if (draft.debtSubaction) {
+        if (draft.linkedDebtId) {
+          const debt = await db.debts.get(Number(draft.linkedDebtId));
+          this.selectDebtAction(draft.debtSubaction, debt);
+        } else {
+          this.selectDebtAction(draft.debtSubaction);
+        }
+      } else if (draft.categoryId) {
+        const cat = await db.categories.get(Number(draft.categoryId));
+        if (cat) {
+          this.selectCategory(cat);
+        }
+      } else if (type === 'adjust') {
+        this.selectAdjustAction();
+      } else {
+        const defaultCat = await db.categories.where('type').equals(type).first();
+        if (defaultCat) this.selectCategory(defaultCat);
+      }
+
+      // 4. Amount (restore AFTER category/action to preserve user input)
+      const amountVal = draft.amount || '0';
+      const amountText = draft.amountText || amountVal || '0';
+      document.getElementById('tx-amount-input').value = amountVal;
+      const amountEl = document.getElementById('tx-amount-text');
+      if (amountEl) amountEl.textContent = amountText;
+
+      // 5. Date & Time
+      if (draft.date) {
+        document.getElementById('tx-date-input').value = draft.date;
+        document.getElementById('tx-time-input').value = draft.time || '00:00';
+        const nativeDt = document.getElementById('tx-datetime-native');
+        if (nativeDt) nativeDt.value = `${draft.date}T${draft.time || '00:00'}`;
+        this.updateDateTimeDisplays(draft.date, draft.time || '00:00');
+      }
+
+      // 6. Note (restore AFTER category/action so user note is not overwritten)
+      if (draft.note !== undefined) {
+        document.getElementById('tx-note-input').value = draft.note;
+      }
+
+      // 7. Fee
+      if (draft.fee !== undefined) {
+        document.getElementById('tx-fee-input').value = draft.fee;
+        const feeDisplay = document.getElementById('tx-fee-display');
+        if (feeDisplay) feeDisplay.textContent = draft.fee ? new Intl.NumberFormat('vi-VN').format(draft.fee) : '0';
+      }
+
+      // 8. Person & Due Date (lend / borrow)
+      if (draft.person) {
+        const personInput = document.getElementById('tx-person-input');
+        if (personInput) personInput.value = draft.person;
+        const personDisplay = document.getElementById('tx-debt-person-display');
+        if (personDisplay) personDisplay.textContent = draft.person;
+        const personRow = document.getElementById('tx-debt-person-row');
+        if (personRow) personRow.style.display = 'flex';
+      }
+      if (draft.dueDate) {
+        const dueInput = document.getElementById('tx-due-date-input');
+        if (dueInput) {
+          dueInput.value = draft.dueDate;
+          dueInput.dataset.rawDate = draft.dueDateRaw || '';
+        }
+        const dueRow = document.getElementById('tx-debt-due-row');
+        if (dueRow) dueRow.style.display = 'flex';
+      }
+
+      // 9. Borrow-to-pay
+      if (draft.isBorrowed && draft.borrowPerson) {
+        const checkbox = document.getElementById('tx-is-borrowed-checkbox');
+        if (checkbox) checkbox.checked = true;
+        const borrowInput = document.getElementById('tx-borrow-person-input');
+        if (borrowInput) borrowInput.value = draft.borrowPerson;
+        const statusText = document.getElementById('tx-borrow-status-text');
+        if (statusText) statusText.textContent = `Đi vay: ${draft.borrowPerson}`;
+        const tag = document.getElementById('tx-borrow-selected-badge');
+        if (tag) {
+          tag.textContent = draft.borrowPerson;
+          tag.style.display = 'inline-flex';
+        }
+        const clearBtn = document.getElementById('tx-borrow-clear-btn');
+        if (clearBtn) clearBtn.style.display = 'inline-flex';
+        const dueRow = document.getElementById('borrow-due-date-row');
+        if (dueRow) dueRow.style.display = 'block';
+        if (draft.borrowDueDate) {
+          const bDueInput = document.getElementById('tx-borrow-due-date-input');
+          if (bDueInput) {
+            bDueInput.value = draft.borrowDueDate;
+            bDueInput.dataset.rawDate = draft.borrowDueDateRaw || '';
+          }
+        }
+      }
+
+      // 10. Extra details accordion
+      if (draft.extraOpen) {
+        const extraBody = document.getElementById('extra-details-body');
+        if (extraBody) extraBody.style.display = 'block';
+        const extraChevron = document.getElementById('extra-details-chevron');
+        if (extraChevron) extraChevron.style.transform = 'rotate(180deg)';
+      }
+
+      await this.updateSelectedAccountDisplay();
+      this.setEditMode(false);
+      this.formInitialized = true;
+      if (window.lucide) lucide.createIcons();
+      return true;
+    } catch (e) {
+      console.warn('Failed to restore draft:', e);
+      return false;
+    }
+  },
+
   /**
    * Đặt lại form ghi chép về trạng thái ban đầu để tiếp tục nhập
    * @param {string} defaultType - Loại ghi chép (expense, income, lend, borrow, adjust, transfer)
    */
   async resetForm(defaultType = 'expense') {
+    this.clearDraft();
     const form = document.getElementById('transaction-form');
     if (!form) return;
 
@@ -1519,11 +1728,48 @@ const UITransactions = {
 
     // Chế độ thêm mới: ẩn nút Xóa
     this.setEditMode(false);
+    this.formInitialized = true;
     if (window.lucide) lucide.createIcons();
   },
 
   async openAddModal(defaultType = 'expense') {
-    await this.resetForm(defaultType);
+    const isEditing = document.getElementById('tx-id-input')?.value;
+
+    if (isEditing) {
+      // Đang ở chế độ sửa giao dịch cũ mà bấm Thêm mới -> Thoát chế độ sửa và mở form mới/khôi phục nháp
+      this.setEditMode(false);
+      document.getElementById('tx-id-input').value = '';
+      const hasDraft = await this.restoreDraft();
+      if (!hasDraft) {
+        await this.resetForm(defaultType);
+      }
+    } else if (!this.formInitialized) {
+      // Lần đầu mở form
+      const hasDraft = await this.restoreDraft();
+      if (!hasDraft) {
+        await this.resetForm(defaultType);
+      }
+      this.formInitialized = true;
+    } else {
+      // Form đang ở trạng thái nhập liệu: GIỮ NGUYÊN các thông tin người dùng đang nhập dở!
+      const curAmount = document.getElementById('tx-amount-input')?.value;
+      const curNote = document.getElementById('tx-note-input')?.value;
+      const isUntouched = (!curAmount || curAmount === '0') && (!curNote || curNote.trim() === '');
+      if (isUntouched) {
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+        document.getElementById('tx-date-input').value = dateStr;
+        document.getElementById('tx-time-input').value = timeStr;
+        const nativeDt = document.getElementById('tx-datetime-native');
+        if (nativeDt) nativeDt.value = `${dateStr}T${timeStr}`;
+        this.updateDateTimeDisplays(dateStr, timeStr);
+      }
+
+      const curAccId = document.getElementById('tx-account-select')?.value;
+      await this.populateAccounts(curAccId || null);
+      await this.updateSelectedAccountDisplay();
+    }
 
     if (window.app) {
       window.app.switchView('new-transaction');
