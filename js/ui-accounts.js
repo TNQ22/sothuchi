@@ -250,21 +250,12 @@ const UIAccounts = {
               <span class="account-name" title="${escapeHTML(a.name)}">${escapeHTML(a.name)}</span>
               <div class="account-sub-row">
                 <span class="account-type-label">${info.label}</span>
-                ${isDefault ? '<span class="account-default-badge"><i data-lucide="check-circle-2" style="width:10px;height:10px;"></i> Mặc định</span>' : ''}
+                ${isDefault ? '<span class="account-default-badge" title="Ví mặc định"><i data-lucide="check-circle-2" style="width:12px;height:12px;"></i></span>' : ''}
               </div>
             </div>
             <div class="account-balance-wrapper">
               <span class="account-balance ${a.balance < 0 ? 'expense-text' : ''}">${new Intl.NumberFormat('vi-VN').format(a.balance)}đ</span>
             </div>
-          </div>
-
-          <div class="account-item-actions">
-            <button type="button" class="account-move-btn" onclick="event.stopPropagation(); UIAccounts.moveAccount(${a.id}, -1)" title="Chuyển lên trên" ${index === 0 ? 'disabled style="opacity:0.25;pointer-events:none;"' : ''}>
-              <i data-lucide="chevron-up"></i>
-            </button>
-            <button type="button" class="account-move-btn" onclick="event.stopPropagation(); UIAccounts.moveAccount(${a.id}, 1)" title="Chuyển xuống dưới" ${index === accounts.length - 1 ? 'disabled style="opacity:0.25;pointer-events:none;"' : ''}>
-              <i data-lucide="chevron-down"></i>
-            </button>
           </div>
         </div>
       `;
