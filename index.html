@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.8">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.9">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -474,19 +474,32 @@
               <!-- Ô 2: DANH MỤC & MỤC HAY DÙNG (BỌC LẠI 1 KHUNG) -->
               <div class="tx-section-card tx-category-card" id="tx-category-section-card">
                 <!-- Hạng mục đã chọn (Bấm để mở trang chọn toàn bộ danh mục) -->
-                <div class="category-selected-row" id="tx-selected-category-card" onclick="UITransactions.handleCategoryCardClick()">
+                <div class="category-selected-row" id="tx-selected-category-card" onclick="UITransactions.openCategoryPickerPage()">
                   <div class="category-selected-left">
                     <div id="tx-selected-cat-icon" class="category-icon-bubble" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
                       <i data-lucide="utensils"></i>
                     </div>
                     <div>
                       <div id="tx-selected-cat-name" style="font-weight: 600; font-size: 0.95rem;">Ăn uống & Cà phê</div>
-                      <div id="tx-selected-cat-subtext" style="font-size: 0.75rem; color: var(--text-muted);">Khoản chi tiêu từ ví</div>
+                      <div id="tx-selected-cat-subtext" style="font-size: 0.75rem; color: var(--text-muted);">Chọn danh mục</div>
                     </div>
                   </div>
                   <i data-lucide="chevron-right" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
                 </div>
 
+                <!-- Thông tin Người vay / Người cho vay (Hiển thị khi Cho vay hoặc Đi vay, thay thế Hay dùng) -->
+                <div class="tx-info-row tx-category-debt-person-row" id="tx-debt-person-row" style="display: none;" onclick="UITransactions.openBorrowSelectPage()">
+                  <div class="tx-info-icon-bubble" id="tx-debt-person-icon-bubble" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+                    <i data-lucide="user"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div id="tx-debt-person-title" style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500;">Người vay</div>
+                    <div id="tx-debt-person-display" style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">Chưa chọn người</div>
+                    <input type="hidden" id="tx-person-input">
+                  </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                </div>
+
                 <!-- Hay Dùng (Listdown / Accordion, Mặc định mở sẵn) -->
                 <div class="tx-haydung-container" id="tx-haydung-container">
                   <div class="tx-haydung-header">
@@ -577,7 +590,7 @@
                         var catSub = document.getElementById('tx-selected-cat-subtext');
                         var catIcon = document.getElementById('tx-selected-cat-icon');
                         if (catName && cat.name) catName.textContent = cat.name;
-                        if (catSub && cat.subtext) catSub.textContent = cat.subtext;
+                        if (catSub) catSub.textContent = 'Chọn danh mục';
                         if (catIcon && cat.color) {
                           catIcon.style.background = cat.color + '22';
                           catIcon.style.color = cat.color;
@@ -587,18 +600,6 @@
                   })();
                 </script>
 
-                <!-- Hàng 3: Người vay / Cho vay / Đi vay (Chạm để mở trang chọn người) -->
-                <div class="tx-info-row" id="tx-debt-person-row" style="display: none;" onclick="UITransactions.openBorrowSelectPage()">
-                  <div class="tx-info-icon-bubble" id="tx-debt-person-icon-bubble" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
-                    <i data-lucide="user"></i>
-                  </div>
-                  <div class="tx-info-content">
-                    <div id="tx-debt-person-title" style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500;">Người vay</div>
-                    <div id="tx-debt-person-display" style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">Chưa chọn người</div>
-                    <input type="hidden" id="tx-person-input">
-                  </div>
-                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
-                </div>
 
                 <!-- Hàng 4: Ghi chú (Tự động điền Cho [Tên] vay / Vay [Tên]) -->
                 <div class="tx-info-row" id="tx-note-row">
@@ -1149,6 +1150,6 @@
   <script src="./js/ui-settings.js"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.8"></script>
+  <script src="./js/app.js?v=1.9.9"></script>
 </body>
 </html>

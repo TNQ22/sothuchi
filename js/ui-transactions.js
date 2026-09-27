@@ -430,13 +430,7 @@ const UITransactions = {
   },
 
   handleCategoryCardClick() {
-    const curType = document.getElementById('tx-type-input')?.value;
-    const debtSubaction = document.getElementById('tx-debt-subaction-input')?.value;
-    if (curType === 'lend' || debtSubaction === 'lend' || curType === 'borrow' || debtSubaction === 'borrow') {
-      this.openBorrowSelectPage();
-    } else {
-      this.openCategoryPickerPage();
-    }
+    this.openCategoryPickerPage();
   },
 
   async selectCategoryById(catId) {
@@ -474,7 +468,7 @@ const UITransactions = {
       iconBox.innerHTML = `<i data-lucide="${cat.icon || 'tag'}"></i>`;
     }
     if (nameBox) nameBox.textContent = cat.name;
-    const catSubtext = cat.type === 'expense' ? 'Khoản chi tiêu từ ví' : 'Khoản thu nhập vào ví';
+    const catSubtext = 'Chọn danh mục';
     if (subBox) subBox.textContent = catSubtext;
     try {
       localStorage.setItem('stc_default_cat_cache', JSON.stringify({
@@ -491,6 +485,8 @@ const UITransactions = {
     if (personRow) personRow.style.display = 'none';
     const dueRow = document.getElementById('tx-debt-due-row');
     if (dueRow) dueRow.style.display = 'none';
+    const haydungContainer = document.getElementById('tx-haydung-container');
+    if (haydungContainer) haydungContainer.style.display = 'flex';
     const transferGroup = document.getElementById('tx-transfer-target-group');
     if (transferGroup) transferGroup.style.display = 'none';
 
@@ -535,10 +531,14 @@ const UITransactions = {
         iconBox.innerHTML = '<i data-lucide="arrow-up-right"></i>';
       }
       if (nameBox) nameBox.textContent = 'Cho Vay';
-      if (subBox) subBox.textContent = curPerson ? `Người vay: ${curPerson}` : 'Chưa chọn người vay';
+      if (subBox) subBox.textContent = 'Chọn danh mục';
       if (catCard) catCard.style.display = 'flex';
       if (personRow) personRow.style.display = 'flex';
       if (dueRow) dueRow.style.display = 'flex';
+
+      // Ẩn Hay dùng khi Cho vay, thay bằng thông tin người vay
+      const haydungContainer = document.getElementById('tx-haydung-container');
+      if (haydungContainer) haydungContainer.style.display = 'none';
 
       const personTitle = document.getElementById('tx-debt-person-title');
       const personDisplay = document.getElementById('tx-debt-person-display');
@@ -547,17 +547,13 @@ const UITransactions = {
         personBubble.style.color = '#3b82f6';
         personBubble.innerHTML = '<i data-lucide="user"></i>';
       }
-      if (curPerson) {
-        if (personTitle) personTitle.textContent = 'Cho vay';
-        if (personDisplay) personDisplay.textContent = curPerson;
-      } else {
-        if (personTitle) personTitle.textContent = 'Người vay';
-        if (personDisplay) personDisplay.textContent = 'Chưa chọn người';
-      }
+      if (personTitle) personTitle.textContent = 'Người vay';
+      if (personDisplay) personDisplay.textContent = curPerson || 'Chưa chọn người';
 
-      await this.renderQuickCategories('expense');
       this.closeCategoryPicker();
-      this.openBorrowSelectPage();
+      if (!curPerson) {
+        this.openBorrowSelectPage();
+      }
 
     } else if (subaction === 'borrow') {
       document.getElementById('tx-type-input').value = 'borrow';
@@ -572,10 +568,14 @@ const UITransactions = {
         iconBox.innerHTML = '<i data-lucide="arrow-down-left"></i>';
       }
       if (nameBox) nameBox.textContent = 'Đi Vay';
-      if (subBox) subBox.textContent = curPerson ? `Người cho vay: ${curPerson}` : 'Chưa chọn người cho vay';
+      if (subBox) subBox.textContent = 'Chọn danh mục';
       if (catCard) catCard.style.display = 'flex';
       if (personRow) personRow.style.display = 'flex';
       if (dueRow) dueRow.style.display = 'flex';
+
+      // Ẩn Hay dùng khi Đi vay, thay bằng thông tin người cho vay
+      const haydungContainer = document.getElementById('tx-haydung-container');
+      if (haydungContainer) haydungContainer.style.display = 'none';
 
       const personTitle = document.getElementById('tx-debt-person-title');
       const personDisplay = document.getElementById('tx-debt-person-display');
@@ -584,17 +584,13 @@ const UITransactions = {
         personBubble.style.color = '#f59e0b';
         personBubble.innerHTML = '<i data-lucide="user"></i>';
       }
-      if (curPerson) {
-        if (personTitle) personTitle.textContent = 'Đi vay';
-        if (personDisplay) personDisplay.textContent = curPerson;
-      } else {
-        if (personTitle) personTitle.textContent = 'Người cho vay';
-        if (personDisplay) personDisplay.textContent = 'Chưa chọn người';
-      }
+      if (personTitle) personTitle.textContent = 'Người cho vay';
+      if (personDisplay) personDisplay.textContent = curPerson || 'Chưa chọn người';
 
-      await this.renderQuickCategories('income');
       this.closeCategoryPicker();
-      this.openBorrowSelectPage();
+      if (!curPerson) {
+        this.openBorrowSelectPage();
+      }
 
     } else if (subaction === 'debt-collect' && debtItem) {
       document.getElementById('tx-type-input').value = 'debt-collect';
@@ -608,17 +604,19 @@ const UITransactions = {
         iconBox.style.color = 'var(--income)';
         iconBox.innerHTML = '<i data-lucide="check-circle-2"></i>';
       }
-      if (nameBox) nameBox.textContent = 'Thu Nợ';
-      if (subBox) subBox.textContent = `Người trả: ${debtItem.personName} (Còn nợ: ${new Intl.NumberFormat('vi-VN').format(debtItem.remainingAmount)}đ)`;
+      if (nameBox) nameBox.textContent = `Thu Nợ: ${debtItem.personName}`;
+      if (subBox) subBox.textContent = 'Chọn danh mục';
       if (personRow) personRow.style.display = 'none';
       if (dueRow) dueRow.style.display = 'none';
+
+      const haydungContainer = document.getElementById('tx-haydung-container');
+      if (haydungContainer) haydungContainer.style.display = 'none';
 
       const formattedRem = new Intl.NumberFormat('vi-VN').format(debtItem.remainingAmount);
       document.getElementById('tx-amount-input').value = formattedRem;
       const amountVal = document.getElementById('tx-amount-text');
       if (amountVal) amountVal.textContent = formattedRem;
       document.getElementById('tx-note-input').value = `Thu nợ từ ${debtItem.personName}`;
-      await this.renderQuickCategories('income');
       showToast(`Đã chọn thu nợ từ: ${debtItem.personName}`, 'info');
 
     } else if (subaction === 'debt-pay' && debtItem) {
@@ -633,17 +631,19 @@ const UITransactions = {
         iconBox.style.color = 'var(--warning)';
         iconBox.innerHTML = '<i data-lucide="clock"></i>';
       }
-      if (nameBox) nameBox.textContent = 'Trả Nợ';
-      if (subBox) subBox.textContent = `Người nhận: ${debtItem.personName} (Cần trả: ${new Intl.NumberFormat('vi-VN').format(debtItem.remainingAmount)}đ)`;
+      if (nameBox) nameBox.textContent = `Trả Nợ: ${debtItem.personName}`;
+      if (subBox) subBox.textContent = 'Chọn danh mục';
       if (personRow) personRow.style.display = 'none';
       if (dueRow) dueRow.style.display = 'none';
+
+      const haydungContainer = document.getElementById('tx-haydung-container');
+      if (haydungContainer) haydungContainer.style.display = 'none';
 
       const formattedRem = new Intl.NumberFormat('vi-VN').format(debtItem.remainingAmount);
       document.getElementById('tx-amount-input').value = formattedRem;
       const amountVal = document.getElementById('tx-amount-text');
       if (amountVal) amountVal.textContent = formattedRem;
       document.getElementById('tx-note-input').value = `Trả nợ cho ${debtItem.personName}`;
-      await this.renderQuickCategories('expense');
       showToast(`Đã chọn trả nợ cho: ${debtItem.personName}`, 'info');
     }
 
@@ -919,17 +919,19 @@ const UITransactions = {
       if (dueRow) dueRow.style.display = 'flex';
 
       const subBox = document.getElementById('tx-selected-cat-subtext');
+      if (subBox) subBox.textContent = 'Chọn danh mục';
+      const haydungContainer = document.getElementById('tx-haydung-container');
+      if (haydungContainer) haydungContainer.style.display = 'none';
+
       if (curType === 'lend') {
-        if (personTitle) personTitle.textContent = 'Cho vay';
+        if (personTitle) personTitle.textContent = 'Người vay';
         if (personDisplay) personDisplay.textContent = personName;
-        if (subBox) subBox.textContent = `Người vay: ${personName}`;
         if (noteInput && (!noteInput.value || noteInput.value.startsWith('Cho ') || noteInput.value.startsWith('Vay '))) {
           noteInput.value = `Cho ${personName} vay`;
         }
       } else {
-        if (personTitle) personTitle.textContent = 'Đi vay';
+        if (personTitle) personTitle.textContent = 'Người cho vay';
         if (personDisplay) personDisplay.textContent = personName;
-        if (subBox) subBox.textContent = `Người cho vay: ${personName}`;
         if (noteInput && (!noteInput.value || noteInput.value.startsWith('Cho ') || noteInput.value.startsWith('Vay '))) {
           noteInput.value = `Vay ${personName}`;
         }
@@ -1676,15 +1678,19 @@ const UITransactions = {
         if (personDisplay) personDisplay.textContent = draft.person;
         const personRow = document.getElementById('tx-debt-person-row');
         if (personRow) personRow.style.display = 'flex';
-        const subBox = document.getElementById('tx-selected-cat-subtext');
-        if (subBox) {
-          if (type === 'lend' || draft.debtSubaction === 'lend') {
-            subBox.textContent = `Người vay: ${draft.person}`;
-          } else if (type === 'borrow' || draft.debtSubaction === 'borrow') {
-            subBox.textContent = `Người cho vay: ${draft.person}`;
-          }
+        const personTitle = document.getElementById('tx-debt-person-title');
+        if (personTitle) {
+          personTitle.textContent = (type === 'lend' || draft.debtSubaction === 'lend') ? 'Người vay' : 'Người cho vay';
         }
       }
+      if (type === 'lend' || draft.debtSubaction === 'lend' || type === 'borrow' || draft.debtSubaction === 'borrow') {
+        const haydungContainer = document.getElementById('tx-haydung-container');
+        if (haydungContainer) haydungContainer.style.display = 'none';
+        const personRow = document.getElementById('tx-debt-person-row');
+        if (personRow) personRow.style.display = 'flex';
+      }
+      const subBoxDraft = document.getElementById('tx-selected-cat-subtext');
+      if (subBoxDraft) subBoxDraft.textContent = 'Chọn danh mục';
       if (draft.dueDate) {
         const dueInput = document.getElementById('tx-due-date-input');
         if (dueInput) {
@@ -1805,11 +1811,15 @@ const UITransactions = {
     const catCard = document.getElementById('tx-category-section-card');
     if (catCard) catCard.style.display = 'flex';
 
-    // Hay dung default open
+    // Hay dung default visible & open
+    const haydungContainer = document.getElementById('tx-haydung-container');
+    if (haydungContainer) haydungContainer.style.display = 'flex';
     const haydungGrid = document.getElementById('tx-quick-category-grid');
     if (haydungGrid) haydungGrid.style.display = 'grid';
     const chevron = document.getElementById('haydung-chevron');
     if (chevron) chevron.style.transform = 'rotate(0deg)';
+    const subBoxReset = document.getElementById('tx-selected-cat-subtext');
+    if (subBoxReset) subBoxReset.textContent = 'Chọn danh mục';
 
     await this.populateAccounts();
     await this.updateSelectedAccountDisplay();
