@@ -151,53 +151,53 @@ class App {
     // 1. Initialize IndexedDB
     await initDatabase();
 
-    // 2. Initialize Google Drive Sync engine
-    if (window.googleDriveService) {
-      await window.googleDriveService.init();
+    // 2. Setup Transaction UI and initialize default form immediately (default startup view)
+    if (window.UITransactions) {
+      await window.UITransactions.init();
+      window.UITransactions.clearDraft();
+      await window.UITransactions.resetForm('expense');
     }
 
-    // 3. Setup UI Modules
-    window.UITransactions.init();
+    // 3. Initialize Google Drive Sync engine (non-blocking)
+    if (window.googleDriveService) {
+      window.googleDriveService.init().catch(e => console.warn('Drive init error:', e));
+    }
+
+    // 4. Setup Other UI Modules
     window.UIDebts.init();
     window.UIAccounts.init();
     window.UIBudgets.init();
     window.UIAnalytics.init();
     window.UISettings.init();
 
-    // 4. Setup Routing & Navigation
+    // 5. Setup Routing & Navigation
     this.setupNavigation();
 
-    // 5. Setup Touch Swipe Gestures (Swipe from left to right to go back)
+    // 6. Setup Touch Swipe Gestures (Swipe from left to right to go back)
     this.setupSwipeToBack();
 
-    // 6. Setup Global Shortcuts & Listeners
+    // 7. Setup Global Shortcuts & Listeners
     this.setupGlobalShortcuts();
 
-    // 7. Apply Saved Theme & Privacy Mode
+    // 8. Apply Saved Theme & Privacy Mode
     await this.loadInitialPreferences();
 
-    // 8. Render initial data
+    // 9. Render initial data for background tabs
     await this.refreshAll();
-
-    // Reset bản nháp khi đóng/mở lại app và khởi tạo sạch trang nhập liệu mặc định
-    if (window.UITransactions) {
-      window.UITransactions.clearDraft();
-      await window.UITransactions.resetForm('expense');
-    }
 
     // Render icons again after dynamic DOM render
     if (window.lucide) lucide.createIcons();
 
-    // 9. Register Service Worker for PWA
+    // 10. Register Service Worker for PWA
     this.registerServiceWorker();
 
-    // 10. Sync indicator listener
+    // 11. Sync indicator listener
     this.setupSyncListeners();
 
-    // 11. Check URL query action (e.g. ?action=new-tx or ?tab=debts)
+    // 12. Check URL query action (e.g. ?action=new-tx or ?tab=debts)
     this.handleUrlActions();
 
-    // 12. Setup Browser History (Popstate) listener
+    // 13. Setup Browser History (Popstate) listener
     this.setupPopstateListener();
 
     console.log('Sổ Thu Chi PWA đã khởi động sẵn sàng!');
@@ -309,12 +309,12 @@ class App {
     }
   }
 
-  handleInputTabClick() {
+  async handleInputTabClick() {
     // 1. Nếu chưa ở trang nhập liệu -> Chỉ chuyển vào trang nhập liệu (giữ nguyên dữ liệu), KHÔNG tính là 1 chạm để làm mới
     if (this.currentView !== 'new-transaction') {
       this.lastAddTabClickTime = 0;
       if (window.UITransactions) {
-        window.UITransactions.openAddModal();
+        await window.UITransactions.openAddModal();
       }
       return;
     }
@@ -328,7 +328,7 @@ class App {
       this.lastAddTabClickTime = 0;
       if (window.UITransactions) {
         window.UITransactions.clearDraft();
-        window.UITransactions.resetForm('expense');
+        await window.UITransactions.resetForm('expense');
         showToast('Đã làm mới trang nhập liệu', 'info');
         window.scrollTo(0, 0);
         const activeView = document.getElementById('view-new-transaction');

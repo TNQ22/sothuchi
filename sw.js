@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v1.9.5';
+const CACHE_NAME = 'sothuchi-pwa-v1.9.6';
 
 const PRECACHE_ASSETS = [
   './',

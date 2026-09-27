@@ -16,7 +16,6 @@ const UITransactions = {
   async init() {
     this.bindEvents();
     await this.renderQuickCategories();
-    await this.render();
   },
 
   bindEvents() {
@@ -425,7 +424,15 @@ const UITransactions = {
       iconBox.innerHTML = `<i data-lucide="${cat.icon || 'tag'}"></i>`;
     }
     if (nameBox) nameBox.textContent = cat.name;
-    if (subBox) subBox.textContent = cat.type === 'expense' ? 'Khoản chi tiêu từ ví' : 'Khoản thu nhập vào ví';
+    const catSubtext = cat.type === 'expense' ? 'Khoản chi tiêu từ ví' : 'Khoản thu nhập vào ví';
+    if (subBox) subBox.textContent = catSubtext;
+    try {
+      localStorage.setItem('stc_default_cat_cache', JSON.stringify({
+        name: cat.name,
+        color: cat.color,
+        subtext: catSubtext
+      }));
+    } catch (e) {}
 
     // Form field adaptations
     const catCard = document.getElementById('tx-category-section-card');
@@ -1394,6 +1401,15 @@ const UITransactions = {
         const balFormatted = new Intl.NumberFormat('vi-VN').format(acc.balance);
         balanceEl.textContent = `Số dư: ${balFormatted}đ`;
         balanceEl.style.color = acc.balance < 0 ? 'var(--expense)' : 'var(--text-muted)';
+        try {
+          localStorage.setItem('stc_last_account_cache', JSON.stringify({
+            id: acc.id,
+            name: acc.name,
+            type: acc.type,
+            color: info.color,
+            balanceFormatted: balFormatted
+          }));
+        } catch (e) {}
       }
       if (window.lucide) lucide.createIcons();
     }

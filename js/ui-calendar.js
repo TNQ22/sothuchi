@@ -37,11 +37,11 @@ const UICalendar = {
         <!-- Top Bar: Date | Time -->
         <div class="custom-cal-topbar" id="cal-topbar">
           <button type="button" class="custom-cal-top-item active" id="cal-top-date" title="Chọn ngày">
-            <span id="cal-top-date-text">18/09/2026</span>
+            <span id="cal-top-date-text">Hôm nay</span>
           </button>
           <div class="custom-cal-top-divider" id="cal-top-divider"></div>
           <button type="button" class="custom-cal-top-item" id="cal-top-time" title="Chọn giờ">
-            <span id="cal-top-time-text">11:22</span>
+            <span id="cal-top-time-text">--:--</span>
           </button>
         </div>
 
