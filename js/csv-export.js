@@ -81,7 +81,7 @@ const CSVExportService = {
     const accounts = await db.accounts.toArray();
     const accMap = new Map(accounts.map(a => [a.id, a.name]));
 
-    const headers = ['Mã Nợ', 'Loại hình', 'Người vay / Chủ nợ', 'Số tiền ban đầu', 'Còn lại', 'Đã trả/thu', 'Ví liên kết', 'Hạn trả', 'Trạng thái', 'Ghi chú'];
+    const headers = ['Mã Nợ', 'Loại hình', 'Người vay / Chủ nợ', 'Số tiền ban đầu', 'Còn lại', 'Đã trả/thu', 'Ví liên kết', 'Ngày thu/trả nợ', 'Trạng thái', 'Ghi chú'];
     const rows = [headers.map(this.escapeCSV).join(',')];
 
     for (const d of debts) {

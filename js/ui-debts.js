@@ -38,6 +38,14 @@ const UIDebts = {
       });
     }
 
+    // Switch due date label when debt type changes
+    const debtTypeSelect = document.getElementById('debt-type-select');
+    if (debtTypeSelect) {
+      debtTypeSelect.addEventListener('change', (e) => {
+        this.updateDueDateLabel(e.target.value);
+      });
+    }
+
     // Add Debt Form Submit
     const debtForm = document.getElementById('debt-form');
     if (debtForm) {
@@ -65,6 +73,7 @@ const UIDebts = {
 
     form.reset();
     document.getElementById('debt-type-select').value = type;
+    this.updateDueDateLabel(type);
     const dateInput = document.getElementById('debt-date-input');
     if (dateInput) {
       dateInput.value = '';
@@ -92,6 +101,18 @@ const UIDebts = {
   closePaymentModal() {
     const modal = document.getElementById('modal-debt-payment');
     if (modal) modal.classList.remove('open');
+  },
+
+  updateDueDateLabel(type) {
+    const label = document.getElementById('debt-date-label');
+    const input = document.getElementById('debt-date-input');
+    if (type === 'lend') {
+      if (label) label.textContent = 'Ngày thu nợ (Tùy chọn)';
+      if (input) input.placeholder = 'Chọn ngày thu nợ (tùy chọn)';
+    } else {
+      if (label) label.textContent = 'Ngày trả nợ (Tùy chọn)';
+      if (input) input.placeholder = 'Chọn ngày trả nợ (tùy chọn)';
+    }
   },
 
   openDatePicker() {
@@ -276,7 +297,7 @@ const UIDebts = {
               <div>
                 <div class="debt-name">${escapeHTML(d.personName)}</div>
                 <div style="font-size: 0.8rem; color: var(--text-muted);">
-                  ${d.dueDate ? `Hạn: ${d.dueDate}` : 'Không có hạn'} • ${acc ? escapeHTML(acc.name) : 'Ví không rõ'}
+                  ${d.dueDate ? (d.type === 'lend' ? `Ngày thu: ${d.dueDate}` : `Ngày trả: ${d.dueDate}`) : 'Không có ngày hẹn'} • ${acc ? escapeHTML(acc.name) : 'Ví không rõ'}
                 </div>
               </div>
             </div>

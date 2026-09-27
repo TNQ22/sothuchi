@@ -535,6 +535,8 @@ const UITransactions = {
       if (catCard) catCard.style.display = 'flex';
       if (personRow) personRow.style.display = 'flex';
       if (dueRow) dueRow.style.display = 'flex';
+      const dueInput = document.getElementById('tx-due-date-input');
+      if (dueInput) dueInput.placeholder = 'Ngày thu nợ';
 
       // Ẩn Hay dùng khi Cho vay, thay bằng thông tin người vay
       const haydungContainer = document.getElementById('tx-haydung-container');
@@ -572,6 +574,8 @@ const UITransactions = {
       if (catCard) catCard.style.display = 'flex';
       if (personRow) personRow.style.display = 'flex';
       if (dueRow) dueRow.style.display = 'flex';
+      const dueInput = document.getElementById('tx-due-date-input');
+      if (dueInput) dueInput.placeholder = 'Ngày trả nợ';
 
       // Ẩn Hay dùng khi Đi vay, thay bằng thông tin người cho vay
       const haydungContainer = document.getElementById('tx-haydung-container');
@@ -768,7 +772,7 @@ const UITransactions = {
           <div class="debt-quick-item" onclick='UITransactions.selectDebtAction("debt-collect", ${JSON.stringify(d)})'>
             <div>
               <div style="font-weight: 600; font-size: 0.88rem;">${escapeHTML(d.personName)}</div>
-              <div style="font-size: 0.72rem; color: var(--text-muted);">${d.dueDate ? 'Hạn: ' + d.dueDate : 'Không có hạn'}</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted);">${d.dueDate ? 'Ngày thu: ' + d.dueDate : 'Không có ngày thu'}</div>
             </div>
             <div style="font-weight: 700; color: var(--income); font-size: 0.95rem;">
               +${new Intl.NumberFormat('vi-VN').format(d.remainingAmount)}đ
@@ -787,7 +791,7 @@ const UITransactions = {
           <div class="debt-quick-item" onclick='UITransactions.selectDebtAction("debt-pay", ${JSON.stringify(d)})'>
             <div>
               <div style="font-weight: 600; font-size: 0.88rem;">${escapeHTML(d.personName)}</div>
-              <div style="font-size: 0.72rem; color: var(--text-muted);">${d.dueDate ? 'Hạn: ' + d.dueDate : 'Không có hạn'}</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted);">${d.dueDate ? 'Ngày trả: ' + d.dueDate : 'Không có ngày trả'}</div>
             </div>
             <div style="font-weight: 700; color: var(--warning); font-size: 0.95rem;">
               -${new Intl.NumberFormat('vi-VN').format(d.remainingAmount)}đ
@@ -917,6 +921,10 @@ const UITransactions = {
       if (personInput) personInput.value = personName;
       if (personRow) personRow.style.display = 'flex';
       if (dueRow) dueRow.style.display = 'flex';
+      const dueInput = document.getElementById('tx-due-date-input');
+      if (dueInput) {
+        dueInput.placeholder = curType === 'lend' ? 'Ngày thu nợ' : 'Ngày trả nợ';
+      }
 
       const subBox = document.getElementById('tx-selected-cat-subtext');
       if (subBox) subBox.textContent = 'Chọn danh mục';
@@ -1696,6 +1704,7 @@ const UITransactions = {
         if (dueInput) {
           dueInput.value = draft.dueDate;
           dueInput.dataset.rawDate = draft.dueDateRaw || '';
+          dueInput.placeholder = (type === 'lend' || draft.debtSubaction === 'lend') ? 'Ngày thu nợ' : 'Ngày trả nợ';
         }
         const dueRow = document.getElementById('tx-debt-due-row');
         if (dueRow) dueRow.style.display = 'flex';
@@ -1805,6 +1814,7 @@ const UITransactions = {
     if (dueDateInput) {
       dueDateInput.value = '';
       dueDateInput.dataset.rawDate = '';
+      dueDateInput.placeholder = defaultType === 'lend' ? 'Ngày thu nợ' : 'Ngày trả nợ';
     }
 
     // Show category card by default

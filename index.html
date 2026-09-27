@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.10">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.11">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -613,13 +613,13 @@
                   </div>
                 </div>
 
-                <!-- Hàng 5: Ngày thu nợ / Hạn trả (Nằm phía trên Thêm chi tiết, chỉ icon và chú thích nền) -->
+                <!-- Hàng 5: Ngày thu nợ / Ngày trả nợ (Nằm phía trên Thêm chi tiết, chỉ icon và chú thích nền) -->
                 <div class="tx-info-row" id="tx-debt-due-row" style="display: none;">
                   <div class="tx-info-icon-bubble" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
                     <i data-lucide="calendar-clock"></i>
                   </div>
                   <div class="tx-info-content">
-                    <input type="text" id="tx-due-date-input" class="tx-clean-input" placeholder="Hạn trả" readonly onclick="UITransactions.openDueDatePicker()" style="cursor: pointer;">
+                    <input type="text" id="tx-due-date-input" class="tx-clean-input" placeholder="Ngày thu nợ" readonly onclick="UITransactions.openDueDatePicker()" style="cursor: pointer;">
                   </div>
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
@@ -663,7 +663,7 @@
                       <input type="checkbox" id="tx-is-borrowed-checkbox" style="display: none;">
                       <input type="hidden" id="tx-borrow-person-input" value="">
                       <div id="borrow-due-date-row" style="display: none; margin-top: 8px; padding-left: 26px;">
-                        <input type="text" id="tx-borrow-due-date-input" class="form-control" style="font-size: 0.85rem; cursor: pointer;" placeholder="Hạn trả" readonly onclick="UITransactions.openBorrowDueDatePicker()">
+                        <input type="text" id="tx-borrow-due-date-input" class="form-control" style="font-size: 0.85rem; cursor: pointer;" placeholder="Ngày trả nợ" readonly onclick="UITransactions.openBorrowDueDatePicker()">
                       </div>
                     </div>
                   </div>
@@ -999,8 +999,8 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Hạn Trả (Tùy chọn)</label>
-            <input type="text" id="debt-date-input" class="form-control" placeholder="Chọn hạn trả (tùy chọn)" readonly onclick="UIDebts.openDatePicker()" style="cursor: pointer;">
+            <label class="form-label" id="debt-date-label">Ngày thu nợ (Tùy chọn)</label>
+            <input type="text" id="debt-date-input" class="form-control" placeholder="Chọn ngày thu nợ (tùy chọn)" readonly onclick="UIDebts.openDatePicker()" style="cursor: pointer;">
           </div>
 
           <div class="form-group">
@@ -1152,6 +1152,6 @@
   <script src="./js/ui-settings.js"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.10"></script>
+  <script src="./js/app.js?v=1.9.11"></script>
 </body>
 </html>
