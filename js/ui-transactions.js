@@ -548,7 +548,7 @@ const UITransactions = {
         personBubble.innerHTML = '<i data-lucide="user"></i>';
       }
       if (personTitle) personTitle.textContent = 'Người vay';
-      if (personDisplay) personDisplay.textContent = curPerson || 'Chưa chọn người';
+      if (personDisplay) personDisplay.textContent = curPerson || 'Chưa chọn ai';
 
       this.closeCategoryPicker();
       if (!curPerson) {
@@ -585,7 +585,7 @@ const UITransactions = {
         personBubble.innerHTML = '<i data-lucide="user"></i>';
       }
       if (personTitle) personTitle.textContent = 'Người cho vay';
-      if (personDisplay) personDisplay.textContent = curPerson || 'Chưa chọn người';
+      if (personDisplay) personDisplay.textContent = curPerson || 'Chưa chọn ai';
 
       this.closeCategoryPicker();
       if (!curPerson) {
@@ -1800,7 +1800,7 @@ const UITransactions = {
     const personTitle = document.getElementById('tx-debt-person-title');
     if (personTitle) personTitle.textContent = 'Người vay';
     const personDisplay = document.getElementById('tx-debt-person-display');
-    if (personDisplay) personDisplay.textContent = 'Chưa chọn người';
+    if (personDisplay) personDisplay.textContent = 'Chưa chọn ai';
     const dueDateInput = document.getElementById('tx-due-date-input');
     if (dueDateInput) {
       dueDateInput.value = '';
