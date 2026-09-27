@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.7">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.8">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -474,7 +474,7 @@
               <!-- Ô 2: DANH MỤC & MỤC HAY DÙNG (BỌC LẠI 1 KHUNG) -->
               <div class="tx-section-card tx-category-card" id="tx-category-section-card">
                 <!-- Hạng mục đã chọn (Bấm để mở trang chọn toàn bộ danh mục) -->
-                <div class="category-selected-row" id="tx-selected-category-card" onclick="UITransactions.openCategoryPickerPage()">
+                <div class="category-selected-row" id="tx-selected-category-card" onclick="UITransactions.handleCategoryCardClick()">
                   <div class="category-selected-left">
                     <div id="tx-selected-cat-icon" class="category-icon-bubble" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
                       <i data-lucide="utensils"></i>
@@ -1149,6 +1149,6 @@
   <script src="./js/ui-settings.js"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.7"></script>
+  <script src="./js/app.js?v=1.9.8"></script>
 </body>
 </html>

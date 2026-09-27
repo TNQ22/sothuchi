@@ -344,11 +344,24 @@ const UITransactions = {
   },
 
   /* ==================== QUICK CATEGORY GRID (2x4 FIXED) ==================== */
-  async renderQuickCategories() {
+  async renderQuickCategories(targetType = null) {
     const container = document.getElementById('tx-quick-category-grid');
     if (!container) return;
 
-    const allCats = await db.categories.where('isDeleted').equals(0).toArray();
+    const formType = document.getElementById('tx-type-input')?.value || 'expense';
+    const debtSubaction = document.getElementById('tx-debt-subaction-input')?.value || '';
+
+    // Xác định nhóm danh mục: 'income' (Thu tiền, Đi vay, Thu nợ) hay 'expense' (Chi tiền, Cho vay, Trả nợ)
+    let groupType = targetType || formType;
+    if (groupType === 'borrow' || groupType === 'debt-collect') {
+      groupType = 'income';
+    } else if (groupType === 'lend' || groupType === 'debt-pay' || groupType === 'adjust' || groupType === 'transfer') {
+      groupType = 'expense';
+    }
+    if (groupType !== 'income') groupType = 'expense';
+
+    // 1. Lấy danh mục tương thích theo groupType (thu hoặc chi)
+    const allCats = await db.categories.where('isDeleted').equals(0).and(c => c.type === groupType).toArray();
     let quickCats = allCats.filter(c => c.isQuick === 1);
     if (quickCats.length === 0) {
       quickCats = allCats.slice(0, 6);
@@ -358,7 +371,7 @@ const UITransactions = {
 
     let html = '';
     for (const cat of quickCats) {
-      const isSelected = this.selectedCategory && this.selectedCategory.id === cat.id;
+      const isSelected = (!debtSubaction && formType === groupType && this.selectedCategory && this.selectedCategory.id === cat.id);
       html += `
         <div class="quick-cat-chip ${isSelected ? 'active' : ''}" onclick="UITransactions.selectCategoryById(${cat.id})" title="${escapeHTML(cat.name)}">
           <div class="quick-cat-icon" style="background: ${cat.color}22; color: ${cat.color};">
@@ -369,34 +382,71 @@ const UITransactions = {
       `;
     }
 
-    // Fixed Cho Vay & Đi Vay chips to complete exactly 2x4 (8 slots total)
-    html += `
-      <div class="quick-cat-chip" onclick="UITransactions.selectDebtAction('lend')" title="Cho Vay">
-        <div class="quick-cat-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--income);">
-          <i data-lucide="arrow-up-right" style="width: 16px; height: 16px;"></i>
+    // 2. Hai slot cuối (vị trí 7 & 8) tương thích theo nhóm:
+    if (groupType === 'income') {
+      // Nhóm THU TIỀN:
+      // Slot 7: Đi Vay (thu tiền vay vào ví)
+      // Slot 8: Thu Nợ (thu hồi tiền người nợ trả vào ví)
+      const isBorrowActive = (formType === 'borrow' || debtSubaction === 'borrow');
+      const isCollectActive = (formType === 'debt-collect' || debtSubaction === 'debt-collect');
+      html += `
+        <div class="quick-cat-chip ${isBorrowActive ? 'active' : ''}" onclick="UITransactions.selectDebtAction('borrow')" title="Đi Vay">
+          <div class="quick-cat-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--warning);">
+            <i data-lucide="arrow-down-left" style="width: 16px; height: 16px;"></i>
+          </div>
+          <span class="quick-cat-name">Đi Vay</span>
         </div>
-        <span class="quick-cat-name">Cho Vay</span>
-      </div>
-      <div class="quick-cat-chip" onclick="UITransactions.selectDebtAction('borrow')" title="Đi Vay">
-        <div class="quick-cat-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--warning);">
-          <i data-lucide="arrow-down-left" style="width: 16px; height: 16px;"></i>
+        <div class="quick-cat-chip ${isCollectActive ? 'active' : ''}" onclick="UITransactions.openCategoryPickerPage('debt')" title="Thu Nợ">
+          <div class="quick-cat-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--income);">
+            <i data-lucide="check-circle-2" style="width: 16px; height: 16px;"></i>
+          </div>
+          <span class="quick-cat-name">Thu Nợ</span>
         </div>
-        <span class="quick-cat-name">Đi Vay</span>
-      </div>
-    `;
+      `;
+    } else {
+      // Nhóm CHI TIỀN:
+      // Slot 7: Cho Vay (tiền chi từ ví cho vay)
+      // Slot 8: Trả Nợ (tiền chi từ ví trả nợ)
+      const isLendActive = (formType === 'lend' || debtSubaction === 'lend');
+      const isPayActive = (formType === 'debt-pay' || debtSubaction === 'debt-pay');
+      html += `
+        <div class="quick-cat-chip ${isLendActive ? 'active' : ''}" onclick="UITransactions.selectDebtAction('lend')" title="Cho Vay">
+          <div class="quick-cat-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+            <i data-lucide="arrow-up-right" style="width: 16px; height: 16px;"></i>
+          </div>
+          <span class="quick-cat-name">Cho Vay</span>
+        </div>
+        <div class="quick-cat-chip ${isPayActive ? 'active' : ''}" onclick="UITransactions.openCategoryPickerPage('debt')" title="Trả Nợ">
+          <div class="quick-cat-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--warning);">
+            <i data-lucide="clock" style="width: 16px; height: 16px;"></i>
+          </div>
+          <span class="quick-cat-name">Trả Nợ</span>
+        </div>
+      `;
+    }
 
     container.innerHTML = html;
     if (window.lucide) lucide.createIcons();
   },
 
-  async selectCategoryById(catId) {
-    const cat = await db.categories.get(Number(catId));
-    if (cat) {
-      this.selectCategory(cat);
+  handleCategoryCardClick() {
+    const curType = document.getElementById('tx-type-input')?.value;
+    const debtSubaction = document.getElementById('tx-debt-subaction-input')?.value;
+    if (curType === 'lend' || debtSubaction === 'lend' || curType === 'borrow' || debtSubaction === 'borrow') {
+      this.openBorrowSelectPage();
+    } else {
+      this.openCategoryPickerPage();
     }
   },
 
-  selectCategory(cat) {
+  async selectCategoryById(catId) {
+    const cat = await db.categories.get(Number(catId));
+    if (cat) {
+      await this.selectCategory(cat);
+    }
+  },
+
+  async selectCategory(cat) {
     this.selectedCategory = cat;
     document.getElementById('tx-type-input').value = cat.type;
     document.getElementById('tx-category-id-input').value = cat.id;
@@ -446,14 +496,14 @@ const UITransactions = {
 
 
     this.updateHeaderTypeDisplay(cat.type);
-    this.renderQuickCategories();
+    await this.renderQuickCategories(cat.type);
     this.closeCategoryPicker();
     if (window.lucide) lucide.createIcons();
     this.saveDraft();
   },
 
   /* ==================== DEBT & TRANSFER SUB-ACTIONS ==================== */
-  selectDebtAction(subaction, debtItem = null) {
+  async selectDebtAction(subaction, debtItem = null) {
     document.getElementById('tx-debt-subaction-input').value = subaction;
     document.getElementById('tx-category-id-input').value = '';
     const badge = document.getElementById('tx-type-badge');
@@ -480,12 +530,12 @@ const UITransactions = {
       this.updateAmountColor('lend');
       if (badge) { badge.className = 'badge-type lend'; badge.textContent = 'Cho Vay'; }
       if (iconBox) {
-        iconBox.style.background = 'rgba(16, 185, 129, 0.15)';
-        iconBox.style.color = 'var(--income)';
+        iconBox.style.background = 'rgba(59, 130, 246, 0.15)';
+        iconBox.style.color = '#3b82f6';
         iconBox.innerHTML = '<i data-lucide="arrow-up-right"></i>';
       }
       if (nameBox) nameBox.textContent = 'Cho Vay';
-      if (subBox) subBox.textContent = 'Cho mượn tiền từ ví';
+      if (subBox) subBox.textContent = curPerson ? `Người vay: ${curPerson}` : 'Chưa chọn người vay';
       if (catCard) catCard.style.display = 'flex';
       if (personRow) personRow.style.display = 'flex';
       if (dueRow) dueRow.style.display = 'flex';
@@ -505,8 +555,7 @@ const UITransactions = {
         if (personDisplay) personDisplay.textContent = 'Chưa chọn người';
       }
 
-
-
+      await this.renderQuickCategories('expense');
       this.closeCategoryPicker();
       this.openBorrowSelectPage();
 
@@ -523,7 +572,7 @@ const UITransactions = {
         iconBox.innerHTML = '<i data-lucide="arrow-down-left"></i>';
       }
       if (nameBox) nameBox.textContent = 'Đi Vay';
-      if (subBox) subBox.textContent = 'Mượn tiền nhập vào ví';
+      if (subBox) subBox.textContent = curPerson ? `Người cho vay: ${curPerson}` : 'Chưa chọn người cho vay';
       if (catCard) catCard.style.display = 'flex';
       if (personRow) personRow.style.display = 'flex';
       if (dueRow) dueRow.style.display = 'flex';
@@ -543,8 +592,7 @@ const UITransactions = {
         if (personDisplay) personDisplay.textContent = 'Chưa chọn người';
       }
 
-
-
+      await this.renderQuickCategories('income');
       this.closeCategoryPicker();
       this.openBorrowSelectPage();
 
@@ -560,8 +608,8 @@ const UITransactions = {
         iconBox.style.color = 'var(--income)';
         iconBox.innerHTML = '<i data-lucide="check-circle-2"></i>';
       }
-      if (nameBox) nameBox.textContent = `Thu Nợ: ${debtItem.personName}`;
-      if (subBox) subBox.textContent = `Số dư còn nợ: ${new Intl.NumberFormat('vi-VN').format(debtItem.remainingAmount)}đ`;
+      if (nameBox) nameBox.textContent = 'Thu Nợ';
+      if (subBox) subBox.textContent = `Người trả: ${debtItem.personName} (Còn nợ: ${new Intl.NumberFormat('vi-VN').format(debtItem.remainingAmount)}đ)`;
       if (personRow) personRow.style.display = 'none';
       if (dueRow) dueRow.style.display = 'none';
 
@@ -570,6 +618,7 @@ const UITransactions = {
       const amountVal = document.getElementById('tx-amount-text');
       if (amountVal) amountVal.textContent = formattedRem;
       document.getElementById('tx-note-input').value = `Thu nợ từ ${debtItem.personName}`;
+      await this.renderQuickCategories('income');
       showToast(`Đã chọn thu nợ từ: ${debtItem.personName}`, 'info');
 
     } else if (subaction === 'debt-pay' && debtItem) {
@@ -584,8 +633,8 @@ const UITransactions = {
         iconBox.style.color = 'var(--warning)';
         iconBox.innerHTML = '<i data-lucide="clock"></i>';
       }
-      if (nameBox) nameBox.textContent = `Trả Nợ: ${debtItem.personName}`;
-      if (subBox) subBox.textContent = `Số tiền cần trả: ${new Intl.NumberFormat('vi-VN').format(debtItem.remainingAmount)}đ`;
+      if (nameBox) nameBox.textContent = 'Trả Nợ';
+      if (subBox) subBox.textContent = `Người nhận: ${debtItem.personName} (Cần trả: ${new Intl.NumberFormat('vi-VN').format(debtItem.remainingAmount)}đ)`;
       if (personRow) personRow.style.display = 'none';
       if (dueRow) dueRow.style.display = 'none';
 
@@ -594,6 +643,7 @@ const UITransactions = {
       const amountVal = document.getElementById('tx-amount-text');
       if (amountVal) amountVal.textContent = formattedRem;
       document.getElementById('tx-note-input').value = `Trả nợ cho ${debtItem.personName}`;
+      await this.renderQuickCategories('expense');
       showToast(`Đã chọn trả nợ cho: ${debtItem.personName}`, 'info');
     }
 
@@ -868,14 +918,21 @@ const UITransactions = {
       if (personRow) personRow.style.display = 'flex';
       if (dueRow) dueRow.style.display = 'flex';
 
+      const subBox = document.getElementById('tx-selected-cat-subtext');
       if (curType === 'lend') {
         if (personTitle) personTitle.textContent = 'Cho vay';
         if (personDisplay) personDisplay.textContent = personName;
-        if (noteInput) noteInput.value = `Cho ${personName} vay`;
+        if (subBox) subBox.textContent = `Người vay: ${personName}`;
+        if (noteInput && (!noteInput.value || noteInput.value.startsWith('Cho ') || noteInput.value.startsWith('Vay '))) {
+          noteInput.value = `Cho ${personName} vay`;
+        }
       } else {
         if (personTitle) personTitle.textContent = 'Đi vay';
         if (personDisplay) personDisplay.textContent = personName;
-        if (noteInput) noteInput.value = `Vay ${personName}`;
+        if (subBox) subBox.textContent = `Người cho vay: ${personName}`;
+        if (noteInput && (!noteInput.value || noteInput.value.startsWith('Cho ') || noteInput.value.startsWith('Vay '))) {
+          noteInput.value = `Vay ${personName}`;
+        }
       }
 
       showToast(`Đã chọn: ${personName}`, 'info');
@@ -1207,14 +1264,14 @@ const UITransactions = {
 
     if (type === 'expense') {
       const defaultCat = await db.categories.where('type').equals('expense').first();
-      if (defaultCat) this.selectCategory(defaultCat);
+      if (defaultCat) await this.selectCategory(defaultCat);
     } else if (type === 'income') {
       const defaultCat = await db.categories.where('type').equals('income').first();
-      if (defaultCat) this.selectCategory(defaultCat);
+      if (defaultCat) await this.selectCategory(defaultCat);
     } else if (type === 'lend') {
-      this.selectDebtAction('lend');
+      await this.selectDebtAction('lend');
     } else if (type === 'borrow') {
-      this.selectDebtAction('borrow');
+      await this.selectDebtAction('borrow');
     } else if (type === 'adjust') {
       this.selectAdjustAction();
     }
@@ -1619,6 +1676,14 @@ const UITransactions = {
         if (personDisplay) personDisplay.textContent = draft.person;
         const personRow = document.getElementById('tx-debt-person-row');
         if (personRow) personRow.style.display = 'flex';
+        const subBox = document.getElementById('tx-selected-cat-subtext');
+        if (subBox) {
+          if (type === 'lend' || draft.debtSubaction === 'lend') {
+            subBox.textContent = `Người vay: ${draft.person}`;
+          } else if (type === 'borrow' || draft.debtSubaction === 'borrow') {
+            subBox.textContent = `Người cho vay: ${draft.person}`;
+          }
+        }
       }
       if (draft.dueDate) {
         const dueInput = document.getElementById('tx-due-date-input');
@@ -1752,7 +1817,9 @@ const UITransactions = {
     // Default to top category for defaultType
     const defaultCat = await db.categories.where('type').equals(defaultType).first();
     if (defaultCat) {
-      this.selectCategory(defaultCat);
+      await this.selectCategory(defaultCat);
+    } else {
+      await this.renderQuickCategories(defaultType);
     }
 
     // Chế độ thêm mới: ẩn nút Xóa
