@@ -860,7 +860,7 @@ const UITransactions = {
 
       if (query && !hasExactMatch) {
         if (addBtnWrapper) addBtnWrapper.style.display = 'block';
-        if (addBtnText) addBtnText.textContent = `+ Thêm & chọn "${filter.trim()}"`;
+        if (addBtnText) addBtnText.textContent = `Thêm & chọn "${filter.trim()}"`;
       } else {
         if (addBtnWrapper) addBtnWrapper.style.display = 'none';
       }
