@@ -44,7 +44,7 @@ const DEFAULT_CATEGORIES = [
 const DEFAULT_ACCOUNTS = [
   { name: 'Tiền mặt', type: 'cash', balance: 1500000, initialBalance: 1500000, icon: 'wallet', color: '#10b981' },
   { name: 'Ngân hàng', type: 'bank', balance: 12500000, initialBalance: 12500000, icon: 'landmark', color: '#4f46e5' },
-  { name: 'Ví MoMo / ZaloPay', type: 'ewallet', balance: 500000, initialBalance: 500000, icon: 'smartphone', color: '#ec4899' }
+  { name: 'MoMo / ZaloPay', type: 'ewallet', balance: 500000, initialBalance: 500000, icon: 'smartphone', color: '#ec4899' }
 ];
 
 // Initialize Database & Seed Defaults

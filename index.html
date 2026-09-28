@@ -65,7 +65,7 @@
         <li class="nav-item">
           <a href="#" data-view="accounts">
             <i data-lucide="wallet"></i>
-            <span>Tài Khoản & Ví</span>
+            <span>Tài Khoản</span>
           </a>
         </li>
         <li class="nav-item">
@@ -128,12 +128,12 @@
               <div class="stat-icon net-worth"><i data-lucide="trending-up"></i></div>
             </div>
             <div id="stat-net-worth" class="stat-amount">0đ</div>
-            <span class="stat-subtext">Tổng ví + Cho vay - Đi vay</span>
+            <span class="stat-subtext">Tổng tài khoản + Cho vay - Đi vay</span>
           </div>
 
           <div class="stat-card">
             <div class="stat-header">
-              <span class="stat-title">TỔNG SỐ DƯ CÁC VÍ</span>
+              <span class="stat-title">TỔNG SỐ DƯ TÀI KHOẢN</span>
               <div class="stat-icon income"><i data-lucide="wallet"></i></div>
             </div>
             <div id="stat-total-balance" class="stat-amount income-text">0đ</div>
@@ -205,7 +205,7 @@
           <input type="text" id="tx-search-input" class="form-control" placeholder="🔍 Tìm kiếm giao dịch theo ghi chú..." style="max-width: 400px;">
         </div>
 
-        <!-- Banner bộ lọc theo ví -->
+        <!-- Banner bộ lọc theo tài khoản -->
         <div id="tx-active-account-filter" style="display: none;"></div>
 
         <div class="card-panel">
@@ -247,16 +247,16 @@
         <div id="debts-list-container"></div>
       </section>
 
-      <!-- View: Accounts (Ví & Tài khoản) -->
+      <!-- View: Accounts (Tài khoản) -->
       <section id="view-accounts" class="page-view">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
           <div>
             <p style="color: var(--text-secondary); font-size: 0.95rem; margin: 0;">Quản lý tiền mặt, thẻ ngân hàng và ví điện tử</p>
-            <span style="font-size: 0.78rem; color: var(--text-muted);">Kéo để sắp xếp vị trí. Ví ở đầu có tích xanh sẽ tự động chọn khi ghi chép.</span>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">Kéo để sắp xếp vị trí. Tài khoản ở đầu có tích xanh sẽ tự động chọn khi ghi chép.</span>
           </div>
           <button class="btn-primary" onclick="UIAccounts.openAddModal()">
             <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
-            Thêm Ví Mới
+            Thêm Tài Khoản Mới
           </button>
         </div>
 
@@ -525,16 +525,16 @@
                 </div>
               </div>
 
-              <!-- Ô 3: THÔNG TIN VÍ - NGÀY GIỜ - GHI CHÚ (CỐ ĐỊNH, KHÔNG BẬT CHUYỂN VÍ) -->
+              <!-- Ô 3: THÔNG TIN TÀI KHOẢN - NGÀY GIỜ - GHI CHÚ -->
               <div class="tx-section-card tx-details-card">
-                <!-- Hàng 1: Tài khoản / Ví trích tiền (custom dropdown inline) -->
+                <!-- Hàng 1: Tài khoản trích tiền (custom dropdown inline) -->
                 <div class="tx-info-row tx-account-dropdown-wrapper" id="tx-account-row" onclick="UITransactions.toggleAccountDropdown(event)">
                   <div class="tx-info-icon-bubble" id="tx-account-icon-bubble">
                     <i data-lucide="wallet"></i>
                   </div>
                   <div class="tx-info-content">
                     <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
-                      <span id="tx-account-dir-tag" class="tx-transfer-dir-tag from" style="display: none;">Từ ví</span>
+                      <span id="tx-account-dir-tag" class="tx-transfer-dir-tag from" style="display: none;">Từ tài khoản</span>
                       <div id="tx-account-label" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">Chọn tài khoản</div>
                     </div>
                     <div id="tx-account-balance" style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.2; font-variant-numeric: tabular-nums;">Số dư: 0đ</div>
@@ -548,11 +548,11 @@
                   <div id="tx-account-dropdown-list" class="tx-account-list"></div>
                 </div>
 
-                <!-- Hàng chuyển đến ví (khi là chuyển khoản) -->
+                <!-- Hàng chuyển đến tài khoản (khi là chuyển khoản) -->
                 <div id="tx-transfer-target-group" style="display: none;">
                   <div class="tx-transfer-divider">
                     <div class="tx-transfer-divider-line"></div>
-                    <button type="button" class="tx-transfer-swap-btn" onclick="UITransactions.swapTransferAccounts(event)" title="Hoán đổi ví chuyển và ví nhận">
+                    <button type="button" class="tx-transfer-swap-btn" onclick="UITransactions.swapTransferAccounts(event)" title="Hoán đổi tài khoản chuyển và tài khoản nhận">
                       <i data-lucide="arrow-down-up" style="width: 14px; height: 14px;"></i>
                     </button>
                     <div class="tx-transfer-divider-line"></div>
@@ -564,7 +564,7 @@
                     </div>
                     <div class="tx-info-content">
                       <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
-                        <span class="tx-transfer-dir-tag to">Đến ví</span>
+                        <span class="tx-transfer-dir-tag to">Đến tài khoản</span>
                         <div id="tx-to-account-label" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">Chọn tài khoản nhận</div>
                       </div>
                       <div id="tx-to-account-balance" style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.2; font-variant-numeric: tabular-nums;">Số dư: 0đ</div>
@@ -747,7 +747,7 @@
             </div>
           </div>
 
-          <!-- Category Tabs (Chi Tiền, Thu Tiền, Vay Nợ - Xóa Chuyển Ví) -->
+          <!-- Category Tabs (Chi Tiền, Thu Tiền, Vay Nợ) -->
           <div class="cat-picker-tabs">
             <button type="button" class="cat-tab-btn active" data-tab="expense" onclick="UITransactions.switchCategoryTab('expense')">
               <i data-lucide="arrow-down-circle"></i> Chi Tiền
@@ -1034,7 +1034,7 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Tài Khoản / Ví Trích Tiền</label>
+            <label class="form-label">Tài Khoản Trích Tiền</label>
             <select id="debt-account-select" class="form-control" required></select>
           </div>
 
@@ -1073,7 +1073,7 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Cập Nhật Vào Ví</label>
+            <label class="form-label">Cập Nhật Vào Tài Khoản</label>
             <select id="payment-account-select" class="form-control" required></select>
           </div>
 
@@ -1091,9 +1091,95 @@
     </div>
   </div>
 
+  <!-- Modal: Account Action Sheet (Menu tùy chọn 3 chấm) -->
+  <div id="modal-account-actions" class="modal-overlay">
+    <div class="modal-dialog action-sheet-dialog">
+      <div class="action-sheet-header">
+        <div class="action-sheet-icon" id="action-sheet-acc-icon">
+          <i data-lucide="wallet"></i>
+        </div>
+        <div class="action-sheet-info">
+          <h4 id="action-sheet-acc-name" class="action-sheet-title">Tên Tài Khoản</h4>
+          <p id="action-sheet-acc-balance" class="action-sheet-subtitle">Số dư: 0đ</p>
+        </div>
+        <button type="button" class="btn-icon" onclick="UIAccounts.closeActionSheet()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="action-sheet-body">
+        <button type="button" class="action-sheet-item" onclick="UIAccounts.handleActionSheetSelect('statement')">
+          <div class="action-sheet-item-icon" style="background: rgba(79, 70, 229, 0.12); color: #4f46e5;">
+            <i data-lucide="file-spreadsheet" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Lịch sử nhập sao kê</span>
+            <span class="action-sheet-item-desc">Tải file sao kê ngân hàng & xem các đợt đã nhập</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
+        <button type="button" class="action-sheet-item" onclick="UIAccounts.handleActionSheetSelect('transfer')">
+          <div class="action-sheet-item-icon" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9;">
+            <i data-lucide="arrow-right-left" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Chuyển khoản</span>
+            <span class="action-sheet-item-desc">Chuyển tiền từ tài khoản này sang tài khoản khác</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
+        <button type="button" class="action-sheet-item" onclick="UIAccounts.handleActionSheetSelect('adjust')">
+          <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
+            <i data-lucide="scale" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Điều chỉnh số dư</span>
+            <span class="action-sheet-item-desc">Cân đối lại số dư thực tế nếu có sai lệch</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
+        <button type="button" class="action-sheet-item" onclick="UIAccounts.handleActionSheetSelect('edit')">
+          <div class="action-sheet-item-icon" style="background: rgba(139, 92, 246, 0.12); color: #8b5cf6;">
+            <i data-lucide="edit-3" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Chỉnh sửa</span>
+            <span class="action-sheet-item-desc">Đổi tên tài khoản, loại tài khoản, số dư</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
+        <button type="button" class="action-sheet-item" id="action-sheet-archive-btn" onclick="UIAccounts.handleActionSheetSelect('toggle-archive')">
+          <div class="action-sheet-item-icon" style="background: rgba(148, 163, 184, 0.12); color: var(--text-muted);">
+            <i data-lucide="power" id="action-sheet-archive-icon" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title" id="action-sheet-archive-title">Ngừng sử dụng</span>
+            <span class="action-sheet-item-desc" id="action-sheet-archive-desc">Tạm ngưng tài khoản, ẩn khỏi danh sách ghi chép</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
+        <button type="button" class="action-sheet-item danger" onclick="UIAccounts.handleActionSheetSelect('delete')">
+          <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.12); color: #f43f5e;">
+            <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Xóa tài khoản</span>
+            <span class="action-sheet-item-desc">Xóa tài khoản khỏi sổ (lịch sử giao dịch cũ vẫn được giữ)</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+      </div>
+      <div class="action-sheet-footer">
+        <button type="button" class="btn-secondary" style="width: 100%; justify-content: center;" onclick="UIAccounts.closeActionSheet()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Lịch Sử Nhập Sao Kê -->
   <div id="modal-account-statement" class="modal-overlay">
-    <div class="modal-dialog" style="max-width: 520px;">
+    <div class="modal-dialog" style="max-width: 560px;">
       <div class="modal-header">
         <div>
           <h3 class="modal-title" id="statement-modal-title">Lịch Sử Nhập Sao Kê</h3>
@@ -1102,25 +1188,77 @@
         <button class="btn-icon" onclick="UIAccounts.closeStatementModal()"><i data-lucide="x"></i></button>
       </div>
       <div class="modal-body" style="padding: 16px 20px;">
-        <!-- Card: Nhập sao kê mới -->
-        <div style="background: var(--bg-card); border: 1px dashed var(--border-color); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px; text-align: center;">
+        <!-- Card: Tải file sao kê -->
+        <div id="statement-upload-card" style="background: var(--bg-card); border: 1px dashed var(--border-color); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; text-align: center;">
           <i data-lucide="file-spreadsheet" style="width: 36px; height: 36px; color: var(--primary); margin: 0 auto 8px; opacity: 0.85;"></i>
-          <h4 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; color: var(--text-primary);">Tải Lên File Sao Kê (CSV/Excel)</h4>
-          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.4;">
-            Nhập file sao kê tài khoản ngân hàng để tự động đối soát và thêm giao dịch vào ví này.
+          <h4 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; color: var(--text-primary);">Tải Lên File Sao Kê (CSV)</h4>
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+            Tự động nhận diện cột Ngày, Số tiền, Nội dung chi tiết.<br>
+            Hỗ trợ sao kê ngân hàng: <strong>Vietcombank, Techcombank, MB Bank, BIDV, VPBank, ACB, Timo...</strong>
           </p>
-          <input type="file" id="statement-file-input" accept=".csv,text/csv" style="display: none;" onchange="UIAccounts.handleStatementFileSelected(event)">
-          <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 7px 16px;" onclick="document.getElementById('statement-file-input').click()">
-            <i data-lucide="upload" style="width: 15px; height: 15px;"></i> Chọn File Sao Kê CSV
-          </button>
+          <input type="file" id="statement-file-input" accept=".csv,text/csv,text/plain" style="display: none;" onchange="UIAccounts.handleStatementFileSelected(event)">
+          <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+            <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 7px 16px;" onclick="document.getElementById('statement-file-input').click()">
+              <i data-lucide="upload" style="width: 15px; height: 15px;"></i> Chọn File Sao Kê (.CSV)
+            </button>
+            <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 7px 12px;" onclick="UIAccounts.downloadSampleCSV()">
+              <i data-lucide="download" style="width: 14px; height: 14px;"></i> Tải File Mẫu
+            </button>
+          </div>
+        </div>
+
+        <!-- Khung xem trước dữ liệu sao kê (Preview Card) -->
+        <div id="statement-preview-card" style="display: none;" class="statement-preview-card">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <span style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary);" id="statement-preview-filename">saoke.csv</span>
+            <span id="statement-preview-count-badge" class="badge" style="background: rgba(79, 70, 229, 0.15); color: var(--primary); font-size: 0.75rem; padding: 3px 8px; border-radius: 6px; font-weight: 600;">0 giao dịch</span>
+          </div>
+
+          <div class="statement-preview-grid">
+            <div class="statement-preview-stat">
+              <div class="statement-preview-stat-label">Tổng tiền vào (+)</div>
+              <div class="statement-preview-stat-val" id="statement-preview-income" style="color: var(--success);">0đ</div>
+            </div>
+            <div class="statement-preview-stat">
+              <div class="statement-preview-stat-label">Tổng tiền ra (-)</div>
+              <div class="statement-preview-stat-val" id="statement-preview-expense" style="color: var(--danger);">0đ</div>
+            </div>
+          </div>
+
+          <div id="statement-preview-daterange" style="font-size: 0.76rem; color: var(--text-muted); margin-top: 8px;">
+            Thời gian: <span id="statement-preview-daterange-text">--/--/----</span>
+          </div>
+
+          <div class="statement-preview-table-wrap">
+            <table class="statement-preview-table">
+              <thead>
+                <tr>
+                  <th>Ngày</th>
+                  <th>Số tiền</th>
+                  <th>Loại</th>
+                  <th>Nội dung</th>
+                </tr>
+              </thead>
+              <tbody id="statement-preview-table-body">
+                <!-- Preview rows dynamically inserted -->
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end;">
+            <button type="button" class="btn-secondary" style="font-size: 0.85rem;" onclick="UIAccounts.cancelStatementPreview()">Chọn File Khác</button>
+            <button type="button" class="btn-primary" id="statement-confirm-import-btn" style="font-size: 0.85rem;" onclick="UIAccounts.confirmImportStatement()">
+              <i data-lucide="check" style="width: 15px; height: 15px;"></i> Xác Nhận Nhập Vào Tài Khoản
+            </button>
+          </div>
         </div>
 
         <!-- Danh sách lịch sử sao kê đã nhập -->
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; margin-top: 10px;">
           <span style="font-weight: 600; font-size: 0.88rem; color: var(--text-secondary);">Các đợt sao kê đã nhập</span>
           <span id="statement-count-badge" style="font-size: 0.75rem; color: var(--text-muted);">0 đợt</span>
         </div>
-        <div id="statement-history-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto;">
+        <div id="statement-history-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">
           <!-- Dynamically populated -->
         </div>
       </div>
@@ -1134,15 +1272,15 @@
   <div id="modal-account" class="modal-overlay">
     <div class="modal-dialog">
       <div class="modal-header">
-        <h3 class="modal-title">Thông Tin Ví / Tài Khoản</h3>
+        <h3 class="modal-title">Thông Tin Tài Khoản</h3>
         <button class="btn-icon" onclick="UIAccounts.closeModal()"><i data-lucide="x"></i></button>
       </div>
       <form id="account-form">
         <input type="hidden" id="acc-id-input">
         <div class="modal-body">
           <div class="form-group">
-            <label class="form-label">Tên Ví / Ngân Hàng</label>
-            <input type="text" id="acc-name-input" class="form-control" placeholder="Ví dụ: Techcombank, Ví Tiền Mặt..." required>
+            <label class="form-label">Tên Tài Khoản / Ngân Hàng</label>
+            <input type="text" id="acc-name-input" class="form-control" placeholder="Ví dụ: Techcombank, Tiền Mặt..." required>
           </div>
 
           <div class="form-group">
@@ -1163,10 +1301,10 @@
         </div>
 
         <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-          <button type="button" id="btn-delete-account" class="btn-danger" style="display: none;" onclick="UIAccounts.handleDeleteAccount()">Xóa ví</button>
+          <button type="button" id="btn-delete-account" class="btn-danger" style="display: none;" onclick="UIAccounts.handleDeleteAccount()">Xóa tài khoản</button>
           <div style="display: flex; gap: 8px; margin-left: auto;">
             <button type="button" class="btn-secondary" onclick="UIAccounts.closeModal()">Hủy</button>
-            <button type="submit" class="btn-primary">Lưu Ví</button>
+            <button type="submit" class="btn-primary">Lưu Tài Khoản</button>
           </div>
         </div>
       </form>
@@ -1219,18 +1357,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js"></script>
+  <script src="./js/backup.js?v=1.9.16"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js"></script>
-  <script src="./js/ui-transactions.js"></script>
-  <script src="./js/ui-debts.js"></script>
-  <script src="./js/ui-accounts.js"></script>
-  <script src="./js/ui-budgets.js"></script>
-  <script src="./js/ui-analytics.js"></script>
-  <script src="./js/ui-settings.js"></script>
+  <script src="./js/ui-calendar.js?v=1.9.16"></script>
+  <script src="./js/ui-transactions.js?v=1.9.16"></script>
+  <script src="./js/ui-debts.js?v=1.9.16"></script>
+  <script src="./js/ui-accounts.js?v=1.9.16"></script>
+  <script src="./js/ui-budgets.js?v=1.9.16"></script>
+  <script src="./js/ui-analytics.js?v=1.9.16"></script>
+  <script src="./js/ui-settings.js?v=1.9.16"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.14"></script>
+  <script src="./js/app.js?v=1.9.16"></script>
 </body>
 </html>

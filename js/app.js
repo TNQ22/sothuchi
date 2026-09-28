@@ -175,6 +175,7 @@ class App {
 
     // 6. Setup Touch Swipe Gestures (Swipe from left to right to go back)
     this.setupSwipeToBack();
+    this.setupModalSwipeGestures();
 
     // 7. Setup Global Shortcuts & Listeners
     this.setupGlobalShortcuts();
@@ -416,7 +417,7 @@ class App {
       dashboard: 'Tổng Quan Tài Chính',
       transactions: 'Sổ Giao Dịch',
       debts: 'Sổ Vay Nợ (Cho Vay & Đi Vay)',
-      accounts: 'Tài Khoản & Ví Tiền',
+      accounts: 'Tài Khoản',
       budgets: 'Hạn Mức Ngân Sách',
       analytics: 'Báo Cáo & Phân Tích',
       settings: 'Cài Đặt & Đồng Bộ',
@@ -492,14 +493,14 @@ class App {
       return;
     }
 
-    // new-transaction → chỉ trở về khi đang ở chế độ SỬA giao dịch đã có
+    // new-transaction → trở về khi đang sửa giao dịch HOẶC khi mở từ view khác (tài khoản, chuyển khoản, điều chỉnh số dư)
     if (this.currentView === 'new-transaction') {
       const txId = document.getElementById('tx-id-input')?.value;
-      if (txId) {
-        const target = this.previousView || this.activePrimaryView || 'transactions';
+      const target = this.previousView || (txId ? (this.activePrimaryView || 'transactions') : null);
+      if (target && target !== 'new-transaction') {
         this.switchView(target, true);
+        return;
       }
-      return;
     }
   }
 
@@ -517,10 +518,10 @@ class App {
         window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
         this.goBack();
       } else if (this.currentView === 'new-transaction') {
-        // new-transaction only supports back when editing
         const isEditing = !!document.getElementById('tx-id-input')?.value;
+        const hasPrevView = !!this.previousView && this.previousView !== 'new-transaction';
         window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
-        if (isEditing) {
+        if (isEditing || hasPrevView) {
           this.goBack();
         }
       } else {
@@ -551,11 +552,12 @@ class App {
         // ONLY allow swipe on the currently ACTIVE page
         if (!page.classList.contains('active')) return;
 
-        // Trang Ghi Chép (new-transaction) là trang cố định:
-        // CHỈ cho phép vuốt trở về khi ĐANG SỬA một giao dịch đã có
+        // Trang Ghi Chép (new-transaction):
+        // Cho phép vuốt trở về khi đang SỬA giao dịch HOẶC khi được mở từ màn hình khác (như Tài khoản, Chuyển khoản, Điều chỉnh số dư)
         if (page.id === 'view-new-transaction') {
           const isEditing = !!document.getElementById('tx-id-input')?.value;
-          if (!isEditing) {
+          const hasPrevView = !!this.previousView && this.previousView !== 'new-transaction';
+          if (!isEditing && !hasPrevView) {
             canSwipe = false;
             return;
           }
@@ -751,7 +753,63 @@ class App {
       });
     }
   }
+
+  setupModalSwipeGestures() {
+
+    // Hỗ trợ vuốt xuống (hoặc vuốt sang phải) trên Modal/Action Sheet để đóng nhanh
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      let startX = 0;
+      let startY = 0;
+      let isTouching = false;
+      const dialog = overlay.querySelector('.modal-dialog');
+      if (!dialog) return;
+
+      dialog.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        const target = e.target;
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+        const scrollParent = target.closest('.modal-body, .action-sheet-body, #statement-history-list');
+        if (scrollParent && scrollParent.scrollTop > 5) return;
+
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isTouching = true;
+      }, { passive: true });
+
+      dialog.addEventListener('touchend', (e) => {
+        if (!isTouching) return;
+        isTouching = false;
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+        const deltaX = endX - startX;
+        const deltaY = endY - startY;
+
+        const isSwipeDown = deltaY > 60 && Math.abs(deltaY) > Math.abs(deltaX);
+        const isSwipeRight = deltaX > 80 && Math.abs(deltaX) > Math.abs(deltaY) && startX < window.innerWidth * 0.4;
+
+        if (isSwipeDown || isSwipeRight) {
+          overlay.classList.remove('open');
+          if (overlay.id === 'modal-account-actions' && window.UIAccounts) {
+            window.UIAccounts.closeActionSheet();
+          } else if (overlay.id === 'modal-account-statement' && window.UIAccounts) {
+            window.UIAccounts.closeStatementModal();
+          } else if (overlay.id === 'modal-account' && window.UIAccounts) {
+            window.UIAccounts.closeModal();
+          }
+        }
+      }, { passive: true });
+    });
+  }
+
 }
+
+
+// Instantiate and launch App on DOMContentLoaded
+window.addEventListener('DOMContentLoaded', () => {
+  window.app = new App();
+  window.app.init();
+});
+
 
 // Instantiate and launch App on DOMContentLoaded
 window.addEventListener('DOMContentLoaded', () => {

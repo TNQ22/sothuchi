@@ -12,7 +12,7 @@
 - 🤝 **Sổ Vay Nợ Toàn Diện**:
   - Quản lý **Cho vay (Cần thu lại)** và **Đi vay (Cần phải trả)**.
   - Ghi nhận trả nợ theo từng đợt, thanh tiến trình % trực quan, cảnh báo quá hạn.
-  - Tự động cộng/trừ số dư ví tiền tương ứng khi tạo khoản nợ hoặc thanh toán.
+  - Tự động cộng/trừ số dư tài khoản tương ứng khi tạo khoản nợ hoặc thanh toán.
 - 📊 **Thống kê & Báo cáo Trực quan**: Biểu đồ phân bổ chi tiêu Donut và xu hướng Thu - Chi theo thời gian thực (sử dụng Chart.js).
 - 📥 **Xuất Dữ Liệu CSV & Sao Lưu JSON**:
   - Xuất file **CSV chuẩn UTF-8 có BOM** (mở trực tiếp trong Microsoft Excel tiếng Việt không bị lỗi font).

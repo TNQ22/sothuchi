@@ -1,11 +1,13 @@
 /**
  * SỔ THU CHI - UI ACCOUNTS & WALLETS MODULE
- * Quản lý các ví tiền, ngân hàng, số dư thực tế và tài sản ròng
- * Hỗ trợ hiển thị dạng list, menu 3 chấm tùy chọn, sắp xếp thứ tự và xem lịch sử thu chi
+ * Quản lý tài khoản, ngân hàng, số dư thực tế và tài sản ròng
+ * Hỗ trợ Action Sheet cho menu 3 chấm, đối soát & nhập sao kê thông minh đa ngân hàng, lọc lịch sử
  */
 
 const UIAccounts = {
   activeStatementAccountId: null,
+  currentActionAccountId: null,
+  pendingStatementImport: null,
 
   init() {
     this.bindEvents();
@@ -20,31 +22,105 @@ const UIAccounts = {
       });
     }
 
-    // Close account dropdown menus on click outside
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.account-menu-wrapper')) {
-        this.closeAllMenus();
-      }
-    });
-  },
+    // Close action sheet or modals on clicking overlay backdrop
+    const actionSheet = document.getElementById('modal-account-actions');
+    if (actionSheet) {
+      actionSheet.addEventListener('click', (e) => {
+        if (e.target === actionSheet) {
+          this.closeActionSheet();
+        }
+      });
+    }
 
-  toggleMenu(accId, e) {
-    if (e) e.stopPropagation();
-    const menu = document.getElementById(`account-menu-${accId}`);
-    if (!menu) return;
-    const wasOpen = menu.classList.contains('open');
-    this.closeAllMenus();
-    if (!wasOpen) {
-      menu.classList.add('open');
+    const statementModal = document.getElementById('modal-account-statement');
+    if (statementModal) {
+      statementModal.addEventListener('click', (e) => {
+        if (e.target === statementModal) {
+          this.closeStatementModal();
+        }
+      });
     }
   },
 
-  closeAllMenus() {
-    document.querySelectorAll('.account-dropdown-menu.open').forEach(el => el.classList.remove('open'));
+  /* ==================== ACTION SHEET (MENU 3 CHẤM) ==================== */
+  async openAccountActions(accId) {
+    const acc = await db.accounts.get(Number(accId));
+    if (!acc) return;
+    this.currentActionAccountId = Number(accId);
+
+    const sheet = document.getElementById('modal-account-actions');
+    if (!sheet) return;
+
+    const iconMap = {
+      cash: { icon: 'wallet', color: '#10b981', label: 'Tiền mặt' },
+      bank: { icon: 'landmark', color: '#4f46e5', label: 'Ngân hàng' },
+      ewallet: { icon: 'smartphone', color: '#ec4899', label: 'Ví điện tử' },
+      credit: { icon: 'credit-card', color: '#f59e0b', label: 'Thẻ tín dụng' },
+      saving: { icon: 'piggy-bank', color: '#0ea5e9', label: 'Sổ tiết kiệm' }
+    };
+    const info = iconMap[acc.type] || { icon: acc.icon || 'wallet', color: acc.color || '#4f46e5', label: 'Tài khoản' };
+    const iconName = acc.icon || info.icon;
+
+    // Header info
+    const iconEl = document.getElementById('action-sheet-acc-icon');
+    if (iconEl) {
+      iconEl.style.background = `${info.color}22`;
+      iconEl.style.color = info.color;
+      iconEl.innerHTML = `<i data-lucide="${iconName}" style="width: 22px; height: 22px;"></i>`;
+    }
+
+    const nameEl = document.getElementById('action-sheet-acc-name');
+    if (nameEl) nameEl.textContent = acc.name;
+
+    const balEl = document.getElementById('action-sheet-acc-balance');
+    if (balEl) {
+      const balStr = new Intl.NumberFormat('vi-VN').format(acc.balance);
+      balEl.textContent = `${info.label} • Số dư: ${balStr}đ`;
+    }
+
+    // Toggle archive button text & icon
+    const isArchived = !!acc.isArchived;
+    const archTitle = document.getElementById('action-sheet-archive-title');
+    const archDesc = document.getElementById('action-sheet-archive-desc');
+    const archIcon = document.getElementById('action-sheet-archive-icon');
+
+    if (archTitle) archTitle.textContent = isArchived ? 'Kích hoạt lại' : 'Ngừng sử dụng';
+    if (archDesc) archDesc.textContent = isArchived ? 'Mở lại tài khoản này để tiếp tục ghi chép' : 'Tạm ngưng tài khoản, ẩn khỏi danh sách ghi chép';
+    if (archIcon) {
+      archIcon.setAttribute('data-lucide', isArchived ? 'rotate-ccw' : 'power');
+    }
+
+    sheet.classList.add('open');
+    if (window.lucide) lucide.createIcons();
   },
 
+  closeActionSheet() {
+    const sheet = document.getElementById('modal-account-actions');
+    if (sheet) sheet.classList.remove('open');
+  },
+
+  async handleActionSheetSelect(action) {
+    const accId = this.currentActionAccountId;
+    this.closeActionSheet();
+    if (!accId) return;
+
+    if (action === 'statement') {
+      await this.openStatementHistory(accId);
+    } else if (action === 'transfer') {
+      await this.startTransfer(accId);
+    } else if (action === 'adjust') {
+      await this.startAdjust(accId);
+    } else if (action === 'edit') {
+      await this.openEditModal(accId);
+    } else if (action === 'toggle-archive') {
+      await this.toggleArchiveAccount(accId);
+    } else if (action === 'delete') {
+      await this.confirmDeleteAccount(accId);
+    }
+  },
+
+  /* ==================== XEM LỊCH SỬ THU CHI TÀI KHOẢN ==================== */
   async viewAccountHistory(accId) {
-    this.closeAllMenus();
     if (window.UITransactions && typeof window.UITransactions.filterByAccount === 'function') {
       await window.UITransactions.filterByAccount(accId);
     } else {
@@ -52,9 +128,12 @@ const UIAccounts = {
     }
   },
 
+  /* ==================== CHUYỂN KHOẢN & ĐIỀU CHỈNH ==================== */
   async startTransfer(accId) {
-    this.closeAllMenus();
-    if (window.app) window.app.switchView('new-transaction');
+    if (window.app) {
+      window.app.previousView = 'accounts';
+      window.app.switchView('new-transaction');
+    }
     if (window.UITransactions) {
       await window.UITransactions.handleHeaderTypeChange('transfer');
       const fromSelect = document.getElementById('tx-account-select');
@@ -67,8 +146,10 @@ const UIAccounts = {
   },
 
   async startAdjust(accId) {
-    this.closeAllMenus();
-    if (window.app) window.app.switchView('new-transaction');
+    if (window.app) {
+      window.app.previousView = 'accounts';
+      window.app.switchView('new-transaction');
+    }
     if (window.UITransactions) {
       await window.UITransactions.handleHeaderTypeChange('adjust');
       const fromSelect = document.getElementById('tx-account-select');
@@ -81,80 +162,298 @@ const UIAccounts = {
   },
 
   async confirmDeleteAccount(accId) {
-    this.closeAllMenus();
     const acc = await db.accounts.get(Number(accId));
     if (!acc) return;
-    if (!confirm(`Bạn có chắc chắn muốn xóa ví "${acc.name}"? Tất cả giao dịch cũ vẫn được lưu trong sổ.`)) return;
+    if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản "${acc.name}"? Tất cả giao dịch cũ vẫn được lưu trong sổ.`)) return;
 
     await db.accounts.update(Number(accId), { isDeleted: 1, updatedAt: Date.now() });
     await window.app.refreshAll();
-    showToast(`Đã xóa ví "${acc.name}"`, 'info');
+    showToast(`Đã xóa tài khoản "${acc.name}"`, 'info');
   },
 
   async toggleArchiveAccount(accId) {
-    this.closeAllMenus();
     const acc = await db.accounts.get(Number(accId));
     if (!acc) return;
 
     const isArchived = acc.isArchived ? 0 : 1;
     await db.accounts.update(Number(accId), { isArchived, updatedAt: Date.now() });
     await window.app.refreshAll();
-    showToast(isArchived ? `Đã ngừng sử dụng ví "${acc.name}"` : `Đã kích hoạt lại ví "${acc.name}"`, 'success');
+
+    if (window.UITransactions && typeof window.UITransactions.populateAccounts === 'function') {
+      await window.UITransactions.populateAccounts();
+    }
+
+    showToast(isArchived ? `Đã tạm ngừng sử dụng tài khoản "${acc.name}"` : `Đã kích hoạt lại tài khoản "${acc.name}"`, 'info');
   },
 
-  async openStatementHistory(accId) {
-    this.closeAllMenus();
-    const acc = await db.accounts.get(Number(accId));
-    if (!acc) return;
+  /* ==================== THÔNG MINH NHẬP SAO KÊ NGÂN HÀNG (CSV) ==================== */
+  parseBankCSV(csvText) {
+    if (!csvText || !csvText.trim()) {
+      throw new Error('File sao kê rỗng hoặc không có nội dung.');
+    }
 
-    this.activeStatementAccountId = Number(accId);
-    const modal = document.getElementById('modal-account-statement');
-    const title = document.getElementById('statement-modal-title');
-    const subtitle = document.getElementById('statement-modal-subtitle');
-    const countBadge = document.getElementById('statement-count-badge');
-    const list = document.getElementById('statement-history-list');
+    // Strip UTF-8 BOM
+    if (csvText.charCodeAt(0) === 0xFEFF) {
+      csvText = csvText.slice(1);
+    }
 
-    if (title) title.textContent = `Sao Kê: ${acc.name}`;
-    if (subtitle) subtitle.textContent = `Loại: ${acc.type === 'bank' ? 'Ngân hàng' : 'Ví'} • Số dư hiện tại: ${new Intl.NumberFormat('vi-VN').format(acc.balance)}đ`;
+    const rawLines = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
 
-    const logKey = `statement_logs_${accId}`;
-    const logRecord = await db.settings.get(logKey);
-    const logs = (logRecord && Array.isArray(logRecord.value)) ? logRecord.value : [];
-
-    if (countBadge) countBadge.textContent = `${logs.length} đợt`;
-
-    if (list) {
-      if (logs.length === 0) {
-        list.innerHTML = `
-          <div style="text-align: center; padding: 24px 12px; color: var(--text-muted); background: var(--bg-surface); border-radius: var(--radius-sm); border: 1px dashed var(--border-color);">
-            <i data-lucide="inbox" style="width: 28px; height: 28px; margin: 0 auto 6px; opacity: 0.5;"></i>
-            <p style="font-size: 0.85rem; font-weight: 500; margin-bottom: 2px;">Chưa có file sao kê nào</p>
-            <p style="font-size: 0.75rem;">Bấm nút "Chọn File Sao Kê CSV" ở trên để nhập dữ liệu ngân hàng</p>
-          </div>
-        `;
-      } else {
-        list.innerHTML = logs.map(l => `
-          <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-            <div>
-              <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary);">${escapeHTML(l.filename || 'Sao kê')}</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">${new Date(l.importedAt).toLocaleString('vi-VN')} • +${l.count} giao dịch</div>
-            </div>
-            <span style="font-size: 0.75rem; color: #10b981; font-weight: 600; background: rgba(16, 185, 129, 0.12); padding: 2px 8px; border-radius: 4px;">Thành công</span>
-          </div>
-        `).join('');
+    // Detect delimiter (test top lines with , ; \t |)
+    const delimiters = [',', ';', '\t', '|'];
+    let bestDelim = ',';
+    let maxCols = 0;
+    for (const d of delimiters) {
+      const counts = rawLines.slice(0, 10).map(l => l.split(d).length);
+      const avg = counts.reduce((a, b) => a + b, 0) / counts.length;
+      if (avg > maxCols && avg > 1.5) {
+        maxCols = avg;
+        bestDelim = d;
       }
     }
 
-    if (modal) modal.classList.add('open');
+    // Standard RFC-4180 CSV line parser
+    function parseCSVLine(line, delim) {
+      const row = [];
+      let inQuotes = false;
+      let field = '';
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (c === delim && !inQuotes) {
+          row.push(field.trim());
+          field = '';
+        } else {
+          field += c;
+        }
+      }
+      row.push(field.trim());
+      return row;
+    }
+
+    const allRows = [];
+    for (const line of rawLines) {
+      if (!line.trim()) continue;
+      allRows.push(parseCSVLine(line, bestDelim));
+    }
+
+    if (allRows.length === 0) throw new Error('Không đọc được dữ liệu từ file sao kê.');
+
+    // Look for header row: find row containing 2+ keywords
+    const headerKeywords = [
+      'ngày', 'date', 'thời gian', 'time', 'tiền', 'amount', 'nợ', 'có',
+      'debit', 'credit', 'nội dung', 'mô tả', 'diễn giải', 'description',
+      'chi tiết', 'narrative', 'ghi chú', 'phát sinh'
+    ];
+
+    let headerRowIdx = -1;
+    for (let i = 0; i < Math.min(allRows.length, 25); i++) {
+      const rowStr = allRows[i].join(' ').toLowerCase();
+      let matchCount = 0;
+      for (const kw of headerKeywords) {
+        if (rowStr.includes(kw)) matchCount++;
+      }
+      if (matchCount >= 2) {
+        headerRowIdx = i;
+        break;
+      }
+    }
+
+    if (headerRowIdx === -1) {
+      headerRowIdx = 0;
+    }
+
+    const headers = allRows[headerRowIdx].map(h => h.toLowerCase().trim());
+
+    // Map column indices
+    let dateIdx = headers.findIndex(h => h.includes('ngày') || h.includes('date') || h.includes('thời gian') || h.includes('time'));
+    let descIdx = headers.findIndex(h => h.includes('nội dung') || h.includes('mô tả') || h.includes('diễn giải') || h.includes('chi tiết') || h.includes('description') || h.includes('narrative') || h.includes('ghi chú'));
+    let debitIdx = headers.findIndex(h => h.includes('ghi nợ') || h.includes('nợ') || h.includes('debit') || h.includes('rút tiền') || h.includes('tiền ra'));
+    let creditIdx = headers.findIndex(h => h.includes('ghi có') || h.includes('có') || h.includes('credit') || h.includes('nạp tiền') || h.includes('tiền vào'));
+    let amountIdx = headers.findIndex(h => h.includes('số tiền') || h.includes('amount') || h.includes('phát sinh') || h.includes('giá trị'));
+    let typeIdx = headers.findIndex(h => h.includes('loại') || h.includes('type') || h === 'd/c' || h === 'cr/dr' || h === 'cd');
+
+    if (dateIdx === -1) dateIdx = 0;
+    if (descIdx === -1) descIdx = headers.length > 3 ? headers.length - 1 : (headers.length > 1 ? 1 : 0);
+    if (debitIdx === -1 && creditIdx === -1 && amountIdx === -1) {
+      amountIdx = headers.length > 2 ? 2 : (headers.length > 1 ? 1 : 0);
+    }
+
+    function cleanAmount(raw) {
+      if (!raw) return 0;
+      let s = String(raw).trim();
+      let isNegative = s.includes('-') || (s.startsWith('(') && s.endsWith(')'));
+      s = s.replace(/[^0-9.,]/g, '');
+      if (!s) return 0;
+
+      if (s.includes('.') && s.includes(',')) {
+        if (s.indexOf('.') < s.indexOf(',')) {
+          s = s.replace(/\./g, '').replace(',', '.');
+        } else {
+          s = s.replace(/,/g, '');
+        }
+      } else if (s.includes('.')) {
+        const parts = s.split('.');
+        if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+          s = s.replace(/\./g, '');
+        }
+      } else if (s.includes(',')) {
+        const parts = s.split(',');
+        if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+          s = s.replace(/,/g, '');
+        } else {
+          s = s.replace(',', '.');
+        }
+      }
+
+      const num = parseFloat(s) || 0;
+      return isNegative ? -Math.abs(num) : Math.abs(num);
+    }
+
+    function parseDate(raw) {
+      if (!raw) return { dateStr: new Date().toISOString().slice(0, 10), timeStr: '12:00' };
+      const s = String(raw).trim();
+      let timeStr = '12:00';
+      const timeMatch = s.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
+      if (timeMatch) {
+        timeStr = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+      }
+
+      const dmyMatch = s.match(/(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{4})/);
+      if (dmyMatch) {
+        const day = dmyMatch[1].padStart(2, '0');
+        const month = dmyMatch[2].padStart(2, '0');
+        const year = dmyMatch[3];
+        return { dateStr: `${year}-${month}-${day}`, timeStr };
+      }
+
+      const ymdMatch = s.match(/(\d{4})[\/\.-](\d{1,2})[\/\.-](\d{1,2})/);
+      if (ymdMatch) {
+        const year = ymdMatch[1];
+        const month = ymdMatch[2].padStart(2, '0');
+        const day = ymdMatch[3].padStart(2, '0');
+        return { dateStr: `${year}-${month}-${day}`, timeStr };
+      }
+
+      return { dateStr: new Date().toISOString().slice(0, 10), timeStr };
+    }
+
+    const transactions = [];
+    let totalIncome = 0;
+    let totalExpense = 0;
+    let minDate = null;
+    let maxDate = null;
+
+    for (let i = headerRowIdx + 1; i < allRows.length; i++) {
+      const row = allRows[i];
+      if (!row || row.length <= 1) continue;
+
+      const rawDate = row[dateIdx] || '';
+      const rawDesc = row[descIdx] || '';
+      const { dateStr, timeStr } = parseDate(rawDate);
+
+      let type = 'expense';
+      let amount = 0;
+
+      if (debitIdx !== -1 && creditIdx !== -1) {
+        const debitVal = cleanAmount(row[debitIdx]);
+        const creditVal = cleanAmount(row[creditIdx]);
+        if (creditVal > 0) {
+          type = 'income';
+          amount = creditVal;
+        } else if (debitVal > 0) {
+          type = 'expense';
+          amount = debitVal;
+        } else {
+          continue;
+        }
+      } else if (amountIdx !== -1) {
+        const rawAmt = row[amountIdx] || '';
+        const parsedAmt = cleanAmount(rawAmt);
+        if (parsedAmt === 0) continue;
+
+        let isIncome = false;
+        if (typeIdx !== -1 && row[typeIdx]) {
+          const tVal = row[typeIdx].toLowerCase();
+          if (tVal.includes('c') || tVal.includes('có') || tVal.includes('thu') || tVal.includes('+')) {
+            isIncome = true;
+          }
+        } else if (String(rawAmt).includes('+')) {
+          isIncome = true;
+        } else if (String(rawAmt).includes('-') || String(rawAmt).startsWith('(')) {
+          isIncome = false;
+        }
+
+        type = isIncome ? 'income' : 'expense';
+        amount = Math.abs(parsedAmt);
+      }
+
+      if (amount <= 0) continue;
+
+      if (type === 'income') {
+        totalIncome += amount;
+      } else {
+        totalExpense += amount;
+      }
+
+      if (!minDate || dateStr < minDate) minDate = dateStr;
+      if (!maxDate || dateStr > maxDate) maxDate = dateStr;
+
+      transactions.push({
+        date: dateStr,
+        time: timeStr,
+        type,
+        amount,
+        note: (rawDesc.replace(/\s+/g, ' ').slice(0, 250) || (type === 'income' ? 'Thu tiền sao kê' : 'Chi tiền sao kê')).trim()
+      });
+    }
+
+    if (transactions.length === 0) {
+      throw new Error('Không tìm thấy giao dịch hợp lệ nào trong file. Vui lòng kiểm tra lại định dạng CSV.');
+    }
+
+    return {
+      transactions,
+      totalIncome,
+      totalExpense,
+      minDate,
+      maxDate
+    };
+  },
+
+  async openStatementHistory(accId) {
+    this.activeStatementAccountId = Number(accId);
+    this.cancelStatementPreview();
+    const acc = await db.accounts.get(this.activeStatementAccountId);
+    if (!acc) return;
+
+    const modal = document.getElementById('modal-account-statement');
+    if (!modal) return;
+
+    const titleEl = document.getElementById('statement-modal-title');
+    const subtitleEl = document.getElementById('statement-modal-subtitle');
+    if (titleEl) titleEl.textContent = `Sao Kê: ${acc.name}`;
+    if (subtitleEl) {
+      const typeLabels = { cash: 'Tiền mặt', bank: 'Ngân hàng', ewallet: 'Ví điện tử', credit: 'Thẻ tín dụng', saving: 'Sổ tiết kiệm' };
+      subtitleEl.textContent = `Loại: ${typeLabels[acc.type] || 'Tài khoản'} • Số dư hiện tại: ${new Intl.NumberFormat('vi-VN').format(acc.balance)}đ`;
+    }
+
+    await this.renderStatementHistory(this.activeStatementAccountId);
+    modal.classList.add('open');
     if (window.lucide) lucide.createIcons();
   },
 
   closeStatementModal() {
     const modal = document.getElementById('modal-account-statement');
     if (modal) modal.classList.remove('open');
+    this.cancelStatementPreview();
     this.activeStatementAccountId = null;
-    const fileInput = document.getElementById('statement-file-input');
-    if (fileInput) fileInput.value = '';
   },
 
   async handleStatementFileSelected(event) {
@@ -163,97 +462,238 @@ const UIAccounts = {
 
     try {
       const text = await file.text();
-      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-      if (lines.length <= 1) {
-        showToast('File CSV không có dữ liệu giao dịch', 'warning');
-        return;
-      }
+      const parsed = this.parseBankCSV(text);
 
-      let importedCount = 0;
-      const now = Date.now();
-      const accId = this.activeStatementAccountId;
+      this.pendingStatementImport = {
+        filename: file.name,
+        filesize: file.size,
+        ...parsed
+      };
 
-      const headerLine = lines[0].toLowerCase();
-      const isCustomExport = headerLine.includes('mã gd') || headerLine.includes('loại giao dịch');
-
-      for (let i = 1; i < lines.length; i++) {
-        const parts = lines[i].split(',').map(p => p.trim().replace(/^"(.*)"$/, '$1'));
-        if (parts.length < 3) continue;
-
-        let dateStr = new Date().toISOString().split('T')[0];
-        let amount = 0;
-        let note = 'Sao kê: ' + file.name;
-        let type = 'expense';
-
-        if (isCustomExport) {
-          dateStr = parts[1] || dateStr;
-          const typeStr = parts[3] || '';
-          type = typeStr.includes('Thu') ? 'income' : (typeStr.includes('Chuyển') ? 'transfer' : 'expense');
-          amount = Math.abs(Number(parts[4])) || 0;
-          note = parts[8] || note;
-        } else {
-          if (/^\d{4}-\d{2}-\d{2}$/.test(parts[0])) {
-            dateStr = parts[0];
-          }
-          const rawAmt = Number(parts[parts.length - 1].replace(/[^0-9.-]/g, '')) || 0;
-          if (rawAmt > 0) {
-            amount = rawAmt;
-            type = 'income';
-          } else if (rawAmt < 0) {
-            amount = Math.abs(rawAmt);
-            type = 'expense';
-          } else {
-            amount = Number(parts[1].replace(/[^0-9.-]/g, '')) || 0;
-          }
-          note = parts.slice(1, parts.length - 1).join(' - ') || note;
-        }
-
-        if (amount > 0) {
-          await db.transactions.add({
-            type,
-            amount,
-            date: dateStr,
-            time: '00:00',
-            accountId: accId,
-            categoryId: null,
-            note: note.slice(0, 100),
-            isDeleted: 0,
-            createdAt: now,
-            updatedAt: now
-          });
-
-          const acc = await db.accounts.get(accId);
-          if (acc) {
-            const newBal = type === 'income' ? (acc.balance + amount) : (acc.balance - amount);
-            await db.accounts.update(accId, { balance: newBal, updatedAt: now });
-          }
-          importedCount++;
-        }
-      }
-
-      if (importedCount > 0) {
-        const logKey = `statement_logs_${accId}`;
-        const logRecord = await db.settings.get(logKey);
-        const logs = (logRecord && Array.isArray(logRecord.value)) ? logRecord.value : [];
-        logs.unshift({
-          filename: file.name,
-          importedAt: now,
-          count: importedCount
-        });
-        await db.settings.put({ key: logKey, value: logs });
-
-        showToast(`Đã nhập thành công ${importedCount} giao dịch từ sao kê`, 'success');
-        this.openStatementHistory(accId);
-        await window.app.refreshAll();
-      } else {
-        showToast('Không tìm thấy giao dịch hợp lệ trong file', 'warning');
-      }
+      this.renderStatementPreview();
     } catch (err) {
       console.error(err);
-      showToast('Lỗi khi đọc file sao kê: ' + err.message, 'error');
+      showToast('Lỗi đọc file: ' + err.message, 'error');
+      this.cancelStatementPreview();
     }
   },
 
+  renderStatementPreview() {
+    const p = this.pendingStatementImport;
+    if (!p) return;
+
+    const uploadCard = document.getElementById('statement-upload-card');
+    const previewCard = document.getElementById('statement-preview-card');
+    if (uploadCard) uploadCard.style.display = 'none';
+    if (previewCard) previewCard.style.display = 'block';
+
+    const filenameEl = document.getElementById('statement-preview-filename');
+    if (filenameEl) filenameEl.textContent = p.filename;
+
+    const countBadge = document.getElementById('statement-preview-count-badge');
+    if (countBadge) countBadge.textContent = `${p.transactions.length} giao dịch`;
+
+    const incomeEl = document.getElementById('statement-preview-income');
+    if (incomeEl) incomeEl.textContent = `+${new Intl.NumberFormat('vi-VN').format(p.totalIncome)}đ`;
+
+    const expenseEl = document.getElementById('statement-preview-expense');
+    if (expenseEl) expenseEl.textContent = `-${new Intl.NumberFormat('vi-VN').format(p.totalExpense)}đ`;
+
+    const daterangeEl = document.getElementById('statement-preview-daterange-text');
+    if (daterangeEl) {
+      daterangeEl.textContent = `${p.minDate || '--'} đến ${p.maxDate || '--'}`;
+    }
+
+    const tbody = document.getElementById('statement-preview-table-body');
+    if (tbody) {
+      const previewRows = p.transactions.slice(0, 5);
+      tbody.innerHTML = previewRows.map(tx => {
+        const isInc = tx.type === 'income';
+        const color = isInc ? 'var(--success)' : 'var(--danger)';
+        const sign = isInc ? '+' : '-';
+        const amtStr = `${sign}${new Intl.NumberFormat('vi-VN').format(tx.amount)}đ`;
+        return `
+          <tr>
+            <td style="color: var(--text-muted); font-size: 0.74rem;">${tx.date}</td>
+            <td style="font-weight: 700; color: ${color};">${amtStr}</td>
+            <td><span style="background: ${color}22; color: ${color}; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">${isInc ? 'Thu' : 'Chi'}</span></td>
+            <td style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; color: var(--text-secondary);" title="${escapeHTML(tx.note)}">${escapeHTML(tx.note)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      if (p.transactions.length > 5) {
+        tbody.innerHTML += `
+          <tr>
+            <td colspan="4" style="text-align: center; color: var(--text-muted); font-size: 0.72rem; padding: 6px;">
+              ...và ${p.transactions.length - 5} giao dịch khác sẽ được nhập
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    const confirmBtn = document.getElementById('statement-confirm-import-btn');
+    if (confirmBtn) {
+      confirmBtn.innerHTML = `<i data-lucide="check" style="width: 15px; height: 15px;"></i> Xác Nhận Nhập ${p.transactions.length} Giao Dịch Vào Tài Khoản`;
+    }
+
+    if (window.lucide) lucide.createIcons();
+  },
+
+  cancelStatementPreview() {
+    this.pendingStatementImport = null;
+    const uploadCard = document.getElementById('statement-upload-card');
+    const previewCard = document.getElementById('statement-preview-card');
+    if (uploadCard) uploadCard.style.display = 'block';
+    if (previewCard) previewCard.style.display = 'none';
+
+    const fileInput = document.getElementById('statement-file-input');
+    if (fileInput) fileInput.value = '';
+  },
+
+  async confirmImportStatement() {
+    const p = this.pendingStatementImport;
+    const accId = this.activeStatementAccountId;
+    if (!p || !accId) return;
+
+    try {
+      const now = Date.now();
+      let importedCount = 0;
+      let netBalanceChange = 0;
+
+      for (const tx of p.transactions) {
+        await db.transactions.add({
+          type: tx.type,
+          amount: tx.amount,
+          date: tx.date,
+          time: tx.time || '12:00',
+          accountId: accId,
+          categoryId: null,
+          note: tx.note,
+          isDeleted: 0,
+          createdAt: now,
+          updatedAt: now
+        });
+
+        if (tx.type === 'income') {
+          netBalanceChange += tx.amount;
+        } else {
+          netBalanceChange -= tx.amount;
+        }
+        importedCount++;
+      }
+
+      // Update account balance
+      const acc = await db.accounts.get(accId);
+      if (acc) {
+        const newBal = acc.balance + netBalanceChange;
+        await db.accounts.update(accId, { balance: newBal, updatedAt: now });
+      }
+
+      // Log import into settings
+      const logKey = `statement_logs_${accId}`;
+      const logRecord = await db.settings.get(logKey);
+      const logs = (logRecord && Array.isArray(logRecord.value)) ? logRecord.value : [];
+      logs.unshift({
+        filename: p.filename,
+        importedAt: now,
+        count: importedCount,
+        totalIncome: p.totalIncome,
+        totalExpense: p.totalExpense
+      });
+      await db.settings.put({ key: logKey, value: logs });
+
+      showToast(`Đã nhập thành công ${importedCount} giao dịch từ sao kê!`, 'success');
+      this.cancelStatementPreview();
+      await this.renderStatementHistory(accId);
+      await window.app.refreshAll();
+    } catch (err) {
+      console.error(err);
+      showToast('Lỗi khi nhập giao dịch: ' + err.message, 'error');
+    }
+  },
+
+  downloadSampleCSV() {
+    const sampleContent = 
+`Ngày GD,Số tiền ghi nợ,Số tiền ghi có,Nội dung chi tiết
+01/09/2026,,25000000,Cong ty ABC thanh toan tien luong thang 8
+03/09/2026,150000,,Thanh toan tien dien sinh hoat
+05/09/2026,520000,,Sieu thi Winmart mua do an gia dinh
+10/09/2026,,3500000,Nhan chuyen tien hoan tra khoan vay
+15/09/2026,2400000,,Tien thue phong va tien mang`;
+
+    const blob = new Blob([sampleContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'mau_sao_ke_ngan_hang.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('Đã tải xuống file mẫu sao kê ngân hàng', 'info');
+  },
+
+  async renderStatementHistory(accId) {
+    const listEl = document.getElementById('statement-history-list');
+    const badgeEl = document.getElementById('statement-count-badge');
+    if (!listEl) return;
+
+    const logKey = `statement_logs_${accId}`;
+    const logRecord = await db.settings.get(logKey);
+    const logs = (logRecord && Array.isArray(logRecord.value)) ? logRecord.value : [];
+
+    if (badgeEl) badgeEl.textContent = `${logs.length} đợt`;
+
+    if (logs.length === 0) {
+      listEl.innerHTML = `
+        <div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.8rem; background: var(--bg-card); border-radius: var(--radius-sm); border: 1px dashed var(--border-color);">
+          <i data-lucide="inbox" style="width: 24px; height: 24px; margin: 0 auto 6px; opacity: 0.5;"></i>
+          Chưa có đợt nhập sao kê nào cho tài khoản này
+        </div>
+      `;
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    listEl.innerHTML = logs.map((log, index) => {
+      const d = new Date(log.importedAt);
+      const timeStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+      return `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+          <div style="flex: 1; min-width: 0; padding-right: 8px;">
+            <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(log.filename)}">
+              📄 ${escapeHTML(log.filename)}
+            </div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+              ${timeStr} • <strong>${log.count}</strong> giao dịch
+            </div>
+          </div>
+          <button type="button" class="btn-icon" style="color: var(--danger); width: 28px; height: 28px; flex-shrink: 0;" title="Xóa lịch sử đợt nhập này" onclick="UIAccounts.deleteStatementHistory(${accId}, ${index})">
+            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async deleteStatementHistory(accId, index) {
+    if (!confirm('Bạn có chắc muốn xóa lịch sử đợt nhập sao kê này? (Các giao dịch đã nhập vẫn được giữ lại)')) return;
+    const logKey = `statement_logs_${accId}`;
+    const logRecord = await db.settings.get(logKey);
+    const logs = (logRecord && Array.isArray(logRecord.value)) ? logRecord.value : [];
+    if (index >= 0 && index < logs.length) {
+      logs.splice(index, 1);
+      await db.settings.put({ key: logKey, value: logs });
+      await this.renderStatementHistory(accId);
+      showToast('Đã xóa đợt sao kê', 'info');
+    }
+  },
+
+  /* ==================== MODAL FORM & EDITING ==================== */
   async openAddModal() {
     const modal = document.getElementById('modal-account');
     const form = document.getElementById('account-form');
@@ -280,14 +720,14 @@ const UIAccounts = {
     const balance = Number(document.getElementById('acc-balance-input').value) || 0;
 
     if (!name) {
-      showToast('Vui lòng nhập tên ví / tài khoản', 'error');
+      showToast('Vui lòng nhập tên tài khoản', 'error');
       return;
     }
 
     const now = Date.now();
     if (id) {
       await db.accounts.update(Number(id), { name, type, balance, updatedAt: now });
-      showToast('Đã cập nhật thông tin ví', 'success');
+      showToast('Đã cập nhật thông tin tài khoản', 'success');
     } else {
       let icon = 'wallet';
       if (type === 'bank') icon = 'landmark';
@@ -311,7 +751,7 @@ const UIAccounts = {
         isArchived: 0,
         updatedAt: now
       });
-      showToast('Đã tạo ví mới', 'success');
+      showToast('Đã tạo tài khoản mới', 'success');
     }
 
     this.closeModal();
@@ -319,7 +759,6 @@ const UIAccounts = {
   },
 
   async openEditModal(accId) {
-    this.closeAllMenus();
     const acc = await db.accounts.get(Number(accId));
     if (!acc) return;
 
@@ -340,12 +779,12 @@ const UIAccounts = {
   async handleDeleteAccount() {
     const id = document.getElementById('acc-id-input').value;
     if (!id) return;
-    if (!confirm('Bạn có chắc muốn xóa ví này? Tất cả giao dịch cũ vẫn được lưu trong sổ.')) return;
+    if (!confirm('Bạn có chắc muốn xóa tài khoản này? Tất cả giao dịch cũ vẫn được lưu trong sổ.')) return;
 
     await db.accounts.update(Number(id), { isDeleted: 1, updatedAt: Date.now() });
     this.closeModal();
     await window.app.refreshAll();
-    showToast('Đã xóa ví', 'info');
+    showToast('Đã xóa tài khoản', 'info');
   },
 
   async moveAccount(id, direction) {
@@ -358,12 +797,10 @@ const UIAccounts = {
     const targetIndex = index + direction;
     if (targetIndex < 0 || targetIndex >= accounts.length) return;
 
-    // Swap items
     const temp = accounts[index];
     accounts[index] = accounts[targetIndex];
     accounts[targetIndex] = temp;
 
-    // Update order for all
     const now = Date.now();
     for (let i = 0; i < accounts.length; i++) {
       await db.accounts.update(accounts[i].id, { order: i, updatedAt: now });
@@ -373,7 +810,7 @@ const UIAccounts = {
     if (window.UITransactions && typeof window.UITransactions.populateAccounts === 'function') {
       await window.UITransactions.populateAccounts();
     }
-    showToast('Đã cập nhật vị trí ví', 'success');
+    showToast('Đã cập nhật vị trí tài khoản', 'success');
   },
 
   async reorderAccounts(fromId, toId) {
@@ -397,13 +834,14 @@ const UIAccounts = {
     if (window.UITransactions && typeof window.UITransactions.populateAccounts === 'function') {
       await window.UITransactions.populateAccounts();
     }
-    showToast('Đã sắp xếp lại thứ tự ví', 'success');
+    showToast('Đã sắp xếp lại thứ tự tài khoản', 'success');
   },
 
   setupDragAndDrop(container) {
+    const items = container.querySelectorAll('.account-list-item');
     let draggedItem = null;
 
-    container.querySelectorAll('.account-list-item').forEach(item => {
+    items.forEach(item => {
       item.addEventListener('dragstart', (e) => {
         draggedItem = item;
         item.classList.add('dragging');
@@ -413,14 +851,14 @@ const UIAccounts = {
 
       item.addEventListener('dragend', () => {
         item.classList.remove('dragging');
-        container.querySelectorAll('.account-list-item').forEach(el => el.classList.remove('drag-over'));
-        draggedItem = null;
+        items.forEach(i => i.classList.remove('drag-over'));
       });
 
       item.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         if (draggedItem && draggedItem !== item) {
+          items.forEach(i => i.classList.remove('drag-over'));
           item.classList.add('drag-over');
         }
       });
@@ -432,14 +870,16 @@ const UIAccounts = {
       item.addEventListener('drop', async (e) => {
         e.preventDefault();
         item.classList.remove('drag-over');
-        if (!draggedItem || draggedItem === item) return;
-        const fromId = Number(draggedItem.dataset.id);
-        const toId = Number(item.dataset.id);
-        await this.reorderAccounts(fromId, toId);
+        if (draggedItem && draggedItem !== item) {
+          const fromId = draggedItem.dataset.id;
+          const toId = item.dataset.id;
+          await this.reorderAccounts(fromId, toId);
+        }
       });
     });
   },
 
+  /* ==================== RENDER DANH SÁCH TÀI KHOẢN ==================== */
   async render() {
     const container = document.getElementById('accounts-list-container');
     if (!container) return;
@@ -450,9 +890,9 @@ const UIAccounts = {
     if (accounts.length === 0) {
       container.innerHTML = `
         <div style="text-align: center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
-          <i data-lucide="wallet" style="width: 40px; height: 40px; margin: 0 auto 12px; opacity: 0.5;"></i>
-          <p style="font-weight: 600; margin-bottom: 4px;">Chưa có ví nào</p>
-          <p style="font-size: 0.85rem;">Bấm "Thêm Ví Mới" ở trên để bắt đầu quản lý số dư</p>
+          <i data-lucide="wallet" style="width: 40px; height: 40px; margin: 0 auto 12px; opacity: 0.5;\"></i>
+          <p style="font-weight: 600; margin-bottom: 4px;">Chưa có tài khoản nào</p>
+          <p style="font-size: 0.85rem;">Bấm "Thêm Tài Khoản Mới" ở trên để bắt đầu quản lý số dư</p>
         </div>
       `;
       if (window.lucide) lucide.createIcons();
@@ -477,18 +917,18 @@ const UIAccounts = {
       html += `
         <div class="account-list-item ${isArchived ? 'archived' : ''}" draggable="true" data-id="${a.id}" data-index="${index}">
           <div class="account-drag-handle" title="Kéo để sắp xếp vị trí">
-            <i data-lucide="grip-vertical" style="width: 16px; height: 16px;"></i>
+            <i data-lucide="grip-vertical" style="width: 16px; height: 16px;\"></i>
           </div>
           
-          <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của ví">
+          <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản">
             <div class="account-icon-bubble" style="background: ${info.color}22; color: ${info.color};">
-              <i data-lucide="${iconName}" style="width: 18px; height: 18px;"></i>
+              <i data-lucide="${iconName}" style="width: 18px; height: 18px;\"></i>
             </div>
             <div class="account-info">
               <span class="account-name" title="${escapeHTML(a.name)}">${escapeHTML(a.name)}</span>
               <div class="account-sub-row">
                 <span class="account-type-label">${info.label}</span>
-                ${isDefault ? '<span class="account-default-badge" title="Ví mặc định"><i data-lucide="check-circle-2" style="width:12px;height:12px;"></i></span>' : ''}
+                ${isDefault ? '<span class="account-default-badge" title="Tài khoản mặc định"><i data-lucide="check-circle-2" style="width:12px;height:12px;"></i></span>' : ''}
                 ${isArchived ? '<span class="account-archived-badge" title="Đã ngừng sử dụng">Ngừng sử dụng</span>' : ''}
               </div>
             </div>
@@ -498,36 +938,9 @@ const UIAccounts = {
           </div>
 
           <div class="account-menu-wrapper" onclick="event.stopPropagation();">
-            <button type="button" class="account-menu-btn" onclick="UIAccounts.toggleMenu(${a.id}, event)" title="Tùy chọn ví">
-              <i data-lucide="more-vertical" style="width: 16px; height: 16px;"></i>
+            <button type="button" class="account-menu-btn" onclick="UIAccounts.openAccountActions(${a.id})" title="Tùy chọn tài khoản" aria-label="Tùy chọn tài khoản">
+              <i data-lucide="more-vertical" style="width: 17px; height: 17px;\"></i>
             </button>
-            <div class="account-dropdown-menu" id="account-menu-${a.id}">
-              <div class="account-dropdown-item" onclick="UIAccounts.openStatementHistory(${a.id})">
-                <i data-lucide="file-text" style="width: 16px; height: 16px; color: var(--primary);"></i>
-                <span>Lịch sử nhập sao kê</span>
-              </div>
-              <div class="account-dropdown-item" onclick="UIAccounts.startTransfer(${a.id})">
-                <i data-lucide="arrow-right-left" style="width: 16px; height: 16px; color: #0ea5e9;"></i>
-                <span>Chuyển khoản</span>
-              </div>
-              <div class="account-dropdown-item" onclick="UIAccounts.startAdjust(${a.id})">
-                <i data-lucide="scale" style="width: 16px; height: 16px; color: #f59e0b;"></i>
-                <span>Điều chỉnh số dư</span>
-              </div>
-              <div class="account-dropdown-item" onclick="UIAccounts.openEditModal(${a.id})">
-                <i data-lucide="edit-3" style="width: 16px; height: 16px; color: #8b5cf6;"></i>
-                <span>Chỉnh sửa</span>
-              </div>
-              <div class="account-dropdown-divider"></div>
-              <div class="account-dropdown-item" onclick="UIAccounts.toggleArchiveAccount(${a.id})">
-                <i data-lucide="${isArchived ? 'rotate-ccw' : 'power'}" style="width: 16px; height: 16px; color: var(--text-muted);"></i>
-                <span>${isArchived ? 'Kích hoạt lại' : 'Ngừng sử dụng'}</span>
-              </div>
-              <div class="account-dropdown-item danger" onclick="UIAccounts.confirmDeleteAccount(${a.id})">
-                <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
-                <span>Xóa</span>
-              </div>
-            </div>
           </div>
         </div>
       `;

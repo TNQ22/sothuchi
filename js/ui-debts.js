@@ -1,6 +1,6 @@
 /**
  * SỔ THU CHI - UI DEBTS & LOANS MODULE (SỔ VAY NỢ)
- * Quản lý theo dõi Cho Vay & Đi Vay, trả nợ từng đợt, tích hợp biến động số dư ví
+ * Quản lý theo dõi Cho Vay & Đi Vay, trả nợ từng đợt, tích hợp biến động số dư tài khoản
  */
 
 const UIDebts = {
@@ -297,7 +297,7 @@ const UIDebts = {
               <div>
                 <div class="debt-name">${escapeHTML(d.personName)}</div>
                 <div style="font-size: 0.8rem; color: var(--text-muted);">
-                  ${d.dueDate ? (d.type === 'lend' ? `Ngày thu: ${d.dueDate}` : `Ngày trả: ${d.dueDate}`) : 'Không có ngày hẹn'} • ${acc ? escapeHTML(acc.name) : 'Ví không rõ'}
+                  ${d.dueDate ? (d.type === 'lend' ? `Ngày thu: ${d.dueDate}` : `Ngày trả: ${d.dueDate}`) : 'Không có ngày hẹn'} • ${acc ? escapeHTML(acc.name) : 'Tài khoản không rõ'}
                 </div>
               </div>
             </div>

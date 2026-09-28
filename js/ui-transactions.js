@@ -405,8 +405,8 @@ const UITransactions = {
     // 2. Hai slot cuối (vị trí 7 & 8) tương thích theo nhóm:
     if (groupType === 'income') {
       // Nhóm THU TIỀN:
-      // Slot 7: Đi Vay (thu tiền vay vào ví)
-      // Slot 8: Thu Nợ (thu hồi tiền người nợ trả vào ví)
+      // Slot 7: Đi Vay (thu tiền vay vào tài khoản)
+      // Slot 8: Thu Nợ (thu hồi tiền người nợ trả vào tài khoản)
       const isBorrowActive = (formType === 'borrow' || debtSubaction === 'borrow');
       const isCollectActive = (formType === 'debt-collect' || debtSubaction === 'debt-collect');
       html += `
@@ -425,8 +425,8 @@ const UITransactions = {
       `;
     } else {
       // Nhóm CHI TIỀN:
-      // Slot 7: Cho Vay (tiền chi từ ví cho vay)
-      // Slot 8: Trả Nợ (tiền chi từ ví trả nợ)
+      // Slot 7: Cho Vay (tiền chi từ tài khoản cho vay)
+      // Slot 8: Trả Nợ (tiền chi từ tài khoản trả nợ)
       const isLendActive = (formType === 'lend' || debtSubaction === 'lend');
       const isPayActive = (formType === 'debt-pay' || debtSubaction === 'debt-pay');
       html += `
@@ -702,7 +702,7 @@ const UITransactions = {
       iconBox.style.color = '#0ea5e9';
       iconBox.innerHTML = '<i data-lucide="arrow-right-left"></i>';
     }
-    if (nameBox) nameBox.textContent = 'Chuyển khoản giữa các ví';
+    if (nameBox) nameBox.textContent = 'Chuyển khoản giữa các tài khoản';
     if (subBox) subBox.textContent = 'Chuyển tiền nội bộ giữa 2 tài khoản';
 
     const catCard = document.getElementById('tx-category-section-card');
@@ -728,19 +728,19 @@ const UITransactions = {
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
     accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
 
-    // Filter out archived accounts unless they are already selected
-    const availableAccounts = accounts.filter(a => !a.isArchived || String(a.id) === String(activeFromId) || String(a.id) === String(activeToId));
+    const nonArchived = accounts.filter(a => !a.isArchived);
+    const validAccounts = nonArchived.length > 0 ? nonArchived : accounts;
 
-    if (accounts.length > 0) {
-      if (!fromSelect.value) {
-        fromSelect.value = accounts[0].id;
+    if (validAccounts.length > 0) {
+      if (!fromSelect.value || !validAccounts.some(a => String(a.id) === String(fromSelect.value))) {
+        fromSelect.value = validAccounts[0].id;
       }
-      if (!toSelect.value || toSelect.value === fromSelect.value) {
-        const diffAcc = accounts.find(a => String(a.id) !== String(fromSelect.value));
+      if (!toSelect.value || toSelect.value === fromSelect.value || !validAccounts.some(a => String(a.id) === String(toSelect.value))) {
+        const diffAcc = validAccounts.find(a => String(a.id) !== String(fromSelect.value));
         if (diffAcc) {
           toSelect.value = diffAcc.id;
         } else {
-          toSelect.value = accounts[0].id;
+          toSelect.value = validAccounts[0].id;
         }
       }
     }
@@ -1218,9 +1218,6 @@ const UITransactions = {
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
     accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
 
-    // Filter out archived accounts unless they are already selected
-    const availableAccounts = accounts.filter(a => !a.isArchived || String(a.id) === String(activeFromId) || String(a.id) === String(activeToId));
-
     const iconMap = {
       cash: { icon: 'wallet', color: '#10b981' },
       bank: { icon: 'landmark', color: '#4f46e5' },
@@ -1229,14 +1226,18 @@ const UITransactions = {
       saving: { icon: 'piggy-bank', color: '#0ea5e9' }
     };
 
-    // Default to first account in sorted order if none selected
-    const activeFromId = selectedFromId || (accounts.length > 0 ? accounts[0].id : null);
+    // Default to first active non-archived account if none selected
+    const nonArchived = accounts.filter(a => !a.isArchived);
+    const activeFromId = selectedFromId || (nonArchived.length > 0 ? nonArchived[0].id : (accounts.length > 0 ? accounts[0].id : null));
     let activeToId = selectedToId;
     if (!activeToId && accounts.length > 1) {
-      activeToId = accounts.find(a => String(a.id) !== String(activeFromId))?.id || accounts[1].id;
+      activeToId = (nonArchived.find(a => String(a.id) !== String(activeFromId)) || accounts.find(a => String(a.id) !== String(activeFromId)))?.id || accounts[1].id;
     } else if (!activeToId && accounts.length === 1) {
       activeToId = accounts[0].id;
     }
+
+    // Filter out archived accounts unless they are already selected
+    const availableAccounts = accounts.filter(a => !a.isArchived || String(a.id) === String(activeFromId) || String(a.id) === String(activeToId));
 
     // Populate hidden native select for form reading
     const options = accounts.map(a =>
@@ -1470,7 +1471,7 @@ const UITransactions = {
 
     const noteInput = document.getElementById('tx-note-input');
     if (noteInput && !noteInput.value) {
-      noteInput.value = 'Điều chỉnh số dư ví';
+      noteInput.value = 'Điều chỉnh số dư tài khoản';
     }
   },
 
@@ -2166,7 +2167,7 @@ const UITransactions = {
             accountId: Number(accountId),
             date,
             time,
-            note: note || 'Điều chỉnh số dư ví',
+            note: note || 'Điều chỉnh số dư tài khoản',
             fee: 0,
             createdAt: Date.now(),
             updatedAt: Date.now(),
@@ -2191,7 +2192,7 @@ const UITransactions = {
     // 1. Transfer validation
     if (type === 'transfer') {
       if (accountId === toAccountId) {
-        showToast('Ví chuyển và ví nhận không thể trùng nhau', 'error');
+        showToast('Tài khoản chuyển và tài khoản nhận không thể trùng nhau', 'error');
         return;
       }
       if (id) {
@@ -2370,15 +2371,15 @@ const UITransactions = {
     if (filterBanner) {
       if (this.filterAccountId) {
         const acc = await db.accounts.get(this.filterAccountId);
-        const accName = acc ? acc.name : ('Ví #' + this.filterAccountId);
+        const accName = acc ? acc.name : ('Tài khoản #' + this.filterAccountId);
         filterBanner.style.display = 'block';
         filterBanner.innerHTML = `
           <div class="tx-account-filter-banner">
             <div class="tx-account-filter-content">
               <i data-lucide="wallet" style="width: 16px; height: 16px; color: var(--primary); flex-shrink: 0;"></i>
-              <div class="tx-account-filter-text">Lịch sử thu chi ví: <strong>${escapeHTML(accName)}</strong></div>
+              <div class="tx-account-filter-text">Lịch sử thu chi tài khoản: <strong>${escapeHTML(accName)}</strong></div>
             </div>
-            <button type="button" class="tx-account-filter-clear-btn" onclick="UITransactions.clearAccountFilter()" title="Xem tất cả ví">
+            <button type="button" class="tx-account-filter-clear-btn" onclick="UITransactions.clearAccountFilter()" title="Xem tất cả tài khoản">
               <i data-lucide="x" style="width: 14px; height: 14px;"></i>
             </button>
           </div>
@@ -2484,11 +2485,11 @@ const UITransactions = {
         const timeDisplay = t.time ? `<span style="color: var(--primary); font-weight: 600;">${t.time}</span> • ` : '';
         const feeDisplay = t.fee ? ` • <span style="color: var(--text-muted);">Phí: ${new Intl.NumberFormat('vi-VN').format(t.fee)}đ</span>` : '';
         // Chỉ hiển thị tên danh mục trong meta nếu title KHÔNG phải note (tức là title đang là cat.name)
-        // Tránh trùng lặp: nếu note đã có thì meta chỉ hiển thị ví và danh mục phụ
+        // Tránh trùng lặp: nếu note đã có thì meta chỉ hiển thị tài khoản và danh mục phụ
         const catMeta = (hasNote && cat) ? ` • <span style="color: var(--text-muted); font-size: 0.75rem;">${escapeHTML(cat.name)}</span>` : '';
         const accountDisplay = t.type === 'transfer' 
-          ? `${timeDisplay}${fromAcc ? fromAcc.name : 'Ví'} ➔ ${toAcc ? toAcc.name : 'Ví'}${feeDisplay}`
-          : `${timeDisplay}${fromAcc ? fromAcc.name : 'Ví'}${catMeta}${feeDisplay}`;
+          ? `${timeDisplay}${fromAcc ? fromAcc.name : 'Tài khoản'} ➔ ${toAcc ? toAcc.name : 'Tài khoản'}${feeDisplay}`
+          : `${timeDisplay}${fromAcc ? fromAcc.name : 'Tài khoản'}${catMeta}${feeDisplay}`;
 
         html += `
           <div class="tx-card" onclick="UITransactions.openEditModal(${t.id})">
@@ -2600,7 +2601,7 @@ const UITransactions = {
   },
 
   async confirmDeleteTransaction(txId) {
-    if (!confirm('Bạn có chắc muốn xóa giao dịch này không?\nSố dư ví sẽ được hoàn lại.')) return;
+    if (!confirm('Bạn có chắc muốn xóa giao dịch này không?\nSố dư tài khoản sẽ được hoàn lại.')) return;
     try {
       await deleteTransaction(txId);
       showToast('Đã xóa giao dịch', 'info');

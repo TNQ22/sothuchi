@@ -43,13 +43,13 @@ const CSVExportService = {
     const accMap = new Map(accounts.map(a => [a.id, a.name]));
 
     // CSV Headers
-    const headers = ['Mã GD', 'Ngày', 'Giờ', 'Loại giao dịch', 'Số tiền (VNĐ)', 'Danh mục', 'Tài khoản / Ví', 'Ví nhận (Chuyển khoản)', 'Ghi chú'];
+    const headers = ['Mã GD', 'Ngày', 'Giờ', 'Loại giao dịch', 'Số tiền (VNĐ)', 'Danh mục', 'Tài khoản', 'Tài khoản nhận (Chuyển khoản)', 'Ghi chú'];
     const rows = [headers.map(this.escapeCSV).join(',')];
 
     for (const t of txs) {
       const typeLabel = t.type === 'expense' ? 'Chi tiêu' : (t.type === 'income' ? 'Thu nhập' : 'Chuyển tiền');
       const catName = t.categoryId ? (catMap.get(t.categoryId) || 'Khác') : (t.type === 'transfer' ? 'Chuyển tiền nội bộ' : 'Chưa phân loại');
-      const fromAcc = accMap.get(t.accountId) || 'Ví không rõ';
+      const fromAcc = accMap.get(t.accountId) || 'Tài khoản không rõ';
       const toAcc = t.toAccountId ? (accMap.get(t.toAccountId) || '') : '';
 
       const row = [
@@ -81,14 +81,14 @@ const CSVExportService = {
     const accounts = await db.accounts.toArray();
     const accMap = new Map(accounts.map(a => [a.id, a.name]));
 
-    const headers = ['Mã Nợ', 'Loại hình', 'Người vay / Chủ nợ', 'Số tiền ban đầu', 'Còn lại', 'Đã trả/thu', 'Ví liên kết', 'Ngày thu/trả nợ', 'Trạng thái', 'Ghi chú'];
+    const headers = ['Mã Nợ', 'Loại hình', 'Người vay / Chủ nợ', 'Số tiền ban đầu', 'Còn lại', 'Đã trả/thu', 'Tài khoản liên kết', 'Ngày thu/trả nợ', 'Trạng thái', 'Ghi chú'];
     const rows = [headers.map(this.escapeCSV).join(',')];
 
     for (const d of debts) {
       const typeLabel = d.type === 'lend' ? 'Cho vay (Cần thu)' : 'Đi vay (Cần trả)';
       const paid = d.originalAmount - d.remainingAmount;
       const statusLabel = d.status === 'settled' ? 'Đã hoàn tất' : (d.status === 'overdue' ? 'Quá hạn' : 'Đang theo dõi');
-      const accName = accMap.get(d.accountId) || 'Ví không rõ';
+      const accName = accMap.get(d.accountId) || 'Tài khoản không rõ';
 
       const row = [
         d.id,
