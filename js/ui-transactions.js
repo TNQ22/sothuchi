@@ -2061,13 +2061,12 @@ const UITransactions = {
     const isEditing = document.getElementById('tx-id-input')?.value;
 
     if (isEditing) {
-      // Đang ở chế độ sửa giao dịch cũ mà bấm Thêm mới -> Thoát chế độ sửa và mở form mới/khôi phục nháp
+      // Đang ở chế độ sửa giao dịch cũ mà bấm Thêm mới -> Thoát hoàn toàn chế độ sửa, làm sạch dữ liệu cũ
       this.setEditMode(false);
-      document.getElementById('tx-id-input').value = '';
-      const hasDraft = await this.restoreDraft();
-      if (!hasDraft) {
-        await this.resetForm(defaultType);
-      }
+      const idInput = document.getElementById('tx-id-input');
+      if (idInput) idInput.value = '';
+      this.clearDraft();
+      await this.resetForm(defaultType);
     } else if (!this.formInitialized) {
       // Lần đầu mở form
       const hasDraft = await this.restoreDraft();
@@ -2076,27 +2075,33 @@ const UITransactions = {
       }
       this.formInitialized = true;
     } else {
-      // Form đang ở trạng thái nhập liệu: GIỮ NGUYÊN các thông tin người dùng đang nhập dở!
-      const curAmount = document.getElementById('tx-amount-input')?.value;
-      const curNote = document.getElementById('tx-note-input')?.value;
-      const isUntouched = (!curAmount || curAmount === '0') && (!curNote || curNote.trim() === '');
-      if (isUntouched) {
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
-        const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
-        document.getElementById('tx-date-input').value = dateStr;
-        document.getElementById('tx-time-input').value = timeStr;
-        const nativeDt = document.getElementById('tx-datetime-native');
-        if (nativeDt) nativeDt.value = `${dateStr}T${timeStr}`;
-        this.updateDateTimeDisplays(dateStr, timeStr);
-      }
+      const curType = document.getElementById('tx-type-input')?.value;
+      if (curType === 'transfer' || curType === 'adjust') {
+        // Nếu trước đó đang mở chuyển khoản hoặc điều chỉnh số dư -> Đưa về form chi tiêu mới mặc định
+        this.clearDraft();
+        await this.resetForm(defaultType);
+      } else {
+        const curAmount = document.getElementById('tx-amount-input')?.value;
+        const curNote = document.getElementById('tx-note-input')?.value;
+        const isUntouched = (!curAmount || curAmount === '0') && (!curNote || curNote.trim() === '');
+        if (isUntouched) {
+          const now = new Date();
+          const dateStr = now.toISOString().split('T')[0];
+          const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+          document.getElementById('tx-date-input').value = dateStr;
+          document.getElementById('tx-time-input').value = timeStr;
+          const nativeDt = document.getElementById('tx-datetime-native');
+          if (nativeDt) nativeDt.value = `${dateStr}T${timeStr}`;
+          this.updateDateTimeDisplays(dateStr, timeStr);
+        }
 
-      const curAccId = document.getElementById('tx-account-select')?.value;
-      await this.populateAccounts(curAccId || null);
-      await this.updateSelectedAccountDisplay();
+        const curAccId = document.getElementById('tx-account-select')?.value;
+        await this.populateAccounts(curAccId || null);
+        await this.updateSelectedAccountDisplay();
+      }
     }
 
-    if (window.app) {
+    if (window.app && window.app.currentView !== 'new-transaction') {
       window.app.switchView('new-transaction');
     }
   },
@@ -2589,6 +2594,7 @@ const UITransactions = {
     this.setEditMode(true, tx.id);
 
     if (window.app) {
+      window.app.previousView = window.app.currentView;
       window.app.switchView('new-transaction');
     }
     if (window.lucide) lucide.createIcons();

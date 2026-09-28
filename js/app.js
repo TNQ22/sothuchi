@@ -355,9 +355,10 @@ class App {
 
     // Nếu đang ở màn hình khác -> chuyển vào trang nhập liệu
     if (this.currentView !== 'new-transaction') {
-      this.switchView('new-transaction');
       if (window.UITransactions) {
         await window.UITransactions.openAddModal();
+      } else {
+        this.switchView('new-transaction');
       }
     }
   }
@@ -389,8 +390,8 @@ class App {
     // 1. Lưu vị trí cuộn của view hiện tại trước khi chuyển view
     if (this.currentView) {
       this.scrollPositions[this.currentView] = window.scrollY || document.documentElement.scrollTop || 0;
-      // Tự động lưu nháp giao dịch nếu đang rời khỏi trang ghi chép
-      if (this.currentView === 'new-transaction' && window.UITransactions) {
+      // Tự động lưu nháp giao dịch nếu đang rời khỏi trang ghi chép (chỉ khi chuyển tab bình thường, KHÔNG lưu khi trượt trở về / hủy)
+      if (!isBack && this.currentView === 'new-transaction' && window.UITransactions) {
         window.UITransactions.saveDraft();
       }
     }
@@ -519,16 +520,27 @@ class App {
     // new-transaction → CHỈ trở về khi đang sửa giao dịch HOẶC khi mở từ menu 3 chấm của tài khoản
     if (this.currentView === 'new-transaction') {
       const txId = document.getElementById('tx-id-input')?.value;
-      if (this.openedFromAccountMenu && this.previousView) {
-        const target = this.previousView;
+      const openedFromMenu = this.openedFromAccountMenu;
+      const target = this.previousView || (txId ? (this.activePrimaryView || 'transactions') : null);
+
+      if (openedFromMenu || txId) {
+        // DỌN DẸP & RESET TOÀN BỘ FORM VỀ MẶC ĐỊNH
+        // Người dùng đã trượt trở về / bấm quay lại -> HỦY BỎ phiên sửa hoặc chuyển khoản, xóa sạch dữ liệu cũ
+        if (window.UITransactions) {
+          window.UITransactions.setEditMode(false);
+          const idInput = document.getElementById('tx-id-input');
+          if (idInput) idInput.value = '';
+          window.UITransactions.clearDraft();
+          window.UITransactions.resetForm('expense');
+        }
+
         this.openedFromAccountMenu = false;
         this.previousView = null;
-        this.switchView(target, true);
-        return;
-      }
-      if (txId) {
-        this.switchView(this.activePrimaryView || 'transactions', true);
-        return;
+
+        if (target && target !== 'new-transaction') {
+          this.switchView(target, true);
+          return;
+        }
       }
       // Ở chế độ thêm mới thông thường: trang nhập liệu CỐ ĐỊNH, không thoát về tổng quan!
       return;
