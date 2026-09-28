@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.15">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.17">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -261,6 +261,18 @@
         </div>
 
         <div id="accounts-list-container" class="accounts-list"></div>
+
+        <!-- Archived Accounts Collapsible Section (Listdown riêng) -->
+        <div id="archived-accounts-section" class="archived-accounts-section" style="display: none;">
+          <button type="button" class="archived-accounts-toggle-btn" onclick="UIAccounts.toggleArchivedList()">
+            <div class="archived-toggle-left">
+              <i data-lucide="archive" style="width: 16px; height: 16px;"></i>
+              <span id="archived-accounts-toggle-label">Tài khoản ngừng sử dụng (0)</span>
+            </div>
+            <i data-lucide="chevron-down" id="archived-toggle-icon" class="archived-toggle-chevron"></i>
+          </button>
+          <div id="archived-accounts-list" class="archived-accounts-list" style="display: none;"></div>
+        </div>
       </section>
 
       <!-- View: Budgets (Ngân sách chi tiêu) -->
@@ -1357,18 +1369,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.16"></script>
+  <script src="./js/backup.js?v=1.9.17"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.16"></script>
-  <script src="./js/ui-transactions.js?v=1.9.16"></script>
-  <script src="./js/ui-debts.js?v=1.9.16"></script>
-  <script src="./js/ui-accounts.js?v=1.9.16"></script>
-  <script src="./js/ui-budgets.js?v=1.9.16"></script>
-  <script src="./js/ui-analytics.js?v=1.9.16"></script>
-  <script src="./js/ui-settings.js?v=1.9.16"></script>
+  <script src="./js/ui-calendar.js?v=1.9.17"></script>
+  <script src="./js/ui-transactions.js?v=1.9.17"></script>
+  <script src="./js/ui-debts.js?v=1.9.17"></script>
+  <script src="./js/ui-accounts.js?v=1.9.17"></script>
+  <script src="./js/ui-budgets.js?v=1.9.17"></script>
+  <script src="./js/ui-analytics.js?v=1.9.17"></script>
+  <script src="./js/ui-settings.js?v=1.9.17"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.16"></script>
+  <script src="./js/app.js?v=1.9.17"></script>
 </body>
 </html>

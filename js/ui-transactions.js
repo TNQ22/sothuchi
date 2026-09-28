@@ -2107,9 +2107,12 @@ const UITransactions = {
     this.closeAccountDropdown();
     this.closeToAccountDropdown();
     this.closeCategoryPicker();
-    // Trở về view trước đó (transactions, dashboard, ...)
+    // Trở về view trước đó (chỉ khi đang sửa giao dịch hoặc mở từ menu 3 chấm của tài khoản)
     if (window.app && window.app.currentView === 'new-transaction') {
-      window.app.goBack();
+      const isEditing = !!document.getElementById('tx-id-input')?.value;
+      if (isEditing || window.app.openedFromAccountMenu) {
+        window.app.goBack();
+      }
     }
   },
 

@@ -48,6 +48,50 @@ const DEFAULT_ACCOUNTS = [
 ];
 
 // Initialize Database & Seed Defaults
+
+// Tự động kiểm tra và gộp tài khoản bị trùng lặp tên & loại (khắc phục nhân đôi trên PWA/Sync)
+async function deduplicateAccounts() {
+  try {
+    const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    const seen = new Map();
+    for (const acc of accounts) {
+      const key = `${acc.name.trim().toLowerCase()}_${acc.type}`;
+      if (!seen.has(key)) {
+        seen.set(key, acc);
+      } else {
+        const existing = seen.get(key);
+        // Xác định tài khoản nào có dữ liệu giao dịch hoặc số dư cao hơn
+        const existingTxCount = await db.transactions.where('accountId').equals(existing.id).count();
+        const currentTxCount = await db.transactions.where('accountId').equals(acc.id).count();
+
+        let keep = existing;
+        let remove = acc;
+        if (currentTxCount > existingTxCount || (currentTxCount === existingTxCount && (acc.updatedAt || 0) > (existing.updatedAt || 0))) {
+          keep = acc;
+          remove = existing;
+          seen.set(key, keep);
+        }
+
+        // Chuyển toàn bộ giao dịch từ tài khoản trùng sang tài khoản giữ lại
+        const removeTxs = await db.transactions.where('accountId').equals(remove.id).toArray();
+        for (const tx of removeTxs) {
+          await db.transactions.update(tx.id, { accountId: keep.id });
+        }
+        const removeDebts = await db.debts.where('accountId').equals(remove.id).toArray();
+        for (const d of removeDebts) {
+          await db.debts.update(d.id, { accountId: keep.id });
+        }
+
+        // Đánh dấu tài khoản trùng là đã xóa
+        await db.accounts.update(remove.id, { isDeleted: 1, updatedAt: Date.now() });
+        console.log(`[Deduplicate] Đã gộp tài khoản trùng "${remove.name}" (ID ${remove.id}) vào ID ${keep.id}`);
+      }
+    }
+  } catch (err) {
+    console.warn('Lỗi khi lọc tài khoản trùng:', err);
+  }
+}
+
 async function initDatabase() {
   const categoryCount = await db.categories.count();
   if (categoryCount === 0) {
@@ -76,6 +120,9 @@ async function initDatabase() {
       await db.accounts.update(oldBankAcc.id, { name: 'Ngân hàng', updatedAt: Date.now() });
     }
   }
+
+  // Tự động gộp và loại bỏ tài khoản bị nhân đôi (do PWA khởi tạo nhiều lần hoặc do sync)
+  await deduplicateAccounts();
 
   // Seed default settings if empty
   const theme = await db.settings.get('theme');

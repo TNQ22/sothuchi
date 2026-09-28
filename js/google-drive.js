@@ -246,7 +246,17 @@ class GoogleDriveSync {
       // Compare with remote
       if (remoteItems && Array.isArray(remoteItems)) {
         for (const rItem of remoteItems) {
-          const lItem = itemMap.get(rItem.id);
+          let lItem = itemMap.get(rItem.id);
+          // Đối với tài khoản, nếu ID khác nhau nhưng cùng tên & loại -> ghép lại tránh bị lặn gấp đôi
+          if (!lItem && table === db.accounts && rItem.name) {
+            for (const existing of itemMap.values()) {
+              if (existing.name && existing.name.trim().toLowerCase() === rItem.name.trim().toLowerCase() && existing.type === rItem.type) {
+                lItem = existing;
+                break;
+              }
+            }
+          }
+
           if (!lItem) {
             // New from remote
             itemMap.set(rItem.id, rItem);
@@ -255,7 +265,7 @@ class GoogleDriveSync {
             const rTime = rItem.updatedAt || 0;
             const lTime = lItem.updatedAt || 0;
             if (rTime > lTime) {
-              itemMap.set(rItem.id, rItem);
+              itemMap.set(lItem.id, { ...rItem, id: lItem.id });
             }
           }
         }

@@ -8,6 +8,7 @@ const UIAccounts = {
   activeStatementAccountId: null,
   currentActionAccountId: null,
   pendingStatementImport: null,
+  isArchivedExpanded: false,
 
   init() {
     this.bindEvents();
@@ -131,6 +132,7 @@ const UIAccounts = {
   /* ==================== CHUYỂN KHOẢN & ĐIỀU CHỈNH ==================== */
   async startTransfer(accId) {
     if (window.app) {
+      window.app.openedFromAccountMenu = true;
       window.app.previousView = 'accounts';
       window.app.switchView('new-transaction');
     }
@@ -147,6 +149,7 @@ const UIAccounts = {
 
   async startAdjust(accId) {
     if (window.app) {
+      window.app.openedFromAccountMenu = true;
       window.app.previousView = 'accounts';
       window.app.switchView('new-transaction');
     }
@@ -879,6 +882,20 @@ const UIAccounts = {
     });
   },
 
+  /* ==================== TÀI KHOẢN NGỪNG SỬ DỤNG (LISTDOWN) ==================== */
+  toggleArchivedList() {
+    this.isArchivedExpanded = !this.isArchivedExpanded;
+    const list = document.getElementById('archived-accounts-list');
+    const chevron = document.getElementById('archived-toggle-icon');
+    if (list) {
+      list.style.display = this.isArchivedExpanded ? 'flex' : 'none';
+    }
+    if (chevron) {
+      chevron.classList.toggle('rotated', this.isArchivedExpanded);
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
   /* ==================== RENDER DANH SÁCH TÀI KHOẢN ==================== */
   async render() {
     const container = document.getElementById('accounts-list-container');
@@ -887,17 +904,8 @@ const UIAccounts = {
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
     accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
 
-    if (accounts.length === 0) {
-      container.innerHTML = `
-        <div style="text-align: center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
-          <i data-lucide="wallet" style="width: 40px; height: 40px; margin: 0 auto 12px; opacity: 0.5;\"></i>
-          <p style="font-weight: 600; margin-bottom: 4px;">Chưa có tài khoản nào</p>
-          <p style="font-size: 0.85rem;">Bấm "Thêm Tài Khoản Mới" ở trên để bắt đầu quản lý số dư</p>
-        </div>
-      `;
-      if (window.lucide) lucide.createIcons();
-      return;
-    }
+    const activeAccounts = accounts.filter(a => !a.isArchived);
+    const archivedAccounts = accounts.filter(a => !!a.isArchived);
 
     const iconMap = {
       cash: { icon: 'wallet', color: '#10b981', label: 'Tiền mặt' },
@@ -907,47 +915,107 @@ const UIAccounts = {
       saving: { icon: 'piggy-bank', color: '#0ea5e9', label: 'Sổ tiết kiệm' }
     };
 
-    let html = '';
-    accounts.forEach((a, index) => {
-      const info = iconMap[a.type] || { icon: a.icon || 'wallet', color: a.color || '#4f46e5', label: 'Tài khoản' };
-      const iconName = a.icon || info.icon;
-      const isDefault = index === 0;
-      const isArchived = !!a.isArchived;
-
-      html += `
-        <div class="account-list-item ${isArchived ? 'archived' : ''}" draggable="true" data-id="${a.id}" data-index="${index}">
-          <div class="account-drag-handle" title="Kéo để sắp xếp vị trí">
-            <i data-lucide="grip-vertical" style="width: 16px; height: 16px;\"></i>
-          </div>
-          
-          <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản">
-            <div class="account-icon-bubble" style="background: ${info.color}22; color: ${info.color};">
-              <i data-lucide="${iconName}" style="width: 18px; height: 18px;\"></i>
-            </div>
-            <div class="account-info">
-              <span class="account-name" title="${escapeHTML(a.name)}">${escapeHTML(a.name)}</span>
-              <div class="account-sub-row">
-                <span class="account-type-label">${info.label}</span>
-                ${isDefault ? '<span class="account-default-badge" title="Tài khoản mặc định"><i data-lucide="check-circle-2" style="width:12px;height:12px;"></i></span>' : ''}
-                ${isArchived ? '<span class="account-archived-badge" title="Đã ngừng sử dụng">Ngừng sử dụng</span>' : ''}
-              </div>
-            </div>
-            <div class="account-balance-wrapper">
-              <span class="account-balance ${a.balance < 0 ? 'expense-text' : ''}">${new Intl.NumberFormat('vi-VN').format(a.balance)}đ</span>
-            </div>
-          </div>
-
-          <div class="account-menu-wrapper" onclick="event.stopPropagation();">
-            <button type="button" class="account-menu-btn" onclick="UIAccounts.openAccountActions(${a.id})" title="Tùy chọn tài khoản" aria-label="Tùy chọn tài khoản">
-              <i data-lucide="more-vertical" style="width: 17px; height: 17px;\"></i>
-            </button>
-          </div>
+    // 1. Render danh sách tài khoản ĐANG HOẠT ĐỘNG
+    if (activeAccounts.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 32px 20px; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
+          <i data-lucide="wallet" style="width: 36px; height: 36px; margin: 0 auto 10px; opacity: 0.5;"></i>
+          <p style="font-weight: 600; margin-bottom: 4px;">Chưa có tài khoản nào đang hoạt động</p>
+          <p style="font-size: 0.85rem;">Bấm "Thêm Tài Khoản Mới" ở trên hoặc kích hoạt lại tài khoản đã ngừng sử dụng bên dưới</p>
         </div>
       `;
-    });
+    } else {
+      let html = '';
+      activeAccounts.forEach((a, index) => {
+        const info = iconMap[a.type] || { icon: a.icon || 'wallet', color: a.color || '#4f46e5', label: 'Tài khoản' };
+        const iconName = a.icon || info.icon;
+        const isDefault = index === 0;
 
-    container.innerHTML = html;
-    this.setupDragAndDrop(container);
+        html += `
+          <div class="account-list-item" draggable="true" data-id="${a.id}" data-index="${index}">
+            <div class="account-drag-handle" title="Kéo để sắp xếp vị trí">
+              <i data-lucide="grip-vertical" style="width: 16px; height: 16px;"></i>
+            </div>
+            
+            <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản">
+              <div class="account-icon-bubble" style="background: ${info.color}22; color: ${info.color};">
+                <i data-lucide="${iconName}" style="width: 18px; height: 18px;"></i>
+              </div>
+              <div class="account-info">
+                <span class="account-name" title="${escapeHTML(a.name)}">${escapeHTML(a.name)}</span>
+                <div class="account-sub-row">
+                  <span class="account-type-label">${info.label}</span>
+                  ${isDefault ? '<span class="account-default-badge" title="Tài khoản mặc định"><i data-lucide="check-circle-2" style="width:12px;height:12px;"></i></span>' : ''}
+                </div>
+              </div>
+              <div class="account-balance-wrapper">
+                <span class="account-balance ${a.balance < 0 ? 'expense-text' : ''}">${new Intl.NumberFormat('vi-VN').format(a.balance)}đ</span>
+              </div>
+            </div>
+
+            <div class="account-menu-wrapper" onclick="event.stopPropagation();">
+              <button type="button" class="account-menu-btn" onclick="UIAccounts.openAccountActions(${a.id})" title="Tùy chọn tài khoản" aria-label="Tùy chọn tài khoản">
+                <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+      this.setupDragAndDrop(container);
+    }
+
+    // 2. Render Section riêng cho TÀI KHOẢN NGỪNG SỬ DỤNG (Listdown)
+    const archSec = document.getElementById('archived-accounts-section');
+    const archList = document.getElementById('archived-accounts-list');
+    const archLabel = document.getElementById('archived-accounts-toggle-label');
+    const archChevron = document.getElementById('archived-toggle-icon');
+
+    if (archSec && archList) {
+      if (archivedAccounts.length === 0) {
+        archSec.style.display = 'none';
+        archList.innerHTML = '';
+      } else {
+        archSec.style.display = 'block';
+        if (archLabel) archLabel.textContent = `Tài khoản ngừng sử dụng (${archivedAccounts.length})`;
+        archList.style.display = this.isArchivedExpanded ? 'flex' : 'none';
+        if (archChevron) archChevron.classList.toggle('rotated', this.isArchivedExpanded);
+
+        let archHtml = '';
+        archivedAccounts.forEach((a) => {
+          const info = iconMap[a.type] || { icon: a.icon || 'wallet', color: a.color || '#4f46e5', label: 'Tài khoản' };
+          const iconName = a.icon || info.icon;
+
+          archHtml += `
+            <div class="account-list-item archived" data-id="${a.id}">
+              <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản">
+                <div class="account-icon-bubble" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted);">
+                  <i data-lucide="${iconName}" style="width: 18px; height: 18px;"></i>
+                </div>
+                <div class="account-info">
+                  <span class="account-name" title="${escapeHTML(a.name)}" style="color: var(--text-secondary);">${escapeHTML(a.name)}</span>
+                  <div class="account-sub-row">
+                    <span class="account-type-label">${info.label}</span>
+                    <span class="account-archived-badge" title="Đã ngừng sử dụng">Ngừng sử dụng</span>
+                  </div>
+                </div>
+                <div class="account-balance-wrapper">
+                  <span class="account-balance" style="color: var(--text-muted);">${new Intl.NumberFormat('vi-VN').format(a.balance)}đ</span>
+                </div>
+              </div>
+
+              <div class="account-menu-wrapper" onclick="event.stopPropagation();">
+                <button type="button" class="account-menu-btn" onclick="UIAccounts.openAccountActions(${a.id})" title="Tùy chọn tài khoản" aria-label="Tùy chọn tài khoản">
+                  <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        });
+        archList.innerHTML = archHtml;
+      }
+    }
+
     if (window.lucide) lucide.createIcons();
   }
 };
