@@ -345,8 +345,8 @@ class App {
     const now = Date.now();
     const timeSinceLastClick = now - (this.lastAddTabClickTime || 0);
 
-    // Nếu nhấp 2 lần liên tiếp trong vòng 1.5 giây (hoặc double click) -> Khôi phục mặc định
-    if (this.lastAddTabClickTime > 0 && timeSinceLastClick < 1500) {
+    // Nhấp 2 lần nhanh (double-tap chuẩn, không cần chờ) -> Khôi phục form mặc định
+    if (this.lastAddTabClickTime > 0 && timeSinceLastClick < 400) {
       await this.resetToDefaultTransactionForm();
       return;
     }
@@ -359,9 +359,6 @@ class App {
       if (window.UITransactions) {
         await window.UITransactions.openAddModal();
       }
-    } else {
-      // Đang ở sẵn trang nhập liệu: thông báo gợi ý nhấp đúp để làm mới
-      showToast('Nhấp 2 lần để khôi phục mặc định', 'info');
     }
   }
 
