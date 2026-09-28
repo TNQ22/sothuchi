@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.13">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.15">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -198,12 +198,15 @@
           <button class="filter-pill tx-filter-pill active" data-type="all">Tất cả</button>
           <button class="filter-pill tx-filter-pill" data-type="expense">Chi tiêu</button>
           <button class="filter-pill tx-filter-pill" data-type="income">Thu nhập</button>
-          <button class="filter-pill tx-filter-pill" data-type="transfer">Chuyển tiền</button>
+          <button class="filter-pill tx-filter-pill" data-type="transfer">Chuyển khoản</button>
         </div>
 
         <div style="margin-bottom: 16px;">
           <input type="text" id="tx-search-input" class="form-control" placeholder="🔍 Tìm kiếm giao dịch theo ghi chú..." style="max-width: 400px;">
         </div>
+
+        <!-- Banner bộ lọc theo ví -->
+        <div id="tx-active-account-filter" style="display: none;"></div>
 
         <div class="card-panel">
           <div id="transactions-list-container-full"></div>
@@ -432,6 +435,9 @@
                   <div class="tx-type-option" data-type="income" onclick="UITransactions.handleHeaderTypeChange('income')">
                     <i data-lucide="arrow-up-circle" style="color: #10b981;"></i> <span>Thu tiền</span>
                   </div>
+                  <div class="tx-type-option" data-type="transfer" onclick="UITransactions.handleHeaderTypeChange('transfer')">
+                    <i data-lucide="arrow-right-left" style="color: #0ea5e9;"></i> <span>Chuyển khoản</span>
+                  </div>
                   <div class="tx-type-option" data-type="lend" onclick="UITransactions.handleHeaderTypeChange('lend')">
                     <i data-lucide="arrow-up-right" style="color: #3b82f6;"></i> <span>Cho vay</span>
                   </div>
@@ -527,7 +533,10 @@
                     <i data-lucide="wallet"></i>
                   </div>
                   <div class="tx-info-content">
-                    <div id="tx-account-label" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3;">Chọn tài khoản</div>
+                    <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                      <span id="tx-account-dir-tag" class="tx-transfer-dir-tag from" style="display: none;">Từ ví</span>
+                      <div id="tx-account-label" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">Chọn tài khoản</div>
+                    </div>
                     <div id="tx-account-balance" style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.2; font-variant-numeric: tabular-nums;">Số dư: 0đ</div>
                     <!-- Hidden native select for form submission -->
                     <select id="tx-account-select" required style="display:none;"></select>
@@ -535,8 +544,39 @@
                   <i data-lucide="chevron-down" class="tx-info-chevron" id="tx-account-chevron"></i>
                 </div>
                 <!-- Account dropdown list (inline, no page navigation) -->
-                <div id="tx-account-dropdown-menu" style="display:none;">
+                <div id="tx-account-dropdown-menu" class="tx-account-dropdown-menu" style="display:none;">
                   <div id="tx-account-dropdown-list" class="tx-account-list"></div>
+                </div>
+
+                <!-- Hàng chuyển đến ví (khi là chuyển khoản) -->
+                <div id="tx-transfer-target-group" style="display: none;">
+                  <div class="tx-transfer-divider">
+                    <div class="tx-transfer-divider-line"></div>
+                    <button type="button" class="tx-transfer-swap-btn" onclick="UITransactions.swapTransferAccounts(event)" title="Hoán đổi ví chuyển và ví nhận">
+                      <i data-lucide="arrow-down-up" style="width: 14px; height: 14px;"></i>
+                    </button>
+                    <div class="tx-transfer-divider-line"></div>
+                  </div>
+
+                  <div class="tx-info-row tx-account-dropdown-wrapper" id="tx-to-account-row" onclick="UITransactions.toggleToAccountDropdown(event)">
+                    <div class="tx-info-icon-bubble" id="tx-to-account-icon-bubble">
+                      <i data-lucide="landmark"></i>
+                    </div>
+                    <div class="tx-info-content">
+                      <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                        <span class="tx-transfer-dir-tag to">Đến ví</span>
+                        <div id="tx-to-account-label" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">Chọn tài khoản nhận</div>
+                      </div>
+                      <div id="tx-to-account-balance" style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.2; font-variant-numeric: tabular-nums;">Số dư: 0đ</div>
+                      <!-- Hidden native select for destination account -->
+                      <select id="tx-to-account-select" style="display:none;"></select>
+                    </div>
+                    <i data-lucide="chevron-down" class="tx-info-chevron" id="tx-to-account-chevron"></i>
+                  </div>
+                  <!-- To Account dropdown list -->
+                  <div id="tx-to-account-dropdown-menu" class="tx-account-dropdown-menu" style="display:none;">
+                    <div id="tx-to-account-dropdown-list" class="tx-account-list"></div>
+                  </div>
                 </div>
 
                 <!-- Hàng 2: Ngày & Giờ (Ngày lề trái, Giờ căn lề phải tách biệt) -->
@@ -1051,6 +1091,45 @@
     </div>
   </div>
 
+  <!-- Modal: Lịch Sử Nhập Sao Kê -->
+  <div id="modal-account-statement" class="modal-overlay">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="statement-modal-title">Lịch Sử Nhập Sao Kê</h3>
+          <p id="statement-modal-subtitle" style="font-size: 0.8rem; color: var(--text-muted); margin: 2px 0 0 0;"></p>
+        </div>
+        <button class="btn-icon" onclick="UIAccounts.closeStatementModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body" style="padding: 16px 20px;">
+        <!-- Card: Nhập sao kê mới -->
+        <div style="background: var(--bg-card); border: 1px dashed var(--border-color); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px; text-align: center;">
+          <i data-lucide="file-spreadsheet" style="width: 36px; height: 36px; color: var(--primary); margin: 0 auto 8px; opacity: 0.85;"></i>
+          <h4 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; color: var(--text-primary);">Tải Lên File Sao Kê (CSV/Excel)</h4>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.4;">
+            Nhập file sao kê tài khoản ngân hàng để tự động đối soát và thêm giao dịch vào ví này.
+          </p>
+          <input type="file" id="statement-file-input" accept=".csv,text/csv" style="display: none;" onchange="UIAccounts.handleStatementFileSelected(event)">
+          <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 7px 16px;" onclick="document.getElementById('statement-file-input').click()">
+            <i data-lucide="upload" style="width: 15px; height: 15px;"></i> Chọn File Sao Kê CSV
+          </button>
+        </div>
+
+        <!-- Danh sách lịch sử sao kê đã nhập -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+          <span style="font-weight: 600; font-size: 0.88rem; color: var(--text-secondary);">Các đợt sao kê đã nhập</span>
+          <span id="statement-count-badge" style="font-size: 0.75rem; color: var(--text-muted);">0 đợt</span>
+        </div>
+        <div id="statement-history-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto;">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end;">
+        <button type="button" class="btn-secondary" onclick="UIAccounts.closeStatementModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Account Form -->
   <div id="modal-account" class="modal-overlay">
     <div class="modal-dialog">
@@ -1070,7 +1149,7 @@
             <label class="form-label">Loại Tài Khoản</label>
             <select id="acc-type-select" class="form-control">
               <option value="cash">Tiền mặt</option>
-              <option value="bank">Tài khoản Ngân hàng</option>
+              <option value="bank">Ngân hàng</option>
               <option value="ewallet">Ví điện tử (MoMo, ZaloPay...)</option>
               <option value="credit">Thẻ tín dụng (Credit Card)</option>
               <option value="saving">Sổ tiết kiệm</option>
@@ -1152,6 +1231,6 @@
   <script src="./js/ui-settings.js"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.13"></script>
+  <script src="./js/app.js?v=1.9.14"></script>
 </body>
 </html>

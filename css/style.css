@@ -549,8 +549,8 @@ body:has(#view-borrow-select.active) .app-header {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 12px 14px;
-  gap: 12px;
+  padding: 10px 12px;
+  gap: 8px;
   transition: border-color 0.15s, background-color 0.15s, transform 0.15s;
   user-select: none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
@@ -558,7 +558,12 @@ body:has(#view-borrow-select.active) .app-header {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.account-list-item.archived {
+  opacity: 0.72;
+  border-style: dashed;
 }
 
 .account-list-item:hover {
@@ -668,47 +673,165 @@ body:has(#view-borrow-select.active) .app-header {
   text-align: right;
   flex-shrink: 0;
   margin-left: auto;
+  min-width: 0;
 }
 
 .account-balance {
   font-weight: 700;
-  font-size: 0.98rem;
+  font-size: 0.95rem;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.account-item-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+/* 3-dots Menu for Accounts */
+.account-menu-wrapper {
+  position: relative;
   flex-shrink: 0;
 }
 
-.account-move-btn {
-  width: 28px;
-  height: 28px;
+.account-menu-btn {
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  display: flex;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
   transition: all 0.15s ease;
   padding: 0;
 }
 
-.account-move-btn:hover {
-  background: var(--primary);
-  color: #ffffff;
-  border-color: var(--primary);
+.account-menu-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-color);
 }
 
-.account-move-btn i {
-  width: 15px;
-  height: 15px;
+.account-menu-btn:active {
+  transform: scale(0.95);
+}
+
+.account-dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  min-width: 195px;
+  z-index: 1050;
+  padding: 6px 0;
+  display: none;
+  backdrop-filter: blur(10px);
+}
+
+.account-dropdown-menu.open {
+  display: block;
+  animation: menuDropFade 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes menuDropFade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.account-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  user-select: none;
+}
+
+.account-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.account-dropdown-item.danger {
+  color: #f43f5e;
+}
+
+.account-dropdown-item.danger:hover {
+  background: rgba(244, 63, 94, 0.12);
+  color: #fb7185;
+}
+
+.account-dropdown-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+
+.account-archived-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--text-muted);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+/* Transaction List Account Filter Banner */
+.tx-account-filter-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(79, 70, 229, 0.12);
+  border: 1px solid rgba(79, 70, 229, 0.25);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  margin-bottom: 14px;
+  gap: 10px;
+}
+
+.tx-account-filter-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.tx-account-filter-text {
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tx-account-filter-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.tx-account-filter-clear-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.16);
 }
 
 /* Dashboard Grid (Charts & Recent Transactions) */
@@ -825,6 +948,7 @@ body:has(#view-borrow-select.active) .app-header {
   align-items: center;
   gap: 12px;
   min-width: 0;
+  flex: 1;
 }
 
 .tx-icon-box {
@@ -841,6 +965,8 @@ body:has(#view-borrow-select.active) .app-header {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 .tx-title {
@@ -849,6 +975,7 @@ body:has(#view-borrow-select.active) .app-header {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .tx-meta {
@@ -857,6 +984,10 @@ body:has(#view-borrow-select.active) .app-header {
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .tx-meta-dot {
@@ -2141,9 +2272,86 @@ body:has(#view-borrow-select.active) .app-header {
   user-select: none;
 }
 
-#tx-account-dropdown-menu {
+#tx-account-dropdown-menu,
+#tx-to-account-dropdown-menu,
+.tx-account-dropdown-menu {
   border-top: 1px solid var(--border-color);
   padding: 4px 0;
+}
+
+/* Direction Tags for Transfers */
+.tx-transfer-dir-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.tx-transfer-dir-tag.from {
+  background: rgba(244, 63, 94, 0.14);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
+.tx-transfer-dir-tag.to {
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+/* Divider with Swap Button */
+.tx-transfer-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 16px;
+  position: relative;
+  z-index: 2;
+}
+
+.tx-transfer-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.tx-transfer-swap-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.tx-transfer-swap-btn:hover {
+  color: #0ea5e9;
+  border-color: #0ea5e9;
+  transform: rotate(180deg);
+  background: rgba(14, 165, 233, 0.1);
+}
+
+.tx-transfer-swap-btn:active {
+  transform: rotate(180deg) scale(0.92);
+}
+
+#tx-to-account-chevron {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
 }
 
 .tx-account-list {

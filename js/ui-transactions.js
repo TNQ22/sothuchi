@@ -5,6 +5,7 @@
 
 const UITransactions = {
   currentFilterType: 'all',
+  filterAccountId: null,
   formInitialized: false,
   searchKeyword: '',
   selectedCategory: null,
@@ -16,6 +17,17 @@ const UITransactions = {
   async init() {
     this.bindEvents();
     await this.renderQuickCategories();
+  },
+
+  async filterByAccount(accId) {
+    this.filterAccountId = Number(accId);
+    if (window.app) window.app.switchView('transactions');
+    await this.render();
+  },
+
+  async clearAccountFilter() {
+    this.filterAccountId = null;
+    await this.render();
   },
 
   bindEvents() {
@@ -110,6 +122,14 @@ const UITransactions = {
       if (accMenu && accMenu.style.display === 'block') {
         if (!accMenu.contains(e.target) && !accRow?.contains(e.target)) {
           this.closeAccountDropdown();
+        }
+      }
+      // Close to-account dropdown when clicking outside
+      const toAccMenu = document.getElementById('tx-to-account-dropdown-menu');
+      const toAccRow = document.getElementById('tx-to-account-row');
+      if (toAccMenu && toAccMenu.style.display === 'block') {
+        if (!toAccMenu.contains(e.target) && !toAccRow?.contains(e.target)) {
+          this.closeToAccountDropdown();
         }
       }
     });
@@ -226,7 +246,7 @@ const UITransactions = {
       lend: { label: 'Cho vay', icon: 'arrow-up-right', color: '#3b82f6' },
       borrow: { label: 'Đi vay', icon: 'arrow-down-left', color: '#f59e0b' },
       adjust: { label: 'Điều chỉnh số dư', icon: 'scale', color: '#a855f7' },
-      transfer: { label: 'Chuyển tiền', icon: 'arrow-right-left', color: '#0ea5e9' }
+      transfer: { label: 'Chuyển khoản', icon: 'arrow-right-left', color: '#0ea5e9' }
     }[type] || { label: 'Chi tiền', icon: 'arrow-down-circle', color: '#f43f5e' };
 
     const labelEl = document.getElementById('tx-type-current-label');
@@ -489,6 +509,8 @@ const UITransactions = {
     if (haydungContainer) haydungContainer.style.display = 'flex';
     const transferGroup = document.getElementById('tx-transfer-target-group');
     if (transferGroup) transferGroup.style.display = 'none';
+    const fromDirTag = document.getElementById('tx-account-dir-tag');
+    if (fromDirTag) fromDirTag.style.display = 'none';
 
 
     this.updateHeaderTypeDisplay(cat.type);
@@ -517,6 +539,8 @@ const UITransactions = {
     const catCard = document.getElementById('tx-category-section-card');
 
     if (transferGroup) transferGroup.style.display = 'none';
+    const fromDirTag = document.getElementById('tx-account-dir-tag');
+    if (fromDirTag) fromDirTag.style.display = 'none';
 
     if (subaction === 'lend') {
       document.getElementById('tx-type-input').value = 'lend';
@@ -656,7 +680,7 @@ const UITransactions = {
     this.saveDraft();
   },
 
-  selectTransferAction() {
+  async selectTransferAction() {
     document.getElementById('tx-type-input').value = 'transfer';
     document.getElementById('tx-category-id-input').value = '';
     document.getElementById('tx-debt-subaction-input').value = '';
@@ -664,10 +688,11 @@ const UITransactions = {
 
     const typeSelector = document.getElementById('tx-type-selector');
     if (typeSelector) typeSelector.value = 'transfer';
+    this.updateHeaderTypeDisplay('transfer');
     this.updateAmountColor('transfer');
 
     const badge = document.getElementById('tx-type-badge');
-    if (badge) { badge.className = 'badge-type transfer'; badge.textContent = 'Chuyển Tiền'; }
+    if (badge) { badge.className = 'badge-type transfer'; badge.textContent = 'Chuyển khoản'; }
 
     const iconBox = document.getElementById('tx-selected-cat-icon');
     const nameBox = document.getElementById('tx-selected-cat-name');
@@ -677,16 +702,52 @@ const UITransactions = {
       iconBox.style.color = '#0ea5e9';
       iconBox.innerHTML = '<i data-lucide="arrow-right-left"></i>';
     }
-    if (nameBox) nameBox.textContent = 'Chuyển Tiền Giữa Các Ví';
-    if (subBox) subBox.textContent = 'Chuyển khoản nội bộ giữa 2 tài khoản';
+    if (nameBox) nameBox.textContent = 'Chuyển khoản giữa các ví';
+    if (subBox) subBox.textContent = 'Chuyển tiền nội bộ giữa 2 tài khoản';
 
     const catCard = document.getElementById('tx-category-section-card');
     if (catCard) catCard.style.display = 'none';
     const debtGroup = document.getElementById('tx-debt-person-group');
     if (debtGroup) debtGroup.style.display = 'none';
-    const transferGroup = document.getElementById('tx-transfer-target-group');
-    if (transferGroup) transferGroup.style.display = 'flex';
+    const debtPersonRow = document.getElementById('tx-debt-person-row');
+    if (debtPersonRow) debtPersonRow.style.display = 'none';
+    const dueRow = document.getElementById('tx-debt-due-row');
+    if (dueRow) dueRow.style.display = 'none';
+    const haydungContainer = document.getElementById('tx-haydung-container');
+    if (haydungContainer) haydungContainer.style.display = 'none';
 
+    // Show direction tag and transfer target group
+    const fromDirTag = document.getElementById('tx-account-dir-tag');
+    if (fromDirTag) fromDirTag.style.display = 'inline-flex';
+    const transferGroup = document.getElementById('tx-transfer-target-group');
+    if (transferGroup) transferGroup.style.display = 'block';
+
+    // Ensure distinct accounts for source and destination
+    const fromSelect = document.getElementById('tx-account-select');
+    const toSelect = document.getElementById('tx-to-account-select');
+    const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
+
+    // Filter out archived accounts unless they are already selected
+    const availableAccounts = accounts.filter(a => !a.isArchived || String(a.id) === String(activeFromId) || String(a.id) === String(activeToId));
+
+    if (accounts.length > 0) {
+      if (!fromSelect.value) {
+        fromSelect.value = accounts[0].id;
+      }
+      if (!toSelect.value || toSelect.value === fromSelect.value) {
+        const diffAcc = accounts.find(a => String(a.id) !== String(fromSelect.value));
+        if (diffAcc) {
+          toSelect.value = diffAcc.id;
+        } else {
+          toSelect.value = accounts[0].id;
+        }
+      }
+    }
+
+    await this.updateSelectedAccountDisplay();
+    await this.updateSelectedToAccountDisplay();
+    this.refreshAccountDropdownOptions();
     this.closeCategoryPicker();
     if (window.lucide) lucide.createIcons();
     this.saveDraft();
@@ -1151,10 +1212,14 @@ const UITransactions = {
     const fromSelect = document.getElementById('tx-account-select');
     const toSelect = document.getElementById('tx-to-account-select');
     const dropdownList = document.getElementById('tx-account-dropdown-list');
+    const toDropdownList = document.getElementById('tx-to-account-dropdown-list');
     if (!fromSelect) return;
 
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
     accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
+
+    // Filter out archived accounts unless they are already selected
+    const availableAccounts = accounts.filter(a => !a.isArchived || String(a.id) === String(activeFromId) || String(a.id) === String(activeToId));
 
     const iconMap = {
       cash: { icon: 'wallet', color: '#10b981' },
@@ -1166,6 +1231,12 @@ const UITransactions = {
 
     // Default to first account in sorted order if none selected
     const activeFromId = selectedFromId || (accounts.length > 0 ? accounts[0].id : null);
+    let activeToId = selectedToId;
+    if (!activeToId && accounts.length > 1) {
+      activeToId = accounts.find(a => String(a.id) !== String(activeFromId))?.id || accounts[1].id;
+    } else if (!activeToId && accounts.length === 1) {
+      activeToId = accounts[0].id;
+    }
 
     // Populate hidden native select for form reading
     const options = accounts.map(a =>
@@ -1175,11 +1246,11 @@ const UITransactions = {
     if (toSelect) toSelect.innerHTML = options;
 
     if (activeFromId) fromSelect.value = activeFromId;
-    if (selectedToId && toSelect) toSelect.value = selectedToId;
+    if (activeToId && toSelect) toSelect.value = activeToId;
 
-    // Populate custom dropdown list with icons
+    // Populate custom dropdown list for source account
     if (dropdownList) {
-      dropdownList.innerHTML = accounts.map(a => {
+      dropdownList.innerHTML = availableAccounts.map(a => {
         const info = iconMap[a.type] || { icon: 'wallet', color: '#4f46e5' };
         const bal = new Intl.NumberFormat('vi-VN').format(a.balance);
         const isSelected = String(activeFromId) === String(a.id);
@@ -1196,14 +1267,38 @@ const UITransactions = {
             ${isSelected ? '<i data-lucide="check" style="width:16px;height:16px;color:var(--primary);"></i>' : ''}
           </div>`;
       }).join('');
-      if (window.lucide) lucide.createIcons();
     }
 
+    // Populate custom dropdown list for destination account
+    if (toDropdownList) {
+      toDropdownList.innerHTML = availableAccounts.map(a => {
+        const info = iconMap[a.type] || { icon: 'wallet', color: '#4f46e5' };
+        const bal = new Intl.NumberFormat('vi-VN').format(a.balance);
+        const isSelected = String(activeToId) === String(a.id);
+        return `
+          <div class="tx-account-option" data-id="${a.id}" data-name="${a.name}" data-type="${a.type || 'cash'}" onclick="UITransactions.selectToAccount(${a.id}, '${a.name}', '${a.type || 'cash'}')"
+               style="${isSelected ? 'background:rgba(255,255,255,0.08);' : ''}">
+            <div class="tx-info-icon-bubble" style="background:${info.color}22; color:${info.color}; width:32px; height:32px; flex-shrink:0;">
+              <i data-lucide="${info.icon}" style="width:16px;height:16px;"></i>
+            </div>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">${a.name}</div>
+              <div style="font-size:0.78rem; color:var(--text-muted);">${bal}đ</div>
+            </div>
+            ${isSelected ? '<i data-lucide="check" style="width:16px;height:16px;color:var(--primary);"></i>' : ''}
+          </div>`;
+      }).join('');
+    }
+
+    if (window.lucide) lucide.createIcons();
+
     await this.updateSelectedAccountDisplay();
+    await this.updateSelectedToAccountDisplay();
   },
 
   toggleAccountDropdown(e) {
     if (e) e.stopPropagation();
+    this.closeToAccountDropdown();
     const menu = document.getElementById('tx-account-dropdown-menu');
     const chevron = document.getElementById('tx-account-chevron');
     if (!menu) return;
@@ -1219,26 +1314,91 @@ const UITransactions = {
     if (chevron) chevron.style.transform = 'rotate(0deg)';
   },
 
-  selectAccount(id, name, type) {
+  toggleToAccountDropdown(e) {
+    if (e) e.stopPropagation();
+    this.closeAccountDropdown();
+    const menu = document.getElementById('tx-to-account-dropdown-menu');
+    const chevron = document.getElementById('tx-to-account-chevron');
+    if (!menu) return;
+    const isOpen = menu.style.display === 'block';
+    menu.style.display = isOpen ? 'none' : 'block';
+    if (chevron) chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+  },
+
+  closeToAccountDropdown() {
+    const menu = document.getElementById('tx-to-account-dropdown-menu');
+    const chevron = document.getElementById('tx-to-account-chevron');
+    if (menu) menu.style.display = 'none';
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
+  },
+
+  async selectAccount(id, name, type) {
     const fromSelect = document.getElementById('tx-account-select');
     if (fromSelect) fromSelect.value = id;
     this.closeAccountDropdown();
-    this.updateSelectedAccountDisplay();
-
-    // Cập nhật trạng thái hiển thị được chọn trong danh sách dropdown
-    const options = document.querySelectorAll('.tx-account-option');
-    options.forEach(opt => {
-      const isSelected = String(opt.dataset.id) === String(id);
-      opt.style.background = isSelected ? 'rgba(255,255,255,0.08)' : '';
-      const checkIcon = opt.querySelector('[data-lucide="check"], svg.lucide-check');
-      if (isSelected && !checkIcon) {
-        opt.insertAdjacentHTML('beforeend', '<i data-lucide="check" style="width:16px;height:16px;color:var(--primary);"></i>');
-        if (window.lucide) lucide.createIcons();
-      } else if (!isSelected && checkIcon) {
-        checkIcon.remove();
-      }
-    });
+    await this.updateSelectedAccountDisplay();
+    this.refreshAccountDropdownOptions();
     this.saveDraft();
+  },
+
+  async selectToAccount(id, name, type) {
+    const toSelect = document.getElementById('tx-to-account-select');
+    if (toSelect) toSelect.value = id;
+    this.closeToAccountDropdown();
+    await this.updateSelectedToAccountDisplay();
+    this.refreshAccountDropdownOptions();
+    this.saveDraft();
+  },
+
+  async swapTransferAccounts(e) {
+    if (e) e.stopPropagation();
+    const fromSelect = document.getElementById('tx-account-select');
+    const toSelect = document.getElementById('tx-to-account-select');
+    if (!fromSelect || !toSelect) return;
+    const temp = fromSelect.value;
+    fromSelect.value = toSelect.value;
+    toSelect.value = temp;
+
+    await this.updateSelectedAccountDisplay();
+    await this.updateSelectedToAccountDisplay();
+    this.refreshAccountDropdownOptions();
+    this.saveDraft();
+  },
+
+  refreshAccountDropdownOptions() {
+    const fromSelect = document.getElementById('tx-account-select');
+    const toSelect = document.getElementById('tx-to-account-select');
+    const activeFromId = fromSelect ? fromSelect.value : null;
+    const activeToId = toSelect ? toSelect.value : null;
+
+    if (activeFromId) {
+      const fromOpts = document.querySelectorAll('#tx-account-dropdown-list .tx-account-option');
+      fromOpts.forEach(opt => {
+        const isSelected = String(opt.dataset.id) === String(activeFromId);
+        opt.style.background = isSelected ? 'rgba(255,255,255,0.08)' : '';
+        const checkIcon = opt.querySelector('[data-lucide="check"], svg.lucide-check');
+        if (isSelected && !checkIcon) {
+          opt.insertAdjacentHTML('beforeend', '<i data-lucide="check" style="width:16px;height:16px;color:var(--primary);"></i>');
+        } else if (!isSelected && checkIcon) {
+          checkIcon.remove();
+        }
+      });
+    }
+
+    if (activeToId) {
+      const toOpts = document.querySelectorAll('#tx-to-account-dropdown-list .tx-account-option');
+      toOpts.forEach(opt => {
+        const isSelected = String(opt.dataset.id) === String(activeToId);
+        opt.style.background = isSelected ? 'rgba(255,255,255,0.08)' : '';
+        const checkIcon = opt.querySelector('[data-lucide="check"], svg.lucide-check');
+        if (isSelected && !checkIcon) {
+          opt.insertAdjacentHTML('beforeend', '<i data-lucide="check" style="width:16px;height:16px;color:var(--primary);"></i>');
+        } else if (!isSelected && checkIcon) {
+          checkIcon.remove();
+        }
+      });
+    }
+    if (window.lucide) lucide.createIcons();
   },
 
 
@@ -1278,6 +1438,8 @@ const UITransactions = {
     } else if (type === 'income') {
       const defaultCat = await db.categories.where('type').equals('income').first();
       if (defaultCat) await this.selectCategory(defaultCat);
+    } else if (type === 'transfer') {
+      await this.selectTransferAction();
     } else if (type === 'lend') {
       await this.selectDebtAction('lend');
     } else if (type === 'borrow') {
@@ -1303,6 +1465,8 @@ const UITransactions = {
     if (dueRow) dueRow.style.display = 'none';
     const transferGroup = document.getElementById('tx-transfer-target-group');
     if (transferGroup) transferGroup.style.display = 'none';
+    const fromDirTag = document.getElementById('tx-account-dir-tag');
+    if (fromDirTag) fromDirTag.style.display = 'none';
 
     const noteInput = document.getElementById('tx-note-input');
     if (noteInput && !noteInput.value) {
@@ -1477,6 +1641,41 @@ const UITransactions = {
             balanceFormatted: balFormatted
           }));
         } catch (e) {}
+      }
+      if (window.lucide) lucide.createIcons();
+    }
+  },
+
+  async updateSelectedToAccountDisplay() {
+    const toSelect = document.getElementById('tx-to-account-select');
+    const bubble = document.getElementById('tx-to-account-icon-bubble');
+    const label = document.getElementById('tx-to-account-label');
+    const balanceEl = document.getElementById('tx-to-account-balance');
+    if (!toSelect || !bubble) return;
+    const accId = Number(toSelect.value);
+    if (!accId) {
+      if (label) label.textContent = 'Chọn tài khoản nhận';
+      if (balanceEl) balanceEl.textContent = 'Số dư: 0đ';
+      return;
+    }
+    const acc = await db.accounts.get(accId);
+    if (acc) {
+      const iconMap = {
+        cash: { icon: 'wallet', color: '#10b981' },
+        bank: { icon: 'landmark', color: '#4f46e5' },
+        ewallet: { icon: 'smartphone', color: '#ec4899' },
+        credit: { icon: 'credit-card', color: '#f59e0b' },
+        saving: { icon: 'piggy-bank', color: '#0ea5e9' }
+      };
+      const info = iconMap[acc.type] || { icon: acc.icon || 'landmark', color: acc.color || '#4f46e5' };
+      bubble.innerHTML = `<i data-lucide="${info.icon}" style="width: 18px; height: 18px;"></i>`;
+      bubble.style.background = `${info.color}22`;
+      bubble.style.color = info.color;
+      if (label) label.textContent = acc.name;
+      if (balanceEl) {
+        const balFormatted = new Intl.NumberFormat('vi-VN').format(acc.balance);
+        balanceEl.textContent = `Số dư: ${balFormatted}đ`;
+        balanceEl.style.color = acc.balance < 0 ? 'var(--expense)' : 'var(--text-muted)';
       }
       if (window.lucide) lucide.createIcons();
     }
@@ -1834,12 +2033,21 @@ const UITransactions = {
     await this.populateAccounts();
     await this.updateSelectedAccountDisplay();
 
-    // Default to top category for defaultType
-    const defaultCat = await db.categories.where('type').equals(defaultType).first();
-    if (defaultCat) {
-      await this.selectCategory(defaultCat);
+    if (defaultType === 'transfer') {
+      await this.selectTransferAction();
     } else {
-      await this.renderQuickCategories(defaultType);
+      const transferGroup = document.getElementById('tx-transfer-target-group');
+      if (transferGroup) transferGroup.style.display = 'none';
+      const fromDirTag = document.getElementById('tx-account-dir-tag');
+      if (fromDirTag) fromDirTag.style.display = 'none';
+
+      // Default to top category for defaultType
+      const defaultCat = await db.categories.where('type').equals(defaultType).first();
+      if (defaultCat) {
+        await this.selectCategory(defaultCat);
+      } else {
+        await this.renderQuickCategories(defaultType);
+      }
     }
 
     // Chế độ thêm mới: ẩn nút Xóa
@@ -1895,6 +2103,8 @@ const UITransactions = {
   closeModal() {
     this.closeKeypad();
     this.closeTypeDropdown();
+    this.closeAccountDropdown();
+    this.closeToAccountDropdown();
     this.closeCategoryPicker();
     // Trở về view trước đó (transactions, dashboard, ...)
     if (window.app && window.app.currentView === 'new-transaction') {
@@ -2150,6 +2360,35 @@ const UITransactions = {
 
     let txs = await db.transactions.where('isDeleted').equals(0).toArray();
 
+    // Account filter
+    if (this.filterAccountId) {
+      txs = txs.filter(t => t.accountId === this.filterAccountId || t.toAccountId === this.filterAccountId);
+    }
+
+    // Render account filter banner
+    const filterBanner = document.getElementById('tx-active-account-filter');
+    if (filterBanner) {
+      if (this.filterAccountId) {
+        const acc = await db.accounts.get(this.filterAccountId);
+        const accName = acc ? acc.name : ('Ví #' + this.filterAccountId);
+        filterBanner.style.display = 'block';
+        filterBanner.innerHTML = `
+          <div class="tx-account-filter-banner">
+            <div class="tx-account-filter-content">
+              <i data-lucide="wallet" style="width: 16px; height: 16px; color: var(--primary); flex-shrink: 0;"></i>
+              <div class="tx-account-filter-text">Lịch sử thu chi ví: <strong>${escapeHTML(accName)}</strong></div>
+            </div>
+            <button type="button" class="tx-account-filter-clear-btn" onclick="UITransactions.clearAccountFilter()" title="Xem tất cả ví">
+              <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+            </button>
+          </div>
+        `;
+      } else {
+        filterBanner.style.display = 'none';
+        filterBanner.innerHTML = '';
+      }
+    }
+
     // Type filter
     if (this.currentFilterType !== 'all') {
       txs = txs.filter(t => t.type === this.currentFilterType);
@@ -2221,7 +2460,7 @@ const UITransactions = {
 
         // Tiêu đề: ưu tiên ghi chú, fallback về tên danh mục
         const hasNote = t.note && t.note.trim();
-        let title = hasNote ? t.note : (cat ? cat.name : 'Giao dịch');
+        let title = hasNote ? t.note : (t.type === 'transfer' ? 'Chuyển khoản' : (cat ? cat.name : 'Giao dịch'));
         let iconName = 'arrow-right-left';
         let iconBg = 'var(--transfer-bg)';
         let iconColor = 'var(--transfer)';
@@ -2330,9 +2569,10 @@ const UITransactions = {
 
     await this.populateAccounts(tx.accountId, tx.toAccountId);
     await this.updateSelectedAccountDisplay();
+    await this.updateSelectedToAccountDisplay();
 
     if (tx.type === 'transfer') {
-      this.selectTransferAction();
+      await this.selectTransferAction();
     } else if (tx.categoryId) {
       const cat = await db.categories.get(tx.categoryId);
       if (cat) this.selectCategory(cat);

@@ -43,7 +43,7 @@ const DEFAULT_CATEGORIES = [
 // Default Seed Accounts
 const DEFAULT_ACCOUNTS = [
   { name: 'Tiền mặt', type: 'cash', balance: 1500000, initialBalance: 1500000, icon: 'wallet', color: '#10b981' },
-  { name: 'Tài khoản Ngân hàng', type: 'bank', balance: 12500000, initialBalance: 12500000, icon: 'landmark', color: '#4f46e5' },
+  { name: 'Ngân hàng', type: 'bank', balance: 12500000, initialBalance: 12500000, icon: 'landmark', color: '#4f46e5' },
   { name: 'Ví MoMo / ZaloPay', type: 'ewallet', balance: 500000, initialBalance: 500000, icon: 'smartphone', color: '#ec4899' }
 ];
 
@@ -69,6 +69,12 @@ async function initDatabase() {
   if (accountCount === 0) {
     const now = Date.now();
     await db.accounts.bulkAdd(DEFAULT_ACCOUNTS.map(a => ({ ...a, isDeleted: 0, updatedAt: now })));
+  } else {
+    // Auto-migrate account name from 'Tài khoản Ngân hàng' to 'Ngân hàng'
+    const oldBankAcc = await db.accounts.where('name').equals('Tài khoản Ngân hàng').first();
+    if (oldBankAcc) {
+      await db.accounts.update(oldBankAcc.id, { name: 'Ngân hàng', updatedAt: Date.now() });
+    }
   }
 
   // Seed default settings if empty
