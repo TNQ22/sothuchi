@@ -15,33 +15,34 @@ const UIAccounts = {
   /* Danh mục Ngân hàng & Ví điện tử phổ biến tại Việt Nam */
   PROVIDERS: [
     // --- NGÂN HÀNG (BANKS) ---
-    { code: 'VCB', name: 'Vietcombank', shortName: 'VCB', fullName: 'Ngoại Thương Việt Nam', type: 'bank', color: '#005a3c', logoUrl: 'https://api.vietqr.io/img/VCB.png' },
-    { code: 'TCB', name: 'Techcombank', shortName: 'TCB', fullName: 'Kỹ Thương Việt Nam', type: 'bank', color: '#e11b22', logoUrl: 'https://api.vietqr.io/img/TCB.png' },
-    { code: 'MB', name: 'MB Bank', shortName: 'MB', fullName: 'Quân Đội', type: 'bank', color: '#002d72', logoUrl: 'https://api.vietqr.io/img/MB.png' },
-    { code: 'BIDV', name: 'BIDV', shortName: 'BIDV', fullName: 'Đầu tư & Phát triển VN', type: 'bank', color: '#0054a6', logoUrl: 'https://api.vietqr.io/img/BIDV.png' },
-    { code: 'CTG', name: 'VietinBank', shortName: 'VietinBank', fullName: 'Công Thương Việt Nam', type: 'bank', color: '#00549a', logoUrl: 'https://api.vietqr.io/img/ICB.png' },
-    { code: 'VPB', name: 'VPBank', shortName: 'VPBank', fullName: 'Việt Nam Thịnh Vượng', type: 'bank', color: '#009140', logoUrl: 'https://api.vietqr.io/img/VPB.png' },
-    { code: 'ACB', name: 'ACB', shortName: 'ACB', fullName: 'Á Châu', type: 'bank', color: '#0061a8', logoUrl: 'https://api.vietqr.io/img/ACB.png' },
-    { code: 'TPB', name: 'TPBank', shortName: 'TPBank', fullName: 'Tiên Phong', type: 'bank', color: '#5c2483', logoUrl: 'https://api.vietqr.io/img/TPB.png' },
-    { code: 'STB', name: 'Sacombank', shortName: 'STB', fullName: 'Sài Gòn Thương Tín', type: 'bank', color: '#004c97', logoUrl: 'https://api.vietqr.io/img/STB.png' },
-    { code: 'VIB', name: 'VIB', shortName: 'VIB', fullName: 'Quốc Tế', type: 'bank', color: '#004990', logoUrl: 'https://api.vietqr.io/img/VIB.png' },
-    { code: 'HDB', name: 'HDBank', shortName: 'HDB', fullName: 'Phát triển TP.HCM', type: 'bank', color: '#da251d', logoUrl: 'https://api.vietqr.io/img/HDB.png' },
-    { code: 'SHB', name: 'SHB', shortName: 'SHB', fullName: 'Sài Gòn - Hà Nội', type: 'bank', color: '#ee6f2d', logoUrl: 'https://api.vietqr.io/img/SHB.png' },
-    { code: 'MSB', name: 'MSB', shortName: 'MSB', fullName: 'Hàng Hải Việt Nam', type: 'bank', color: '#ee3124', logoUrl: 'https://api.vietqr.io/img/MSB.png' },
-    { code: 'OCB', name: 'OCB', shortName: 'OCB', fullName: 'Phương Đông', type: 'bank', color: '#008852', logoUrl: 'https://api.vietqr.io/img/OCB.png' },
-    { code: 'SEAB', name: 'SeABank', shortName: 'SeABank', fullName: 'Đông Nam Á', type: 'bank', color: '#cf102d', logoUrl: 'https://api.vietqr.io/img/SEAB.png' },
-    { code: 'LPB', name: 'LPBank', shortName: 'LPBank', fullName: 'Bưu điện Liên Việt', type: 'bank', color: '#e37424', logoUrl: 'https://api.vietqr.io/img/LPB.png' },
-    { code: 'EIB', name: 'Eximbank', shortName: 'Eximbank', fullName: 'Xuất Nhập Khẩu VN', type: 'bank', color: '#0068b3', logoUrl: 'https://api.vietqr.io/img/EIB.png' },
-    { code: 'NAB', name: 'Nam A Bank', shortName: 'Nam A Bank', fullName: 'Nam Á', type: 'bank', color: '#f0ab00', logoUrl: 'https://api.vietqr.io/img/NAB.png' },
-    { code: 'TIMO', name: 'Timo', shortName: 'Timo', fullName: 'Ngân hàng số Timo', type: 'bank', color: '#6b38c2', logoUrl: 'https://api.vietqr.io/img/TIMO.png' },
-    { code: 'CAKE', name: 'Cake by VPBank', shortName: 'Cake', fullName: 'Ngân hàng số Cake', type: 'bank', color: '#ff007a', logoUrl: 'https://api.vietqr.io/img/CAKE.png' },
+    { code: 'VCB', name: 'Vietcombank', shortName: 'VCB', fullName: 'Ngoại Thương Việt Nam', type: 'bank', color: '#005a3c', logoUrl: './assets/logos/vcb.png' },
+    { code: 'TCB', name: 'Techcombank', shortName: 'TCB', fullName: 'Kỹ Thương Việt Nam', type: 'bank', color: '#e11b22', logoUrl: './assets/logos/tcb.png' },
+    { code: 'MB', name: 'MB Bank', shortName: 'MB', fullName: 'Quân Đội', type: 'bank', color: '#002d72', logoUrl: './assets/logos/mb.png' },
+    { code: 'BIDV', name: 'BIDV', shortName: 'BIDV', fullName: 'Đầu tư & Phát triển VN', type: 'bank', color: '#0054a6', logoUrl: './assets/logos/bidv.png' },
+    { code: 'CTG', name: 'VietinBank', shortName: 'VietinBank', fullName: 'Công Thương Việt Nam', type: 'bank', color: '#00549a', logoUrl: './assets/logos/ctg.png' },
+    { code: 'VPB', name: 'VPBank', shortName: 'VPBank', fullName: 'Việt Nam Thịnh Vượng', type: 'bank', color: '#009140', logoUrl: './assets/logos/vpb.png' },
+    { code: 'ACB', name: 'ACB', shortName: 'ACB', fullName: 'Á Châu', type: 'bank', color: '#0061a8', logoUrl: './assets/logos/acb.png' },
+    { code: 'TPB', name: 'TPBank', shortName: 'TPBank', fullName: 'Tiên Phong', type: 'bank', color: '#5c2483', logoUrl: './assets/logos/tpb.png' },
+    { code: 'VBA', altCodes: ['VARB'], name: 'Agribank', shortName: 'Agribank', fullName: 'Nông nghiệp & PT Nông thôn VN', type: 'bank', color: '#800000', logoUrl: './assets/logos/varb.png' },
+    { code: 'STB', name: 'Sacombank', shortName: 'STB', fullName: 'Sài Gòn Thương Tín', type: 'bank', color: '#004c97', logoUrl: './assets/logos/stb.png' },
+    { code: 'VIB', name: 'VIB', shortName: 'VIB', fullName: 'Quốc Tế', type: 'bank', color: '#004990', logoUrl: './assets/logos/vib.png' },
+    { code: 'HDB', name: 'HDBank', shortName: 'HDB', fullName: 'Phát triển TP.HCM', type: 'bank', color: '#da251d', logoUrl: './assets/logos/hdb.png' },
+    { code: 'SHB', name: 'SHB', shortName: 'SHB', fullName: 'Sài Gòn - Hà Nội', type: 'bank', color: '#ee6f2d', logoUrl: './assets/logos/shb.png' },
+    { code: 'MSB', name: 'MSB', shortName: 'MSB', fullName: 'Hàng Hải Việt Nam', type: 'bank', color: '#ee3124', logoUrl: './assets/logos/msb.png' },
+    { code: 'OCB', name: 'OCB', shortName: 'OCB', fullName: 'Phương Đông', type: 'bank', color: '#008852', logoUrl: './assets/logos/ocb.png' },
+    { code: 'SEAB', name: 'SeABank', shortName: 'SeABank', fullName: 'Đông Nam Á', type: 'bank', color: '#cf102d', logoUrl: './assets/logos/seab.png' },
+    { code: 'LPB', name: 'LPBank', shortName: 'LPBank', fullName: 'Bưu điện Liên Việt', type: 'bank', color: '#e37424', logoUrl: './assets/logos/lpb.png' },
+    { code: 'EIB', name: 'Eximbank', shortName: 'Eximbank', fullName: 'Xuất Nhập Khẩu VN', type: 'bank', color: '#0068b3', logoUrl: './assets/logos/eib.png' },
+    { code: 'NAB', name: 'Nam A Bank', shortName: 'Nam A Bank', fullName: 'Nam Á', type: 'bank', color: '#f0ab00', logoUrl: './assets/logos/nab.png' },
+    { code: 'TIMO', name: 'Timo', shortName: 'Timo', fullName: 'Ngân hàng số Timo', type: 'bank', color: '#6b38c2', logoUrl: './assets/logos/timo.png' },
+    { code: 'CAKE', name: 'Cake by VPBank', shortName: 'Cake', fullName: 'Ngân hàng số Cake', type: 'bank', color: '#ff007a', logoUrl: './assets/logos/cake.png' },
 
     // --- VÍ ĐIỆN TỬ (E-WALLETS) ---
-    { code: 'MOMO', name: 'MoMo', shortName: 'MoMo', fullName: 'Ví điện tử MoMo', type: 'ewallet', color: '#c40068', badgeText: 'MoMo' },
-    { code: 'ZALOPAY', name: 'ZaloPay', shortName: 'ZaloPay', fullName: 'Ví điện tử ZaloPay', type: 'ewallet', color: '#008fe5', badgeText: 'ZaloPay' },
-    { code: 'VIETTELPAY', name: 'Viettel Money', shortName: 'Viettel', fullName: 'Viettel Money / ViettelPay', type: 'ewallet', color: '#e60000', badgeText: 'Viettel' },
-    { code: 'VNPAY', name: 'VNPay', shortName: 'VNPay', fullName: 'Ví điện tử VNPAY', type: 'ewallet', color: '#005baa', badgeText: 'VNPay' },
-    { code: 'SHOPEEPAY', name: 'ShopeePay', shortName: 'Shopee', fullName: 'Ví điện tử ShopeePay', type: 'ewallet', color: '#f53d2d', badgeText: 'Shopee' },
+    { code: 'MOMO', name: 'MoMo', shortName: 'MoMo', fullName: 'Ví điện tử MoMo', type: 'ewallet', color: '#c40068', logoUrl: './assets/logos/momo.png' },
+    { code: 'ZALOPAY', name: 'ZaloPay', shortName: 'ZaloPay', fullName: 'Ví điện tử ZaloPay', type: 'ewallet', color: '#008fe5', logoUrl: './assets/logos/zalopay.png' },
+    { code: 'VIETTELPAY', name: 'Viettel Money', shortName: 'Viettel', fullName: 'Viettel Money / ViettelPay', type: 'ewallet', color: '#e60000', logoUrl: './assets/logos/viettelmoney.png' },
+    { code: 'VNPAY', name: 'VNPay', shortName: 'VNPay', fullName: 'Ví điện tử VNPAY', type: 'ewallet', color: '#005baa', logoUrl: './assets/logos/vnpay.png' },
+    { code: 'SHOPEEPAY', name: 'ShopeePay', shortName: 'Shopee', fullName: 'Ví điện tử ShopeePay', type: 'ewallet', color: '#f53d2d', logoUrl: './assets/logos/shopeepay.png' },
 
     // --- MẶC ĐỊNH / KHÁC (GENERIC) ---
     { code: 'CASH', name: 'Tiền mặt', shortName: 'Tiền mặt', fullName: 'Ví tiền mặt', type: 'cash', color: '#10b981', icon: 'wallet' },
@@ -55,9 +56,9 @@ const UIAccounts = {
     if (!item) return '';
     let p = null;
     if (typeof item === 'string') {
-      p = this.PROVIDERS.find(x => x.code === item);
+      p = this.PROVIDERS.find(x => x.code === item || (x.altCodes && x.altCodes.includes(item)));
     } else if (item.bankCode) {
-      p = this.PROVIDERS.find(x => x.code === item.bankCode);
+      p = this.PROVIDERS.find(x => x.code === item.bankCode || (x.altCodes && x.altCodes.includes(item.bankCode)));
     }
     
     // Auto-detect provider by account name if not explicitly set
@@ -76,7 +77,7 @@ const UIAccounts = {
     if (p && p.logoUrl) {
       return `
         <div class="bank-logo-badge" style="width:${size}px; height:${size}px; border-radius:${radius}px; background:#ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.08); display:inline-flex; align-items:center; justify-content:center; overflow:hidden; position:relative; flex-shrink:0; box-sizing:border-box;">
-          <img src="${p.logoUrl}" alt="${escapeHTML(p.name)}" loading="lazy" style="width:100%; height:100%; object-fit:contain; padding:3px 5px; box-sizing:border-box;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+          <img src="${p.logoUrl}" alt="${escapeHTML(p.name)}" loading="lazy" style="width:100%; height:100%; object-fit:contain; padding:1px; box-sizing:border-box;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
           <div style="display:none; width:100%; height:100%; background:${color}; color:#ffffff; font-weight:800; font-size:${size >= 36 ? '0.68rem' : '0.58rem'}; align-items:center; justify-content:center; text-align:center; padding:1px; line-height:1;">
             ${escapeHTML(badgeText.slice(0, 4))}
           </div>

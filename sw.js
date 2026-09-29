@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v1.9.25';
+const CACHE_NAME = 'sothuchi-pwa-v1.9.26';
 
 const PRECACHE_ASSETS = [
   './',
@@ -26,7 +26,33 @@ const PRECACHE_ASSETS = [
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
   './assets/icons/icon-maskable.png',
-  './assets/icons/icon.svg'
+  './assets/icons/icon.svg',
+  './assets/logos/acb.png',
+  './assets/logos/bidv.png',
+  './assets/logos/cake.png',
+  './assets/logos/ctg.png',
+  './assets/logos/eib.png',
+  './assets/logos/hdb.png',
+  './assets/logos/lpb.png',
+  './assets/logos/mb.png',
+  './assets/logos/momo.png',
+  './assets/logos/msb.png',
+  './assets/logos/nab.png',
+  './assets/logos/ocb.png',
+  './assets/logos/seab.png',
+  './assets/logos/shb.png',
+  './assets/logos/shopeepay.png',
+  './assets/logos/stb.png',
+  './assets/logos/tcb.png',
+  './assets/logos/timo.png',
+  './assets/logos/tpb.png',
+  './assets/logos/varb.png',
+  './assets/logos/vcb.png',
+  './assets/logos/vib.png',
+  './assets/logos/viettelmoney.png',
+  './assets/logos/vnpay.png',
+  './assets/logos/vpb.png',
+  './assets/logos/zalopay.png'
 ];
 
 // Install Event: Precache static assets immediately
