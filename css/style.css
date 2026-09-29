@@ -2648,7 +2648,7 @@ body:has(#view-account-form.active) .app-header {
   gap: 4px;
 }
 #keypad-live-val {
-  font-size: 2.2rem;
+  font-size: 1.9rem;
   font-weight: 700;
   color: var(--primary);
   letter-spacing: -0.02em;
@@ -3801,12 +3801,12 @@ body:has(#view-account-form.active) .app-header {
 }
 
 .acc-amount-val {
-  font-size: 2.75rem;
+  font-size: 2.1rem;
   font-weight: 800;
   color: var(--primary);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  line-height: 1.1;
+  line-height: 1.15;
   display: inline-block;
   max-width: 100%;
   overflow: hidden;
@@ -3815,7 +3815,7 @@ body:has(#view-account-form.active) .app-header {
 }
 
 .acc-amount-cur {
-  font-size: 1.6rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--text-muted);
   margin-left: 6px;
@@ -3893,4 +3893,121 @@ body:has(#view-account-form.active) .app-header {
 
 .acc-exclude-info-row {
   transition: background 0.15s ease;
+}
+
+/* ==================== BANK & E-WALLET LOGOS ==================== */
+.bank-logo-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.bank-logo-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.bank-provider-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  background: var(--bg-hover);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.bank-provider-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.bank-provider-tab-btn {
+  flex: 1;
+  min-width: 75px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.bank-provider-tab-btn.active {
+  background: var(--bg-card);
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.bank-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+@media (min-width: 600px) {
+  .bank-provider-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.bank-provider-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+}
+
+.bank-provider-card:hover {
+  border-color: var(--primary);
+  background: var(--bg-hover);
+}
+
+.bank-provider-card.selected {
+  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.bank-provider-card-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.bank-provider-card-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bank-provider-card-sub {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

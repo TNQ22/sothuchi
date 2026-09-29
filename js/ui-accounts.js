@@ -9,6 +9,95 @@ const UIAccounts = {
   currentActionAccountId: null,
   pendingStatementImport: null,
   isArchivedExpanded: false,
+  currentProviderTab: 'all',
+  currentProviderQuery: '',
+
+  /* Danh mục Ngân hàng & Ví điện tử phổ biến tại Việt Nam */
+  PROVIDERS: [
+    // --- NGÂN HÀNG (BANKS) ---
+    { code: 'VCB', name: 'Vietcombank', shortName: 'VCB', fullName: 'Ngoại Thương Việt Nam', type: 'bank', color: '#005a3c', logoUrl: 'https://api.vietqr.io/img/VCB.png' },
+    { code: 'TCB', name: 'Techcombank', shortName: 'TCB', fullName: 'Kỹ Thương Việt Nam', type: 'bank', color: '#e11b22', logoUrl: 'https://api.vietqr.io/img/TCB.png' },
+    { code: 'MB', name: 'MB Bank', shortName: 'MB', fullName: 'Quân Đội', type: 'bank', color: '#002d72', logoUrl: 'https://api.vietqr.io/img/MB.png' },
+    { code: 'BIDV', name: 'BIDV', shortName: 'BIDV', fullName: 'Đầu tư & Phát triển VN', type: 'bank', color: '#0054a6', logoUrl: 'https://api.vietqr.io/img/BIDV.png' },
+    { code: 'CTG', name: 'VietinBank', shortName: 'VietinBank', fullName: 'Công Thương Việt Nam', type: 'bank', color: '#00549a', logoUrl: 'https://api.vietqr.io/img/ICB.png' },
+    { code: 'VPB', name: 'VPBank', shortName: 'VPBank', fullName: 'Việt Nam Thịnh Vượng', type: 'bank', color: '#009140', logoUrl: 'https://api.vietqr.io/img/VPB.png' },
+    { code: 'ACB', name: 'ACB', shortName: 'ACB', fullName: 'Á Châu', type: 'bank', color: '#0061a8', logoUrl: 'https://api.vietqr.io/img/ACB.png' },
+    { code: 'TPB', name: 'TPBank', shortName: 'TPBank', fullName: 'Tiên Phong', type: 'bank', color: '#5c2483', logoUrl: 'https://api.vietqr.io/img/TPB.png' },
+    { code: 'STB', name: 'Sacombank', shortName: 'STB', fullName: 'Sài Gòn Thương Tín', type: 'bank', color: '#004c97', logoUrl: 'https://api.vietqr.io/img/STB.png' },
+    { code: 'VIB', name: 'VIB', shortName: 'VIB', fullName: 'Quốc Tế', type: 'bank', color: '#004990', logoUrl: 'https://api.vietqr.io/img/VIB.png' },
+    { code: 'HDB', name: 'HDBank', shortName: 'HDB', fullName: 'Phát triển TP.HCM', type: 'bank', color: '#da251d', logoUrl: 'https://api.vietqr.io/img/HDB.png' },
+    { code: 'SHB', name: 'SHB', shortName: 'SHB', fullName: 'Sài Gòn - Hà Nội', type: 'bank', color: '#ee6f2d', logoUrl: 'https://api.vietqr.io/img/SHB.png' },
+    { code: 'MSB', name: 'MSB', shortName: 'MSB', fullName: 'Hàng Hải Việt Nam', type: 'bank', color: '#ee3124', logoUrl: 'https://api.vietqr.io/img/MSB.png' },
+    { code: 'OCB', name: 'OCB', shortName: 'OCB', fullName: 'Phương Đông', type: 'bank', color: '#008852', logoUrl: 'https://api.vietqr.io/img/OCB.png' },
+    { code: 'SEAB', name: 'SeABank', shortName: 'SeABank', fullName: 'Đông Nam Á', type: 'bank', color: '#cf102d', logoUrl: 'https://api.vietqr.io/img/SEAB.png' },
+    { code: 'LPB', name: 'LPBank', shortName: 'LPBank', fullName: 'Bưu điện Liên Việt', type: 'bank', color: '#e37424', logoUrl: 'https://api.vietqr.io/img/LPB.png' },
+    { code: 'EIB', name: 'Eximbank', shortName: 'Eximbank', fullName: 'Xuất Nhập Khẩu VN', type: 'bank', color: '#0068b3', logoUrl: 'https://api.vietqr.io/img/EIB.png' },
+    { code: 'NAB', name: 'Nam A Bank', shortName: 'Nam A Bank', fullName: 'Nam Á', type: 'bank', color: '#f0ab00', logoUrl: 'https://api.vietqr.io/img/NAB.png' },
+    { code: 'TIMO', name: 'Timo', shortName: 'Timo', fullName: 'Ngân hàng số Timo', type: 'bank', color: '#6b38c2', logoUrl: 'https://api.vietqr.io/img/TIMO.png' },
+    { code: 'CAKE', name: 'Cake by VPBank', shortName: 'Cake', fullName: 'Ngân hàng số Cake', type: 'bank', color: '#ff007a', logoUrl: 'https://api.vietqr.io/img/CAKE.png' },
+
+    // --- VÍ ĐIỆN TỬ (E-WALLETS) ---
+    { code: 'MOMO', name: 'MoMo', shortName: 'MoMo', fullName: 'Ví điện tử MoMo', type: 'ewallet', color: '#c40068', badgeText: 'MoMo' },
+    { code: 'ZALOPAY', name: 'ZaloPay', shortName: 'ZaloPay', fullName: 'Ví điện tử ZaloPay', type: 'ewallet', color: '#008fe5', badgeText: 'ZaloPay' },
+    { code: 'VIETTELPAY', name: 'Viettel Money', shortName: 'Viettel', fullName: 'Viettel Money / ViettelPay', type: 'ewallet', color: '#e60000', badgeText: 'Viettel' },
+    { code: 'VNPAY', name: 'VNPay', shortName: 'VNPay', fullName: 'Ví điện tử VNPAY', type: 'ewallet', color: '#005baa', badgeText: 'VNPay' },
+    { code: 'SHOPEEPAY', name: 'ShopeePay', shortName: 'Shopee', fullName: 'Ví điện tử ShopeePay', type: 'ewallet', color: '#f53d2d', badgeText: 'Shopee' },
+
+    // --- MẶC ĐỊNH / KHÁC (GENERIC) ---
+    { code: 'CASH', name: 'Tiền mặt', shortName: 'Tiền mặt', fullName: 'Ví tiền mặt', type: 'cash', color: '#10b981', icon: 'wallet' },
+    { code: 'CREDIT', name: 'Thẻ tín dụng', shortName: 'Tín dụng', fullName: 'Thẻ tín dụng / Credit Card', type: 'credit', color: '#f59e0b', icon: 'credit-card' },
+    { code: 'SAVING', name: 'Sổ tiết kiệm', shortName: 'Tiết kiệm', fullName: 'Sổ tiết kiệm / Tích lũy', type: 'saving', color: '#0ea5e9', icon: 'piggy-bank' },
+    { code: 'GENERIC_BANK', name: 'Ngân hàng khác', shortName: 'Ngân hàng', fullName: 'Tài khoản ngân hàng', type: 'bank', color: '#4f46e5', icon: 'landmark' },
+    { code: 'GENERIC_EWALLET', name: 'Ví điện tử khác', shortName: 'Ví điện tử', fullName: 'Ví điện tử khác', type: 'ewallet', color: '#ec4899', icon: 'smartphone' }
+  ],
+
+  renderLogoBadge(item, size = 36) {
+    if (!item) return '';
+    let p = null;
+    if (typeof item === 'string') {
+      p = this.PROVIDERS.find(x => x.code === item);
+    } else if (item.bankCode) {
+      p = this.PROVIDERS.find(x => x.code === item.bankCode);
+    }
+    
+    // Auto-detect provider by account name if not explicitly set
+    if (!p && item.name && typeof item === 'object') {
+      const lower = item.name.toLowerCase();
+      p = this.PROVIDERS.find(x => lower.includes(x.name.toLowerCase()) || lower.includes(x.shortName.toLowerCase()));
+    }
+
+    const color = p?.color || item.color || '#4f46e5';
+    const bg = `${color}22`;
+    const badgeText = p?.badgeText || p?.shortName || p?.code || '';
+    const icon = p?.icon || item.icon || (item.type === 'bank' ? 'landmark' : (item.type === 'ewallet' ? 'smartphone' : (item.type === 'credit' ? 'credit-card' : (item.type === 'saving' ? 'piggy-bank' : 'wallet'))));
+
+    const radius = Math.round(size * 0.28);
+
+    if (p && p.logoUrl) {
+      return `
+        <div class="bank-logo-badge" style="width:${size}px; height:${size}px; border-radius:${radius}px; background:#ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.06); display:inline-flex; align-items:center; justify-content:center; overflow:hidden; position:relative; flex-shrink:0;">
+          <img src="${p.logoUrl}" alt="${escapeHTML(p.name)}" loading="lazy" style="width:100%; height:100%; object-fit:contain; padding:2px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+          <div style="display:none; width:100%; height:100%; background:${color}; color:#ffffff; font-weight:800; font-size:${size >= 36 ? '0.68rem' : '0.58rem'}; align-items:center; justify-content:center; text-align:center; padding:1px; line-height:1;">
+            ${escapeHTML(badgeText.slice(0, 4))}
+          </div>
+        </div>
+      `;
+    }
+
+    if (p && p.badgeText) {
+      return `
+        <div class="bank-logo-badge" style="width:${size}px; height:${size}px; border-radius:${radius}px; background:${color}; color:#ffffff; font-weight:800; font-size:${size >= 36 ? '0.68rem' : '0.58rem'}; display:inline-flex; align-items:center; justify-content:center; text-align:center; padding:2px; line-height:1; flex-shrink:0; box-shadow: 0 1px 3px rgba(0,0,0,0.12);">
+          ${escapeHTML(p.badgeText)}
+        </div>
+      `;
+    }
+
+    return `
+      <div class="bank-logo-badge" style="width:${size}px; height:${size}px; border-radius:${radius}px; background:${bg}; color:${color}; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <i data-lucide="${icon}" style="width:${Math.round(size * 0.52)}px; height:${Math.round(size * 0.52)}px;"></i>
+      </div>
+    `;
+  },
 
   init() {
     this.bindEvents();
@@ -43,6 +132,135 @@ const UIAccounts = {
     }
   },
 
+  /* ==================== MODAL CHỌN NGÂN HÀNG & VÍ ĐIỆN TỬ ==================== */
+  openProviderModal() {
+    const modal = document.getElementById('modal-bank-provider');
+    if (!modal) return;
+    this.currentProviderTab = 'all';
+    this.currentProviderQuery = '';
+
+    const searchInput = document.getElementById('provider-search-input');
+    if (searchInput) searchInput.value = '';
+
+    // Reset tab buttons
+    document.querySelectorAll('.bank-provider-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === 'all');
+    });
+
+    this.renderProviderGrid();
+    modal.classList.add('open');
+    if (window.app?.syncClearableInputs) window.app.syncClearableInputs();
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeProviderModal() {
+    const modal = document.getElementById('modal-bank-provider');
+    if (modal) modal.classList.remove('open');
+  },
+
+  switchProviderTab(tab) {
+    this.currentProviderTab = tab;
+    document.querySelectorAll('.bank-provider-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    this.renderProviderGrid();
+  },
+
+  handleProviderSearch(query) {
+    this.currentProviderQuery = (query || '').trim().toLowerCase();
+    this.renderProviderGrid();
+  },
+
+  renderProviderGrid() {
+    const container = document.getElementById('bank-provider-grid');
+    if (!container) return;
+
+    const currentBankCode = document.getElementById('acc-bank-code-input')?.value || '';
+    const q = this.currentProviderQuery;
+    const tab = this.currentProviderTab;
+
+    let filtered = this.PROVIDERS.filter(p => {
+      // Filter by tab
+      if (tab === 'bank' && p.type !== 'bank') return false;
+      if (tab === 'ewallet' && p.type !== 'ewallet') return false;
+      if (tab === 'generic' && !['cash', 'credit', 'saving'].includes(p.type) && !p.code.startsWith('GENERIC_')) return false;
+
+      // Filter by search query
+      if (q) {
+        const matchName = p.name.toLowerCase().includes(q);
+        const matchShort = p.shortName.toLowerCase().includes(q);
+        const matchCode = p.code.toLowerCase().includes(q);
+        const matchFull = (p.fullName || '').toLowerCase().includes(q);
+        if (!matchName && !matchShort && !matchCode && !matchFull) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 28px 12px; color: var(--text-muted);">
+          <i data-lucide="search-x" style="width: 32px; height: 32px; margin: 0 auto 8px; opacity: 0.5;"></i>
+          <p style="font-size: 0.88rem;">Không tìm thấy ngân hàng hoặc ví phù hợp</p>
+        </div>
+      `;
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    container.innerHTML = filtered.map(p => {
+      const isSelected = currentBankCode === p.code;
+      const typeLabel = p.type === 'bank' ? 'Ngân hàng' : (p.type === 'ewallet' ? 'Ví điện tử' : 'Mặc định');
+      return `
+        <div class="bank-provider-card ${isSelected ? 'selected' : ''}" onclick="UIAccounts.selectProvider('${p.code}')">
+          ${this.renderLogoBadge(p, 36)}
+          <div class="bank-provider-card-info">
+            <span class="bank-provider-card-name" title="${escapeHTML(p.name)}">${escapeHTML(p.name)}</span>
+            <span class="bank-provider-card-sub">${escapeHTML(p.shortName || p.code)} • ${typeLabel}</span>
+          </div>
+          ${isSelected ? '<i data-lucide="check-circle-2" style="width:16px;height:16px;color:var(--primary);margin-left:auto;"></i>' : ''}
+        </div>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+  },
+
+  selectProvider(code) {
+    const p = this.PROVIDERS.find(x => x.code === code);
+    if (!p) return;
+
+    const bankInput = document.getElementById('acc-bank-code-input');
+    const display = document.getElementById('acc-provider-display');
+    const preview = document.getElementById('acc-form-logo-preview');
+    const nameInput = document.getElementById('acc-name-input');
+    const typeSelect = document.getElementById('acc-type-select');
+
+    if (bankInput) bankInput.value = p.code;
+    if (display) display.textContent = p.name;
+    if (preview) {
+      preview.innerHTML = this.renderLogoBadge(p, 36);
+      preview.style.background = 'transparent';
+    }
+
+    // Auto update account type
+    if (typeSelect && p.type) {
+      typeSelect.value = p.type;
+      this.handleTypeChange(p.type);
+    }
+
+    // Auto populate account name if empty or previous provider name
+    if (nameInput) {
+      const curVal = nameInput.value.trim();
+      const isGenericDefault = !curVal || this.PROVIDERS.some(prov => prov.name === curVal);
+      if (isGenericDefault) {
+        nameInput.value = p.name;
+      }
+    }
+
+    this.closeProviderModal();
+    if (window.lucide) lucide.createIcons();
+  },
+
   /* ==================== ACTION SHEET (MENU 3 CHẤM) ==================== */
   async openAccountActions(accId) {
     const acc = await db.accounts.get(Number(accId));
@@ -65,9 +283,8 @@ const UIAccounts = {
     // Header info
     const iconEl = document.getElementById('action-sheet-acc-icon');
     if (iconEl) {
-      iconEl.style.background = `${info.color}22`;
-      iconEl.style.color = info.color;
-      iconEl.innerHTML = `<i data-lucide="${iconName}" style="width: 22px; height: 22px;"></i>`;
+      iconEl.style.background = 'transparent';
+      iconEl.innerHTML = this.renderLogoBadge(acc, 44);
     }
 
     const nameEl = document.getElementById('action-sheet-acc-name');
@@ -770,8 +987,18 @@ const UIAccounts = {
     const balText = document.getElementById('acc-balance-text');
     if (balText) balText.textContent = '0';
 
-    const curBalDisplay = document.getElementById('acc-current-balance-display');
-    if (curBalDisplay) curBalDisplay.style.display = 'none';
+    const bankInput = document.getElementById('acc-bank-code-input');
+    if (bankInput) bankInput.value = '';
+
+    const providerDisplay = document.getElementById('acc-provider-display');
+    if (providerDisplay) providerDisplay.textContent = 'Chưa chọn (Mặc định)';
+
+    const preview = document.getElementById('acc-form-logo-preview');
+    if (preview) {
+      preview.style.background = 'rgba(79, 70, 229, 0.15)';
+      preview.style.color = '#4f46e5';
+      preview.innerHTML = '<i data-lucide="landmark"></i>';
+    }
 
     const descInput = document.getElementById('acc-desc-input');
     if (descInput) descInput.value = '';
@@ -831,11 +1058,24 @@ const UIAccounts = {
     const balText = document.getElementById('acc-balance-text');
     if (balText) balText.textContent = initBalFormatted;
 
-    const curBalDisplay = document.getElementById('acc-current-balance-display');
-    const curBalVal = document.getElementById('acc-current-balance-val');
-    if (curBalDisplay && curBalVal) {
-      curBalVal.textContent = `${curBalFormatted}${curSymbol}`;
-      curBalDisplay.style.display = 'block';
+    const bankInput = document.getElementById('acc-bank-code-input');
+    if (bankInput) bankInput.value = acc.bankCode || '';
+
+    const providerDisplay = document.getElementById('acc-provider-display');
+    const preview = document.getElementById('acc-form-logo-preview');
+    if (acc.bankCode) {
+      const p = this.PROVIDERS.find(x => x.code === acc.bankCode);
+      if (providerDisplay) providerDisplay.textContent = p ? p.name : acc.bankCode;
+      if (preview) {
+        preview.style.background = 'transparent';
+        preview.innerHTML = this.renderLogoBadge(p || acc, 36);
+      }
+    } else {
+      if (providerDisplay) providerDisplay.textContent = 'Mặc định';
+      if (preview) {
+        preview.style.background = 'transparent';
+        preview.innerHTML = this.renderLogoBadge(acc, 36);
+      }
     }
 
     const descInput = document.getElementById('acc-desc-input');
@@ -870,6 +1110,7 @@ const UIAccounts = {
     const balance = cleanBal === '' ? 0 : Number(cleanBal);
     const description = document.getElementById('acc-desc-input')?.value.trim() || '';
     const excludeFromReport = document.getElementById('acc-exclude-report-check')?.checked ? 1 : 0;
+    const bankCode = (document.getElementById('acc-bank-code-input')?.value || '').trim();
 
     if (!name) {
       showToast('Vui lòng nhập tên tài khoản', 'error');
@@ -899,6 +1140,12 @@ const UIAccounts = {
         icon = existingAcc.icon;
       }
 
+      let accColor = existingAcc.color || '#4f46e5';
+      if (bankCode) {
+        const prov = this.PROVIDERS.find(x => x.code === bankCode);
+        if (prov && prov.color) accColor = prov.color;
+      }
+
       await db.accounts.update(Number(id), {
         name,
         type,
@@ -908,6 +1155,8 @@ const UIAccounts = {
         description,
         excludeFromReport,
         icon,
+        bankCode,
+        color: accColor,
         updatedAt: now
       });
       showToast('Đã cập nhật thông tin tài khoản', 'success');
@@ -915,6 +1164,12 @@ const UIAccounts = {
       const existing = await db.accounts.where('isDeleted').equals(0).toArray();
       const maxOrder = existing.reduce((max, a) => Math.max(max, a.order ?? 0), -1);
       const newOrder = maxOrder + 1;
+
+      let accColor = '#4f46e5';
+      if (bankCode) {
+        const prov = this.PROVIDERS.find(x => x.code === bankCode);
+        if (prov && prov.color) accColor = prov.color;
+      }
 
       await db.accounts.add({
         name,
@@ -925,7 +1180,8 @@ const UIAccounts = {
         description,
         excludeFromReport,
         icon,
-        color: '#4f46e5',
+        bankCode,
+        color: accColor,
         order: newOrder,
         isDeleted: 0,
         isArchived: 0,
@@ -1099,8 +1355,8 @@ const UIAccounts = {
             </div>
             
             <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản">
-              <div class="account-icon-bubble" style="background: ${info.color}22; color: ${info.color};">
-                <i data-lucide="${iconName}" style="width: 18px; height: 18px;"></i>
+              <div class="account-icon-bubble" style="background: transparent;">
+                ${this.renderLogoBadge(a, 40)}
               </div>
               <div class="account-info">
                 <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
@@ -1155,8 +1411,8 @@ const UIAccounts = {
           archHtml += `
             <div class="account-list-item archived" data-id="${a.id}">
               <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản">
-                <div class="account-icon-bubble" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted);">
-                  <i data-lucide="${iconName}" style="width: 18px; height: 18px;"></i>
+                <div class="account-icon-bubble" style="background: transparent; opacity: 0.65;">
+                  ${this.renderLogoBadge(a, 40)}
                 </div>
                 <div class="account-info">
                   <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">

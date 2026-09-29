@@ -1272,12 +1272,14 @@ const UITransactions = {
         const info = iconMap[a.type] || { icon: 'wallet', color: '#4f46e5' };
         const bal = new Intl.NumberFormat('vi-VN').format(a.balance);
         const isSelected = String(activeFromId) === String(a.id);
+        const badgeHtml = window.UIAccounts ? window.UIAccounts.renderLogoBadge(a, 32) : `
+          <div class="tx-info-icon-bubble" style="background:${info.color}22; color:${info.color}; width:32px; height:32px; flex-shrink:0;">
+            <i data-lucide="${info.icon}" style="width:16px;height:16px;"></i>
+          </div>`;
         return `
           <div class="tx-account-option" data-id="${a.id}" data-name="${a.name}" data-type="${a.type || 'cash'}" onclick="UITransactions.selectAccount(${a.id}, '${a.name}', '${a.type || 'cash'}')"
                style="${isSelected ? 'background:rgba(255,255,255,0.08);' : ''}">
-            <div class="tx-info-icon-bubble" style="background:${info.color}22; color:${info.color}; width:32px; height:32px; flex-shrink:0;">
-              <i data-lucide="${info.icon}" style="width:16px;height:16px;"></i>
-            </div>
+            ${badgeHtml}
             <div style="flex:1; min-width:0;">
               <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">${a.name}</div>
               <div style="font-size:0.78rem; color:var(--text-muted);">${bal}đ</div>
@@ -1293,12 +1295,14 @@ const UITransactions = {
         const info = iconMap[a.type] || { icon: 'wallet', color: '#4f46e5' };
         const bal = new Intl.NumberFormat('vi-VN').format(a.balance);
         const isSelected = String(activeToId) === String(a.id);
+        const badgeHtml = window.UIAccounts ? window.UIAccounts.renderLogoBadge(a, 32) : `
+          <div class="tx-info-icon-bubble" style="background:${info.color}22; color:${info.color}; width:32px; height:32px; flex-shrink:0;">
+            <i data-lucide="${info.icon}" style="width:16px;height:16px;"></i>
+          </div>`;
         return `
           <div class="tx-account-option" data-id="${a.id}" data-name="${a.name}" data-type="${a.type || 'cash'}" onclick="UITransactions.selectToAccount(${a.id}, '${a.name}', '${a.type || 'cash'}')"
                style="${isSelected ? 'background:rgba(255,255,255,0.08);' : ''}">
-            <div class="tx-info-icon-bubble" style="background:${info.color}22; color:${info.color}; width:32px; height:32px; flex-shrink:0;">
-              <i data-lucide="${info.icon}" style="width:16px;height:16px;"></i>
-            </div>
+            ${badgeHtml}
             <div style="flex:1; min-width:0;">
               <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">${a.name}</div>
               <div style="font-size:0.78rem; color:var(--text-muted);">${bal}đ</div>
@@ -1642,9 +1646,14 @@ const UITransactions = {
         saving: { icon: 'piggy-bank', color: '#0ea5e9' }
       };
       const info = iconMap[acc.type] || { icon: acc.icon || 'wallet', color: acc.color || '#4f46e5' };
-      bubble.innerHTML = `<i data-lucide="${info.icon}" style="width: 18px; height: 18px;"></i>`;
-      bubble.style.background = `${info.color}22`;
-      bubble.style.color = info.color;
+      if (window.UIAccounts) {
+        bubble.innerHTML = window.UIAccounts.renderLogoBadge(acc, 32);
+        bubble.style.background = 'transparent';
+      } else {
+        bubble.innerHTML = `<i data-lucide="${info.icon}" style="width: 18px; height: 18px;"></i>`;
+        bubble.style.background = `${info.color}22`;
+        bubble.style.color = info.color;
+      }
       if (label) label.textContent = acc.name;
       if (balanceEl) {
         const balFormatted = new Intl.NumberFormat('vi-VN').format(acc.balance);
@@ -1686,9 +1695,14 @@ const UITransactions = {
         saving: { icon: 'piggy-bank', color: '#0ea5e9' }
       };
       const info = iconMap[acc.type] || { icon: acc.icon || 'landmark', color: acc.color || '#4f46e5' };
-      bubble.innerHTML = `<i data-lucide="${info.icon}" style="width: 18px; height: 18px;"></i>`;
-      bubble.style.background = `${info.color}22`;
-      bubble.style.color = info.color;
+      if (window.UIAccounts) {
+        bubble.innerHTML = window.UIAccounts.renderLogoBadge(acc, 32);
+        bubble.style.background = 'transparent';
+      } else {
+        bubble.innerHTML = `<i data-lucide="${info.icon}" style="width: 18px; height: 18px;"></i>`;
+        bubble.style.background = `${info.color}22`;
+        bubble.style.color = info.color;
+      }
       if (label) label.textContent = acc.name;
       if (balanceEl) {
         const balFormatted = new Intl.NumberFormat('vi-VN').format(acc.balance);

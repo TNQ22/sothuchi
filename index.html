@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.22">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.23">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -908,9 +908,7 @@
                   <span class="tx-amount-cur acc-amount-cur" id="acc-currency-symbol">đ</span>
                   <input type="hidden" id="acc-balance-input" value="0">
                 </div>
-                <div id="acc-current-balance-display" style="display: none; font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; font-variant-numeric: tabular-nums;">
-                  Số dư hiện tại: <strong id="acc-current-balance-val" style="color: var(--primary); font-weight: 600;">0đ</strong>
-                </div>
+
               </div>
 
               <!-- Ô 2: THÔNG TIN CHI TIẾT TÀI KHOẢN (Grouped card kiểu tx-details-card) -->
@@ -938,6 +936,19 @@
                       <option value="credit">Thẻ tín dụng (Credit Card)</option>
                       <option value="saving">Sổ tiết kiệm</option>
                     </select>
+                  </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                </div>
+
+                <!-- Hàng 3: Logo Ngân Hàng & Ví Điện Tử -->
+                <div class="tx-info-row" id="acc-provider-row" onclick="UIAccounts.openProviderModal()" style="cursor: pointer;" title="Bấm để chọn logo ngân hàng hoặc ví điện tử">
+                  <div class="tx-info-icon-bubble" id="acc-form-logo-preview" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+                    <i data-lucide="landmark"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted); font-weight: 500;">Logo ngân hàng / Ví</div>
+                    <div id="acc-provider-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Chưa chọn (Mặc định)</div>
+                    <input type="hidden" id="acc-bank-code-input" value="">
                   </div>
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
@@ -1439,6 +1450,42 @@
     </div>
   </div>
 
+  <!-- ==================== BANK & E-WALLET LOGO PICKER MODAL ==================== -->
+  <div id="modal-bank-provider" class="modal-overlay">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="landmark" style="width: 20px; height: 20px; color: var(--primary);"></i>
+          <span>Chọn Ngân Hàng & Ví Điện Tử</span>
+        </h3>
+        <button type="button" class="btn-icon" onclick="UIAccounts.closeProviderModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body" style="padding: 14px 16px;">
+        <!-- Ô tìm kiếm với nút X xóa nhanh -->
+        <div class="input-clearable-wrapper" style="margin-bottom: 12px;">
+          <input type="text" id="provider-search-input" class="form-control" placeholder="🔍 Tìm kiếm ngân hàng, ví (VCB, MoMo, MB...)" oninput="UIAccounts.handleProviderSearch(this.value)">
+          <button type="button" class="btn-clear-input" id="btn-clear-provider-search" title="Xóa tìm kiếm">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="bank-provider-tabs">
+          <button type="button" class="bank-provider-tab-btn active" data-tab="all" onclick="UIAccounts.switchProviderTab('all')">Tất cả</button>
+          <button type="button" class="bank-provider-tab-btn" data-tab="bank" onclick="UIAccounts.switchProviderTab('bank')">Ngân hàng</button>
+          <button type="button" class="bank-provider-tab-btn" data-tab="ewallet" onclick="UIAccounts.switchProviderTab('ewallet')">Ví điện tử</button>
+          <button type="button" class="bank-provider-tab-btn" data-tab="generic" onclick="UIAccounts.switchProviderTab('generic')">Khác</button>
+        </div>
+
+        <!-- Providers Grid -->
+        <div id="bank-provider-grid" class="bank-provider-grid"></div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; padding: 10px 16px;">
+        <button type="button" class="btn-secondary" onclick="UIAccounts.closeProviderModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Budget Form -->
   <div id="modal-budget" class="modal-overlay">
     <div class="modal-dialog">
@@ -1485,18 +1532,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.22"></script>
+  <script src="./js/backup.js?v=1.9.23"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.22"></script>
-  <script src="./js/ui-transactions.js?v=1.9.22"></script>
-  <script src="./js/ui-debts.js?v=1.9.22"></script>
-  <script src="./js/ui-accounts.js?v=1.9.22"></script>
-  <script src="./js/ui-budgets.js?v=1.9.22"></script>
-  <script src="./js/ui-analytics.js?v=1.9.22"></script>
-  <script src="./js/ui-settings.js?v=1.9.22"></script>
+  <script src="./js/ui-calendar.js?v=1.9.23"></script>
+  <script src="./js/ui-transactions.js?v=1.9.23"></script>
+  <script src="./js/ui-debts.js?v=1.9.23"></script>
+  <script src="./js/ui-accounts.js?v=1.9.23"></script>
+  <script src="./js/ui-budgets.js?v=1.9.23"></script>
+  <script src="./js/ui-analytics.js?v=1.9.23"></script>
+  <script src="./js/ui-settings.js?v=1.9.23"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.22"></script>
+  <script src="./js/app.js?v=1.9.23"></script>
 </body>
 </html>
