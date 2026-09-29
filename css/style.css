@@ -3666,3 +3666,116 @@ body:has(#view-borrow-select.active) .app-header {
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* ==================== ACCOUNT EDIT & FORM ENHANCEMENTS ==================== */
+.acc-exclude-report-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-top: 4px;
+}
+
+.acc-exclude-report-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.acc-exclude-report-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.acc-exclude-report-desc {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.app-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.app-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.app-switch-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border-color);
+  transition: all 0.25s ease;
+  border-radius: 24px;
+}
+
+.app-switch-slider::before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #ffffff;
+  transition: all 0.25s ease;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.app-switch input:checked + .app-switch-slider {
+  background-color: var(--primary);
+}
+
+.app-switch input:checked + .app-switch-slider::before {
+  transform: translateX(20px);
+}
+
+.account-badge.exclude {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.account-currency-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: rgba(79, 70, 229, 0.12);
+  border: 1px solid rgba(79, 70, 229, 0.2);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.account-desc-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -136,11 +136,19 @@ const UIBudgets = {
     // Get current month expense transactions
     const startOfMonth = `${this.currentMonth}-01`;
     const endOfMonth = `${this.currentMonth}-31`;
-    const txs = await db.transactions
+    const txsAll = await db.transactions
       .where('date')
       .between(startOfMonth, endOfMonth, true, true)
       .and(t => t.type === 'expense' && t.isDeleted === 0)
       .toArray();
+
+    // Loại trừ giao dịch của các tài khoản được đánh dấu "Không tính vào báo cáo"
+    const excludedAccounts = await db.accounts.where('excludeFromReport').equals(1).toArray();
+    const excludedAccountIds = new Set(excludedAccounts.map(a => a.id));
+
+    const txs = excludedAccountIds.size > 0
+      ? txsAll.filter(t => !excludedAccountIds.has(t.accountId))
+      : txsAll;
 
     const spentByCat = {};
     for (const t of txs) {

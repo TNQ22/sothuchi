@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.19">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.20">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1284,7 +1284,7 @@
   <div id="modal-account" class="modal-overlay">
     <div class="modal-dialog">
       <div class="modal-header">
-        <h3 class="modal-title">Thông Tin Tài Khoản</h3>
+        <h3 class="modal-title" id="modal-account-title">Thông Tin Tài Khoản</h3>
         <button class="btn-icon" onclick="UIAccounts.closeModal()"><i data-lucide="x"></i></button>
       </div>
       <form id="account-form">
@@ -1292,7 +1292,7 @@
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Tên Tài Khoản / Ngân Hàng</label>
-            <input type="text" id="acc-name-input" class="form-control" placeholder="Ví dụ: Techcombank, Tiền Mặt..." required>
+            <input type="text" id="acc-name-input" class="form-control" placeholder="Ví dụ: Techcombank, Tiền Mặt, Ví..." required>
           </div>
 
           <div class="form-group">
@@ -1307,16 +1307,43 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Số Dư Hiện Tại (VNĐ)</label>
-            <input type="number" id="acc-balance-input" class="form-control" placeholder="0" step="1000">
+            <label class="form-label">Đơn Vị Tiền Tệ</label>
+            <select id="acc-currency-select" class="form-control">
+              <option value="VND">VND (đ)</option>
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="JPY">JPY (¥)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" id="acc-balance-label">Số Dư Ban Đầu (VNĐ)</label>
+            <input type="number" id="acc-balance-input" class="form-control" placeholder="0" step="any">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Diễn Giải / Ghi Chú</label>
+            <input type="text" id="acc-desc-input" class="form-control" placeholder="Diễn giải thêm về tài khoản này...">
+          </div>
+
+          <!-- Feature: Không tính vào báo cáo -->
+          <div class="acc-exclude-report-box">
+            <div class="acc-exclude-report-info">
+              <span class="acc-exclude-report-title">Không tính vào báo cáo</span>
+              <span class="acc-exclude-report-desc">Ghi chép trên tài khoản này sẽ không được thống kê vào TẤT CẢ báo cáo (trừ báo cáo theo dõi vay nợ)</span>
+            </div>
+            <label class="app-switch">
+              <input type="checkbox" id="acc-exclude-report-check">
+              <span class="app-switch-slider"></span>
+            </label>
           </div>
         </div>
 
         <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-          <button type="button" id="btn-delete-account" class="btn-danger" style="display: none;" onclick="UIAccounts.handleDeleteAccount()">Xóa tài khoản</button>
+          <button type="button" id="btn-delete-account" class="btn-danger" style="display: none;" onclick="UIAccounts.handleDeleteAccount()">Xóa</button>
           <div style="display: flex; gap: 8px; margin-left: auto;">
             <button type="button" class="btn-secondary" onclick="UIAccounts.closeModal()">Hủy</button>
-            <button type="submit" class="btn-primary">Lưu Tài Khoản</button>
+            <button type="submit" class="btn-primary" id="btn-save-account">Lưu Lại</button>
           </div>
         </div>
       </form>
@@ -1344,7 +1371,7 @@
 
           <div class="form-group">
             <label class="form-label">Hạn Mức Tối Đa (VNĐ)</label>
-            <input type="number" id="budget-amount-input" class="form-control" placeholder="Ví dụ: 3000000" min="50000" step="10000" required>
+            <input type="number" id="budget-amount-input" class="form-control" placeholder="Ví dụ: 3000000" min="1" step="any" required>
           </div>
         </div>
 

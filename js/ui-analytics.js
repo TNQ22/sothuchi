@@ -40,11 +40,19 @@ const UIAnalytics = {
       endDate = `${year}-12-31`;
     }
 
-    const txs = await db.transactions
+    const txsAll = await db.transactions
       .where('date')
       .between(startDate, endDate, true, true)
       .and(t => t.isDeleted === 0)
       .toArray();
+
+    // Loại trừ giao dịch của các tài khoản được đánh dấu "Không tính vào báo cáo"
+    const excludedAccounts = await db.accounts.where('excludeFromReport').equals(1).toArray();
+    const excludedAccountIds = new Set(excludedAccounts.map(a => a.id));
+
+    const txs = excludedAccountIds.size > 0
+      ? txsAll.filter(t => !excludedAccountIds.has(t.accountId))
+      : txsAll;
 
     const categories = await db.categories.toArray();
     const catMap = new Map(categories.map(c => [c.id, c]));

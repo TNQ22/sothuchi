@@ -75,8 +75,10 @@ const UIAccounts = {
 
     const balEl = document.getElementById('action-sheet-acc-balance');
     if (balEl) {
+      const curSym = acc.currency === 'USD' ? '$' : (acc.currency === 'EUR' ? '€' : (acc.currency === 'JPY' ? '¥' : 'đ'));
       const balStr = new Intl.NumberFormat('vi-VN').format(acc.balance);
-      balEl.textContent = `${info.label} • Số dư: ${balStr}đ`;
+      const excludeText = acc.excludeFromReport ? ' • (Không tính vào báo cáo)' : '';
+      balEl.textContent = `${info.label} • Số dư: ${balStr}${curSym}${excludeText}`;
     }
 
     // Toggle archive button text & icon
@@ -704,8 +706,26 @@ const UIAccounts = {
 
     form.reset();
     document.getElementById('acc-id-input').value = '';
+    const titleEl = document.getElementById('modal-account-title');
+    if (titleEl) titleEl.textContent = 'Thêm Tài Khoản Mới';
+
+    const curSelect = document.getElementById('acc-currency-select');
+    if (curSelect) curSelect.value = 'VND';
+
+    const balLabel = document.getElementById('acc-balance-label');
+    if (balLabel) balLabel.innerHTML = 'Số Dư Ban Đầu (VNĐ)';
+
+    const descInput = document.getElementById('acc-desc-input');
+    if (descInput) descInput.value = '';
+
+    const excludeCheck = document.getElementById('acc-exclude-report-check');
+    if (excludeCheck) excludeCheck.checked = false;
+
     const delBtn = document.getElementById('btn-delete-account');
     if (delBtn) delBtn.style.display = 'none';
+
+    const saveBtn = document.getElementById('btn-save-account');
+    if (saveBtn) saveBtn.textContent = 'Lưu Lại';
 
     modal.classList.add('open');
     setTimeout(() => document.getElementById('acc-name-input')?.focus(), 150);
@@ -720,24 +740,51 @@ const UIAccounts = {
     const id = document.getElementById('acc-id-input').value;
     const name = document.getElementById('acc-name-input').value.trim();
     const type = document.getElementById('acc-type-select').value;
-    const balance = Number(document.getElementById('acc-balance-input').value) || 0;
+    const currency = document.getElementById('acc-currency-select')?.value || 'VND';
+    const balanceInputVal = document.getElementById('acc-balance-input').value.trim();
+    const balance = balanceInputVal === '' ? 0 : Number(balanceInputVal);
+    const description = document.getElementById('acc-desc-input')?.value.trim() || '';
+    const excludeFromReport = document.getElementById('acc-exclude-report-check')?.checked ? 1 : 0;
 
     if (!name) {
       showToast('Vui lòng nhập tên tài khoản', 'error');
       return;
     }
 
+    if (isNaN(balance)) {
+      showToast('Số dư không hợp lệ', 'error');
+      return;
+    }
+
     const now = Date.now();
+    const typeIcons = { cash: 'wallet', bank: 'landmark', ewallet: 'smartphone', credit: 'credit-card', saving: 'piggy-bank' };
+    let icon = typeIcons[type] || 'wallet';
+
     if (id) {
-      await db.accounts.update(Number(id), { name, type, balance, updatedAt: now });
+      const existingAcc = await db.accounts.get(Number(id));
+      if (!existingAcc) return;
+
+      const oldInitial = existingAcc.initialBalance !== undefined ? existingAcc.initialBalance : existingAcc.balance;
+      const delta = balance - oldInitial;
+      const newCurrentBalance = existingAcc.balance + delta;
+
+      if (existingAcc.type === type && existingAcc.icon) {
+        icon = existingAcc.icon;
+      }
+
+      await db.accounts.update(Number(id), {
+        name,
+        type,
+        currency,
+        initialBalance: balance,
+        balance: newCurrentBalance,
+        description,
+        excludeFromReport,
+        icon,
+        updatedAt: now
+      });
       showToast('Đã cập nhật thông tin tài khoản', 'success');
     } else {
-      let icon = 'wallet';
-      if (type === 'bank') icon = 'landmark';
-      if (type === 'ewallet') icon = 'smartphone';
-      if (type === 'credit') icon = 'credit-card';
-      if (type === 'saving') icon = 'piggy-bank';
-
       const existing = await db.accounts.where('isDeleted').equals(0).toArray();
       const maxOrder = existing.reduce((max, a) => Math.max(max, a.order ?? 0), -1);
       const newOrder = maxOrder + 1;
@@ -745,8 +792,11 @@ const UIAccounts = {
       await db.accounts.add({
         name,
         type,
+        currency,
         balance,
         initialBalance: balance,
+        description,
+        excludeFromReport,
         icon,
         color: '#4f46e5',
         order: newOrder,
@@ -768,13 +818,40 @@ const UIAccounts = {
     const modal = document.getElementById('modal-account');
     if (!modal) return;
 
+    const titleEl = document.getElementById('modal-account-title');
+    if (titleEl) titleEl.textContent = 'Sửa Tài Khoản';
+
     document.getElementById('acc-id-input').value = acc.id;
     document.getElementById('acc-name-input').value = acc.name;
     document.getElementById('acc-type-select').value = acc.type;
-    document.getElementById('acc-balance-input').value = acc.balance;
+
+    const curSelect = document.getElementById('acc-currency-select');
+    if (curSelect) curSelect.value = acc.currency || 'VND';
+
+    const curSymbol = (acc.currency === 'USD' ? '$' : (acc.currency === 'EUR' ? '€' : (acc.currency === 'JPY' ? '¥' : 'đ')));
+    const curLabel = acc.currency ? acc.currency : 'VNĐ';
+
+    const initBal = acc.initialBalance !== undefined ? acc.initialBalance : acc.balance;
+    const curBalFormatted = new Intl.NumberFormat('vi-VN').format(acc.balance);
+
+    const balLabel = document.getElementById('acc-balance-label');
+    if (balLabel) {
+      balLabel.innerHTML = `Số Dư Ban Đầu (${curLabel}) <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted); margin-left: 6px;">(Hiện tại: <strong style="color: var(--primary);">${curBalFormatted}${curSymbol}</strong>)</span>`;
+    }
+
+    document.getElementById('acc-balance-input').value = initBal;
+
+    const descInput = document.getElementById('acc-desc-input');
+    if (descInput) descInput.value = acc.description || '';
+
+    const excludeCheck = document.getElementById('acc-exclude-report-check');
+    if (excludeCheck) excludeCheck.checked = !!acc.excludeFromReport;
 
     const delBtn = document.getElementById('btn-delete-account');
     if (delBtn) delBtn.style.display = 'block';
+
+    const saveBtn = document.getElementById('btn-save-account');
+    if (saveBtn) saveBtn.textContent = 'Lưu Lại';
 
     modal.classList.add('open');
   },
@@ -782,12 +859,14 @@ const UIAccounts = {
   async handleDeleteAccount() {
     const id = document.getElementById('acc-id-input').value;
     if (!id) return;
-    if (!confirm('Bạn có chắc muốn xóa tài khoản này? Tất cả giao dịch cũ vẫn được lưu trong sổ.')) return;
+    const acc = await db.accounts.get(Number(id));
+    const accName = acc ? acc.name : '';
+    if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản "${accName}"? Tất cả giao dịch cũ vẫn được lưu trong sổ.`)) return;
 
     await db.accounts.update(Number(id), { isDeleted: 1, updatedAt: Date.now() });
     this.closeModal();
     await window.app.refreshAll();
-    showToast('Đã xóa tài khoản', 'info');
+    showToast(`Đã xóa tài khoản "${accName}"`, 'info');
   },
 
   async moveAccount(id, direction) {
@@ -942,14 +1021,19 @@ const UIAccounts = {
                 <i data-lucide="${iconName}" style="width: 18px; height: 18px;"></i>
               </div>
               <div class="account-info">
-                <span class="account-name" title="${escapeHTML(a.name)}">${escapeHTML(a.name)}</span>
+                <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <span class="account-name" title="${escapeHTML(a.name)}">${escapeHTML(a.name)}</span>
+                  ${a.excludeFromReport ? '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn báo cáo</span>' : ''}
+                </div>
                 <div class="account-sub-row">
                   <span class="account-type-label">${info.label}</span>
+                  ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
+                  ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
                   ${isDefault ? '<span class="account-default-badge" title="Tài khoản mặc định"><i data-lucide="check-circle-2" style="width:12px;height:12px;"></i></span>' : ''}
                 </div>
               </div>
               <div class="account-balance-wrapper">
-                <span class="account-balance ${a.balance < 0 ? 'expense-text' : ''}">${new Intl.NumberFormat('vi-VN').format(a.balance)}đ</span>
+                <span class="account-balance ${a.balance < 0 ? 'expense-text' : ''}">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
               </div>
             </div>
 
@@ -993,14 +1077,19 @@ const UIAccounts = {
                   <i data-lucide="${iconName}" style="width: 18px; height: 18px;"></i>
                 </div>
                 <div class="account-info">
-                  <span class="account-name" title="${escapeHTML(a.name)}" style="color: var(--text-secondary);">${escapeHTML(a.name)}</span>
+                  <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <span class="account-name" title="${escapeHTML(a.name)}" style="color: var(--text-secondary);">${escapeHTML(a.name)}</span>
+                    ${a.excludeFromReport ? '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn báo cáo</span>' : ''}
+                  </div>
                   <div class="account-sub-row">
                     <span class="account-type-label">${info.label}</span>
+                    ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
+                    ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
                     <span class="account-archived-badge" title="Đã ngừng sử dụng">Ngừng sử dụng</span>
                   </div>
                 </div>
                 <div class="account-balance-wrapper">
-                  <span class="account-balance" style="color: var(--text-muted);">${new Intl.NumberFormat('vi-VN').format(a.balance)}đ</span>
+                  <span class="account-balance" style="color: var(--text-muted);">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
                 </div>
               </div>
 
