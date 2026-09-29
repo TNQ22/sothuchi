@@ -2648,7 +2648,7 @@ body:has(#view-account-form.active) .app-header {
   gap: 4px;
 }
 #keypad-live-val {
-  font-size: 1.8rem;
+  font-size: 2.2rem;
   font-weight: 700;
   color: var(--primary);
   letter-spacing: -0.02em;
@@ -3782,42 +3782,92 @@ body:has(#view-account-form.active) .app-header {
 }
 /* Account Form View - Phong cách trang ghi chép thu chi & ảnh tham khảo */
 .acc-amount-card {
-  padding: 16px 14px;
+  padding: 18px 14px;
   text-align: center;
   background: linear-gradient(180deg, var(--bg-card) 0%, rgba(255, 255, 255, 0.02) 100%);
-  cursor: text;
+  cursor: pointer;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .acc-amount-card:hover,
-.acc-amount-card:focus-within {
+.acc-amount-card:active {
   border-color: var(--primary);
-  box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.2);
+  background: linear-gradient(180deg, var(--bg-card) 0%, rgba(79, 70, 229, 0.05) 100%);
+  box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.25);
 }
 
-.acc-amount-clean-input {
-  font-size: 2.2rem;
+.acc-amount-val {
+  font-size: 2.75rem;
   font-weight: 800;
   color: var(--primary);
-  background: transparent;
-  border: none;
-  outline: none;
-  text-align: center;
-  width: 100%;
-  max-width: 280px;
-  font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
   line-height: 1.1;
-  font-family: inherit;
-  padding: 0;
-  margin: 0;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
 }
 
-.acc-amount-clean-input::placeholder {
+.acc-amount-cur {
+  font-size: 1.6rem;
+  font-weight: 700;
   color: var(--text-muted);
-  opacity: 0.6;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* Nút X xóa nhanh ghi chú trên toàn app */
+.input-clearable-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input-clearable-wrapper input {
+  padding-right: 32px !important;
+}
+
+.btn-clear-input {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--text-muted);
+  border: none;
+  padding: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  z-index: 3;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-clear-input i,
+.btn-clear-input svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.5;
+  pointer-events: none;
+}
+
+.btn-clear-input:hover,
+.btn-clear-input:active {
+  background: var(--text-muted);
+  color: var(--bg-card);
+  transform: translateY(-50%) scale(1.08);
 }
 
 .acc-styled-select {

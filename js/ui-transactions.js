@@ -163,14 +163,23 @@ const UITransactions = {
     if (!modal) return;
 
     let cur = '0';
+    const curSymbolEl = document.querySelector('#modal-keypad .keypad-live-cur');
     if (target === 'fee') {
       const feeInput = document.getElementById('tx-fee-input');
       const feeDisplay = document.getElementById('tx-fee-display');
       cur = feeInput?.value?.trim() || feeDisplay?.textContent?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = '₫';
+    } else if (target === 'account-balance') {
+      const accBalInput = document.getElementById('acc-balance-input');
+      const accBalText = document.getElementById('acc-balance-text');
+      cur = accBalText?.textContent?.trim() || accBalInput?.value?.trim() || '0';
+      const curSymbol = document.getElementById('acc-currency-symbol')?.textContent?.trim() || 'đ';
+      if (curSymbolEl) curSymbolEl.textContent = curSymbol;
     } else {
       const input = document.getElementById('tx-amount-input');
       const amountText = document.getElementById('tx-amount-text');
       cur = input?.value?.trim() || amountText?.textContent?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = '₫';
     }
 
     if (display) {
@@ -214,6 +223,12 @@ const UITransactions = {
       const feeDisplay = document.getElementById('tx-fee-display');
       if (feeInput) feeInput.value = finalFormatted;
       if (feeDisplay) feeDisplay.textContent = finalFormatted;
+    } else if (this.activeKeypadTarget === 'account-balance') {
+      const accBalInput = document.getElementById('acc-balance-input');
+      const accBalText = document.getElementById('acc-balance-text');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (accBalInput) accBalInput.value = rawNum;
+      if (accBalText) accBalText.textContent = finalFormatted;
     } else {
       const input = document.getElementById('tx-amount-input');
       const amountText = document.getElementById('tx-amount-text');
@@ -222,7 +237,9 @@ const UITransactions = {
     }
 
     modal.classList.remove('open');
-    this.saveDraft();
+    if (this.activeKeypadTarget !== 'account-balance') {
+      this.saveDraft();
+    }
   },
 
   /* ==================== HEADER TYPE DROPDOWN ==================== */

@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.21">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.22">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -202,7 +202,12 @@
         </div>
 
         <div style="margin-bottom: 16px;">
-          <input type="text" id="tx-search-input" class="form-control" placeholder="🔍 Tìm kiếm giao dịch theo ghi chú..." style="max-width: 400px;">
+          <div class="input-clearable-wrapper" style="max-width: 400px;">
+            <input type="text" id="tx-search-input" class="form-control" placeholder="🔍 Tìm kiếm giao dịch theo ghi chú...">
+            <button type="button" class="btn-clear-input" id="btn-clear-tx-search" title="Xóa tìm kiếm" aria-label="Xóa tìm kiếm">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
         </div>
 
         <!-- Banner bộ lọc theo tài khoản -->
@@ -660,8 +665,11 @@
                   <div class="tx-info-icon-bubble" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8;">
                     <i data-lucide="file-text"></i>
                   </div>
-                  <div class="tx-info-content">
+                  <div class="tx-info-content input-clearable-wrapper">
                     <input type="text" id="tx-note-input" class="tx-clean-input" placeholder="Ghi chú (tùy chọn)...">
+                    <button type="button" class="btn-clear-input" id="btn-clear-tx-note" title="Xóa ghi chú" aria-label="Xóa ghi chú">
+                      <i data-lucide="x"></i>
+                    </button>
                   </div>
                 </div>
 
@@ -841,7 +849,12 @@
           <div class="tx-page-body" style="padding: 14px;">
             <!-- Tìm kiếm hoặc Thêm tên mới -->
             <div class="form-group" style="margin-bottom: 12px;">
-              <input type="text" id="borrow-search-input" class="form-control" placeholder="🔍 Tìm tên hoặc nhập tên người mới..." oninput="UITransactions.handleBorrowSearch(this.value)">
+              <div class="input-clearable-wrapper">
+                <input type="text" id="borrow-search-input" class="form-control" placeholder="🔍 Tìm tên hoặc nhập tên người mới..." oninput="UITransactions.handleBorrowSearch(this.value)">
+                <button type="button" class="btn-clear-input" id="btn-clear-borrow-search" title="Xóa tìm kiếm" aria-label="Xóa tìm kiếm">
+                  <i data-lucide="x"></i>
+                </button>
+              </div>
             </div>
 
             <!-- Nút bấm Thêm người mới nếu chưa có trong danh sách -->
@@ -884,15 +897,16 @@
 
             <div class="tx-page-body" style="padding: 12px 14px; display: flex; flex-direction: column; gap: 12px;">
 
-              <!-- Ô 1: SỐ DƯ BAN ĐẦU (Header amount lớn giống tx-amount-card của trang ghi chép & ảnh mẫu) -->
-              <div class="tx-section-card tx-amount-card acc-amount-card" onclick="document.getElementById('acc-balance-input').focus()">
+              <!-- Ô 1: SỐ DƯ BAN ĐẦU (To rõ, áp dụng bàn phím tuỳ chỉnh & phân cách hàng nghìn) -->
+              <div class="tx-section-card tx-amount-card acc-amount-card" onclick="UIAccounts.openKeypad()">
                 <div class="acc-amount-header-row" style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px;">
                   <i data-lucide="coins" style="width: 15px; height: 15px; color: var(--primary);"></i>
                   <span id="acc-balance-label" style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em;">Số Dư Ban Đầu</span>
                 </div>
                 <div class="tx-amount-centered-display">
-                  <input type="number" id="acc-balance-input" class="acc-amount-clean-input" placeholder="0" step="any">
-                  <span class="tx-amount-cur" id="acc-currency-symbol">đ</span>
+                  <span id="acc-balance-text" class="tx-amount-val acc-amount-val">0</span>
+                  <span class="tx-amount-cur acc-amount-cur" id="acc-currency-symbol">đ</span>
+                  <input type="hidden" id="acc-balance-input" value="0">
                 </div>
                 <div id="acc-current-balance-display" style="display: none; font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; font-variant-numeric: tabular-nums;">
                   Số dư hiện tại: <strong id="acc-current-balance-val" style="color: var(--primary); font-weight: 600;">0đ</strong>
@@ -949,8 +963,11 @@
                   <div class="tx-info-icon-bubble" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8;">
                     <i data-lucide="file-text"></i>
                   </div>
-                  <div class="tx-info-content">
+                  <div class="tx-info-content input-clearable-wrapper">
                     <input type="text" id="acc-desc-input" class="tx-clean-input" placeholder="Diễn giải">
+                    <button type="button" class="btn-clear-input" id="btn-clear-acc-desc" title="Xóa diễn giải" aria-label="Xóa diễn giải">
+                      <i data-lucide="x"></i>
+                    </button>
                   </div>
                 </div>
 
@@ -1189,7 +1206,12 @@
 
           <div class="form-group">
             <label class="form-label">Ghi Chú</label>
-            <input type="text" id="debt-note-input" class="form-control" placeholder="Lý do vay, thỏa thuận...">
+            <div class="input-clearable-wrapper">
+              <input type="text" id="debt-note-input" class="form-control" placeholder="Lý do vay, thỏa thuận...">
+              <button type="button" class="btn-clear-input" id="btn-clear-debt-note" title="Xóa ghi chú" aria-label="Xóa ghi chú">
+                <i data-lucide="x"></i>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1223,7 +1245,12 @@
 
           <div class="form-group">
             <label class="form-label">Ghi Chú</label>
-            <input type="text" id="payment-note-input" class="form-control" placeholder="Đợt 1, chuyển khoản qua app...">
+            <div class="input-clearable-wrapper">
+              <input type="text" id="payment-note-input" class="form-control" placeholder="Đợt 1, chuyển khoản qua app...">
+              <button type="button" class="btn-clear-input" id="btn-clear-payment-note" title="Xóa ghi chú" aria-label="Xóa ghi chú">
+                <i data-lucide="x"></i>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1458,18 +1485,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.21"></script>
+  <script src="./js/backup.js?v=1.9.22"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.21"></script>
-  <script src="./js/ui-transactions.js?v=1.9.21"></script>
-  <script src="./js/ui-debts.js?v=1.9.21"></script>
-  <script src="./js/ui-accounts.js?v=1.9.21"></script>
-  <script src="./js/ui-budgets.js?v=1.9.21"></script>
-  <script src="./js/ui-analytics.js?v=1.9.21"></script>
-  <script src="./js/ui-settings.js?v=1.9.21"></script>
+  <script src="./js/ui-calendar.js?v=1.9.22"></script>
+  <script src="./js/ui-transactions.js?v=1.9.22"></script>
+  <script src="./js/ui-debts.js?v=1.9.22"></script>
+  <script src="./js/ui-accounts.js?v=1.9.22"></script>
+  <script src="./js/ui-budgets.js?v=1.9.22"></script>
+  <script src="./js/ui-analytics.js?v=1.9.22"></script>
+  <script src="./js/ui-settings.js?v=1.9.22"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.21"></script>
+  <script src="./js/app.js?v=1.9.22"></script>
 </body>
 </html>

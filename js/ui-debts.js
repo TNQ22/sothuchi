@@ -90,6 +90,7 @@ const UIDebts = {
     }
 
     modal.classList.add('open');
+    if (window.app?.syncClearableInputs) window.app.syncClearableInputs();
     setTimeout(() => document.getElementById('debt-person-input')?.focus(), 150);
   },
 
@@ -201,6 +202,7 @@ const UIDebts = {
     }
 
     modal.classList.add('open');
+    if (window.app?.syncClearableInputs) window.app.syncClearableInputs();
     setTimeout(() => amountInput?.focus(), 150);
   },
 

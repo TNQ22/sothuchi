@@ -180,6 +180,7 @@ class App {
 
     // 7. Setup Global Shortcuts & Listeners
     this.setupGlobalShortcuts();
+    this.setupClearableInputs();
 
     // 8. Apply Saved Theme & Privacy Mode
     await this.loadInitialPreferences();
@@ -436,6 +437,9 @@ class App {
         page.style.transition = '';
       }
     });
+
+    // Sync clearable note/input X buttons
+    this.syncClearableInputs();
 
     // Update Header title
     const titles = {
@@ -700,6 +704,70 @@ class App {
 
       page.addEventListener('touchend', handleTouchEnd, { passive: true });
       page.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+    });
+  }
+
+  /* ==================== UNIVERSAL CLEARABLE INPUTS (Nút X xóa nhanh) ==================== */
+  setupClearableInputs() {
+    const attachWrapper = (wrapper) => {
+      const input = wrapper.querySelector('input');
+      const btn = wrapper.querySelector('.btn-clear-input');
+      if (!input || !btn || input._clearableBound) return;
+      input._clearableBound = true;
+
+      const updateBtn = () => {
+        const val = input.value ? input.value.trim() : '';
+        btn.style.display = val.length > 0 ? 'inline-flex' : 'none';
+      };
+
+      input.addEventListener('input', updateBtn);
+      input.addEventListener('focus', updateBtn);
+      input.addEventListener('change', updateBtn);
+      input.addEventListener('keyup', updateBtn);
+
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault(); // Prevents input from losing focus / mobile blur
+      });
+
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        input.value = '';
+        updateBtn();
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        input.focus();
+      });
+
+      updateBtn();
+    };
+
+    document.querySelectorAll('.input-clearable-wrapper').forEach(attachWrapper);
+
+    if (!this._clearableGlobalBound) {
+      this._clearableGlobalBound = true;
+      document.addEventListener('focusin', (e) => {
+        if (e.target && e.target.matches && e.target.matches('.input-clearable-wrapper input')) {
+          const wrapper = e.target.closest('.input-clearable-wrapper');
+          const btn = wrapper?.querySelector('.btn-clear-input');
+          if (btn) {
+            const val = e.target.value ? e.target.value.trim() : '';
+            btn.style.display = val.length > 0 ? 'inline-flex' : 'none';
+          }
+        }
+      });
+    }
+  }
+
+  syncClearableInputs() {
+    this.setupClearableInputs();
+    document.querySelectorAll('.input-clearable-wrapper').forEach(wrapper => {
+      const input = wrapper.querySelector('input');
+      const btn = wrapper.querySelector('.btn-clear-input');
+      if (input && btn) {
+        const val = input.value ? input.value.trim() : '';
+        btn.style.display = val.length > 0 ? 'inline-flex' : 'none';
+      }
     });
   }
 

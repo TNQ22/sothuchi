@@ -724,6 +724,12 @@ const UIAccounts = {
     if (symEl) symEl.textContent = sym;
   },
 
+  openKeypad() {
+    if (window.UITransactions) {
+      UITransactions.openKeypad('account-balance');
+    }
+  },
+
   closeAccountFormView() {
     if (window.app) {
       window.app.switchView('accounts', true);
@@ -760,7 +766,9 @@ const UIAccounts = {
     }
 
     const balInput = document.getElementById('acc-balance-input');
-    if (balInput) balInput.value = '';
+    if (balInput) balInput.value = '0';
+    const balText = document.getElementById('acc-balance-text');
+    if (balText) balText.textContent = '0';
 
     const curBalDisplay = document.getElementById('acc-current-balance-display');
     if (curBalDisplay) curBalDisplay.style.display = 'none';
@@ -780,7 +788,10 @@ const UIAccounts = {
       span.textContent = 'Lưu lại';
     }
 
-    if (window.app) window.app.switchView('account-form');
+    if (window.app) {
+      window.app.switchView('account-form');
+      if (window.app.syncClearableInputs) window.app.syncClearableInputs();
+    }
     if (window.lucide) lucide.createIcons();
     setTimeout(() => document.getElementById('acc-name-input')?.focus(), 150);
   },
@@ -814,8 +825,11 @@ const UIAccounts = {
     const curBalFormatted = new Intl.NumberFormat('vi-VN').format(acc.balance);
 
     const initBal = acc.initialBalance !== undefined ? acc.initialBalance : acc.balance;
+    const initBalFormatted = new Intl.NumberFormat('vi-VN').format(initBal || 0);
     const balInput = document.getElementById('acc-balance-input');
-    if (balInput) balInput.value = initBal;
+    if (balInput) balInput.value = String(initBal || 0);
+    const balText = document.getElementById('acc-balance-text');
+    if (balText) balText.textContent = initBalFormatted;
 
     const curBalDisplay = document.getElementById('acc-current-balance-display');
     const curBalVal = document.getElementById('acc-current-balance-val');
@@ -839,7 +853,10 @@ const UIAccounts = {
       span.textContent = 'Lưu lại';
     }
 
-    if (window.app) window.app.switchView('account-form');
+    if (window.app) {
+      window.app.switchView('account-form');
+      if (window.app.syncClearableInputs) window.app.syncClearableInputs();
+    }
     if (window.lucide) lucide.createIcons();
   },
 
@@ -848,8 +865,9 @@ const UIAccounts = {
     const name = document.getElementById('acc-name-input').value.trim();
     const type = document.getElementById('acc-type-select').value;
     const currency = document.getElementById('acc-currency-select')?.value || 'VND';
-    const balanceInputVal = document.getElementById('acc-balance-input').value.trim();
-    const balance = balanceInputVal === '' ? 0 : Number(balanceInputVal);
+    const balanceInputVal = (document.getElementById('acc-balance-input')?.value || '0').trim();
+    const cleanBal = balanceInputVal.replace(/\./g, '').replace(/,/g, '.');
+    const balance = cleanBal === '' ? 0 : Number(cleanBal);
     const description = document.getElementById('acc-desc-input')?.value.trim() || '';
     const excludeFromReport = document.getElementById('acc-exclude-report-check')?.checked ? 1 : 0;
 
