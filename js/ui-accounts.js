@@ -135,6 +135,52 @@ const UIAccounts = {
         }
       });
     }
+
+    // Savings Form
+    const savForm = document.getElementById('savings-form');
+    if (savForm) {
+      savForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.handleSavingsSubmit();
+      });
+    }
+
+    // Accumulation Form
+    const accFormEl = document.getElementById('accumulation-form');
+    if (accFormEl) {
+      accFormEl.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.handleAccumulationSubmit();
+      });
+    }
+
+    // Asset Form
+    const astForm = document.getElementById('asset-form');
+    if (astForm) {
+      astForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.handleAssetSubmit();
+      });
+    }
+
+    // Modal backdrop clicks
+    const modalBackdrops = [
+      { id: 'modal-account-create-type', fn: () => this.closeCreateTypeSheet() },
+      { id: 'modal-asset-type-picker', fn: () => this.closeAssetTypePicker() },
+      { id: 'modal-settle-saving', fn: () => this.closeSettleSavingModal() },
+      { id: 'modal-deposit-accumulation', fn: () => this.closeDepositAccModal() },
+      { id: 'modal-liquidate-asset', fn: () => this.closeLiquidateModal() },
+      { id: 'modal-item-actions', fn: () => this.closeItemActionSheet() }
+    ];
+
+    modalBackdrops.forEach(({ id, fn }) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('click', (e) => {
+          if (e.target === el) fn();
+        });
+      }
+    });
   },
 
   /* ==================== TRANG CHỌN NGÂN HÀNG & VÍ ĐIỆN TỬ (FULL SCREEN) ==================== */
@@ -1374,7 +1420,1271 @@ const UIAccounts = {
     if (window.lucide) lucide.createIcons();
   },
 
-  /* ==================== RENDER DANH SÁCH TÀI KHOẢN ==================== */
+
+  /* ==================== CREATE TYPE BOTTOM SHEET ==================== */
+  openCreateTypeSheet() {
+    const modal = document.getElementById('modal-account-create-type');
+    if (modal) modal.classList.add('open');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeCreateTypeSheet() {
+    const modal = document.getElementById('modal-account-create-type');
+    if (modal) modal.classList.remove('open');
+  },
+
+  selectCreateType(type) {
+    this.closeCreateTypeSheet();
+    if (type === 'expense') {
+      this.openAddModal();
+    } else if (type === 'savings') {
+      this.openSavingsForm();
+    } else if (type === 'accumulation') {
+      this.openAccumulationForm();
+    } else if (type === 'asset') {
+      this.openAssetTypePicker();
+    }
+  },
+
+  /* ==================== ASSET TYPE PICKER ==================== */
+  openAssetTypePicker() {
+    const modal = document.getElementById('modal-asset-type-picker');
+    if (modal) modal.classList.add('open');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeAssetTypePicker() {
+    const modal = document.getElementById('modal-asset-type-picker');
+    if (modal) modal.classList.remove('open');
+  },
+
+  selectAssetType(type) {
+    this.closeAssetTypePicker();
+    this.openAssetForm(type);
+  },
+
+  /* ==================== SỔ TIẾT KIỆM (SAVINGS) ==================== */
+  isSettledSavingsExpanded: false,
+
+  toggleSettledSavingsList() {
+    this.isSettledSavingsExpanded = !this.isSettledSavingsExpanded;
+    const list = document.getElementById('settled-savings-list');
+    const chevron = document.getElementById('settled-savings-toggle-icon');
+    if (list) list.style.display = this.isSettledSavingsExpanded ? 'flex' : 'none';
+    if (chevron) chevron.classList.toggle('rotated', this.isSettledSavingsExpanded);
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async openSavingsForm(savingId = null) {
+    const form = document.getElementById('savings-form');
+    if (form) form.reset();
+
+    const idInput = document.getElementById('saving-id-input');
+    const titleEl = document.getElementById('savings-form-title');
+    const depositDateInput = document.getElementById('saving-deposit-date-input');
+    const termSelect = document.getElementById('saving-term-select');
+    const rateInput = document.getElementById('saving-interest-rate-input');
+    const amountInput = document.getElementById('saving-amount-input');
+    const amountText = document.getElementById('saving-amount-text');
+    const bankDisplay = document.getElementById('saving-bank-display');
+    const bankCodeInput = document.getElementById('saving-bank-code-input');
+    const bankLogoPreview = document.getElementById('saving-bank-logo-preview');
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Populate source accounts
+    await this.populateSavingsSourceAccounts();
+
+    if (savingId) {
+      const saving = await db.savings.get(Number(savingId));
+      if (!saving) return;
+      if (idInput) idInput.value = saving.id;
+      if (titleEl) titleEl.textContent = 'Sửa Sổ Tiết Kiệm';
+      document.getElementById('saving-name-input').value = saving.name || '';
+      if (amountInput) amountInput.value = saving.depositAmount || saving.balance || 0;
+      if (amountText) amountText.textContent = new Intl.NumberFormat('vi-VN').format(saving.depositAmount || saving.balance || 0);
+      if (depositDateInput) depositDateInput.value = saving.depositDate || todayStr;
+      if (termSelect) termSelect.value = saving.termMonths !== undefined ? saving.termMonths : 6;
+      if (rateInput) rateInput.value = saving.interestRate !== undefined ? saving.interestRate : 6.5;
+      document.getElementById('saving-interest-payment-select').value = saving.interestPaymentType || 'end';
+      document.getElementById('saving-maturity-action-select').value = saving.maturityAction || 'rollover_all';
+      document.getElementById('saving-desc-input').value = saving.description || '';
+      document.getElementById('saving-exclude-report-input').checked = !!saving.excludeFromReport;
+
+      if (bankCodeInput) bankCodeInput.value = saving.bankCode || '';
+      if (saving.bankCode) {
+        const prov = this.PROVIDERS.find(x => x.code === saving.bankCode);
+        if (bankDisplay) bankDisplay.textContent = prov ? prov.name : saving.bankCode;
+        if (bankLogoPreview) {
+          bankLogoPreview.innerHTML = this.renderLogoBadge(prov || saving.bankCode, 32);
+          bankLogoPreview.style.background = 'transparent';
+        }
+      } else {
+        if (bankDisplay) bankDisplay.textContent = 'Chưa chọn (Mặc định)';
+        if (bankLogoPreview) {
+          bankLogoPreview.innerHTML = '<i data-lucide="landmark"></i>';
+          bankLogoPreview.style.background = 'rgba(79, 70, 229, 0.15)';
+          bankLogoPreview.style.color = '#4f46e5';
+        }
+      }
+    } else {
+      if (idInput) idInput.value = '';
+      if (titleEl) titleEl.textContent = 'Thêm Sổ Tiết Kiệm';
+      if (amountInput) amountInput.value = '0';
+      if (amountText) amountText.textContent = '0';
+      if (depositDateInput) depositDateInput.value = todayStr;
+      if (termSelect) termSelect.value = '6';
+      if (rateInput) rateInput.value = '6.5';
+      if (bankCodeInput) bankCodeInput.value = '';
+      if (bankDisplay) bankDisplay.textContent = 'Chưa chọn (Mặc định)';
+      if (bankLogoPreview) {
+        bankLogoPreview.innerHTML = '<i data-lucide="landmark"></i>';
+        bankLogoPreview.style.background = 'rgba(79, 70, 229, 0.15)';
+        bankLogoPreview.style.color = '#4f46e5';
+      }
+    }
+
+    this.calcSavingsPreview();
+
+    if (window.app) {
+      window.app.switchView('savings-form');
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeSavingsForm() {
+    if (window.app) window.app.switchView('accounts', true);
+  },
+
+  openSavingsKeypad() {
+    if (window.UITransactions) {
+      UITransactions.openKeypad('saving-amount');
+    }
+  },
+
+  async populateSavingsSourceAccounts() {
+    const select = document.getElementById('saving-source-account-select');
+    if (!select) return;
+    const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    const active = accounts.filter(a => !a.isArchived);
+
+    let html = '<option value="">Không trích tiền (Đã có sẵn / Ngoài ví)</option>';
+    active.forEach(a => {
+      html += `<option value="${a.id}">Ví: ${escapeHTML(a.name)} (Dư: ${new Intl.NumberFormat('vi-VN').format(a.balance)}đ)</option>`;
+    });
+    select.innerHTML = html;
+  },
+
+  openSavingsBankPicker() {
+    // Open provider page and save state for savings
+    this._pickerTarget = 'saving';
+    this.openProviderPage();
+  },
+
+  calcSavingsPreview() {
+    const amountVal = Number(document.getElementById('saving-amount-input')?.value || 0);
+    const depositDateStr = document.getElementById('saving-deposit-date-input')?.value;
+    const termMonths = parseInt(document.getElementById('saving-term-select')?.value || '0', 10);
+    const rate = parseFloat(document.getElementById('saving-interest-rate-input')?.value || '0');
+
+    let dueDateStr = '--/--/----';
+    let expectedInterest = 0;
+
+    if (depositDateStr) {
+      const d = new Date(depositDateStr);
+      if (!isNaN(d.getTime())) {
+        if (termMonths > 0) {
+          d.setMonth(d.getMonth() + termMonths);
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          dueDateStr = `${day}/${month}/${d.getFullYear()}`;
+          expectedInterest = Math.round(amountVal * (rate / 100) * (termMonths / 12));
+        } else {
+          dueDateStr = 'Không kỳ hạn';
+          expectedInterest = Math.round(amountVal * (rate / 100) * (1 / 12));
+        }
+      }
+    }
+
+    const totalVal = amountVal + expectedInterest;
+
+    const dueDateEl = document.getElementById('savings-preview-due-date');
+    const interestEl = document.getElementById('savings-preview-interest-val');
+    const totalEl = document.getElementById('savings-preview-total-val');
+
+    if (dueDateEl) dueDateEl.textContent = dueDateStr;
+    if (interestEl) interestEl.textContent = `+${new Intl.NumberFormat('vi-VN').format(expectedInterest)}đ`;
+    if (totalEl) totalEl.textContent = `${new Intl.NumberFormat('vi-VN').format(totalVal)}đ`;
+  },
+
+  async handleSavingsSubmit() {
+    const id = document.getElementById('saving-id-input')?.value;
+    const name = document.getElementById('saving-name-input')?.value.trim();
+    const amount = Number(document.getElementById('saving-amount-input')?.value || 0);
+    const bankCode = document.getElementById('saving-bank-code-input')?.value || '';
+    const depositDate = document.getElementById('saving-deposit-date-input')?.value;
+    const termMonths = parseInt(document.getElementById('saving-term-select')?.value || '6', 10);
+    const interestRate = parseFloat(document.getElementById('saving-interest-rate-input')?.value || '0');
+    const interestPaymentType = document.getElementById('saving-interest-payment-select')?.value;
+    const maturityAction = document.getElementById('saving-maturity-action-select')?.value;
+    const sourceAccountId = document.getElementById('saving-source-account-select')?.value || null;
+    const description = document.getElementById('saving-desc-input')?.value.trim() || '';
+    const excludeFromReport = document.getElementById('saving-exclude-report-input')?.checked ? 1 : 0;
+
+    if (!name) {
+      showToast('Vui lòng nhập tên sổ tiết kiệm', 'error');
+      document.getElementById('saving-name-input')?.focus();
+      return;
+    }
+
+    if (amount <= 0) {
+      showToast('Vui lòng nhập số tiền gửi ban đầu > 0', 'error');
+      return;
+    }
+
+    // Calculate due date & expected interest
+    let dueDate = null;
+    let expectedInterest = 0;
+    if (depositDate) {
+      const d = new Date(depositDate);
+      if (termMonths > 0) {
+        d.setMonth(d.getMonth() + termMonths);
+        dueDate = d.toISOString().split('T')[0];
+        expectedInterest = Math.round(amount * (interestRate / 100) * (termMonths / 12));
+      } else {
+        expectedInterest = Math.round(amount * (interestRate / 100) * (1 / 12));
+      }
+    }
+
+    const payload = {
+      name,
+      depositAmount: amount,
+      balance: amount,
+      bankCode,
+      depositDate,
+      termMonths,
+      interestRate,
+      interestPaymentType,
+      maturityAction,
+      dueDate,
+      expectedInterest,
+      sourceAccountId: sourceAccountId ? Number(sourceAccountId) : null,
+      description,
+      excludeFromReport,
+      status: 'active'
+    };
+
+    if (id) {
+      await updateSaving(Number(id), payload);
+      showToast('Đã cập nhật thông tin sổ tiết kiệm', 'success');
+    } else {
+      await addSaving(payload);
+      showToast('Đã thêm sổ tiết kiệm mới', 'success');
+    }
+
+    this.closeSavingsForm();
+    await window.app.refreshAll();
+  },
+
+  async openSettleSavingModal(id) {
+    const saving = await db.savings.get(Number(id));
+    if (!saving) return;
+
+    document.getElementById('settle-saving-id-input').value = saving.id;
+    document.getElementById('settle-saving-name-display').value = saving.name;
+
+    const totalEstimate = (saving.balance || saving.depositAmount || 0) + (saving.expectedInterest || 0);
+    document.getElementById('settle-saving-amount-input').value = totalEstimate;
+    document.getElementById('settle-saving-date-input').value = new Date().toISOString().split('T')[0];
+
+    // Populate target accounts
+    const select = document.getElementById('settle-saving-target-account');
+    if (select) {
+      const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+      const active = accounts.filter(a => !a.isArchived);
+      let html = '';
+      active.forEach(a => {
+        const isSel = saving.sourceAccountId === a.id ? 'selected' : '';
+        html += `<option value="${a.id}" ${isSel}>${escapeHTML(a.name)} (Dư: ${new Intl.NumberFormat('vi-VN').format(a.balance)}đ)</option>`;
+      });
+      select.innerHTML = html;
+    }
+
+    const modal = document.getElementById('modal-settle-saving');
+    if (modal) modal.classList.add('open');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeSettleSavingModal() {
+    const modal = document.getElementById('modal-settle-saving');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async confirmSettleSaving() {
+    const id = document.getElementById('settle-saving-id-input')?.value;
+    const finalAmount = Number(document.getElementById('settle-saving-amount-input')?.value || 0);
+    const targetAccountId = document.getElementById('settle-saving-target-account')?.value;
+    const settleDate = document.getElementById('settle-saving-date-input')?.value;
+
+    if (!id || finalAmount <= 0 || !targetAccountId) {
+      showToast('Vui lòng điền đầy đủ thông tin tất toán', 'error');
+      return;
+    }
+
+    await settleSaving(Number(id), {
+      finalAmount,
+      targetAccountId: Number(targetAccountId),
+      settleDate
+    });
+
+    this.closeSettleSavingModal();
+    showToast('Tất toán sổ tiết kiệm thành công!', 'success');
+    await window.app.refreshAll();
+  },
+
+  async deleteSavingItem(id) {
+    const s = await db.savings.get(Number(id));
+    if (!s) return;
+    if (!confirm(`Bạn có chắc muốn xóa sổ tiết kiệm "${s.name}"?`)) return;
+    await deleteSaving(Number(id));
+    showToast(`Đã xóa sổ "${s.name}"`, 'info');
+    await window.app.refreshAll();
+  },
+
+  /* ==================== SỔ TÍCH LŨY (ACCUMULATIONS) ==================== */
+  async openAccumulationForm(accId = null) {
+    const form = document.getElementById('accumulation-form');
+    if (form) form.reset();
+
+    const idInput = document.getElementById('accumulation-id-input');
+    const titleEl = document.getElementById('accumulation-form-title');
+    const targetInput = document.getElementById('acc-target-amount-input');
+    const targetText = document.getElementById('acc-target-amount-text');
+    const currentInput = document.getElementById('acc-current-amount-input');
+    const startDateInput = document.getElementById('acc-start-date-input');
+    const targetDateInput = document.getElementById('acc-target-date-input');
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    await this.populateAccumulationSourceAccounts();
+
+    if (accId) {
+      const item = await db.accumulations.get(Number(accId));
+      if (!item) return;
+      if (idInput) idInput.value = item.id;
+      if (titleEl) titleEl.textContent = 'Sửa Sổ Tích Lũy';
+      document.getElementById('acc-goal-name-input').value = item.name || '';
+      if (targetInput) targetInput.value = item.targetAmount || 0;
+      if (targetText) targetText.textContent = new Intl.NumberFormat('vi-VN').format(item.targetAmount || 0);
+      if (currentInput) currentInput.value = item.currentAmount || 0;
+      if (startDateInput) startDateInput.value = item.startDate || todayStr;
+      if (targetDateInput) targetDateInput.value = item.targetDate || '';
+      document.getElementById('acc-has-recurring-input').checked = !!item.hasRecurring;
+      document.getElementById('acc-recurring-box').style.display = item.hasRecurring ? 'block' : 'none';
+      document.getElementById('acc-recurring-amount-input').value = item.recurringAmount || '';
+      document.getElementById('acc-exclude-report-input').checked = !!item.excludeFromReport;
+    } else {
+      if (idInput) idInput.value = '';
+      if (titleEl) titleEl.textContent = 'Thêm Tích Lũy';
+      if (targetInput) targetInput.value = '0';
+      if (targetText) targetText.textContent = '0';
+      if (currentInput) currentInput.value = '0';
+      if (startDateInput) startDateInput.value = todayStr;
+      if (targetDateInput) targetDateInput.value = '';
+      document.getElementById('acc-has-recurring-input').checked = false;
+      document.getElementById('acc-recurring-box').style.display = 'none';
+      document.getElementById('acc-exclude-report-input').checked = false;
+    }
+
+    if (window.app) window.app.switchView('accumulation-form');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeAccumulationForm() {
+    if (window.app) window.app.switchView('accounts', true);
+  },
+
+  openAccumulationKeypad() {
+    if (window.UITransactions) {
+      UITransactions.openKeypad('acc-target-amount');
+    }
+  },
+
+  async populateAccumulationSourceAccounts() {
+    const select = document.getElementById('acc-source-account-select');
+    if (!select) return;
+    const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    const active = accounts.filter(a => !a.isArchived);
+
+    let html = '<option value="">Không trích tiền (Đã có sẵn / Ngoài ví)</option>';
+    active.forEach(a => {
+      html += `<option value="${a.id}">Ví: ${escapeHTML(a.name)} (Dư: ${new Intl.NumberFormat('vi-VN').format(a.balance)}đ)</option>`;
+    });
+    select.innerHTML = html;
+  },
+
+  async handleAccumulationSubmit() {
+    const id = document.getElementById('accumulation-id-input')?.value;
+    const name = document.getElementById('acc-goal-name-input')?.value.trim();
+    const targetAmount = Number(document.getElementById('acc-target-amount-input')?.value || 0);
+    const currentAmount = Number(document.getElementById('acc-current-amount-input')?.value || 0);
+    const sourceAccountId = document.getElementById('acc-source-account-select')?.value || null;
+    const startDate = document.getElementById('acc-start-date-input')?.value;
+    const targetDate = document.getElementById('acc-target-date-input')?.value;
+    const hasRecurring = document.getElementById('acc-has-recurring-input')?.checked ? 1 : 0;
+    const recurringAmount = hasRecurring ? Number(document.getElementById('acc-recurring-amount-input')?.value || 0) : 0;
+    const excludeFromReport = document.getElementById('acc-exclude-report-input')?.checked ? 1 : 0;
+
+    if (!name) {
+      showToast('Vui lòng nhập tên mục tiêu tích lũy', 'error');
+      document.getElementById('acc-goal-name-input')?.focus();
+      return;
+    }
+
+    if (targetAmount <= 0) {
+      showToast('Vui lòng nhập số tiền mục tiêu > 0', 'error');
+      return;
+    }
+
+    const payload = {
+      name,
+      targetAmount,
+      currentAmount,
+      sourceAccountId: sourceAccountId ? Number(sourceAccountId) : null,
+      startDate,
+      targetDate,
+      hasRecurring,
+      recurringAmount,
+      excludeFromReport,
+      status: currentAmount >= targetAmount ? 'completed' : 'in_progress'
+    };
+
+    if (id) {
+      await updateAccumulation(Number(id), payload);
+      showToast('Đã cập nhật mục tiêu tích lũy', 'success');
+    } else {
+      await addAccumulation(payload);
+      showToast('Đã thêm mục tiêu tích lũy mới', 'success');
+    }
+
+    this.closeAccumulationForm();
+    await window.app.refreshAll();
+  },
+
+  async openDepositAccModal(id, mode = 'deposit') {
+    const acc = await db.accumulations.get(Number(id));
+    if (!acc) return;
+
+    document.getElementById('deposit-acc-id-input').value = acc.id;
+    document.getElementById('deposit-acc-mode').value = mode;
+    document.getElementById('deposit-acc-name-display').value = acc.name;
+    document.getElementById('deposit-acc-modal-title').textContent = mode === 'deposit' ? 'Nạp Tiền Tích Lũy' : 'Rút Tiền Tích Lũy';
+    document.getElementById('deposit-acc-amount-label').textContent = mode === 'deposit' ? 'Số tiền nạp thêm (VNĐ)' : 'Số tiền rút ra (VNĐ)';
+    document.getElementById('deposit-acc-amount-input').value = '';
+
+    const select = document.getElementById('deposit-acc-source-select');
+    if (select) {
+      const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+      const active = accounts.filter(a => !a.isArchived);
+      let html = '<option value="">Không trích/chuyển ví</option>';
+      active.forEach(a => {
+        html += `<option value="${a.id}">Ví: ${escapeHTML(a.name)} (Dư: ${new Intl.NumberFormat('vi-VN').format(a.balance)}đ)</option>`;
+      });
+      select.innerHTML = html;
+    }
+
+    const modal = document.getElementById('modal-deposit-accumulation');
+    if (modal) modal.classList.add('open');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeDepositAccModal() {
+    const modal = document.getElementById('modal-deposit-accumulation');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async confirmDepositAcc() {
+    const id = document.getElementById('deposit-acc-id-input')?.value;
+    const mode = document.getElementById('deposit-acc-mode')?.value;
+    const amount = Number(document.getElementById('deposit-acc-amount-input')?.value || 0);
+    const sourceAccountId = document.getElementById('deposit-acc-source-select')?.value;
+
+    if (!id || amount <= 0) {
+      showToast('Vui lòng nhập số tiền hợp lệ', 'error');
+      return;
+    }
+
+    const depositAmount = mode === 'withdraw' ? -amount : amount;
+    await depositAccumulation(Number(id), depositAmount, sourceAccountId ? Number(sourceAccountId) : null);
+
+    this.closeDepositAccModal();
+    showToast(mode === 'withdraw' ? 'Đã rút tiền tích lũy' : 'Đã nạp thêm tiền tích lũy', 'success');
+    await window.app.refreshAll();
+  },
+
+  async deleteAccumulationItem(id) {
+    const acc = await db.accumulations.get(Number(id));
+    if (!acc) return;
+    if (!confirm(`Bạn có chắc muốn xóa mục tiêu "${acc.name}"?`)) return;
+    await deleteAccumulation(Number(id));
+    showToast(`Đã xóa mục tiêu "${acc.name}"`, 'info');
+    await window.app.refreshAll();
+  },
+
+  /* ==================== QUẢN LÝ TÀI SẢN (ASSETS) ==================== */
+  ASSET_SUBTYPES: {
+    real_estate: [
+      { id: 'land', name: 'Đất thổ cư / Đất nền' },
+      { id: 'apartment', name: 'Chung cư / Căn hộ' },
+      { id: 'house', name: 'Nhà phố / Liền kề' },
+      { id: 'villa', name: 'Biệt thự / Nghỉ dưỡng' },
+      { id: 'farmland', name: 'Đất nông nghiệp / Vườn' }
+    ],
+    precious_metal: [
+      { id: 'sjc_gold', name: 'Vàng miếng SJC' },
+      { id: 'ring_gold', name: 'Vàng nhẫn 9999 (24K)' },
+      { id: 'white_gold', name: 'Vàng tây / Vàng trắng (18K, 14K)' },
+      { id: 'silver', name: 'Bạc miếng / Bạc tích trữ' },
+      { id: 'platinum', name: 'Bạch kim (Platinum)' }
+    ],
+    foreign_currency: [
+      { id: 'USD', name: 'Đô la Mỹ (USD)' },
+      { id: 'EUR', name: 'Đồng Euro (EUR)' },
+      { id: 'JPY', name: 'Yên Nhật (JPY)' },
+      { id: 'GBP', name: 'Bảng Anh (GBP)' },
+      { id: 'AUD', name: 'Đô la Úc (AUD)' },
+      { id: 'CAD', name: 'Đô la Canada (CAD)' },
+      { id: 'SGD', name: 'Đô la Singapore (SGD)' },
+      { id: 'CNY', name: 'Nhân dân tệ (CNY)' }
+    ],
+    other: [
+      { id: 'car', name: 'Ô tô / Phương tiện' },
+      { id: 'motorcycle', name: 'Xe máy / Moto PKL' },
+      { id: 'tech', name: 'Thiết bị công nghệ (Laptop, Phone)' },
+      { id: 'luxury', name: 'Đồng hồ & Đồ hiệu' },
+      { id: 'general', name: 'Tài sản giá trị khác' }
+    ]
+  },
+
+  async openAssetForm(assetType = 'real_estate', assetId = null) {
+    const form = document.getElementById('asset-form');
+    if (form) form.reset();
+
+    const idInput = document.getElementById('asset-id-input');
+    const typeInput = document.getElementById('asset-type-input');
+    const titleEl = document.getElementById('asset-form-title');
+    const bubbleEl = document.getElementById('asset-type-bubble');
+    const qtyRow = document.getElementById('asset-quantity-row');
+    const qtyLabel = document.getElementById('asset-qty-label');
+    const unitInput = document.getElementById('asset-unit-input');
+    const locRow = document.getElementById('asset-location-row');
+    const buyPriceInput = document.getElementById('asset-buyprice-input');
+    const curPriceInput = document.getElementById('asset-currentprice-input');
+    const extraCostsInput = document.getElementById('asset-extracosts-input');
+    const buyDateInput = document.getElementById('asset-buy-date-input');
+
+    if (typeInput) typeInput.value = assetType;
+
+    // Config labels & icons by assetType
+    const typeConfigs = {
+      real_estate: { title: 'Tạo Bất Động Sản', icon: 'home', unit: 'm²', qtyLabel: 'Diện tích (m²)', color: '#10b981', showLoc: true },
+      precious_metal: { title: 'Tạo Kim Loại Quý', icon: 'sparkles', unit: 'Chỉ', qtyLabel: 'Khối lượng / Số lượng', color: '#f59e0b', showLoc: false },
+      foreign_currency: { title: 'Tạo Tài Khoản Ngoại Tệ', icon: 'dollar-sign', unit: 'USD', qtyLabel: 'Số lượng ngoại tệ', color: '#0ea5e9', showLoc: false },
+      other: { title: 'Tạo Tài Sản Khác', icon: 'package', unit: 'Chiếc', qtyLabel: 'Số lượng', color: '#8b5cf6', showLoc: false }
+    };
+    const cfg = typeConfigs[assetType] || typeConfigs.real_estate;
+
+    if (titleEl) titleEl.textContent = assetId ? 'Sửa Tài Sản' : cfg.title;
+    if (bubbleEl) {
+      bubbleEl.innerHTML = `<i data-lucide="${cfg.icon}"></i>`;
+      bubbleEl.style.background = `${cfg.color}22`;
+      bubbleEl.style.color = cfg.color;
+    }
+    if (qtyLabel) qtyLabel.textContent = cfg.qtyLabel;
+    if (unitInput && !assetId) unitInput.value = cfg.unit;
+    if (locRow) locRow.style.display = cfg.showLoc ? 'flex' : 'none';
+
+    // Populate sub-types
+    this.populateAssetSubTypes(assetType);
+    await this.populateAssetSourceAccounts();
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    if (assetId) {
+      const item = await db.assets.get(Number(assetId));
+      if (!item) return;
+      if (idInput) idInput.value = item.id;
+      document.getElementById('asset-name-input').value = item.name || '';
+      document.getElementById('asset-subtype-select').value = item.subType || '';
+      document.getElementById('asset-is-gift-input').checked = !!item.isGift;
+      if (buyDateInput) buyDateInput.value = item.buyDate || todayStr;
+      document.getElementById('asset-quantity-input').value = item.quantity || 1;
+      if (unitInput) unitInput.value = item.unit || cfg.unit;
+      if (buyPriceInput) buyPriceInput.value = item.buyPrice || 0;
+      if (curPriceInput) curPriceInput.value = item.currentPrice || 0;
+      if (extraCostsInput) extraCostsInput.value = item.extraCosts || 0;
+      document.getElementById('asset-location-input').value = item.location || '';
+      document.getElementById('asset-note-input').value = item.note || '';
+      document.getElementById('asset-include-networth-input').checked = item.includeInNetWorth !== undefined ? !!item.includeInNetWorth : true;
+    } else {
+      if (idInput) idInput.value = '';
+      if (buyDateInput) buyDateInput.value = todayStr;
+      document.getElementById('asset-quantity-input').value = '1';
+      if (buyPriceInput) buyPriceInput.value = '0';
+      if (curPriceInput) curPriceInput.value = '0';
+      if (extraCostsInput) extraCostsInput.value = '0';
+      document.getElementById('asset-is-gift-input').checked = false;
+      document.getElementById('asset-include-networth-input').checked = true;
+    }
+
+    this.calcAssetPreview();
+
+    if (window.app) window.app.switchView('asset-form');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeAssetForm() {
+    if (window.app) window.app.switchView('accounts', true);
+  },
+
+  openAssetKeypad() {
+    if (window.UITransactions) {
+      UITransactions.openKeypad('asset-price');
+    }
+  },
+
+  populateAssetSubTypes(assetType) {
+    const select = document.getElementById('asset-subtype-select');
+    if (!select) return;
+    const list = this.ASSET_SUBTYPES[assetType] || this.ASSET_SUBTYPES.real_estate;
+    select.innerHTML = list.map(x => `<option value="${x.id}">${escapeHTML(x.name)}</option>`).join('');
+  },
+
+  async populateAssetSourceAccounts() {
+    const select = document.getElementById('asset-source-account-select');
+    if (!select) return;
+    const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    const active = accounts.filter(a => !a.isArchived);
+
+    let html = '<option value="">Không trích tiền ví (Đã trả ngoài sổ)</option>';
+    active.forEach(a => {
+      html += `<option value="${a.id}">Ví: ${escapeHTML(a.name)} (Dư: ${new Intl.NumberFormat('vi-VN').format(a.balance)}đ)</option>`;
+    });
+    select.innerHTML = html;
+  },
+
+  handleAssetGiftToggle(isGift) {
+    const buyRow = document.getElementById('asset-buyprice-row');
+    const buyInput = document.getElementById('asset-buyprice-input');
+    if (isGift) {
+      if (buyInput) buyInput.value = '0';
+      if (buyRow) buyRow.style.opacity = '0.5';
+    } else {
+      if (buyRow) buyRow.style.opacity = '1';
+    }
+    this.calcAssetPreview();
+  },
+
+  calcAssetPreview() {
+    const qty = Number(document.getElementById('asset-quantity-input')?.value || 0);
+    const isGift = document.getElementById('asset-is-gift-input')?.checked;
+    const buyPrice = isGift ? 0 : Number(document.getElementById('asset-buyprice-input')?.value || 0);
+    const curPrice = Number(document.getElementById('asset-currentprice-input')?.value || 0);
+    const extraCosts = Number(document.getElementById('asset-extracosts-input')?.value || 0);
+
+    const totalBuy = (qty * buyPrice) + extraCosts;
+    const totalCurrent = (qty * curPrice);
+    const pnl = totalCurrent - totalBuy;
+    const pnlPercent = totalBuy > 0 ? ((pnl / totalBuy) * 100).toFixed(1) : 0;
+
+    const totalBuyEl = document.getElementById('asset-preview-total-buy');
+    const totalCurEl = document.getElementById('asset-preview-total-current');
+    const pnlEl = document.getElementById('asset-preview-pnl');
+    const assetPriceText = document.getElementById('asset-price-text');
+    const assetPriceInput = document.getElementById('asset-price-input');
+
+    if (totalBuyEl) totalBuyEl.textContent = `${new Intl.NumberFormat('vi-VN').format(totalBuy)}đ`;
+    if (totalCurEl) totalCurEl.textContent = `${new Intl.NumberFormat('vi-VN').format(totalCurrent)}đ`;
+    if (assetPriceText) assetPriceText.textContent = new Intl.NumberFormat('vi-VN').format(totalCurrent);
+    if (assetPriceInput) assetPriceInput.value = totalCurrent;
+
+    if (pnlEl) {
+      const sign = pnl >= 0 ? '+' : '';
+      const color = pnl > 0 ? 'var(--income)' : (pnl < 0 ? 'var(--expense)' : 'var(--text-muted)');
+      pnlEl.style.color = color;
+      pnlEl.textContent = `${sign}${new Intl.NumberFormat('vi-VN').format(pnl)}đ (${sign}${pnlPercent}%)`;
+    }
+  },
+
+  async handleAssetSubmit() {
+    const id = document.getElementById('asset-id-input')?.value;
+    const assetType = document.getElementById('asset-type-input')?.value || 'real_estate';
+    const subType = document.getElementById('asset-subtype-select')?.value;
+    const name = document.getElementById('asset-name-input')?.value.trim();
+    const isGift = document.getElementById('asset-is-gift-input')?.checked ? 1 : 0;
+    const buyDate = document.getElementById('asset-buy-date-input')?.value;
+    const quantity = Number(document.getElementById('asset-quantity-input')?.value || 1);
+    const unit = document.getElementById('asset-unit-input')?.value.trim() || 'đơn vị';
+    const buyPrice = isGift ? 0 : Number(document.getElementById('asset-buyprice-input')?.value || 0);
+    const currentPrice = Number(document.getElementById('asset-currentprice-input')?.value || 0);
+    const extraCosts = Number(document.getElementById('asset-extracosts-input')?.value || 0);
+    const sourceAccountId = document.getElementById('asset-source-account-select')?.value || null;
+    const location = document.getElementById('asset-location-input')?.value.trim() || '';
+    const note = document.getElementById('asset-note-input')?.value.trim() || '';
+    const includeInNetWorth = document.getElementById('asset-include-networth-input')?.checked ? 1 : 0;
+
+    if (!name) {
+      showToast('Vui lòng nhập tên tài sản', 'error');
+      document.getElementById('asset-name-input')?.focus();
+      return;
+    }
+
+    if (quantity <= 0) {
+      showToast('Số lượng/Diện tích phải > 0', 'error');
+      return;
+    }
+
+    const payload = {
+      assetType,
+      subType,
+      name,
+      isGift,
+      buyDate,
+      quantity,
+      unit,
+      buyPrice,
+      currentPrice,
+      extraCosts,
+      sourceAccountId: sourceAccountId ? Number(sourceAccountId) : null,
+      location,
+      note,
+      includeInNetWorth,
+      status: 'active'
+    };
+
+    if (id) {
+      await updateAsset(Number(id), payload);
+      showToast('Đã cập nhật tài sản', 'success');
+    } else {
+      await addAsset(payload);
+      showToast('Đã thêm tài sản mới', 'success');
+    }
+
+    this.closeAssetForm();
+    await window.app.refreshAll();
+  },
+
+  async openLiquidateModal(id) {
+    const asset = await db.assets.get(Number(id));
+    if (!asset) return;
+
+    document.getElementById('liquidate-asset-id-input').value = asset.id;
+    document.getElementById('liquidate-asset-name-display').value = asset.name;
+    const estVal = (asset.quantity || 1) * (asset.currentPrice || asset.buyPrice || 0);
+    document.getElementById('liquidate-asset-price-input').value = estVal;
+    document.getElementById('liquidate-asset-date-input').value = new Date().toISOString().split('T')[0];
+
+    const select = document.getElementById('liquidate-asset-target-account');
+    if (select) {
+      const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+      const active = accounts.filter(a => !a.isArchived);
+      let html = '';
+      active.forEach(a => {
+        html += `<option value="${a.id}">Ví: ${escapeHTML(a.name)} (Dư: ${new Intl.NumberFormat('vi-VN').format(a.balance)}đ)</option>`;
+      });
+      select.innerHTML = html;
+    }
+
+    const modal = document.getElementById('modal-liquidate-asset');
+    if (modal) modal.classList.add('open');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeLiquidateModal() {
+    const modal = document.getElementById('modal-liquidate-asset');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async confirmLiquidateAsset() {
+    const id = document.getElementById('liquidate-asset-id-input')?.value;
+    const price = Number(document.getElementById('liquidate-asset-price-input')?.value || 0);
+    const targetAccountId = document.getElementById('liquidate-asset-target-account')?.value;
+    const liquidateDate = document.getElementById('liquidate-asset-date-input')?.value;
+
+    if (!id || price <= 0 || !targetAccountId) {
+      showToast('Vui lòng điền đầy đủ thông tin bán tài sản', 'error');
+      return;
+    }
+
+    await liquidateAsset(Number(id), {
+      price,
+      targetAccountId: Number(targetAccountId),
+      liquidateDate
+    });
+
+    this.closeLiquidateModal();
+    showToast('Đã thanh lý tài sản thành công!', 'success');
+    await window.app.refreshAll();
+  },
+
+  async deleteAssetItem(id) {
+    const asset = await db.assets.get(Number(id));
+    if (!asset) return;
+    if (!confirm(`Bạn có chắc muốn xóa tài sản "${asset.name}"?`)) return;
+    await deleteAsset(Number(id));
+    showToast(`Đã xóa tài sản "${asset.name}"`, 'info');
+    await window.app.refreshAll();
+  },
+
+  /* ==================== ACTION SHEET CHUNG (3 CHẤM) ==================== */
+  currentItemAction: null,
+
+  openItemActionSheet(type, id) {
+    this.currentItemAction = { type, id: Number(id) };
+    const modal = document.getElementById('modal-item-actions');
+    const titleEl = document.getElementById('item-actions-title');
+    const subtitleEl = document.getElementById('item-actions-subtitle');
+    const iconEl = document.getElementById('item-actions-icon');
+    const bodyEl = document.getElementById('item-actions-body');
+    if (!modal || !bodyEl) return;
+
+    if (type === 'savings') {
+      db.savings.get(Number(id)).then(s => {
+        if (!s) return;
+        if (titleEl) titleEl.textContent = s.name;
+        if (subtitleEl) subtitleEl.textContent = `Gửi: ${new Intl.NumberFormat('vi-VN').format(s.balance || s.depositAmount || 0)}đ ${s.status === 'settled' ? '(Đã tất toán)' : ''}`;
+        if (iconEl) {
+          iconEl.innerHTML = '<i data-lucide="piggy-bank"></i>';
+          iconEl.style.background = 'rgba(14, 165, 233, 0.15)';
+          iconEl.style.color = '#0ea5e9';
+        }
+
+        let btns = '';
+        if (s.status === 'active') {
+          btns += `
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openSettleSavingModal(${s.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Tất toán sổ tiết kiệm</span>
+                <span class="action-sheet-item-desc">Rút gốc và lãi chuyển về tài khoản chi tiêu</span>
+              </div>
+            </button>
+          `;
+        }
+        btns += `
+          <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openSavingsForm(${s.id})">
+            <div class="action-sheet-item-icon" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+              <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="action-sheet-item-text">
+              <span class="action-sheet-item-title">Sửa thông tin sổ</span>
+              <span class="action-sheet-item-desc">Thay đổi kỳ hạn, lãi suất, ngân hàng...</span>
+            </div>
+          </button>
+          <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.deleteSavingItem(${s.id})">
+            <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+              <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="action-sheet-item-text">
+              <span class="action-sheet-item-title">Xóa sổ tiết kiệm</span>
+              <span class="action-sheet-item-desc">Xóa hoàn toàn khỏi ứng dụng</span>
+            </div>
+          </button>
+        `;
+        bodyEl.innerHTML = btns;
+        modal.classList.add('open');
+        if (window.lucide) lucide.createIcons();
+      });
+    } else if (type === 'accumulation') {
+      db.accumulations.get(Number(id)).then(acc => {
+        if (!acc) return;
+        if (titleEl) titleEl.textContent = acc.name;
+        if (subtitleEl) subtitleEl.textContent = `Hiện có: ${new Intl.NumberFormat('vi-VN').format(acc.currentAmount || 0)} / ${new Intl.NumberFormat('vi-VN').format(acc.targetAmount || 0)}đ`;
+        if (iconEl) {
+          iconEl.innerHTML = '<i data-lucide="target"></i>';
+          iconEl.style.background = 'rgba(245, 158, 11, 0.15)';
+          iconEl.style.color = '#f59e0b';
+        }
+
+        bodyEl.innerHTML = `
+          <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openDepositAccModal(${acc.id}, 'deposit')">
+            <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+              <i data-lucide="plus-circle" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="action-sheet-item-text">
+              <span class="action-sheet-item-title">Nạp thêm tiền tích lũy</span>
+              <span class="action-sheet-item-desc">Trích tiền từ ví vào mục tiêu này</span>
+            </div>
+          </button>
+          <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openDepositAccModal(${acc.id}, 'withdraw')">
+            <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+              <i data-lucide="minus-circle" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="action-sheet-item-text">
+              <span class="action-sheet-item-title">Rút bớt tiền tích lũy</span>
+              <span class="action-sheet-item-desc">Rút tiền chuyển lại vào ví</span>
+            </div>
+          </button>
+          <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openAccumulationForm(${acc.id})">
+            <div class="action-sheet-item-icon" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+              <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="action-sheet-item-text">
+              <span class="action-sheet-item-title">Sửa mục tiêu tích lũy</span>
+              <span class="action-sheet-item-desc">Đổi hạn chót, số tiền mục tiêu...</span>
+            </div>
+          </button>
+          <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.deleteAccumulationItem(${acc.id})">
+            <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+              <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="action-sheet-item-text">
+              <span class="action-sheet-item-title">Xóa sổ tích lũy</span>
+              <span class="action-sheet-item-desc">Xóa hoàn toàn khỏi ứng dụng</span>
+            </div>
+          </button>
+        `;
+        modal.classList.add('open');
+        if (window.lucide) lucide.createIcons();
+      });
+    } else if (type === 'asset') {
+      db.assets.get(Number(id)).then(asset => {
+        if (!asset) return;
+        const totalCur = (asset.quantity || 1) * (asset.currentPrice || 0);
+        if (titleEl) titleEl.textContent = asset.name;
+        if (subtitleEl) subtitleEl.textContent = `Giá trị: ${new Intl.NumberFormat('vi-VN').format(totalCur)}đ`;
+        if (iconEl) {
+          iconEl.innerHTML = '<i data-lucide="gem"></i>';
+          iconEl.style.background = 'rgba(168, 85, 247, 0.15)';
+          iconEl.style.color = '#a855f7';
+        }
+
+        bodyEl.innerHTML = `
+          <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openLiquidateModal(${asset.id})">
+            <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+              <i data-lucide="dollar-sign" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="action-sheet-item-text">
+              <span class="action-sheet-item-title">Bán / Thanh lý tài sản</span>
+              <span class="action-sheet-item-desc">Ghi nhận tiền bán và chuyển vào ví chi tiêu</span>
+            </div>
+          </button>
+          <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openAssetForm('${asset.assetType || 'real_estate'}', ${asset.id})">
+            <div class="action-sheet-item-icon" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+              <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="action-sheet-item-text">
+              <span class="action-sheet-item-title">Cập nhật giá & thông tin</span>
+              <span class="action-sheet-item-desc">Định giá lại theo thị trường hiện tại</span>
+            </div>
+          </button>
+          <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.deleteAssetItem(${asset.id})">
+            <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+              <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="action-sheet-item-text">
+              <span class="action-sheet-item-title">Xóa tài sản</span>
+              <span class="action-sheet-item-desc">Xóa hoàn toàn khỏi ứng dụng</span>
+            </div>
+          </button>
+        `;
+        modal.classList.add('open');
+        if (window.lucide) lucide.createIcons();
+      });
+    }
+  },
+
+  closeItemActionSheet() {
+    const modal = document.getElementById('modal-item-actions');
+    if (modal) modal.classList.remove('open');
+    this.currentItemAction = null;
+  },
+
+  /* ==================== RENDER NET WORTH & 4 SECTIONS ==================== */
+  async renderNetWorthHeader() {
+    const netWorthData = await getNetWorth();
+
+    const netWorthEl = document.getElementById('account-total-networth');
+    if (netWorthEl) netWorthEl.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.netWorth)}đ`;
+
+    const expEl = document.getElementById('networth-mini-expense');
+    if (expEl) expEl.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalAccountBalance)}đ`;
+
+    const savEl = document.getElementById('networth-mini-savings');
+    if (savEl) savEl.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalSavings)}đ`;
+
+    const accEl = document.getElementById('networth-mini-accumulations');
+    if (accEl) accEl.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalAccumulations)}đ`;
+
+    const astEl = document.getElementById('networth-mini-assets');
+    if (astEl) astEl.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalAssets)}đ`;
+
+    // Section subtotal labels
+    const labelExp = document.getElementById('label-expense-acc-total');
+    if (labelExp) labelExp.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalAccountBalance)}đ`;
+
+    const labelSav = document.getElementById('label-savings-total');
+    if (labelSav) labelSav.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalSavings)}đ`;
+
+    const labelAcc = document.getElementById('label-accumulations-total');
+    if (labelAcc) labelAcc.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalAccumulations)}đ`;
+
+    const labelAst = document.getElementById('label-assets-total');
+    if (labelAst) labelAst.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalAssets)}đ`;
+  },
+
+  async renderSavings() {
+    const container = document.getElementById('savings-list-container');
+    const badgeCount = document.getElementById('badge-savings-count');
+    const settledSec = document.getElementById('settled-savings-section');
+    const settledList = document.getElementById('settled-savings-list');
+    const settledLabel = document.getElementById('settled-savings-toggle-label');
+    const settledChevron = document.getElementById('settled-savings-toggle-icon');
+
+    if (!container) return;
+
+    const allSavings = await db.savings.where('isDeleted').equals(0).toArray();
+    const activeSavings = allSavings.filter(s => s.status === 'active');
+    const settledSavings = allSavings.filter(s => s.status === 'settled');
+
+    if (badgeCount) badgeCount.textContent = activeSavings.length;
+
+    if (activeSavings.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 24px 16px; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
+          <i data-lucide="piggy-bank" style="width: 32px; height: 32px; margin: 0 auto 8px; opacity: 0.5; color: #0ea5e9;"></i>
+          <p style="font-weight: 600; margin-bottom: 2px;">Chưa có sổ tiết kiệm nào</p>
+          <p style="font-size: 0.8rem;">Bấm "Thêm sổ" để theo dõi kỳ hạn và lãi suất tiền gửi</p>
+        </div>
+      `;
+    } else {
+      container.innerHTML = activeSavings.map(s => {
+        const prov = s.bankCode ? this.PROVIDERS.find(x => x.code === s.bankCode) : null;
+        const dueText = s.dueDate ? `Đáo hạn: ${s.dueDate.split('-').reverse().join('/')}` : 'Không kỳ hạn';
+        const expectedProfit = s.expectedInterest ? `+Lãi dự kiến: ${new Intl.NumberFormat('vi-VN').format(s.expectedInterest)}đ` : '';
+
+        return `
+          <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('savings', ${s.id})">
+            <div class="group-card-header">
+              <div class="group-card-title-row">
+                <div class="group-card-icon-wrap" style="background: transparent;">
+                  ${this.renderLogoBadge(prov || s.bankCode || { icon: 'piggy-bank', color: '#0ea5e9' }, 38)}
+                </div>
+                <div style="min-width: 0; flex: 1;">
+                  <div class="group-card-name" title="${escapeHTML(s.name)}">${escapeHTML(s.name)}</div>
+                  <div class="group-card-sub">
+                    <span class="rate-badge">${s.interestRate || 0}%/năm</span>
+                    <span class="term-badge">${s.termMonths ? s.termMonths + ' tháng' : 'Không kỳ hạn'}</span>
+                    ${s.excludeFromReport ? '<span class="account-badge exclude"><i data-lucide="eye-off" style="width:10px;height:10px;"></i> Ẩn báo cáo</span>' : ''}
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="btn-icon" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('savings', ${s.id})" title="Tùy chọn">
+                <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
+              </button>
+            </div>
+
+            <div class="group-card-body">
+              <div>
+                <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Tiền gửi ban đầu</span>
+                <span class="group-card-amount stat-amount">${new Intl.NumberFormat('vi-VN').format(s.balance || s.depositAmount || 0)}đ</span>
+              </div>
+              <div class="group-card-stat">
+                <span style="color: var(--text-secondary); font-size: 0.75rem;">${dueText}</span>
+                <span class="group-card-stat-val stat-amount" style="color: var(--income); font-size: 0.78rem;">${expectedProfit}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Settled savings collapsible
+    if (settledSec && settledList) {
+      if (settledSavings.length === 0) {
+        settledSec.style.display = 'none';
+        settledList.innerHTML = '';
+      } else {
+        settledSec.style.display = 'block';
+        if (settledLabel) settledLabel.textContent = `Sổ đã tất toán (${settledSavings.length})`;
+        settledList.style.display = this.isSettledSavingsExpanded ? 'flex' : 'none';
+        if (settledChevron) settledChevron.classList.toggle('rotated', this.isSettledSavingsExpanded);
+
+        settledList.innerHTML = settledSavings.map(s => {
+          const prov = s.bankCode ? this.PROVIDERS.find(x => x.code === s.bankCode) : null;
+          const settleDateStr = s.settledDate ? s.settledDate.split('-').reverse().join('/') : '';
+
+          return `
+            <div class="group-item-card archived" onclick="UIAccounts.openItemActionSheet('savings', ${s.id})">
+              <div class="group-card-header">
+                <div class="group-card-title-row">
+                  <div class="group-card-icon-wrap" style="background: transparent; opacity: 0.65;">
+                    ${this.renderLogoBadge(prov || s.bankCode || { icon: 'piggy-bank', color: '#0ea5e9' }, 36)}
+                  </div>
+                  <div style="min-width: 0; flex: 1;">
+                    <div class="group-card-name" style="color: var(--text-secondary);">${escapeHTML(s.name)}</div>
+                    <div class="group-card-sub">
+                      <span>Đã tất toán ${settleDateStr}</span>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn-icon" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('savings', ${s.id})">
+                  <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
+                </button>
+              </div>
+              <div class="group-card-body">
+                <div>
+                  <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Thực nhận khi tất toán</span>
+                  <span class="group-card-amount stat-amount" style="color: var(--income);">${new Intl.NumberFormat('vi-VN').format(s.finalAmount || s.balance || 0)}đ</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  },
+
+  async renderAccumulations() {
+    const container = document.getElementById('accumulations-list-container');
+    const badgeCount = document.getElementById('badge-accumulations-count');
+    if (!container) return;
+
+    const list = await db.accumulations.where('isDeleted').equals(0).toArray();
+    if (badgeCount) badgeCount.textContent = list.length;
+
+    if (list.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 24px 16px; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
+          <i data-lucide="target" style="width: 32px; height: 32px; margin: 0 auto 8px; opacity: 0.5; color: #f59e0b;"></i>
+          <p style="font-weight: 600; margin-bottom: 2px;">Chưa có mục tiêu tích lũy nào</p>
+          <p style="font-size: 0.8rem;">Bấm "Thêm mục tiêu" để đặt kế hoạch mua sắm, du lịch...</p>
+        </div>
+      `;
+    } else {
+      container.innerHTML = list.map(item => {
+        const cur = item.currentAmount || 0;
+        const target = item.targetAmount || 1;
+        const percent = Math.min(Math.round((cur / target) * 100), 100);
+        const targetDateStr = item.targetDate ? `Hạn chót: ${item.targetDate.split('-').reverse().join('/')}` : 'Không giới hạn';
+
+        return `
+          <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('accumulation', ${item.id})">
+            <div class="group-card-header">
+              <div class="group-card-title-row">
+                <div class="group-card-icon-wrap" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
+                  <i data-lucide="target" style="width: 20px; height: 20px;"></i>
+                </div>
+                <div style="min-width: 0; flex: 1;">
+                  <div class="group-card-name" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
+                  <div class="group-card-sub">
+                    <span>${targetDateStr}</span>
+                    ${item.hasRecurring ? '<span class="term-badge"><i data-lucide="repeat" style="width:10px;height:10px;"></i> Định kỳ</span>' : ''}
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="btn-icon" onclick="event.stopPropagation(); UIAccounts.openDepositAccModal(${item.id}, 'deposit')" title="Nạp thêm tiền">
+                <i data-lucide="plus-circle" style="width: 19px; height: 19px; color: #10b981;"></i>
+              </button>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="acc-progress-wrap">
+              <div class="acc-progress-header">
+                <span style="color: var(--text-muted); font-size: 0.74rem;">Tiến độ tích lũy</span>
+                <span class="acc-progress-percent">${percent}%</span>
+              </div>
+              <div class="acc-progress-track">
+                <div class="acc-progress-bar" style="width: ${percent}%;"></div>
+              </div>
+            </div>
+
+            <div class="group-card-body" style="margin-top: 4px;">
+              <div>
+                <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Hiện có</span>
+                <span class="group-card-amount stat-amount" style="color: #f59e0b;">${new Intl.NumberFormat('vi-VN').format(cur)}đ</span>
+              </div>
+              <div class="group-card-stat">
+                <span style="color: var(--text-muted); font-size: 0.72rem;">Mục tiêu</span>
+                <span class="group-card-stat-val stat-amount" style="color: var(--text-primary); font-size: 0.86rem;">${new Intl.NumberFormat('vi-VN').format(target)}đ</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  },
+
+  async renderAssets() {
+    const container = document.getElementById('assets-list-container');
+    if (!container) return;
+
+    const list = await db.assets.where('isDeleted').equals(0).toArray();
+
+    if (list.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 24px 16px; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
+          <i data-lucide="gem" style="width: 32px; height: 32px; margin: 0 auto 8px; opacity: 0.5; color: #a855f7;"></i>
+          <p style="font-weight: 600; margin-bottom: 2px;">Chưa có tài sản nào</p>
+          <p style="font-size: 0.8rem;">Bấm "Thêm tài sản" để quản lý Bất động sản, Vàng, Ngoại tệ, Xe cộ...</p>
+        </div>
+      `;
+    } else {
+      const typeIcons = {
+        real_estate: { icon: 'home', color: '#10b981', label: 'BĐS' },
+        precious_metal: { icon: 'sparkles', color: '#f59e0b', label: 'Vàng/Bạc' },
+        foreign_currency: { icon: 'dollar-sign', color: '#0ea5e9', label: 'Ngoại tệ' },
+        other: { icon: 'package', color: '#8b5cf6', label: 'Khác' }
+      };
+
+      container.innerHTML = list.map(item => {
+        const cfg = typeIcons[item.assetType] || typeIcons.other;
+        const qty = item.quantity || 1;
+        const totalCur = qty * (item.currentPrice || 0);
+        const totalBuy = (qty * (item.buyPrice || 0)) + (item.extraCosts || 0);
+        const pnl = totalCur - totalBuy;
+        const pnlPct = totalBuy > 0 ? ((pnl / totalBuy) * 100).toFixed(1) : 0;
+        const isProf = pnl >= 0;
+        const sign = isProf ? '+' : '';
+
+        return `
+          <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('asset', ${item.id})">
+            <div class="group-card-header">
+              <div class="group-card-title-row">
+                <div class="group-card-icon-wrap" style="background: ${cfg.color}22; color: ${cfg.color};">
+                  <i data-lucide="${cfg.icon}" style="width: 20px; height: 20px;"></i>
+                </div>
+                <div style="min-width: 0; flex: 1;">
+                  <div class="group-card-name" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
+                  <div class="group-card-sub">
+                    <span class="term-badge">${cfg.label}</span>
+                    <span>${qty} ${escapeHTML(item.unit || '')}</span>
+                    ${item.location ? `<span>• ${escapeHTML(item.location)}</span>` : ''}
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="btn-icon" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('asset', ${item.id})" title="Tùy chọn">
+                <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
+              </button>
+            </div>
+
+            <div class="group-card-body">
+              <div>
+                <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Giá trị thị trường</span>
+                <span class="group-card-amount stat-amount" style="color: #a855f7;">${new Intl.NumberFormat('vi-VN').format(totalCur)}đ</span>
+              </div>
+              <div class="group-card-stat">
+                <span class="pnl-badge ${isProf ? 'profit' : 'loss'} stat-amount">${sign}${new Intl.NumberFormat('vi-VN').format(pnl)}đ (${sign}${pnlPct}%)</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  },
+
+    /* ==================== RENDER DANH SÁCH TÀI KHOẢN ==================== */
   async render() {
     const container = document.getElementById('accounts-list-container');
     if (!container) return;
@@ -1383,6 +2693,8 @@ const UIAccounts = {
     accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
 
     const activeAccounts = accounts.filter(a => !a.isArchived);
+    const badgeExpenseCount = document.getElementById('badge-expense-acc-count');
+    if (badgeExpenseCount) badgeExpenseCount.textContent = activeAccounts.length;
     const archivedAccounts = accounts.filter(a => !!a.isArchived);
 
     const iconMap = {
@@ -1502,6 +2814,16 @@ const UIAccounts = {
         });
         archList.innerHTML = archHtml;
       }
+    }
+
+    // 3. Render Net Worth Header & 3 New Groups
+    await this.renderNetWorthHeader();
+    await this.renderSavings();
+    await this.renderAccumulations();
+    await this.renderAssets();
+
+    if (window.app && typeof window.app.applyPrivacyMode === 'function') {
+      window.app.applyPrivacyMode(window.app.isPrivacyMode);
     }
 
     if (window.lucide) lucide.createIcons();

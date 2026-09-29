@@ -13,9 +13,12 @@ const BackupService = {
     const budgets = await db.budgets.toArray();
     const recurring = await db.recurring.toArray();
     const settings = await db.settings.toArray();
+    const savings = db.savings ? await db.savings.toArray() : [];
+    const accumulations = db.accumulations ? await db.accumulations.toArray() : [];
+    const assets = db.assets ? await db.assets.toArray() : [];
 
     const dataPayload = {
-      version: '1.0.0',
+      version: '2.0.0',
       exportedAt: new Date().toISOString(),
       data: {
         transactions,
@@ -24,7 +27,10 @@ const BackupService = {
         debts,
         budgets,
         recurring,
-        settings
+        settings,
+        savings,
+        accumulations,
+        assets
       }
     };
 
@@ -74,9 +80,14 @@ const BackupService = {
             throw new Error('Định dạng tệp sao lưu không hợp lệ.');
           }
 
-          const { transactions, accounts, categories, debts, budgets, recurring } = parsed.data;
+          const { transactions, accounts, categories, debts, budgets, recurring, savings, accumulations, assets } = parsed.data;
 
-          await db.transaction('rw', [db.transactions, db.accounts, db.categories, db.debts, db.budgets, db.recurring], async () => {
+          const storesToLock = [db.transactions, db.accounts, db.categories, db.debts, db.budgets, db.recurring];
+          if (db.savings) storesToLock.push(db.savings);
+          if (db.accumulations) storesToLock.push(db.accumulations);
+          if (db.assets) storesToLock.push(db.assets);
+
+          await db.transaction('rw', storesToLock, async () => {
             if (transactions && transactions.length) {
               await db.transactions.clear();
               await db.transactions.bulkAdd(transactions);
@@ -100,6 +111,18 @@ const BackupService = {
             if (recurring && recurring.length) {
               await db.recurring.clear();
               await db.recurring.bulkAdd(recurring);
+            }
+            if (savings && savings.length && db.savings) {
+              await db.savings.clear();
+              await db.savings.bulkAdd(savings);
+            }
+            if (accumulations && accumulations.length && db.accumulations) {
+              await db.accumulations.clear();
+              await db.accumulations.bulkAdd(accumulations);
+            }
+            if (assets && assets.length && db.assets) {
+              await db.assets.clear();
+              await db.assets.bulkAdd(assets);
             }
           });
 

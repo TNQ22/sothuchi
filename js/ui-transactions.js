@@ -242,7 +242,7 @@ const UITransactions = {
     }
 
     modal.classList.remove('open');
-    if (this.activeKeypadTarget !== 'account-balance') {
+    if (!['account-balance', 'saving-amount', 'acc-target-amount', 'asset-price'].includes(this.activeKeypadTarget)) {
       this.saveDraft();
     }
   },

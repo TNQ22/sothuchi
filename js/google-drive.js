@@ -201,7 +201,7 @@ class GoogleDriveSync {
 
       // Upload merged result back to Google Drive
       await this.uploadRemoteData({
-        version: '1.0.0',
+        version: '2.0.0',
         syncedAt: new Date().toISOString(),
         data: merged
       });
@@ -230,12 +230,16 @@ class GoogleDriveSync {
         categories: await db.categories.toArray(),
         debts: await db.debts.toArray(),
         budgets: await db.budgets.toArray(),
-        recurring: await db.recurring.toArray()
+        recurring: await db.recurring.toArray(),
+        savings: db.savings ? await db.savings.toArray() : [],
+        accumulations: db.accumulations ? await db.accumulations.toArray() : [],
+        assets: db.assets ? await db.assets.toArray() : []
       };
       return local;
     }
 
     const mergeTable = async (table, localItems, remoteItems) => {
+      if (!table) return [];
       const itemMap = new Map();
       
       // Load local
@@ -247,7 +251,7 @@ class GoogleDriveSync {
       if (remoteItems && Array.isArray(remoteItems)) {
         for (const rItem of remoteItems) {
           let lItem = itemMap.get(rItem.id);
-          // Đối với tài khoản, nếu ID khác nhau nhưng cùng tên & loại -> ghép lại tránh bị lặn gấp đôi
+          // Đối với tài khoản, nếu ID khác nhau nhưng cùng tên & loại -> ghép lại tránh bị lặp gấp đôi
           if (!lItem && table === db.accounts && rItem.name) {
             for (const existing of itemMap.values()) {
               if (existing.name && existing.name.trim().toLowerCase() === rItem.name.trim().toLowerCase() && existing.type === rItem.type) {
@@ -284,6 +288,9 @@ class GoogleDriveSync {
     const finalDebts = await mergeTable(db.debts, await db.debts.toArray(), remoteData.debts);
     const finalBudgets = await mergeTable(db.budgets, await db.budgets.toArray(), remoteData.budgets);
     const finalRecurring = await mergeTable(db.recurring, await db.recurring.toArray(), remoteData.recurring);
+    const finalSavings = db.savings ? await mergeTable(db.savings, await db.savings.toArray(), remoteData.savings) : [];
+    const finalAccumulations = db.accumulations ? await mergeTable(db.accumulations, await db.accumulations.toArray(), remoteData.accumulations) : [];
+    const finalAssets = db.assets ? await mergeTable(db.assets, await db.assets.toArray(), remoteData.assets) : [];
 
     return {
       transactions: finalTransactions,
@@ -291,7 +298,10 @@ class GoogleDriveSync {
       categories: finalCategories,
       debts: finalDebts,
       budgets: finalBudgets,
-      recurring: finalRecurring
+      recurring: finalRecurring,
+      savings: finalSavings,
+      accumulations: finalAccumulations,
+      assets: finalAssets
     };
   }
 }

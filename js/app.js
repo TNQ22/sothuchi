@@ -370,7 +370,7 @@ class App {
     this.lastAddTabClickTime = 0;
     const primaryViews = ['dashboard', 'accounts', 'budgets', 'settings', 'transactions', 'debts', 'analytics'];
     const isPrimary = primaryViews.includes(viewId);
-    const isTxPage = ['new-transaction', 'category-picker', 'borrow-select', 'account-form'].includes(viewId);
+    const isTxPage = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form'].includes(viewId);
 
     // Instantly hide/show the header in JS FIRST — before any class/DOM changes.
     // CSS :has() and body-class selectors update asynchronously (next paint frame),
@@ -398,7 +398,7 @@ class App {
     }
 
     // 2. Lưu previousView trước khi chuyển vào các trang con (ghi chép, danh mục, ...)
-    const txSubViews = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider'];
+    const txSubViews = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form'];
     if (txSubViews.includes(viewId) && !txSubViews.includes(this.currentView)) {
       if (this.openedFromAccountMenu) {
         this.previousView = this.currentView;
@@ -455,7 +455,10 @@ class App {
       'category-picker': 'Chọn Danh Mục',
       'borrow-select': 'Chọn Người Cho Vay',
       'account-form': 'Thông Tin Tài Khoản',
-      'account-provider': 'Chọn Ngân Hàng & Ví'
+      'account-provider': 'Chọn Ngân Hàng & Ví',
+      'savings-form': 'Sổ Tiết Kiệm',
+      'accumulation-form': 'Sổ Tích Lũy',
+      'asset-form': 'Quản Lý Tài Sản'
     };
     const titleEl = document.getElementById('header-page-title');
     if (titleEl) titleEl.textContent = titles[viewId] || 'Sổ Thu Chi';
@@ -575,7 +578,7 @@ class App {
       }
 
       // category-picker & borrow-select always support back to new-transaction
-      if (['category-picker', 'borrow-select', 'account-form'].includes(this.currentView)) {
+      if (['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form'].includes(this.currentView)) {
         window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
         this.goBack();
       } else if (this.currentView === 'new-transaction') {
@@ -595,7 +598,7 @@ class App {
   setupSwipeToBack() {
     // new-transaction, category-picker, borrow-select: support swipe-to-back.
     // NOTE: new-transaction ONLY allows swipe when editing an existing transaction.
-    const pages = document.querySelectorAll('#view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form, #view-account-provider');
+    const pages = document.querySelectorAll('#view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form, #view-account-provider, #view-savings-form, #view-accumulation-form, #view-asset-form');
     if (!pages.length) return;
 
     pages.forEach(page => {

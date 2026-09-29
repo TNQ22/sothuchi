@@ -252,31 +252,150 @@
         <div id="debts-list-container"></div>
       </section>
 
-      <!-- View: Accounts (Tài khoản) -->
+            <!-- View: Accounts (Tài khoản) -->
       <section id="view-accounts" class="page-view">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-          <div>
-            <p style="color: var(--text-secondary); font-size: 0.95rem; margin: 0;">Quản lý tiền mặt, thẻ ngân hàng và ví điện tử</p>
-            <span style="font-size: 0.78rem; color: var(--text-muted);">Kéo để sắp xếp vị trí. Tài khoản ở đầu có tích xanh sẽ tự động chọn khi ghi chép.</span>
+        <!-- 1. Header Card Tổng tài sản (Net Worth Card) -->
+        <div class="account-networth-card">
+          <div class="networth-card-top">
+            <div class="networth-label-wrap">
+              <span class="networth-label">Tổng tài sản</span>
+              <button type="button" class="networth-privacy-btn" onclick="window.app.togglePrivacyMode()" title="Ẩn/Hiện số tiền">
+                <i data-lucide="eye" id="account-privacy-eye-icon"></i>
+              </button>
+            </div>
+            <button type="button" class="networth-add-circle-btn" onclick="UIAccounts.openCreateTypeSheet()" title="Tạo mới tài khoản / sổ / tài sản">
+              <i data-lucide="plus"></i>
+            </button>
           </div>
-          <button class="btn-primary" onclick="UIAccounts.openAddModal()">
-            <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
-            Thêm Tài Khoản Mới
-          </button>
+          <div class="networth-amount-row">
+            <span class="networth-big-val stat-amount" id="account-total-networth">0đ</span>
+          </div>
+          <div class="networth-breakdown-row">
+            <div class="networth-mini-pill">
+              <span class="mini-pill-dot" style="background: #10b981;"></span>
+              <span class="mini-pill-label">Chi tiêu:</span>
+              <span class="mini-pill-val stat-amount" id="networth-mini-expense">0đ</span>
+            </div>
+            <div class="networth-mini-pill">
+              <span class="mini-pill-dot" style="background: #0ea5e9;"></span>
+              <span class="mini-pill-label">Tiết kiệm:</span>
+              <span class="mini-pill-val stat-amount" id="networth-mini-savings">0đ</span>
+            </div>
+            <div class="networth-mini-pill">
+              <span class="mini-pill-dot" style="background: #f59e0b;"></span>
+              <span class="mini-pill-label">Tích lũy:</span>
+              <span class="mini-pill-val stat-amount" id="networth-mini-accumulations">0đ</span>
+            </div>
+            <div class="networth-mini-pill">
+              <span class="mini-pill-dot" style="background: #a855f7;"></span>
+              <span class="mini-pill-label">Tài sản:</span>
+              <span class="mini-pill-val stat-amount" id="networth-mini-assets">0đ</span>
+            </div>
+          </div>
         </div>
 
-        <div id="accounts-list-container" class="accounts-list"></div>
-
-        <!-- Archived Accounts Collapsible Section (Listdown riêng) -->
-        <div id="archived-accounts-section" class="archived-accounts-section" style="display: none;">
-          <button type="button" class="archived-accounts-toggle-btn" onclick="UIAccounts.toggleArchivedList()">
-            <div class="archived-toggle-left">
-              <i data-lucide="archive" style="width: 16px; height: 16px;"></i>
-              <span id="archived-accounts-toggle-label">Tài khoản ngừng sử dụng (0)</span>
+        <!-- Section 1: Tài khoản chi tiêu -->
+        <div class="accounts-group-container">
+          <div class="accounts-group-header">
+            <div class="accounts-group-title-wrap">
+              <div class="accounts-group-icon" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
+                <i data-lucide="wallet"></i>
+              </div>
+              <div>
+                <h3 class="accounts-group-title">Tài khoản chi tiêu <span id="badge-expense-acc-count" class="group-count-badge">0</span></h3>
+                <span class="accounts-group-subtitle stat-amount" id="label-expense-acc-total">0đ</span>
+              </div>
             </div>
-            <i data-lucide="chevron-down" id="archived-toggle-icon" class="archived-toggle-chevron"></i>
-          </button>
-          <div id="archived-accounts-list" class="archived-accounts-list" style="display: none;"></div>
+            <button type="button" class="btn-group-action" onclick="UIAccounts.openAddModal()" title="Thêm tài khoản chi tiêu">
+              <i data-lucide="plus" style="width: 15px; height: 15px;"></i> Thêm ví
+            </button>
+          </div>
+
+          <div id="accounts-list-container" class="accounts-list"></div>
+
+          <!-- Archived Accounts Collapsible Section (Ngừng sử dụng) -->
+          <div id="archived-accounts-section" class="archived-accounts-section" style="display: none;">
+            <button type="button" class="archived-accounts-toggle-btn" onclick="UIAccounts.toggleArchivedList()">
+              <div class="archived-toggle-left">
+                <i data-lucide="archive" style="width: 16px; height: 16px;"></i>
+                <span id="archived-accounts-toggle-label">Tài khoản ngừng sử dụng (0)</span>
+              </div>
+              <i data-lucide="chevron-down" id="archived-toggle-icon" class="archived-toggle-chevron"></i>
+            </button>
+            <div id="archived-accounts-list" class="archived-accounts-list" style="display: none;"></div>
+          </div>
+        </div>
+
+        <!-- Section 2: Quản lý sổ tiết kiệm -->
+        <div class="accounts-group-container">
+          <div class="accounts-group-header">
+            <div class="accounts-group-title-wrap">
+              <div class="accounts-group-icon" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9;">
+                <i data-lucide="piggy-bank"></i>
+              </div>
+              <div>
+                <h3 class="accounts-group-title">Quản lý sổ tiết kiệm <span id="badge-savings-count" class="group-count-badge">0</span></h3>
+                <span class="accounts-group-subtitle stat-amount" id="label-savings-total">0đ</span>
+              </div>
+            </div>
+            <button type="button" class="btn-group-action" onclick="UIAccounts.openSavingsForm()" title="Thêm sổ tiết kiệm">
+              <i data-lucide="plus" style="width: 15px; height: 15px;"></i> Thêm sổ
+            </button>
+          </div>
+
+          <div id="savings-list-container" class="savings-cards-list"></div>
+
+          <!-- Sổ tiết kiệm đã tất toán (Collapsible) -->
+          <div id="settled-savings-section" class="archived-accounts-section" style="display: none;">
+            <button type="button" class="archived-accounts-toggle-btn" onclick="UIAccounts.toggleSettledSavingsList()">
+              <div class="archived-toggle-left">
+                <i data-lucide="check-circle-2" style="width: 16px; height: 16px; color: var(--income);"></i>
+                <span id="settled-savings-toggle-label">Sổ đã tất toán (0)</span>
+              </div>
+              <i data-lucide="chevron-down" id="settled-savings-toggle-icon" class="archived-toggle-chevron"></i>
+            </button>
+            <div id="settled-savings-list" class="archived-accounts-list" style="display: none;"></div>
+          </div>
+        </div>
+
+        <!-- Section 3: Sổ tích lũy -->
+        <div class="accounts-group-container">
+          <div class="accounts-group-header">
+            <div class="accounts-group-title-wrap">
+              <div class="accounts-group-icon" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
+                <i data-lucide="target"></i>
+              </div>
+              <div>
+                <h3 class="accounts-group-title">Sổ tích lũy <span id="badge-accumulations-count" class="group-count-badge">0</span></h3>
+                <span class="accounts-group-subtitle stat-amount" id="label-accumulations-total">0đ</span>
+              </div>
+            </div>
+            <button type="button" class="btn-group-action" onclick="UIAccounts.openAccumulationForm()" title="Thêm mục tiêu tích lũy">
+              <i data-lucide="plus" style="width: 15px; height: 15px;"></i> Thêm mục tiêu
+            </button>
+          </div>
+
+          <div id="accumulations-list-container" class="accumulations-cards-list"></div>
+        </div>
+
+        <!-- Section 4: Quản lý tài sản (Beta) -->
+        <div class="accounts-group-container">
+          <div class="accounts-group-header">
+            <div class="accounts-group-title-wrap">
+              <div class="accounts-group-icon" style="background: rgba(168, 85, 247, 0.12); color: #a855f7;">
+                <i data-lucide="gem"></i>
+              </div>
+              <div>
+                <h3 class="accounts-group-title">Quản lý tài sản <span class="badge-beta">Beta</span></h3>
+                <span class="accounts-group-subtitle stat-amount" id="label-assets-total">0đ</span>
+              </div>
+            </div>
+            <button type="button" class="btn-group-action" onclick="UIAccounts.openAssetTypePicker()" title="Thêm tài sản">
+              <i data-lucide="plus" style="width: 15px; height: 15px;"></i> Thêm tài sản
+            </button>
+          </div>
+
+          <div id="assets-list-container" class="assets-cards-list"></div>
         </div>
       </section>
 
@@ -1057,6 +1176,564 @@
           </div>
         </div>
       </section>
+
+      <!-- View: Thêm / Sửa Sổ Tiết Kiệm (Savings Form View) -->
+      <section id="view-savings-form" class="page-view tx-page-view">
+        <div class="tx-page-card-wrapper">
+          <div class="tx-page-header">
+            <div class="tx-header-left">
+              <button type="button" class="btn-icon tx-header-btn" onclick="UIAccounts.closeSavingsForm()" title="Trở lại">
+                <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+            <div class="tx-header-center">
+              <span id="savings-form-title" style="font-weight: 700; font-size: 1.05rem; color: var(--text-primary);">Thêm Sổ Tiết Kiệm</span>
+            </div>
+            <div class="tx-header-right">
+              <button type="button" class="btn-icon tx-header-btn tx-header-done-btn" onclick="UIAccounts.handleSavingsSubmit()" title="Lưu lại">
+                <i data-lucide="check" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+          </div>
+
+          <form id="savings-form" onsubmit="event.preventDefault(); UIAccounts.handleSavingsSubmit();">
+            <input type="hidden" id="saving-id-input">
+
+            <div class="tx-page-body" style="padding: 12px 14px; display: flex; flex-direction: column; gap: 12px;">
+              <!-- Ô 1: SỐ TIỀN GỬI BAN ĐẦU -->
+              <div class="tx-section-card tx-amount-card acc-amount-card" onclick="UIAccounts.openSavingsKeypad()">
+                <div class="acc-amount-header-row" style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px;">
+                  <i data-lucide="piggy-bank" style="width: 15px; height: 15px; color: var(--primary);"></i>
+                  <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Số Tiền Gửi Ban Đầu</span>
+                </div>
+                <div class="tx-amount-centered-display">
+                  <span id="saving-amount-text" class="tx-amount-val acc-amount-val">0</span>
+                  <span class="tx-amount-cur acc-amount-cur">đ</span>
+                  <input type="hidden" id="saving-amount-input" value="0">
+                </div>
+              </div>
+
+              <!-- Ô 2: THÔNG TIN SỔ TIẾT KIỆM -->
+              <div class="tx-section-card tx-details-card">
+                <!-- Tên sổ -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
+                    <i data-lucide="file-text"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <input type="text" id="saving-name-input" class="tx-clean-input" placeholder="Tên sổ (Ví dụ: Sổ OCB 6 tháng...)" required style="font-size: 0.95rem; font-weight: 600;">
+                  </div>
+                </div>
+
+                <!-- Ngân hàng -->
+                <div class="tx-info-row" onclick="UIAccounts.openSavingsBankPicker()" style="cursor: pointer;">
+                  <div class="tx-info-icon-bubble" id="saving-bank-logo-preview" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+                    <i data-lucide="landmark"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Ngân hàng gửi</div>
+                    <div id="saving-bank-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary);">Chưa chọn (Mặc định)</div>
+                    <input type="hidden" id="saving-bank-code-input" value="">
+                  </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                </div>
+
+                <!-- Ngày gửi -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                    <i data-lucide="calendar"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Ngày gửi</div>
+                    <input type="date" id="saving-deposit-date-input" class="tx-clean-input" onchange="UIAccounts.calcSavingsPreview()" style="font-size: 0.92rem; font-weight: 600;">
+                  </div>
+                </div>
+
+                <!-- Kỳ hạn -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                    <i data-lucide="clock"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Kỳ hạn gửi</div>
+                    <select id="saving-term-select" class="acc-styled-select" onchange="UIAccounts.calcSavingsPreview()">
+                      <option value="0">Không kỳ hạn</option>
+                      <option value="1">1 tháng</option>
+                      <option value="2">2 tháng</option>
+                      <option value="3">3 tháng</option>
+                      <option value="6" selected>6 tháng</option>
+                      <option value="9">9 tháng</option>
+                      <option value="12">12 tháng (1 năm)</option>
+                      <option value="18">18 tháng</option>
+                      <option value="24">24 tháng (2 năm)</option>
+                      <option value="36">36 tháng (3 năm)</option>
+                    </select>
+                  </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                </div>
+
+                <!-- Lãi suất (%/năm) -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                    <i data-lucide="percent"></i>
+                  </div>
+                  <div class="tx-info-content" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                      <div style="font-size: 0.74rem; color: var(--text-muted);">Lãi suất (%/năm)</div>
+                      <input type="number" id="saving-interest-rate-input" class="tx-clean-input" placeholder="Ví dụ: 6.8" step="0.01" min="0" value="6.5" oninput="UIAccounts.calcSavingsPreview()" style="font-size: 1rem; font-weight: 700; color: var(--primary);">
+                    </div>
+                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">% / năm</span>
+                  </div>
+                </div>
+
+                <!-- Trả lãi -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;">
+                    <i data-lucide="coins"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Hình thức trả lãi</div>
+                    <select id="saving-interest-payment-select" class="acc-styled-select">
+                      <option value="end" selected>Cuối kỳ (nhận khi đáo hạn)</option>
+                      <option value="start">Đầu kỳ (nhận ngay khi gửi)</option>
+                      <option value="monthly">Định kỳ hàng tháng</option>
+                    </select>
+                  </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                </div>
+
+                <!-- Khi đến hạn -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
+                    <i data-lucide="refresh-cw"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Khi đến hạn tất toán</div>
+                    <select id="saving-maturity-action-select" class="acc-styled-select">
+                      <option value="rollover_all" selected>Tái tục cả gốc và lãi</option>
+                      <option value="rollover_principal">Tái tục gốc, rút tiền lãi</option>
+                      <option value="settle">Tất toán cả gốc và lãi</option>
+                    </select>
+                  </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                </div>
+
+                <!-- Nguồn tiền gửi (Tài khoản trích tiền) -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                    <i data-lucide="arrow-down-left"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Nguồn tiền (Trích từ ví)</div>
+                    <select id="saving-source-account-select" class="acc-styled-select">
+                      <option value="">Không trích tiền (Đã có sẵn)</option>
+                    </select>
+                  </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                </div>
+              </div>
+
+              <!-- Ô 3: THẺ TÍNH TOÁN LÃI DỰ TÍNH (HIGHLIGHT CARD) -->
+              <div class="savings-calc-preview-card" id="savings-calc-preview-card">
+                <div class="calc-preview-header">
+                  <i data-lucide="sparkles" style="width: 16px; height: 16px; color: #f59e0b;"></i>
+                  <span>Dự tính kết quả khi đáo hạn</span>
+                </div>
+                <div class="calc-preview-grid">
+                  <div class="calc-preview-item">
+                    <span class="calc-item-label">Ngày đáo hạn:</span>
+                    <span class="calc-item-val" id="savings-preview-due-date">--/--/----</span>
+                  </div>
+                  <div class="calc-preview-item">
+                    <span class="calc-item-label">Tiền lãi dự kiến:</span>
+                    <span class="calc-item-val" style="color: var(--income);" id="savings-preview-interest-val">+0đ</span>
+                  </div>
+                  <div class="calc-preview-item full-width">
+                    <span class="calc-item-label">Tổng nhận khi tất toán:</span>
+                    <span class="calc-item-val highlight" id="savings-preview-total-val">0đ</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ô 4: TÙY CHỌN & GHI CHÚ -->
+              <div class="tx-section-card tx-details-card">
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted);">
+                    <i data-lucide="align-left"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <input type="text" id="saving-desc-input" class="tx-clean-input" placeholder="Ghi chú / Số tài khoản tiết kiệm / Phòng giao dịch...">
+                  </div>
+                </div>
+
+                <div class="acc-exclude-report-box" style="margin-top: 4px;">
+                  <div class="acc-exclude-report-info">
+                    <span class="acc-exclude-report-title">Không tính vào báo cáo</span>
+                    <span class="acc-exclude-report-desc">Không tính tiền gửi tiết kiệm này vào biểu đồ thu chi hàng tháng</span>
+                  </div>
+                  <label class="app-switch">
+                    <input type="checkbox" id="saving-exclude-report-input">
+                    <span class="app-switch-slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Nút Lưu -->
+              <button type="submit" class="btn-primary" style="margin-top: 8px; width: 100%; height: 48px; font-weight: 700; font-size: 1rem; justify-content: center; border-radius: var(--radius-md);">
+                <i data-lucide="check" style="width: 18px; height: 18px;"></i> Lưu Sổ Tiết Kiệm
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- View: Thêm / Sửa Sổ Tích Lũy (Accumulation Form View) -->
+      <section id="view-accumulation-form" class="page-view tx-page-view">
+        <div class="tx-page-card-wrapper">
+          <div class="tx-page-header">
+            <div class="tx-header-left">
+              <button type="button" class="btn-icon tx-header-btn" onclick="UIAccounts.closeAccumulationForm()" title="Trở lại">
+                <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+            <div class="tx-header-center">
+              <span id="accumulation-form-title" style="font-weight: 700; font-size: 1.05rem; color: var(--text-primary);">Thêm Tích Lũy</span>
+            </div>
+            <div class="tx-header-right">
+              <button type="button" class="btn-icon tx-header-btn tx-header-done-btn" onclick="UIAccounts.handleAccumulationSubmit()" title="Lưu lại">
+                <i data-lucide="check" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+          </div>
+
+          <form id="accumulation-form" onsubmit="event.preventDefault(); UIAccounts.handleAccumulationSubmit();">
+            <input type="hidden" id="accumulation-id-input">
+
+            <div class="tx-page-body" style="padding: 12px 14px; display: flex; flex-direction: column; gap: 12px;">
+              <!-- SỐ TIỀN MỤC TIÊU -->
+              <div class="tx-section-card tx-amount-card acc-amount-card" onclick="UIAccounts.openAccumulationKeypad()">
+                <div class="acc-amount-header-row" style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px;">
+                  <i data-lucide="target" style="width: 15px; height: 15px; color: #f59e0b;"></i>
+                  <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Số Tiền Mục Tiêu</span>
+                </div>
+                <div class="tx-amount-centered-display">
+                  <span id="acc-target-amount-text" class="tx-amount-val acc-amount-val" style="color: #f59e0b;">0</span>
+                  <span class="tx-amount-cur acc-amount-cur">đ</span>
+                  <input type="hidden" id="acc-target-amount-input" value="0">
+                </div>
+              </div>
+
+              <!-- THÔNG TIN TÍCH LŨY -->
+              <div class="tx-section-card tx-details-card">
+                <!-- Tên mục tiêu -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                    <i data-lucide="flag"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <input type="text" id="acc-goal-name-input" class="tx-clean-input" placeholder="Tích lũy cho việc gì? (Mua xe, Du lịch, Quỹ dự phòng...)" required style="font-size: 0.95rem; font-weight: 600;">
+                  </div>
+                </div>
+
+                <!-- Số tiền hiện đã có -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                    <i data-lucide="wallet-2"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Số tiền khởi điểm hiện có (VNĐ)</div>
+                    <input type="number" id="acc-current-amount-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" style="font-size: 0.95rem; font-weight: 600;">
+                  </div>
+                </div>
+
+                <!-- Nguồn tiền khởi điểm -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+                    <i data-lucide="arrow-down-left"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Trích tiền khởi điểm từ ví</div>
+                    <select id="acc-source-account-select" class="acc-styled-select">
+                      <option value="">Không trích tiền (Đã có sẵn)</option>
+                    </select>
+                  </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                </div>
+
+                <!-- Ngày bắt đầu -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
+                    <i data-lucide="calendar"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Ngày bắt đầu</div>
+                    <input type="date" id="acc-start-date-input" class="tx-clean-input" style="font-size: 0.92rem; font-weight: 600;">
+                  </div>
+                </div>
+
+                <!-- Hạn chót hoàn thành -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+                    <i data-lucide="calendar-check"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Hạn chót mục tiêu</div>
+                    <input type="date" id="acc-target-date-input" class="tx-clean-input" style="font-size: 0.92rem; font-weight: 600;">
+                  </div>
+                </div>
+              </div>
+
+              <!-- TÙY CHỌN BỔ SUNG -->
+              <div class="tx-section-card tx-details-card">
+                <div class="acc-exclude-report-box">
+                  <div class="acc-exclude-report-info">
+                    <span class="acc-exclude-report-title">Tạo ghi chép định kỳ</span>
+                    <span class="acc-exclude-report-desc">Tự động nhắc nhở hoặc trích tiền tích lũy mỗi tháng</span>
+                  </div>
+                  <label class="app-switch">
+                    <input type="checkbox" id="acc-has-recurring-input" onchange="document.getElementById('acc-recurring-box').style.display = this.checked ? 'block' : 'none'">
+                    <span class="app-switch-slider"></span>
+                  </label>
+                </div>
+
+                <div id="acc-recurring-box" style="display: none; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+                  <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 4px;">Số tiền nạp định kỳ (VNĐ/tháng)</div>
+                  <input type="number" id="acc-recurring-amount-input" class="tx-clean-input" placeholder="Ví dụ: 2000000" min="0" step="any" style="font-weight: 600;">
+                </div>
+
+                <div class="acc-exclude-report-box" style="margin-top: 8px;">
+                  <div class="acc-exclude-report-info">
+                    <span class="acc-exclude-report-title">Không tính vào báo cáo</span>
+                    <span class="acc-exclude-report-desc">Không tính các khoản nạp tích lũy vào chi tiêu hằng tháng</span>
+                  </div>
+                  <label class="app-switch">
+                    <input type="checkbox" id="acc-exclude-report-input">
+                    <span class="app-switch-slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <button type="submit" class="btn-primary" style="margin-top: 8px; width: 100%; height: 48px; font-weight: 700; font-size: 1rem; justify-content: center; border-radius: var(--radius-md);">
+                <i data-lucide="check" style="width: 18px; height: 18px;"></i> Lưu Sổ Tích Lũy
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- View: Thêm / Sửa Tài Sản (Asset Form View - BĐS, Kim loại quý, Ngoại tệ, Khác) -->
+      <section id="view-asset-form" class="page-view tx-page-view">
+        <div class="tx-page-card-wrapper">
+          <div class="tx-page-header">
+            <div class="tx-header-left">
+              <button type="button" class="btn-icon tx-header-btn" onclick="UIAccounts.closeAssetForm()" title="Trở lại">
+                <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+            <div class="tx-header-center">
+              <span id="asset-form-title" style="font-weight: 700; font-size: 1.05rem; color: var(--text-primary);">Tạo Tài Sản</span>
+            </div>
+            <div class="tx-header-right">
+              <button type="button" class="btn-icon tx-header-btn tx-header-done-btn" onclick="UIAccounts.handleAssetSubmit()" title="Lưu lại">
+                <i data-lucide="check" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+          </div>
+
+          <form id="asset-form" onsubmit="event.preventDefault(); UIAccounts.handleAssetSubmit();">
+            <input type="hidden" id="asset-id-input">
+            <input type="hidden" id="asset-type-input" value="real_estate">
+
+            <div class="tx-page-body" style="padding: 12px 14px; display: flex; flex-direction: column; gap: 12px;">
+              <!-- SỐ TIỀN / GIÁ TRỊ HIỆN TẠI -->
+              <div class="tx-section-card tx-amount-card acc-amount-card" onclick="UIAccounts.openAssetKeypad()">
+                <div class="acc-amount-header-row" style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px;">
+                  <i data-lucide="gem" style="width: 15px; height: 15px; color: #a855f7;"></i>
+                  <span id="asset-amount-card-label" style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Giá Trị Hiện Tại (VNĐ)</span>
+                </div>
+                <div class="tx-amount-centered-display">
+                  <span id="asset-price-text" class="tx-amount-val acc-amount-val" style="color: #a855f7;">0</span>
+                  <span class="tx-amount-cur acc-amount-cur">đ</span>
+                  <input type="hidden" id="asset-price-input" value="0">
+                </div>
+              </div>
+
+              <!-- THÔNG TIN TÀI SẢN -->
+              <div class="tx-section-card tx-details-card">
+                <!-- Phân loại tài sản -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" id="asset-type-bubble" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
+                    <i data-lucide="home"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Phân loại chi tiết</div>
+                    <select id="asset-subtype-select" class="acc-styled-select">
+                      <!-- Dynamically rendered based on assetType -->
+                    </select>
+                  </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                </div>
+
+                <!-- Tên tài sản -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
+                    <i data-lucide="tag"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <input type="text" id="asset-name-input" class="tx-clean-input" placeholder="Tên tài sản *" required style="font-size: 0.95rem; font-weight: 600;">
+                  </div>
+                </div>
+
+                <!-- Switch: Được cho / biếu / tặng -->
+                <div class="acc-exclude-report-box" style="margin: 4px 0;">
+                  <div class="acc-exclude-report-info">
+                    <span class="acc-exclude-report-title">Được cho / biếu / tặng</span>
+                    <span class="acc-exclude-report-desc">Giá mua ban đầu được tính là 0đ</span>
+                  </div>
+                  <label class="app-switch">
+                    <input type="checkbox" id="asset-is-gift-input" onchange="UIAccounts.handleAssetGiftToggle(this.checked)">
+                    <span class="app-switch-slider"></span>
+                  </label>
+                </div>
+
+                <!-- Ngày mua / sở hữu -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                    <i data-lucide="calendar"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Ngày mua / nhận</div>
+                    <input type="date" id="asset-buy-date-input" class="tx-clean-input" style="font-size: 0.92rem; font-weight: 600;">
+                  </div>
+                </div>
+
+                <!-- Số lượng & Đơn vị -->
+                <div class="tx-info-row" id="asset-quantity-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                    <i data-lucide="layers"></i>
+                  </div>
+                  <div class="tx-info-content" style="display: flex; gap: 10px; align-items: center;">
+                    <div style="flex: 1;">
+                      <div id="asset-qty-label" style="font-size: 0.74rem; color: var(--text-muted);">Diện tích / Số lượng *</div>
+                      <input type="number" id="asset-quantity-input" class="tx-clean-input" placeholder="1" step="any" min="0.0001" value="1" oninput="UIAccounts.calcAssetPreview()" required style="font-weight: 600; font-size: 0.95rem;">
+                    </div>
+                    <div style="width: 100px;">
+                      <div style="font-size: 0.74rem; color: var(--text-muted);">Đơn vị</div>
+                      <input type="text" id="asset-unit-input" class="tx-clean-input" placeholder="m² / Chỉ" value="m²" style="font-weight: 600; text-align: center;">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Giá mua -->
+                <div class="tx-info-row" id="asset-buyprice-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+                    <i data-lucide="receipt"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div id="asset-buyprice-label" style="font-size: 0.74rem; color: var(--text-muted);">Giá mua / Đơn vị (VNĐ)</div>
+                    <input type="number" id="asset-buyprice-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" oninput="UIAccounts.calcAssetPreview()" style="font-size: 0.95rem; font-weight: 600;">
+                  </div>
+                </div>
+
+                <!-- Giá hiện tại -->
+                <div class="tx-info-row" id="asset-currentprice-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                    <i data-lucide="trending-up"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div id="asset-curprice-label" style="font-size: 0.74rem; color: var(--text-muted);">Giá thị trường hiện tại / Đơn vị (VNĐ)</div>
+                    <input type="number" id="asset-currentprice-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" oninput="UIAccounts.calcAssetPreview()" style="font-size: 0.95rem; font-weight: 700; color: var(--primary);">
+                  </div>
+                </div>
+
+                <!-- Chi phí khác -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted);">
+                    <i data-lucide="plus-circle"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Chi phí khác (Trước bạ, môi giới, bảo dưỡng, thuế...)</div>
+                    <input type="number" id="asset-extracosts-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" oninput="UIAccounts.calcAssetPreview()" style="font-size: 0.92rem; font-weight: 600;">
+                  </div>
+                </div>
+
+                <!-- Nguồn tiền mua -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+                    <i data-lucide="arrow-down-left"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Nguồn tiền thanh toán</div>
+                    <select id="asset-source-account-select" class="acc-styled-select">
+                      <option value="">Không trích tiền ví (Đã trả ngoài sổ)</option>
+                    </select>
+                  </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                </div>
+
+                <!-- Địa chỉ / Vị trí (chỉ hiển thị cho BĐS) -->
+                <div class="tx-info-row" id="asset-location-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+                    <i data-lucide="map-pin"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <input type="text" id="asset-location-input" class="tx-clean-input" placeholder="Vị trí / Địa chỉ tài sản...">
+                  </div>
+                </div>
+
+                <!-- Ghi chú -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted);">
+                    <i data-lucide="align-left"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <input type="text" id="asset-note-input" class="tx-clean-input" placeholder="Ghi chú pháp lý, bảo hiểm, số hiệu...">
+                  </div>
+                </div>
+              </div>
+
+              <!-- THẺ TÍNH TOÁN LÃI / LỖ TỰ ĐỘNG -->
+              <div class="savings-calc-preview-card" id="asset-calc-preview-card">
+                <div class="calc-preview-header">
+                  <i data-lucide="calculator" style="width: 16px; height: 16px; color: #a855f7;"></i>
+                  <span>Định giá & Tạm tính Lãi / Lỗ</span>
+                </div>
+                <div class="calc-preview-grid">
+                  <div class="calc-preview-item">
+                    <span class="calc-item-label">Tổng vốn mua + chi phí:</span>
+                    <span class="calc-item-val" id="asset-preview-total-buy">0đ</span>
+                  </div>
+                  <div class="calc-preview-item">
+                    <span class="calc-item-label">Tổng giá trị hiện tại:</span>
+                    <span class="calc-item-val" style="color: var(--primary);" id="asset-preview-total-current">0đ</span>
+                  </div>
+                  <div class="calc-preview-item full-width">
+                    <span class="calc-item-label">Lãi / Lỗ tạm tính:</span>
+                    <span class="calc-item-val highlight" id="asset-preview-pnl">+0đ (0%)</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Switch: Tính vào tổng tài sản -->
+              <div class="acc-exclude-report-box">
+                <div class="acc-exclude-report-info">
+                  <span class="acc-exclude-report-title">Tính vào tổng tài sản</span>
+                  <span class="acc-exclude-report-desc">Cộng giá trị tài sản này vào Tổng tài sản của bạn</span>
+                </div>
+                <label class="app-switch">
+                  <input type="checkbox" id="asset-include-networth-input" checked>
+                  <span class="app-switch-slider"></span>
+                </label>
+              </div>
+
+              <button type="submit" class="btn-primary" style="margin-top: 8px; width: 100%; height: 48px; font-weight: 700; font-size: 1rem; justify-content: center; border-radius: var(--radius-md);">
+                <i data-lucide="check" style="width: 18px; height: 18px;"></i> Lưu Tài Sản
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
     </div>
 
     <!-- Mobile Bottom Navigation Bar -->
@@ -1521,6 +2198,259 @@
           <button type="submit" class="btn-primary">Lưu Ngân Sách</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  
+  <!-- Bottom Sheet: Tạo mới tài khoản (4 lựa chọn) -->
+  <div id="modal-account-create-type" class="modal-overlay">
+    <div class="modal-dialog action-sheet-dialog">
+      <div class="action-sheet-header">
+        <div class="action-sheet-icon" style="background: rgba(13, 148, 136, 0.15); color: var(--primary);">
+          <i data-lucide="plus-circle"></i>
+        </div>
+        <div class="action-sheet-info">
+          <h4 class="action-sheet-title">Tạo mới tài khoản</h4>
+          <p class="action-sheet-subtitle">Chọn loại tài khoản bạn muốn thêm</p>
+        </div>
+        <button type="button" class="btn-icon" onclick="UIAccounts.closeCreateTypeSheet()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="action-sheet-body">
+        <button type="button" class="action-sheet-item" onclick="UIAccounts.selectCreateType('expense')">
+          <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
+            <i data-lucide="wallet" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Tạo tài khoản chi tiêu</span>
+            <span class="action-sheet-item-desc">Quản lý chi tiêu hằng ngày (Tiền mặt, thẻ ATM, ví...)</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
+        <button type="button" class="action-sheet-item" onclick="UIAccounts.selectCreateType('savings')">
+          <div class="action-sheet-item-icon" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9;">
+            <i data-lucide="piggy-bank" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Tạo sổ tiết kiệm</span>
+            <span class="action-sheet-item-desc">Tiết kiệm ngân hàng, theo dõi kỳ hạn & lãi suất</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
+        <button type="button" class="action-sheet-item" onclick="UIAccounts.selectCreateType('accumulation')">
+          <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
+            <i data-lucide="target" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Tạo sổ tích lũy</span>
+            <span class="action-sheet-item-desc">Tích lũy cho mục tiêu của bạn (Mua nhà, xe, du lịch...)</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
+        <button type="button" class="action-sheet-item" onclick="UIAccounts.selectCreateType('asset')">
+          <div class="action-sheet-item-icon" style="background: rgba(168, 85, 247, 0.12); color: #a855f7;">
+            <i data-lucide="gem" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Tạo tài khoản tài sản</span>
+            <span class="action-sheet-item-desc">Quản lý Bất động sản, Vàng, Ngoại tệ, Ô tô, Hàng hiệu...</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+      </div>
+      <div class="action-sheet-footer">
+        <button type="button" class="btn-secondary" style="width: 100%; justify-content: center;" onclick="UIAccounts.closeCreateTypeSheet()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Sheet: Chọn loại tài sản (Asset Type Picker) -->
+  <div id="modal-asset-type-picker" class="modal-overlay">
+    <div class="modal-dialog action-sheet-dialog">
+      <div class="action-sheet-header">
+        <div class="action-sheet-icon" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
+          <i data-lucide="gem"></i>
+        </div>
+        <div class="action-sheet-info">
+          <h4 class="action-sheet-title">Chọn loại tài sản</h4>
+          <p class="action-sheet-subtitle">Theo dõi giá trị thị trường và lãi/lỗ</p>
+        </div>
+        <button type="button" class="btn-icon" onclick="UIAccounts.closeAssetTypePicker()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="action-sheet-body">
+        <button type="button" class="action-sheet-item" onclick="UIAccounts.selectAssetType('real_estate')">
+          <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
+            <i data-lucide="home" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Bất động sản</span>
+            <span class="action-sheet-item-desc">Đất, chung cư, biệt thự, nhà liền kề...</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
+        <button type="button" class="action-sheet-item" onclick="UIAccounts.selectAssetType('precious_metal')">
+          <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
+            <i data-lucide="sparkles" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Kim loại quý</span>
+            <span class="action-sheet-item-desc">Vàng miếng SJC, Vàng nhẫn 9999, Bạc, Bạch kim...</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
+        <button type="button" class="action-sheet-item" onclick="UIAccounts.selectAssetType('foreign_currency')">
+          <div class="action-sheet-item-icon" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9;">
+            <i data-lucide="dollar-sign" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Ngoại tệ</span>
+            <span class="action-sheet-item-desc">Các đồng ngoại tệ phổ biến (USD, EUR, JPY, GBP...)</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
+        <button type="button" class="action-sheet-item" onclick="UIAccounts.selectAssetType('other')">
+          <div class="action-sheet-item-icon" style="background: rgba(139, 92, 246, 0.12); color: #8b5cf6;">
+            <i data-lucide="package" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Tài sản khác</span>
+            <span class="action-sheet-item-desc">Ô tô, xe máy, đồ công nghệ, đồng hồ, đồ hiệu...</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+      </div>
+      <div class="action-sheet-footer">
+        <button type="button" class="btn-secondary" style="width: 100%; justify-content: center;" onclick="UIAccounts.closeAssetTypePicker()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Tất toán sổ tiết kiệm -->
+  <div id="modal-settle-saving" class="modal-overlay">
+    <div class="modal-dialog" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Tất Toán Sổ Tiết Kiệm</h3>
+        <button class="btn-icon" onclick="UIAccounts.closeSettleSavingModal()"><i data-lucide="x"></i></button>
+      </div>
+      <form id="settle-saving-form" onsubmit="event.preventDefault(); UIAccounts.confirmSettleSaving();">
+        <input type="hidden" id="settle-saving-id-input">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Tên sổ tiết kiệm</label>
+            <input type="text" id="settle-saving-name-display" class="form-control" readonly style="font-weight: 700;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Số tiền tất toán thực nhận (Gốc + Lãi) (VNĐ)</label>
+            <input type="number" id="settle-saving-amount-input" class="form-control" placeholder="0" min="1" step="any" required style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Chuyển tiền vào tài khoản</label>
+            <select id="settle-saving-target-account" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ngày tất toán</label>
+            <input type="date" id="settle-saving-date-input" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="UIAccounts.closeSettleSavingModal()">Hủy</button>
+          <button type="submit" class="btn-primary">Xác Nhận Tất Toán</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Nạp / Rút tiền sổ tích lũy -->
+  <div id="modal-deposit-accumulation" class="modal-overlay">
+    <div class="modal-dialog" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="deposit-acc-modal-title">Nạp Tiền Tích Lũy</h3>
+        <button class="btn-icon" onclick="UIAccounts.closeDepositAccModal()"><i data-lucide="x"></i></button>
+      </div>
+      <form id="deposit-accumulation-form" onsubmit="event.preventDefault(); UIAccounts.confirmDepositAcc();">
+        <input type="hidden" id="deposit-acc-id-input">
+        <input type="hidden" id="deposit-acc-mode" value="deposit">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Mục tiêu</label>
+            <input type="text" id="deposit-acc-name-display" class="form-control" readonly style="font-weight: 700;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" id="deposit-acc-amount-label">Số tiền nạp thêm (VNĐ)</label>
+            <input type="number" id="deposit-acc-amount-input" class="form-control" placeholder="0" min="1" step="any" required style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">
+          </div>
+          <div class="form-group">
+            <label class="form-label" id="deposit-acc-account-label">Trích từ tài khoản</label>
+            <select id="deposit-acc-source-select" class="form-control"></select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="UIAccounts.closeDepositAccModal()">Hủy</button>
+          <button type="submit" class="btn-primary">Xác Nhận</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Bán / Thanh lý tài sản -->
+  <div id="modal-liquidate-asset" class="modal-overlay">
+    <div class="modal-dialog" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Bán / Thanh Lý Tài Sản</h3>
+        <button class="btn-icon" onclick="UIAccounts.closeLiquidateModal()"><i data-lucide="x"></i></button>
+      </div>
+      <form id="liquidate-asset-form" onsubmit="event.preventDefault(); UIAccounts.confirmLiquidateAsset();">
+        <input type="hidden" id="liquidate-asset-id-input">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Tài sản thanh lý</label>
+            <input type="text" id="liquidate-asset-name-display" class="form-control" readonly style="font-weight: 700;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Số tiền bán được thực tế (VNĐ)</label>
+            <input type="number" id="liquidate-asset-price-input" class="form-control" placeholder="0" min="1" step="any" required style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Chuyển tiền thu được vào ví</label>
+            <select id="liquidate-asset-target-account" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ngày bán</label>
+            <input type="date" id="liquidate-asset-date-input" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="UIAccounts.closeLiquidateModal()">Hủy</button>
+          <button type="submit" class="btn-primary">Xác Nhận Bán</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Item Action Sheet (Menu 3 chấm chung cho Tiết kiệm, Tích lũy, Tài sản) -->
+  <div id="modal-item-actions" class="modal-overlay">
+    <div class="modal-dialog action-sheet-dialog">
+      <div class="action-sheet-header">
+        <div class="action-sheet-icon" id="item-actions-icon">
+          <i data-lucide="file-text"></i>
+        </div>
+        <div class="action-sheet-info">
+          <h4 id="item-actions-title" class="action-sheet-title">Tên mục</h4>
+          <p id="item-actions-subtitle" class="action-sheet-subtitle">Chi tiết</p>
+        </div>
+        <button type="button" class="btn-icon" onclick="UIAccounts.closeItemActionSheet()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="action-sheet-body" id="item-actions-body">
+        <!-- Dynamically populated buttons -->
+      </div>
+      <div class="action-sheet-footer">
+        <button type="button" class="btn-secondary" style="width: 100%; justify-content: center;" onclick="UIAccounts.closeItemActionSheet()">Đóng</button>
+      </div>
     </div>
   </div>
 

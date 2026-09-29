@@ -5,7 +5,7 @@
 
 const db = new Dexie('SoThuChiDB');
 
-// Define Schema
+// Define Schema Version 1
 db.version(1).stores({
   transactions: '++id, type, categoryId, accountId, toAccountId, amount, date, isDeleted, updatedAt',
   accounts: '++id, name, type, balance, isDeleted, updatedAt',
@@ -14,6 +14,23 @@ db.version(1).stores({
   budgets: '++id, categoryId, month, updatedAt',
   recurring: '++id, title, type, amount, categoryId, accountId, frequency, nextDueDate, updatedAt',
   settings: 'key'
+});
+
+// Schema Version 2: Bổ sung Quản lý Sổ Tiết Kiệm, Sổ Tích Lũy, Quản lý Tài Sản
+db.version(2).stores({
+  transactions: '++id, type, categoryId, accountId, toAccountId, amount, date, isDeleted, updatedAt',
+  accounts: '++id, name, type, balance, isDeleted, updatedAt',
+  categories: '++id, name, type, icon, color, isDeleted, updatedAt',
+  debts: '++id, type, personName, originalAmount, remainingAmount, dueDate, accountId, status, isDeleted, updatedAt',
+  budgets: '++id, categoryId, month, updatedAt',
+  recurring: '++id, title, type, amount, categoryId, accountId, frequency, nextDueDate, updatedAt',
+  settings: 'key',
+  // Bảng quản lý sổ tiết kiệm ngân hàng
+  savings: '++id, name, bankCode, balance, status, dueDate, isDeleted, updatedAt',
+  // Bảng quản lý sổ tích lũy theo mục tiêu
+  accumulations: '++id, name, targetAmount, currentAmount, status, isDeleted, updatedAt',
+  // Bảng quản lý tài sản (BĐS, Kim loại quý, Ngoại tệ, Tài sản khác)
+  assets: '++id, assetType, subType, name, status, includeInNetWorth, isDeleted, updatedAt'
 });
 
 // Default Seed Categories
@@ -46,8 +63,6 @@ const DEFAULT_ACCOUNTS = [
   { name: 'Ngân hàng', type: 'bank', balance: 12500000, initialBalance: 12500000, icon: 'landmark', color: '#4f46e5' },
   { name: 'MoMo / ZaloPay', type: 'ewallet', balance: 500000, initialBalance: 500000, icon: 'smartphone', color: '#ec4899' }
 ];
-
-// Initialize Database & Seed Defaults
 
 // Tự động kiểm tra và gộp tài khoản bị trùng lặp tên & loại (khắc phục nhân đôi trên PWA/Sync)
 async function deduplicateAccounts() {
@@ -336,10 +351,336 @@ async function deleteDebt(debtId) {
   triggerAutoSync();
 }
 
+/* ==================== QUẢN LÝ SỔ TIẾT KIỆM (SAVINGS OPERATIONS) ==================== */
+async function addSaving(data) {
+  const now = Date.now();
+  const amount = Number(data.balance || data.initialBalance || 0);
+  const sourceAccountId = data.sourceAccountId ? Number(data.sourceAccountId) : null;
+
+  const saving = {
+    name: data.name.trim(),
+    bankCode: data.bankCode || '',
+    initialBalance: amount,
+    balance: amount,
+    currency: data.currency || 'VND',
+    depositDate: data.depositDate || new Date().toISOString().split('T')[0],
+    termMonths: Number(data.termMonths || 0), // 0: không kỳ hạn
+    dueDate: data.dueDate || '',
+    interestRate: Number(data.interestRate || 0), // %/năm
+    nonTermRate: Number(data.nonTermRate || 0.05), // %/năm
+    interestDaysYear: Number(data.interestDaysYear || 365),
+    interestPayment: data.interestPayment || 'end', // 'end' | 'start' | 'monthly'
+    maturityAction: data.maturityAction || 'rollover_all', // 'rollover_all' | 'rollover_principal' | 'settle'
+    sourceAccountId: sourceAccountId,
+    settleAccountId: data.settleAccountId ? Number(data.settleAccountId) : null,
+    status: 'active', // 'active' | 'settled'
+    settledDate: null,
+    settledAmount: 0,
+    description: (data.description || '').trim(),
+    excludeFromReport: data.excludeFromReport ? 1 : 0,
+    isDeleted: 0,
+    updatedAt: now
+  };
+
+  await db.transaction('rw', db.savings, db.accounts, async () => {
+    const id = await db.savings.add(saving);
+    // Nếu có chọn tài khoản trích tiền, tự động trừ tiền trong tài khoản đó
+    if (sourceAccountId && amount > 0) {
+      const srcAcc = await db.accounts.get(sourceAccountId);
+      if (srcAcc) {
+        await db.accounts.update(sourceAccountId, {
+          balance: srcAcc.balance - amount,
+          updatedAt: now
+        });
+      }
+    }
+  });
+
+  triggerAutoSync();
+}
+
+async function updateSaving(id, data) {
+  const now = Date.now();
+  await db.savings.update(Number(id), {
+    ...data,
+    updatedAt: now
+  });
+  triggerAutoSync();
+}
+
+async function settleSaving(id, settleData) {
+  const now = Date.now();
+  const savingId = Number(id);
+  const settleAmount = Number(settleData.settledAmount || 0);
+  const targetAccountId = settleData.targetAccountId ? Number(settleData.targetAccountId) : null;
+
+  await db.transaction('rw', db.savings, db.accounts, async () => {
+    const saving = await db.savings.get(savingId);
+    if (!saving || saving.isDeleted) return;
+
+    await db.savings.update(savingId, {
+      status: 'settled',
+      settledDate: settleData.settledDate || new Date().toISOString().split('T')[0],
+      settledAmount: settleAmount,
+      updatedAt: now
+    });
+
+    // Nếu người dùng chọn tài khoản nhận tiền tất toán, cộng tiền vào tài khoản
+    if (targetAccountId && settleAmount > 0) {
+      const targetAcc = await db.accounts.get(targetAccountId);
+      if (targetAcc) {
+        await db.accounts.update(targetAccountId, {
+          balance: targetAcc.balance + settleAmount,
+          updatedAt: now
+        });
+      }
+    }
+  });
+
+  triggerAutoSync();
+}
+
+async function deleteSaving(id) {
+  const now = Date.now();
+  await db.savings.update(Number(id), { isDeleted: 1, updatedAt: now });
+  triggerAutoSync();
+}
+
+/* ==================== QUẢN LÝ SỔ TÍCH LŨY (ACCUMULATIONS OPERATIONS) ==================== */
+async function addAccumulation(data) {
+  const now = Date.now();
+  const targetAmount = Number(data.targetAmount || 0);
+  const currentAmount = Number(data.currentAmount || 0);
+  const sourceAccountId = data.sourceAccountId ? Number(data.sourceAccountId) : null;
+
+  const accumulation = {
+    name: data.name.trim(),
+    targetAmount: targetAmount,
+    currentAmount: currentAmount,
+    currency: data.currency || 'VND',
+    startDate: data.startDate || new Date().toISOString().split('T')[0],
+    targetDate: data.targetDate || '',
+    durationMonths: Number(data.durationMonths || 0),
+    hasRecurring: data.hasRecurring ? 1 : 0,
+    recurringAmount: Number(data.recurringAmount || 0),
+    recurringFrequency: data.recurringFrequency || 'monthly',
+    sourceAccountId: sourceAccountId,
+    excludeFromReport: data.excludeFromReport ? 1 : 0,
+    status: currentAmount >= targetAmount && targetAmount > 0 ? 'completed' : 'active',
+    isDeleted: 0,
+    updatedAt: now
+  };
+
+  await db.transaction('rw', db.accumulations, db.accounts, async () => {
+    await db.accumulations.add(accumulation);
+    // Trích tiền khởi điểm từ tài khoản nếu có chọn
+    if (sourceAccountId && currentAmount > 0) {
+      const srcAcc = await db.accounts.get(sourceAccountId);
+      if (srcAcc) {
+        await db.accounts.update(sourceAccountId, {
+          balance: srcAcc.balance - currentAmount,
+          updatedAt: now
+        });
+      }
+    }
+  });
+
+  triggerAutoSync();
+}
+
+async function updateAccumulation(id, data) {
+  const now = Date.now();
+  await db.accumulations.update(Number(id), {
+    ...data,
+    updatedAt: now
+  });
+  triggerAutoSync();
+}
+
+async function depositAccumulation(id, depositAmount, sourceAccountId) {
+  const now = Date.now();
+  const accId = Number(id);
+  const amount = Number(depositAmount);
+  const srcId = sourceAccountId ? Number(sourceAccountId) : null;
+
+  await db.transaction('rw', db.accumulations, db.accounts, async () => {
+    const item = await db.accumulations.get(accId);
+    if (!item || item.isDeleted) return;
+
+    const newAmount = item.currentAmount + amount;
+    const isCompleted = item.targetAmount > 0 && newAmount >= item.targetAmount;
+
+    await db.accumulations.update(accId, {
+      currentAmount: newAmount,
+      status: isCompleted ? 'completed' : 'active',
+      updatedAt: now
+    });
+
+    if (srcId && amount > 0) {
+      const srcAcc = await db.accounts.get(srcId);
+      if (srcAcc) {
+        await db.accounts.update(srcId, {
+          balance: srcAcc.balance - amount,
+          updatedAt: now
+        });
+      }
+    }
+  });
+
+  triggerAutoSync();
+}
+
+async function deleteAccumulation(id) {
+  const now = Date.now();
+  await db.accumulations.update(Number(id), { isDeleted: 1, updatedAt: now });
+  triggerAutoSync();
+}
+
+/* ==================== QUẢN LÝ TÀI SẢN (ASSETS OPERATIONS) ==================== */
+async function addAsset(data) {
+  const now = Date.now();
+  const quantity = Number(data.quantity || 1);
+  const buyPrice = data.isGift ? 0 : Number(data.buyPrice || 0);
+  const currentPrice = Number(data.currentPrice || buyPrice || 0);
+  const extraCosts = Number(data.extraCosts || 0);
+  const totalBuyValue = data.isGift ? extraCosts : (quantity * buyPrice + extraCosts);
+  const totalCurrentValue = quantity * currentPrice;
+  const sourceAccountId = data.sourceAccountId ? Number(data.sourceAccountId) : null;
+
+  const asset = {
+    assetType: data.assetType || 'other', // 'real_estate' | 'precious_metal' | 'foreign_currency' | 'other'
+    subType: data.subType || '',
+    name: data.name.trim(),
+    isGift: data.isGift ? 1 : 0,
+    buyDate: data.buyDate || new Date().toISOString().split('T')[0],
+    quantity: quantity,
+    unit: data.unit || 'Chiếc',
+    currency: data.currency || 'VND',
+    buyPrice: buyPrice,
+    currentPrice: currentPrice,
+    totalBuyValue: totalBuyValue,
+    totalCurrentValue: totalCurrentValue,
+    exchangeRateBuy: Number(data.exchangeRateBuy || 1),
+    exchangeRateCurrent: Number(data.exchangeRateCurrent || 1),
+    extraCosts: extraCosts,
+    sourceAccountId: sourceAccountId,
+    location: (data.location || '').trim(),
+    note: (data.note || '').trim(),
+    includeInNetWorth: data.includeInNetWorth !== undefined ? (data.includeInNetWorth ? 1 : 0) : 1,
+    status: 'holding', // 'holding' | 'liquidated'
+    liquidatedDate: null,
+    liquidatedPrice: 0,
+    isDeleted: 0,
+    updatedAt: now
+  };
+
+  await db.transaction('rw', db.assets, db.accounts, async () => {
+    await db.assets.add(asset);
+    // Nếu có chọn tài khoản thanh toán, trừ tiền mua
+    if (sourceAccountId && totalBuyValue > 0) {
+      const srcAcc = await db.accounts.get(sourceAccountId);
+      if (srcAcc) {
+        await db.accounts.update(sourceAccountId, {
+          balance: srcAcc.balance - totalBuyValue,
+          updatedAt: now
+        });
+      }
+    }
+  });
+
+  triggerAutoSync();
+}
+
+async function updateAsset(id, data) {
+  const now = Date.now();
+  const quantity = Number(data.quantity !== undefined ? data.quantity : 1);
+  const currentPrice = Number(data.currentPrice !== undefined ? data.currentPrice : 0);
+  const totalCurrentValue = quantity * currentPrice;
+
+  await db.assets.update(Number(id), {
+    ...data,
+    totalCurrentValue,
+    updatedAt: now
+  });
+  triggerAutoSync();
+}
+
+async function liquidateAsset(id, liquidateData) {
+  const now = Date.now();
+  const assetId = Number(id);
+  const salePrice = Number(liquidateData.salePrice || 0);
+  const targetAccountId = liquidateData.targetAccountId ? Number(liquidateData.targetAccountId) : null;
+
+  await db.transaction('rw', db.assets, db.accounts, async () => {
+    const item = await db.assets.get(assetId);
+    if (!item || item.isDeleted) return;
+
+    await db.assets.update(assetId, {
+      status: 'liquidated',
+      liquidatedDate: liquidateData.liquidatedDate || new Date().toISOString().split('T')[0],
+      liquidatedPrice: salePrice,
+      updatedAt: now
+    });
+
+    if (targetAccountId && salePrice > 0) {
+      const acc = await db.accounts.get(targetAccountId);
+      if (acc) {
+        await db.accounts.update(targetAccountId, {
+          balance: acc.balance + salePrice,
+          updatedAt: now
+        });
+      }
+    }
+  });
+
+  triggerAutoSync();
+}
+
+async function deleteAsset(id) {
+  const now = Date.now();
+  await db.assets.update(Number(id), { isDeleted: 1, updatedAt: now });
+  triggerAutoSync();
+}
+
 // Calculation Utilities
 async function getNetWorth() {
   const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
-  const totalAccountBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0);
+  const totalAccountBalance = accounts.filter(a => !a.isArchived).reduce((sum, a) => sum + (a.balance || 0), 0);
+
+  // Sổ tiết kiệm đang gửi
+  let totalSavings = 0;
+  try {
+    if (db.savings) {
+      const savingsList = await db.savings.where('isDeleted').equals(0).toArray();
+      totalSavings = savingsList.filter(s => s.status !== 'settled').reduce((sum, s) => sum + (s.balance || 0), 0);
+    }
+  } catch (e) {
+    console.warn('Savings read error:', e);
+  }
+
+  // Sổ tích lũy
+  let totalAccumulations = 0;
+  try {
+    if (db.accumulations) {
+      const accList = await db.accumulations.where('isDeleted').equals(0).toArray();
+      totalAccumulations = accList.reduce((sum, a) => sum + (a.currentAmount || 0), 0);
+    }
+  } catch (e) {
+    console.warn('Accumulations read error:', e);
+  }
+
+  // Tài sản (Bất động sản, Kim loại quý, Ngoại tệ, Tài sản khác)
+  let totalAssets = 0;
+  try {
+    if (db.assets) {
+      const assetList = await db.assets.where('isDeleted').equals(0).toArray();
+      totalAssets = assetList
+        .filter(a => a.status !== 'liquidated' && a.includeInNetWorth !== 0)
+        .reduce((sum, a) => sum + (a.totalCurrentValue !== undefined ? a.totalCurrentValue : ((a.currentPrice || 0) * (a.quantity || 1))), 0);
+    }
+  } catch (e) {
+    console.warn('Assets read error:', e);
+  }
 
   const activeDebts = await db.debts.where('isDeleted').equals(0).toArray();
   // lend = nợ cần thu (tài sản tăng)
@@ -347,11 +688,17 @@ async function getNetWorth() {
   const totalLend = activeDebts.filter(d => d.type === 'lend' && d.status !== 'settled').reduce((s, d) => s + d.remainingAmount, 0);
   const totalBorrow = activeDebts.filter(d => d.type === 'borrow' && d.status !== 'settled').reduce((s, d) => s + d.remainingAmount, 0);
 
+  const grandTotalAssets = totalAccountBalance + totalSavings + totalAccumulations + totalAssets;
+
   return {
     totalAccountBalance,
+    totalSavings,
+    totalAccumulations,
+    totalAssets,
+    grandTotalAssets,
     totalLend,
     totalBorrow,
-    netWorth: totalAccountBalance + totalLend - totalBorrow
+    netWorth: grandTotalAssets + totalLend - totalBorrow
   };
 }
 
