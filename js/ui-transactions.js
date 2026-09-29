@@ -15,6 +15,8 @@ const UITransactions = {
   editingCatId: null,
 
   async init() {
+    if (this._initialized) return;
+    this._initialized = true;
     this.bindEvents();
     await this.renderQuickCategories();
   },
@@ -31,6 +33,9 @@ const UITransactions = {
   },
 
   bindEvents() {
+    if (this._eventsBound) return;
+    this._eventsBound = true;
+
     // Filter pills
     document.querySelectorAll('.tx-filter-pill').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -280,6 +285,13 @@ const UITransactions = {
   },
 
   handleKeypadKey(key) {
+    const now = Date.now();
+    if (this._lastKeypadKey === key && now - (this._lastKeypadTime || 0) < 60) {
+      return;
+    }
+    this._lastKeypadKey = key;
+    this._lastKeypadTime = now;
+
     const display = document.getElementById('keypad-live-val');
     if (!display) return;
 
@@ -345,6 +357,13 @@ const UITransactions = {
   },
 
   handleKeypadQuickAdd(val) {
+    const now = Date.now();
+    if (this._lastQuickAddVal === val && now - (this._lastQuickAddTime || 0) < 60) {
+      return;
+    }
+    this._lastQuickAddVal = val;
+    this._lastQuickAddTime = now;
+
     const display = document.getElementById('keypad-live-val');
     if (!display) return;
 

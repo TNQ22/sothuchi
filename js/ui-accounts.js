@@ -71,12 +71,12 @@ const UIAccounts = {
     const badgeText = p?.badgeText || p?.shortName || p?.code || '';
     const icon = p?.icon || item.icon || (item.type === 'bank' ? 'landmark' : (item.type === 'ewallet' ? 'smartphone' : (item.type === 'credit' ? 'credit-card' : (item.type === 'saving' ? 'piggy-bank' : 'wallet'))));
 
-    const radius = Math.round(size * 0.28);
+    const radius = Math.round(size * 0.22);
 
     if (p && p.logoUrl) {
       return `
-        <div class="bank-logo-badge" style="width:${size}px; height:${size}px; border-radius:${radius}px; background:#ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.06); display:inline-flex; align-items:center; justify-content:center; overflow:hidden; position:relative; flex-shrink:0;">
-          <img src="${p.logoUrl}" alt="${escapeHTML(p.name)}" loading="lazy" style="width:100%; height:100%; object-fit:contain; padding:2px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="bank-logo-badge" style="width:${size}px; height:${size}px; border-radius:${radius}px; background:#ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.08); display:inline-flex; align-items:center; justify-content:center; overflow:hidden; position:relative; flex-shrink:0; box-sizing:border-box;">
+          <img src="${p.logoUrl}" alt="${escapeHTML(p.name)}" loading="lazy" style="width:100%; height:100%; object-fit:contain; padding:3px 5px; box-sizing:border-box;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
           <div style="display:none; width:100%; height:100%; background:${color}; color:#ffffff; font-weight:800; font-size:${size >= 36 ? '0.68rem' : '0.58rem'}; align-items:center; justify-content:center; text-align:center; padding:1px; line-height:1;">
             ${escapeHTML(badgeText.slice(0, 4))}
           </div>
@@ -86,24 +86,28 @@ const UIAccounts = {
 
     if (p && p.badgeText) {
       return `
-        <div class="bank-logo-badge" style="width:${size}px; height:${size}px; border-radius:${radius}px; background:${color}; color:#ffffff; font-weight:800; font-size:${size >= 36 ? '0.68rem' : '0.58rem'}; display:inline-flex; align-items:center; justify-content:center; text-align:center; padding:2px; line-height:1; flex-shrink:0; box-shadow: 0 1px 3px rgba(0,0,0,0.12);">
+        <div class="bank-logo-badge" style="width:${size}px; height:${size}px; border-radius:${radius}px; background:${color}; color:#ffffff; font-weight:800; font-size:${size >= 36 ? '0.68rem' : '0.58rem'}; display:inline-flex; align-items:center; justify-content:center; text-align:center; padding:2px; line-height:1; flex-shrink:0; box-shadow: 0 1px 3px rgba(0,0,0,0.12); box-sizing:border-box;">
           ${escapeHTML(p.badgeText)}
         </div>
       `;
     }
 
     return `
-      <div class="bank-logo-badge" style="width:${size}px; height:${size}px; border-radius:${radius}px; background:${bg}; color:${color}; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
+      <div class="bank-logo-badge" style="width:${size}px; height:${size}px; border-radius:${radius}px; background:${bg}; color:${color}; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; box-sizing:border-box;">
         <i data-lucide="${icon}" style="width:${Math.round(size * 0.52)}px; height:${Math.round(size * 0.52)}px;"></i>
       </div>
     `;
   },
 
   init() {
+    if (this._initialized) return;
+    this._initialized = true;
     this.bindEvents();
   },
 
   bindEvents() {
+    if (this._eventsBound) return;
+    this._eventsBound = true;
     const accForm = document.getElementById('account-form');
     if (accForm) {
       accForm.addEventListener('submit', async (e) => {
@@ -260,7 +264,7 @@ const UIAccounts = {
     if (bankInput) bankInput.value = p.code;
     if (display) display.textContent = p.name;
     if (preview) {
-      preview.innerHTML = this.renderLogoBadge(p, 36);
+      preview.innerHTML = this.renderLogoBadge(p, 32);
       preview.style.background = 'transparent';
     }
 
@@ -974,7 +978,7 @@ const UIAccounts = {
         if (bankInput) bankInput.value = defProv.code;
         if (display) display.textContent = defProv.name;
         if (preview) {
-          preview.innerHTML = this.renderLogoBadge(defProv, 36);
+          preview.innerHTML = this.renderLogoBadge(defProv, 32);
           preview.style.background = 'transparent';
         }
       } else {
@@ -1124,13 +1128,13 @@ const UIAccounts = {
       if (providerDisplay) providerDisplay.textContent = p ? p.name : acc.bankCode;
       if (preview) {
         preview.style.background = 'transparent';
-        preview.innerHTML = this.renderLogoBadge(p || acc, 36);
+        preview.innerHTML = this.renderLogoBadge(p || acc, 32);
       }
     } else {
       if (providerDisplay) providerDisplay.textContent = 'Mặc định';
       if (preview) {
         preview.style.background = 'transparent';
-        preview.innerHTML = this.renderLogoBadge(acc, 36);
+        preview.innerHTML = this.renderLogoBadge(acc, 32);
       }
     }
 
@@ -1412,7 +1416,7 @@ const UIAccounts = {
             
             <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản">
               <div class="account-icon-bubble" style="background: transparent;">
-                ${this.renderLogoBadge(a, 40)}
+                ${this.renderLogoBadge(a, 36)}
               </div>
               <div class="account-info">
                 <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
@@ -1468,7 +1472,7 @@ const UIAccounts = {
             <div class="account-list-item archived" data-id="${a.id}">
               <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản">
                 <div class="account-icon-bubble" style="background: transparent; opacity: 0.65;">
-                  ${this.renderLogoBadge(a, 40)}
+                  ${this.renderLogoBadge(a, 36)}
                 </div>
                 <div class="account-info">
                   <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">

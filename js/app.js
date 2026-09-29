@@ -935,12 +935,5 @@ window.addEventListener('DOMContentLoaded', () => {
   window.app.init();
 });
 
-
-// Instantiate and launch App on DOMContentLoaded
-window.addEventListener('DOMContentLoaded', () => {
-  window.app = new App();
-  window.app.init();
-});
-
 // iOS Safari / Mobile PWA Viewport and Touch Misalignment Fixes
 document.addEventListener('touchstart', () => {}, { passive: true });
