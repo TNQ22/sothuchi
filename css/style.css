@@ -4512,3 +4512,12 @@ body:has(#view-account-provider.active) .app-header {
   color: var(--primary);
   font-weight: 800;
 }
+
+/* Animation xoay icon làm mới live price */
+@keyframes spin-anim {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.rotating {
+  animation: spin-anim 0.8s linear infinite !important;
+}

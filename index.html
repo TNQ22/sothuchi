@@ -390,9 +390,14 @@
                 <span class="accounts-group-subtitle stat-amount" id="label-assets-total">0đ</span>
               </div>
             </div>
-            <button type="button" class="btn-group-action" onclick="UIAccounts.openAssetTypePicker()" title="Thêm tài sản">
-              <i data-lucide="plus" style="width: 15px; height: 15px;"></i> Thêm tài sản
-            </button>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <button type="button" class="btn-icon" style="width: 32px; height: 32px; border-radius: 50%; background: var(--bg-hover); color: #0ea5e9; border: 1px solid var(--border-color);" onclick="UIAccounts.refreshAllLivePrices()" title="Cập nhật tỷ giá & giá Crypto trực tuyến">
+                <i data-lucide="refresh-cw" id="icon-refresh-all-assets" style="width: 15px; height: 15px;"></i>
+              </button>
+              <button type="button" class="btn-group-action" onclick="UIAccounts.openAssetTypePicker()" title="Thêm tài sản">
+                <i data-lucide="plus" style="width: 15px; height: 15px;"></i> Thêm tài sản
+              </button>
+            </div>
           </div>
 
           <div id="assets-list-container" class="assets-cards-list"></div>
@@ -1072,21 +1077,8 @@
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
-                <!-- Hàng 3: Đơn vị tiền tệ -->
-                <div class="tx-info-row">
-                  <div class="tx-info-icon-bubble" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
-                    <i data-lucide="circle-dollar-sign"></i>
-                  </div>
-                  <div class="tx-info-content" style="position: relative;">
-                    <select id="acc-currency-select" class="acc-styled-select" onchange="UIAccounts.handleCurrencyChange(this.value)">
-                      <option value="VND">VND (đ)</option>
-                      <option value="USD">USD ($)</option>
-                      <option value="EUR">EUR (€)</option>
-                      <option value="JPY">JPY (¥)</option>
-                    </select>
-                  </div>
-                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
-                </div>
+                <!-- Đơn vị tiền tệ cố định VND -->
+                <input type="hidden" id="acc-currency-select" value="VND">
 
                 <!-- Hàng 4: Diễn giải / Ghi chú -->
                 <div class="tx-info-row">
@@ -1644,6 +1636,17 @@
                     <div id="asset-curprice-label" style="font-size: 0.74rem; color: var(--text-muted);">Giá thị trường hiện tại / Đơn vị (VNĐ)</div>
                     <input type="number" id="asset-currentprice-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" oninput="UIAccounts.calcAssetPreview()" style="font-size: 0.95rem; font-weight: 700; color: var(--primary);">
                   </div>
+                </div>
+
+                <!-- Tự động cập nhật tỷ giá ngoại tệ / giá crypto trực tuyến -->
+                <div id="asset-auto-price-row" style="display: none; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(14, 165, 233, 0.08); border-radius: var(--radius-sm); border: 1px dashed rgba(14, 165, 233, 0.35); margin: 2px 0 6px 0;">
+                  <div style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text-primary); font-weight: 500;">
+                    <i data-lucide="refresh-cw" id="icon-auto-price-spin" style="width: 14px; height: 14px; color: #0ea5e9;"></i>
+                    <span id="label-auto-price-status">Tự động lấy giá thị trường</span>
+                  </div>
+                  <button type="button" class="btn-sm btn-secondary" id="btn-fetch-live-price" style="padding: 4px 10px; font-size: 0.75rem; font-weight: 600; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;" onclick="UIAccounts.fetchLiveMarketPrice()">
+                    <span>Cập nhật giá</span>
+                  </button>
                 </div>
 
                 <!-- Chi phí khác -->
@@ -2309,6 +2312,17 @@
           <div class="action-sheet-item-text">
             <span class="action-sheet-item-title">Ngoại tệ</span>
             <span class="action-sheet-item-desc">Các đồng ngoại tệ phổ biến (USD, EUR, JPY, GBP...)</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
+        <button type="button" class="action-sheet-item" onclick="UIAccounts.selectAssetType('crypto')">
+          <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
+            <i data-lucide="coins" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Tiền điện tử (Crypto)</span>
+            <span class="action-sheet-item-desc">Bitcoin (BTC), Ethereum (ETH), USDT, Solana...</span>
           </div>
           <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
         </button>

@@ -1084,6 +1084,7 @@ const UIAccounts = {
     }
 
     const curSelect = document.getElementById('acc-currency-select');
+      if (curSelect) curSelect.value = 'VND';
     if (curSelect) {
       curSelect.value = 'VND';
       this.handleCurrencyChange('VND');
@@ -1956,6 +1957,18 @@ const UIAccounts = {
       { id: 'SGD', name: 'Đô la Singapore (SGD)' },
       { id: 'CNY', name: 'Nhân dân tệ (CNY)' }
     ],
+    crypto: [
+      { id: 'USDT', name: 'USDT (Tether USD)' },
+      { id: 'BTC', name: 'Bitcoin (BTC)' },
+      { id: 'ETH', name: 'Ethereum (ETH)' },
+      { id: 'BNB', name: 'BNB (Binance Coin)' },
+      { id: 'SOL', name: 'Solana (SOL)' },
+      { id: 'XRP', name: 'XRP (Ripple)' },
+      { id: 'DOGE', name: 'Dogecoin (DOGE)' },
+      { id: 'ADA', name: 'Cardano (ADA)' },
+      { id: 'TRX', name: 'TRON (TRX)' },
+      { id: 'other_crypto', name: 'Tiền điện tử khác' }
+    ],
     other: [
       { id: 'car', name: 'Ô tô / Phương tiện' },
       { id: 'motorcycle', name: 'Xe máy / Moto PKL' },
@@ -1988,7 +2001,8 @@ const UIAccounts = {
     const typeConfigs = {
       real_estate: { title: 'Tạo Bất Động Sản', icon: 'home', unit: 'm²', qtyLabel: 'Diện tích (m²)', color: '#10b981', showLoc: true },
       precious_metal: { title: 'Tạo Kim Loại Quý', icon: 'sparkles', unit: 'Chỉ', qtyLabel: 'Khối lượng / Số lượng', color: '#f59e0b', showLoc: false },
-      foreign_currency: { title: 'Tạo Tài Khoản Ngoại Tệ', icon: 'dollar-sign', unit: 'USD', qtyLabel: 'Số lượng ngoại tệ', color: '#0ea5e9', showLoc: false },
+      foreign_currency: { title: 'Tạo Tài Sản Ngoại Tệ', icon: 'dollar-sign', unit: 'USD', qtyLabel: 'Số lượng ngoại tệ', color: '#0ea5e9', showLoc: false },
+      crypto: { title: 'Tạo Tiền Điện Tử (Crypto)', icon: 'coins', unit: 'USDT', qtyLabel: 'Số lượng Coin / Token', color: '#f59e0b', showLoc: false },
       other: { title: 'Tạo Tài Sản Khác', icon: 'package', unit: 'Chiếc', qtyLabel: 'Số lượng', color: '#8b5cf6', showLoc: false }
     };
     const cfg = typeConfigs[assetType] || typeConfigs.real_estate;
@@ -2006,6 +2020,17 @@ const UIAccounts = {
     // Populate sub-types
     this.populateAssetSubTypes(assetType);
     await this.populateAssetSourceAccounts();
+
+    // Auto price row visibility & status
+    const autoPriceRow = document.getElementById('asset-auto-price-row');
+    const autoStatusEl = document.getElementById('label-auto-price-status');
+    const isLiveSupported = assetType === 'foreign_currency' || assetType === 'crypto';
+    if (autoPriceRow) {
+      autoPriceRow.style.display = isLiveSupported ? 'flex' : 'none';
+      if (autoStatusEl) {
+        autoStatusEl.textContent = assetType === 'crypto' ? 'Tự động lấy giá Crypto trực tuyến' : 'Tự động lấy tỷ giá ngoại tệ mới nhất';
+      }
+    }
 
     const todayStr = new Date().toISOString().split('T')[0];
 
@@ -2034,6 +2059,9 @@ const UIAccounts = {
       if (extraCostsInput) extraCostsInput.value = '0';
       document.getElementById('asset-is-gift-input').checked = false;
       document.getElementById('asset-include-networth-input').checked = true;
+      if (isLiveSupported) {
+        this.fetchLiveMarketPrice(false);
+      }
     }
 
     this.calcAssetPreview();
@@ -2233,6 +2261,226 @@ const UIAccounts = {
     await deleteAsset(Number(id));
     showToast(`Đã xóa tài sản "${asset.name}"`, 'info');
     await window.app.refreshAll();
+  },
+
+
+  /* ==================== TỰ ĐỘNG KIỂM TRA GIÁ NGOẠI TỆ & TIỀN ĐIỆN TỬ ==================== */
+  // Bộ nhớ đệm tỷ giá để tránh spam API
+  _rateCache: null,
+  _rateCacheTime: 0,
+
+  async getLatestFxRates() {
+    const now = Date.now();
+    // Cache trong 5 phút
+    if (this._rateCache && (now - this._rateCacheTime < 5 * 60 * 1000)) {
+      return this._rateCache;
+    }
+
+    try {
+      const res = await fetch('https://open.er-api.com/v6/latest/USD');
+      if (!res.ok) throw new Error('Network error');
+      const data = await res.json();
+      if (data && data.rates) {
+        this._rateCache = data.rates;
+        this._rateCacheTime = now;
+        return data.rates;
+      }
+    } catch (e) {
+      console.warn('Primary FX API failed, trying fallback...', e);
+      try {
+        const res2 = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+        const data2 = await res2.json();
+        if (data2 && data2.rates) {
+          this._rateCache = data2.rates;
+          this._rateCacheTime = now;
+          return data2.rates;
+        }
+      } catch (err2) {
+        console.warn('Fallback FX API failed, using static rates...', err2);
+      }
+    }
+
+    // Tỷ giá tĩnh dự phòng khi offline
+    return {
+      VND: 25900,
+      USD: 1,
+      EUR: 0.92,
+      JPY: 155,
+      GBP: 0.78,
+      AUD: 1.55,
+      CAD: 1.38,
+      SGD: 1.33,
+      CNY: 7.24
+    };
+  },
+
+  async fetchLiveMarketPrice(showFeedback = true) {
+    const assetType = document.getElementById('asset-type-input')?.value;
+    const subType = document.getElementById('asset-subtype-select')?.value;
+    const curPriceInput = document.getElementById('asset-currentprice-input');
+    const curPriceText = document.getElementById('asset-price-text');
+    const spinIcon = document.getElementById('icon-auto-price-spin');
+    const autoStatusEl = document.getElementById('label-auto-price-status');
+
+    if (!['foreign_currency', 'crypto'].includes(assetType) || !curPriceInput) return;
+
+    if (spinIcon) spinIcon.classList.add('rotating');
+    if (autoStatusEl) autoStatusEl.textContent = 'Đang tải giá mới nhất...';
+
+    // Đánh dấu requestId để tránh kết quả cũ ghi đè khi đổi nhanh
+    this._lastPriceReqId = (this._lastPriceReqId || 0) + 1;
+    const curReqId = this._lastPriceReqId;
+
+    try {
+      const rates = await this.getLatestFxRates();
+      const usdVnd = rates.VND || 25900;
+      let calculatedPrice = 0;
+      let labelName = subType;
+
+      if (assetType === 'foreign_currency') {
+        labelName = subType;
+        if (subType === 'USD') {
+          calculatedPrice = Math.round(usdVnd);
+        } else if (rates[subType]) {
+          calculatedPrice = Math.round(usdVnd / rates[subType]);
+        } else {
+          calculatedPrice = Math.round(usdVnd);
+        }
+      } else if (assetType === 'crypto') {
+        const code = subType.toUpperCase();
+        labelName = code;
+        if (code === 'USDT') {
+          // USDT thường chênh lệch nhẹ so với USD ngân hàng (~25.500 - 25.900)
+          calculatedPrice = Math.round(usdVnd);
+        } else if (code !== 'OTHER_CRYPTO') {
+          // Lấy giá từ Binance API
+          try {
+            const bRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${code}USDT`);
+            if (bRes.ok) {
+              const bData = await bRes.json();
+              if (bData && bData.price) {
+                const priceUsd = Number(bData.price);
+                calculatedPrice = Math.round(priceUsd * usdVnd);
+              }
+            }
+          } catch (bErr) {
+            console.warn('Binance price fetch error, checking coingecko:', bErr);
+          }
+
+          // Fallback CoinGecko nếu Binance không lấy được
+          if (!calculatedPrice) {
+            const cgMap = {
+              BTC: 'bitcoin',
+              ETH: 'ethereum',
+              BNB: 'binancecoin',
+              SOL: 'solana',
+              XRP: 'ripple',
+              DOGE: 'dogecoin',
+              ADA: 'cardano',
+              TRX: 'tron'
+            };
+            const cgId = cgMap[code];
+            if (cgId) {
+              try {
+                const cgRes = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=vnd`);
+                const cgData = await cgRes.json();
+                if (cgData && cgData[cgId] && cgData[cgId].vnd) {
+                  calculatedPrice = Math.round(cgData[cgId].vnd);
+                }
+              } catch (cgErr) {
+                console.warn('CoinGecko fallback error:', cgErr);
+              }
+            }
+          }
+        }
+      }
+
+      // Bỏ qua nếu người dùng đã chuyển sang đồng khác
+      if (curReqId !== this._lastPriceReqId) return;
+
+      if (calculatedPrice > 0) {
+        curPriceInput.value = calculatedPrice;
+        if (curPriceText) curPriceText.textContent = new Intl.NumberFormat('vi-VN').format(calculatedPrice);
+        this.calcAssetPreview();
+
+        if (autoStatusEl) {
+          autoStatusEl.textContent = `Giá ${labelName}: ${new Intl.NumberFormat('vi-VN').format(calculatedPrice)}đ`;
+        }
+        if (showFeedback) {
+          showToast(`Đã cập nhật giá ${labelName}: ${new Intl.NumberFormat('vi-VN').format(calculatedPrice)}đ`, 'success');
+        }
+      } else {
+        if (autoStatusEl) autoStatusEl.textContent = 'Chưa thể tự lấy giá đồng này';
+        if (showFeedback) {
+          showToast('Không lấy được giá trực tuyến tự động. Vui lòng nhập giá tay.', 'info');
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching live price:', err);
+      if (autoStatusEl) autoStatusEl.textContent = 'Lỗi kết nối khi lấy giá';
+      if (showFeedback) {
+        showToast('Lỗi kiểm tra giá trực tuyến, vui lòng thử lại', 'error');
+      }
+    } finally {
+      if (spinIcon) spinIcon.classList.remove('rotating');
+    }
+  },
+
+  async refreshAllLivePrices() {
+    const iconBtn = document.getElementById('icon-refresh-all-assets');
+    if (iconBtn) iconBtn.classList.add('rotating');
+
+    try {
+      const allAssets = await db.assets.where('isDeleted').equals(0).toArray();
+      const liveItems = allAssets.filter(a => a.status !== 'liquidated' && (a.assetType === 'foreign_currency' || a.assetType === 'crypto'));
+
+      if (liveItems.length === 0) {
+        showToast('Chưa có tài sản Ngoại tệ hoặc Crypto nào để làm mới', 'info');
+        return;
+      }
+
+      showToast(`Đang làm mới giá cho ${liveItems.length} tài sản...`, 'info');
+      const rates = await this.getLatestFxRates();
+      const usdVnd = rates.VND || 25900;
+      let updatedCount = 0;
+
+      for (const item of liveItems) {
+        let newPrice = 0;
+        const sub = (item.subType || '').toUpperCase();
+
+        if (item.assetType === 'foreign_currency') {
+          if (sub === 'USD') newPrice = usdVnd;
+          else if (rates[sub]) newPrice = usdVnd / rates[sub];
+        } else if (item.assetType === 'crypto') {
+          if (sub === 'USDT') {
+            newPrice = usdVnd;
+          } else if (sub !== 'OTHER_CRYPTO') {
+            try {
+              const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${sub}USDT`);
+              if (res.ok) {
+                const d = await res.json();
+                if (d && d.price) newPrice = Number(d.price) * usdVnd;
+              }
+            } catch (e) {
+              console.warn('Live refresh err for ' + sub, e);
+            }
+          }
+        }
+
+        if (newPrice > 0) {
+          await updateAsset(item.id, { currentPrice: Math.round(newPrice) });
+          updatedCount++;
+        }
+      }
+
+      await window.app.refreshAll();
+      showToast(`Đã cập nhật giá mới nhất cho ${updatedCount} tài sản!`, 'success');
+    } catch (e) {
+      console.error('refreshAllLivePrices error:', e);
+      showToast('Có lỗi xảy ra khi làm mới tỷ giá', 'error');
+    } finally {
+      if (iconBtn) iconBtn.classList.remove('rotating');
+    }
   },
 
   /* ==================== ACTION SHEET CHUNG (3 CHẤM) ==================== */
@@ -2635,6 +2883,7 @@ const UIAccounts = {
         real_estate: { icon: 'home', color: '#10b981', label: 'BĐS' },
         precious_metal: { icon: 'sparkles', color: '#f59e0b', label: 'Vàng/Bạc' },
         foreign_currency: { icon: 'dollar-sign', color: '#0ea5e9', label: 'Ngoại tệ' },
+        crypto: { icon: 'coins', color: '#f59e0b', label: 'Crypto' },
         other: { icon: 'package', color: '#8b5cf6', label: 'Khác' }
       };
 
