@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.20">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.21">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -858,6 +858,138 @@
           </div>
         </div>
       </section>
+
+      <!-- View: Thêm / Sửa Tài Khoản (Thiết kế theo phong cách trang ghi chép thu chi & ảnh tham khảo) -->
+      <section id="view-account-form" class="page-view tx-page-view">
+        <div class="tx-page-card-wrapper">
+          <!-- Page Header: Trở lại (Trái), Tiêu đề (Giữa), Nút Lưu nhanh (Phải) -->
+          <div class="tx-page-header">
+            <div class="tx-header-left">
+              <button type="button" class="btn-icon tx-header-btn" onclick="UIAccounts.closeAccountFormView()" title="Trở lại">
+                <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+            <div class="tx-header-center">
+              <span id="modal-account-title" style="font-weight: 700; font-size: 1.05rem; color: var(--text-primary);">Sửa Tài Khoản</span>
+            </div>
+            <div class="tx-header-right">
+              <button type="button" class="btn-icon tx-header-btn tx-header-done-btn" onclick="UIAccounts.handleFormSubmit()" title="Lưu lại">
+                <i data-lucide="check" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+          </div>
+
+          <form id="account-form" onsubmit="event.preventDefault(); UIAccounts.handleFormSubmit();">
+            <input type="hidden" id="acc-id-input">
+
+            <div class="tx-page-body" style="padding: 12px 14px; display: flex; flex-direction: column; gap: 12px;">
+
+              <!-- Ô 1: SỐ DƯ BAN ĐẦU (Header amount lớn giống tx-amount-card của trang ghi chép & ảnh mẫu) -->
+              <div class="tx-section-card tx-amount-card acc-amount-card" onclick="document.getElementById('acc-balance-input').focus()">
+                <div class="acc-amount-header-row" style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px;">
+                  <i data-lucide="coins" style="width: 15px; height: 15px; color: var(--primary);"></i>
+                  <span id="acc-balance-label" style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em;">Số Dư Ban Đầu</span>
+                </div>
+                <div class="tx-amount-centered-display">
+                  <input type="number" id="acc-balance-input" class="acc-amount-clean-input" placeholder="0" step="any">
+                  <span class="tx-amount-cur" id="acc-currency-symbol">đ</span>
+                </div>
+                <div id="acc-current-balance-display" style="display: none; font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; font-variant-numeric: tabular-nums;">
+                  Số dư hiện tại: <strong id="acc-current-balance-val" style="color: var(--primary); font-weight: 600;">0đ</strong>
+                </div>
+              </div>
+
+              <!-- Ô 2: THÔNG TIN CHI TIẾT TÀI KHOẢN (Grouped card kiểu tx-details-card) -->
+              <div class="tx-section-card tx-details-card">
+                <!-- Hàng 1: Tên tài khoản -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" id="acc-form-name-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                    <i data-lucide="wallet"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <input type="text" id="acc-name-input" class="tx-clean-input" placeholder="Tên tài khoản (Ví dụ: Ví, Techcombank...)" required style="font-size: 0.95rem; font-weight: 600;">
+                  </div>
+                </div>
+
+                <!-- Hàng 2: Loại tài khoản -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" id="acc-form-type-icon" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+                    <i data-lucide="landmark"></i>
+                  </div>
+                  <div class="tx-info-content" style="position: relative;">
+                    <select id="acc-type-select" class="acc-styled-select" onchange="UIAccounts.handleTypeChange(this.value)">
+                      <option value="cash">Tiền mặt</option>
+                      <option value="bank">Ngân hàng</option>
+                      <option value="ewallet">Ví điện tử (MoMo, ZaloPay...)</option>
+                      <option value="credit">Thẻ tín dụng (Credit Card)</option>
+                      <option value="saving">Sổ tiết kiệm</option>
+                    </select>
+                  </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                </div>
+
+                <!-- Hàng 3: Đơn vị tiền tệ -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                    <i data-lucide="circle-dollar-sign"></i>
+                  </div>
+                  <div class="tx-info-content" style="position: relative;">
+                    <select id="acc-currency-select" class="acc-styled-select" onchange="UIAccounts.handleCurrencyChange(this.value)">
+                      <option value="VND">VND (đ)</option>
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                      <option value="JPY">JPY (¥)</option>
+                    </select>
+                  </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                </div>
+
+                <!-- Hàng 4: Diễn giải / Ghi chú -->
+                <div class="tx-info-row">
+                  <div class="tx-info-icon-bubble" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8;">
+                    <i data-lucide="file-text"></i>
+                  </div>
+                  <div class="tx-info-content">
+                    <input type="text" id="acc-desc-input" class="tx-clean-input" placeholder="Diễn giải">
+                  </div>
+                </div>
+
+                <!-- Hàng 5: Không tính vào báo cáo -->
+                <div class="tx-info-row acc-exclude-info-row" style="align-items: center; padding: 12px 0;">
+                  <div class="tx-info-icon-bubble" style="background: rgba(239, 68, 68, 0.12); color: #ef4444; flex-shrink: 0;">
+                    <i data-lucide="eye-off"></i>
+                  </div>
+                  <div class="tx-info-content" style="padding-right: 8px;">
+                    <div style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3;">Không tính vào báo cáo</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.35; margin-top: 3px;">
+                      Ghi chép trên tài khoản này sẽ không được thống kê vào TẤT CẢ báo cáo (trừ báo cáo theo dõi vay nợ)
+                    </div>
+                  </div>
+                  <label class="app-switch" style="flex-shrink: 0;">
+                    <input type="checkbox" id="acc-exclude-report-check">
+                    <span class="app-switch-slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Ô 3: NÚT HÀNH ĐỘNG CUỐI TRANG (Nút Xóa + Nút Lưu Lại kiểu tx-bottom-action-row) -->
+              <div class="tx-bottom-action-row" style="margin-top: 6px; padding: 6px 0 16px 0; display: flex; gap: 12px; align-items: center;">
+                <!-- Nút Xóa (chỉ hiện khi đang sửa tài khoản) -->
+                <button type="button" id="btn-delete-account" onclick="UIAccounts.handleDeleteAccount()" style="display: none; flex: 1; height: 48px; background: rgba(244,63,94,0.12); color: #fb7185; border: 1px solid rgba(244,63,94,0.3); border-radius: var(--radius-md); font-size: 0.95rem; font-weight: 600; cursor: pointer; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s ease;">
+                  <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
+                  <span>Xóa</span>
+                </button>
+                <!-- Nút Lưu Lại -->
+                <button type="submit" id="btn-save-account" class="btn-primary tx-submit-bottom-btn" style="flex: 1; height: 48px;">
+                  <i data-lucide="check" style="width: 18px; height: 18px;"></i>
+                  <span>Lưu lại</span>
+                </button>
+              </div>
+
+            </div>
+          </form>
+        </div>
+      </section>
     </div>
 
     <!-- Mobile Bottom Navigation Bar -->
@@ -1280,76 +1412,6 @@
     </div>
   </div>
 
-  <!-- Modal: Account Form -->
-  <div id="modal-account" class="modal-overlay">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <h3 class="modal-title" id="modal-account-title">Thông Tin Tài Khoản</h3>
-        <button class="btn-icon" onclick="UIAccounts.closeModal()"><i data-lucide="x"></i></button>
-      </div>
-      <form id="account-form">
-        <input type="hidden" id="acc-id-input">
-        <div class="modal-body">
-          <div class="form-group">
-            <label class="form-label">Tên Tài Khoản / Ngân Hàng</label>
-            <input type="text" id="acc-name-input" class="form-control" placeholder="Ví dụ: Techcombank, Tiền Mặt, Ví..." required>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Loại Tài Khoản</label>
-            <select id="acc-type-select" class="form-control">
-              <option value="cash">Tiền mặt</option>
-              <option value="bank">Ngân hàng</option>
-              <option value="ewallet">Ví điện tử (MoMo, ZaloPay...)</option>
-              <option value="credit">Thẻ tín dụng (Credit Card)</option>
-              <option value="saving">Sổ tiết kiệm</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Đơn Vị Tiền Tệ</label>
-            <select id="acc-currency-select" class="form-control">
-              <option value="VND">VND (đ)</option>
-              <option value="USD">USD ($)</option>
-              <option value="EUR">EUR (€)</option>
-              <option value="JPY">JPY (¥)</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" id="acc-balance-label">Số Dư Ban Đầu (VNĐ)</label>
-            <input type="number" id="acc-balance-input" class="form-control" placeholder="0" step="any">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Diễn Giải / Ghi Chú</label>
-            <input type="text" id="acc-desc-input" class="form-control" placeholder="Diễn giải thêm về tài khoản này...">
-          </div>
-
-          <!-- Feature: Không tính vào báo cáo -->
-          <div class="acc-exclude-report-box">
-            <div class="acc-exclude-report-info">
-              <span class="acc-exclude-report-title">Không tính vào báo cáo</span>
-              <span class="acc-exclude-report-desc">Ghi chép trên tài khoản này sẽ không được thống kê vào TẤT CẢ báo cáo (trừ báo cáo theo dõi vay nợ)</span>
-            </div>
-            <label class="app-switch">
-              <input type="checkbox" id="acc-exclude-report-check">
-              <span class="app-switch-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-          <button type="button" id="btn-delete-account" class="btn-danger" style="display: none;" onclick="UIAccounts.handleDeleteAccount()">Xóa</button>
-          <div style="display: flex; gap: 8px; margin-left: auto;">
-            <button type="button" class="btn-secondary" onclick="UIAccounts.closeModal()">Hủy</button>
-            <button type="submit" class="btn-primary" id="btn-save-account">Lưu Lại</button>
-          </div>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <!-- Modal: Budget Form -->
   <div id="modal-budget" class="modal-overlay">
     <div class="modal-dialog">
@@ -1396,18 +1458,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.19"></script>
+  <script src="./js/backup.js?v=1.9.21"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.19"></script>
-  <script src="./js/ui-transactions.js?v=1.9.19"></script>
-  <script src="./js/ui-debts.js?v=1.9.19"></script>
-  <script src="./js/ui-accounts.js?v=1.9.19"></script>
-  <script src="./js/ui-budgets.js?v=1.9.19"></script>
-  <script src="./js/ui-analytics.js?v=1.9.19"></script>
-  <script src="./js/ui-settings.js?v=1.9.19"></script>
+  <script src="./js/ui-calendar.js?v=1.9.21"></script>
+  <script src="./js/ui-transactions.js?v=1.9.21"></script>
+  <script src="./js/ui-debts.js?v=1.9.21"></script>
+  <script src="./js/ui-accounts.js?v=1.9.21"></script>
+  <script src="./js/ui-budgets.js?v=1.9.21"></script>
+  <script src="./js/ui-analytics.js?v=1.9.21"></script>
+  <script src="./js/ui-settings.js?v=1.9.21"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.19"></script>
+  <script src="./js/app.js?v=1.9.21"></script>
 </body>
 </html>

@@ -47,7 +47,7 @@ const UIAnalytics = {
       .toArray();
 
     // Loại trừ giao dịch của các tài khoản được đánh dấu "Không tính vào báo cáo"
-    const excludedAccounts = await db.accounts.where('excludeFromReport').equals(1).toArray();
+    const excludedAccounts = await db.accounts.filter(a => !!a.excludeFromReport).toArray();
     const excludedAccountIds = new Set(excludedAccounts.map(a => a.id));
 
     const txs = excludedAccountIds.size > 0

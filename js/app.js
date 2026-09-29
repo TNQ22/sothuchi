@@ -369,7 +369,7 @@ class App {
     this.lastAddTabClickTime = 0;
     const primaryViews = ['dashboard', 'accounts', 'budgets', 'settings', 'transactions', 'debts', 'analytics'];
     const isPrimary = primaryViews.includes(viewId);
-    const isTxPage = ['new-transaction', 'category-picker', 'borrow-select'].includes(viewId);
+    const isTxPage = ['new-transaction', 'category-picker', 'borrow-select', 'account-form'].includes(viewId);
 
     // Instantly hide/show the header in JS FIRST — before any class/DOM changes.
     // CSS :has() and body-class selectors update asynchronously (next paint frame),
@@ -397,7 +397,7 @@ class App {
     }
 
     // 2. Lưu previousView trước khi chuyển vào các trang con (ghi chép, danh mục, ...)
-    const txSubViews = ['new-transaction', 'category-picker', 'borrow-select'];
+    const txSubViews = ['new-transaction', 'category-picker', 'borrow-select', 'account-form'];
     if (txSubViews.includes(viewId) && !txSubViews.includes(this.currentView)) {
       if (this.openedFromAccountMenu) {
         this.previousView = this.currentView;
@@ -413,6 +413,7 @@ class App {
     document.body.classList.toggle('view-new-transaction', isTxPage);
     document.body.classList.toggle('view-category-picker', viewId === 'category-picker');
     document.body.classList.toggle('view-borrow-select', viewId === 'borrow-select');
+    document.body.classList.toggle('view-account-form', viewId === 'account-form');
 
 
     // Update active nav links
@@ -447,7 +448,8 @@ class App {
       settings: 'Cài Đặt & Đồng Bộ',
       'new-transaction': 'Ghi Chép Mới',
       'category-picker': 'Chọn Danh Mục',
-      'borrow-select': 'Chọn Người Cho Vay'
+      'borrow-select': 'Chọn Người Cho Vay',
+      'account-form': 'Thông Tin Tài Khoản'
     };
     const titleEl = document.getElementById('header-page-title');
     if (titleEl) titleEl.textContent = titles[viewId] || 'Sổ Thu Chi';
@@ -517,6 +519,11 @@ class App {
       return;
     }
 
+    if (this.currentView === 'account-form') {
+      this.switchView(this.previousView || 'accounts', true);
+      return;
+    }
+
     // new-transaction → CHỈ trở về khi đang sửa giao dịch HOẶC khi mở từ menu 3 chấm của tài khoản
     if (this.currentView === 'new-transaction') {
       const txId = document.getElementById('tx-id-input')?.value;
@@ -557,7 +564,7 @@ class App {
       }
 
       // category-picker & borrow-select always support back to new-transaction
-      if (['category-picker', 'borrow-select'].includes(this.currentView)) {
+      if (['category-picker', 'borrow-select', 'account-form'].includes(this.currentView)) {
         window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
         this.goBack();
       } else if (this.currentView === 'new-transaction') {
@@ -577,7 +584,7 @@ class App {
   setupSwipeToBack() {
     // new-transaction, category-picker, borrow-select: support swipe-to-back.
     // NOTE: new-transaction ONLY allows swipe when editing an existing transaction.
-    const pages = document.querySelectorAll('#view-new-transaction, #view-category-picker, #view-borrow-select');
+    const pages = document.querySelectorAll('#view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form');
     if (!pages.length) return;
 
     pages.forEach(page => {

@@ -698,22 +698,72 @@ const UIAccounts = {
     }
   },
 
-  /* ==================== MODAL FORM & EDITING ==================== */
-  async openAddModal() {
-    const modal = document.getElementById('modal-account');
-    const form = document.getElementById('account-form');
-    if (!modal || !form) return;
+  /* ==================== ACCOUNT FORM & EDITING ==================== */
+  handleTypeChange(type) {
+    const iconMap = {
+      cash: { icon: 'wallet', color: '#10b981' },
+      bank: { icon: 'landmark', color: '#4f46e5' },
+      ewallet: { icon: 'smartphone', color: '#ec4899' },
+      credit: { icon: 'credit-card', color: '#f59e0b' },
+      saving: { icon: 'piggy-bank', color: '#0ea5e9' }
+    };
+    const info = iconMap[type] || { icon: 'wallet', color: '#4f46e5' };
+    const el = document.getElementById('acc-form-type-icon');
+    if (el) {
+      el.style.background = `${info.color}22`;
+      el.style.color = info.color;
+      el.innerHTML = `<i data-lucide="${info.icon}"></i>`;
+      if (window.lucide) lucide.createIcons();
+    }
+  },
 
-    form.reset();
-    document.getElementById('acc-id-input').value = '';
+  handleCurrencyChange(currency) {
+    const symbolMap = { VND: 'đ', USD: '$', EUR: '€', JPY: '¥' };
+    const sym = symbolMap[currency] || 'đ';
+    const symEl = document.getElementById('acc-currency-symbol');
+    if (symEl) symEl.textContent = sym;
+  },
+
+  closeAccountFormView() {
+    if (window.app) {
+      window.app.switchView('accounts', true);
+    }
+  },
+
+  closeModal() {
+    this.closeAccountFormView();
+  },
+
+  async openAddModal() {
+    const form = document.getElementById('account-form');
+    if (form) form.reset();
+
+    const idInput = document.getElementById('acc-id-input');
+    if (idInput) idInput.value = '';
+
     const titleEl = document.getElementById('modal-account-title');
     if (titleEl) titleEl.textContent = 'Thêm Tài Khoản Mới';
 
-    const curSelect = document.getElementById('acc-currency-select');
-    if (curSelect) curSelect.value = 'VND';
+    const nameInput = document.getElementById('acc-name-input');
+    if (nameInput) nameInput.value = '';
 
-    const balLabel = document.getElementById('acc-balance-label');
-    if (balLabel) balLabel.innerHTML = 'Số Dư Ban Đầu (VNĐ)';
+    const typeSelect = document.getElementById('acc-type-select');
+    if (typeSelect) {
+      typeSelect.value = 'bank';
+      this.handleTypeChange('bank');
+    }
+
+    const curSelect = document.getElementById('acc-currency-select');
+    if (curSelect) {
+      curSelect.value = 'VND';
+      this.handleCurrencyChange('VND');
+    }
+
+    const balInput = document.getElementById('acc-balance-input');
+    if (balInput) balInput.value = '';
+
+    const curBalDisplay = document.getElementById('acc-current-balance-display');
+    if (curBalDisplay) curBalDisplay.style.display = 'none';
 
     const descInput = document.getElementById('acc-desc-input');
     if (descInput) descInput.value = '';
@@ -725,15 +775,72 @@ const UIAccounts = {
     if (delBtn) delBtn.style.display = 'none';
 
     const saveBtn = document.getElementById('btn-save-account');
-    if (saveBtn) saveBtn.textContent = 'Lưu Lại';
+    if (saveBtn) {
+      const span = saveBtn.querySelector('span') || saveBtn;
+      span.textContent = 'Lưu lại';
+    }
 
-    modal.classList.add('open');
+    if (window.app) window.app.switchView('account-form');
+    if (window.lucide) lucide.createIcons();
     setTimeout(() => document.getElementById('acc-name-input')?.focus(), 150);
   },
 
-  closeModal() {
-    const modal = document.getElementById('modal-account');
-    if (modal) modal.classList.remove('open');
+  async openEditModal(accId) {
+    const acc = await db.accounts.get(Number(accId));
+    if (!acc) return;
+
+    this.closeActionSheet();
+
+    const titleEl = document.getElementById('modal-account-title');
+    if (titleEl) titleEl.textContent = 'Sửa Tài Khoản';
+
+    document.getElementById('acc-id-input').value = acc.id;
+    document.getElementById('acc-name-input').value = acc.name;
+
+    const typeSelect = document.getElementById('acc-type-select');
+    if (typeSelect) {
+      typeSelect.value = acc.type || 'bank';
+      this.handleTypeChange(acc.type || 'bank');
+    }
+
+    const curSelect = document.getElementById('acc-currency-select');
+    const cur = acc.currency || 'VND';
+    if (curSelect) {
+      curSelect.value = cur;
+      this.handleCurrencyChange(cur);
+    }
+
+    const curSymbol = (cur === 'USD' ? '$' : (cur === 'EUR' ? '€' : (cur === 'JPY' ? '¥' : 'đ')));
+    const curBalFormatted = new Intl.NumberFormat('vi-VN').format(acc.balance);
+
+    const initBal = acc.initialBalance !== undefined ? acc.initialBalance : acc.balance;
+    const balInput = document.getElementById('acc-balance-input');
+    if (balInput) balInput.value = initBal;
+
+    const curBalDisplay = document.getElementById('acc-current-balance-display');
+    const curBalVal = document.getElementById('acc-current-balance-val');
+    if (curBalDisplay && curBalVal) {
+      curBalVal.textContent = `${curBalFormatted}${curSymbol}`;
+      curBalDisplay.style.display = 'block';
+    }
+
+    const descInput = document.getElementById('acc-desc-input');
+    if (descInput) descInput.value = acc.description || '';
+
+    const excludeCheck = document.getElementById('acc-exclude-report-check');
+    if (excludeCheck) excludeCheck.checked = !!acc.excludeFromReport;
+
+    const delBtn = document.getElementById('btn-delete-account');
+    if (delBtn) delBtn.style.display = 'flex';
+
+    const saveBtn = document.getElementById('btn-save-account');
+    if (saveBtn) {
+      const span = saveBtn.querySelector('span') || saveBtn;
+      span.textContent = 'Lưu lại';
+    }
+
+    if (window.app) window.app.switchView('account-form');
+    if (window.lucide) lucide.createIcons();
   },
 
   async handleFormSubmit() {
@@ -748,11 +855,13 @@ const UIAccounts = {
 
     if (!name) {
       showToast('Vui lòng nhập tên tài khoản', 'error');
+      document.getElementById('acc-name-input')?.focus();
       return;
     }
 
     if (isNaN(balance)) {
       showToast('Số dư không hợp lệ', 'error');
+      document.getElementById('acc-balance-input')?.focus();
       return;
     }
 
@@ -807,53 +916,8 @@ const UIAccounts = {
       showToast('Đã tạo tài khoản mới', 'success');
     }
 
-    this.closeModal();
+    this.closeAccountFormView();
     await window.app.refreshAll();
-  },
-
-  async openEditModal(accId) {
-    const acc = await db.accounts.get(Number(accId));
-    if (!acc) return;
-
-    const modal = document.getElementById('modal-account');
-    if (!modal) return;
-
-    const titleEl = document.getElementById('modal-account-title');
-    if (titleEl) titleEl.textContent = 'Sửa Tài Khoản';
-
-    document.getElementById('acc-id-input').value = acc.id;
-    document.getElementById('acc-name-input').value = acc.name;
-    document.getElementById('acc-type-select').value = acc.type;
-
-    const curSelect = document.getElementById('acc-currency-select');
-    if (curSelect) curSelect.value = acc.currency || 'VND';
-
-    const curSymbol = (acc.currency === 'USD' ? '$' : (acc.currency === 'EUR' ? '€' : (acc.currency === 'JPY' ? '¥' : 'đ')));
-    const curLabel = acc.currency ? acc.currency : 'VNĐ';
-
-    const initBal = acc.initialBalance !== undefined ? acc.initialBalance : acc.balance;
-    const curBalFormatted = new Intl.NumberFormat('vi-VN').format(acc.balance);
-
-    const balLabel = document.getElementById('acc-balance-label');
-    if (balLabel) {
-      balLabel.innerHTML = `Số Dư Ban Đầu (${curLabel}) <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted); margin-left: 6px;">(Hiện tại: <strong style="color: var(--primary);">${curBalFormatted}${curSymbol}</strong>)</span>`;
-    }
-
-    document.getElementById('acc-balance-input').value = initBal;
-
-    const descInput = document.getElementById('acc-desc-input');
-    if (descInput) descInput.value = acc.description || '';
-
-    const excludeCheck = document.getElementById('acc-exclude-report-check');
-    if (excludeCheck) excludeCheck.checked = !!acc.excludeFromReport;
-
-    const delBtn = document.getElementById('btn-delete-account');
-    if (delBtn) delBtn.style.display = 'block';
-
-    const saveBtn = document.getElementById('btn-save-account');
-    if (saveBtn) saveBtn.textContent = 'Lưu Lại';
-
-    modal.classList.add('open');
   },
 
   async handleDeleteAccount() {
@@ -864,7 +928,7 @@ const UIAccounts = {
     if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản "${accName}"? Tất cả giao dịch cũ vẫn được lưu trong sổ.`)) return;
 
     await db.accounts.update(Number(id), { isDeleted: 1, updatedAt: Date.now() });
-    this.closeModal();
+    this.closeAccountFormView();
     await window.app.refreshAll();
     showToast(`Đã xóa tài khoản "${accName}"`, 'info');
   },
