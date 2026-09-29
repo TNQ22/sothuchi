@@ -398,7 +398,7 @@ class App {
     }
 
     // 2. Lưu previousView trước khi chuyển vào các trang con (ghi chép, danh mục, ...)
-    const txSubViews = ['new-transaction', 'category-picker', 'borrow-select', 'account-form'];
+    const txSubViews = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider'];
     if (txSubViews.includes(viewId) && !txSubViews.includes(this.currentView)) {
       if (this.openedFromAccountMenu) {
         this.previousView = this.currentView;
@@ -415,6 +415,7 @@ class App {
     document.body.classList.toggle('view-category-picker', viewId === 'category-picker');
     document.body.classList.toggle('view-borrow-select', viewId === 'borrow-select');
     document.body.classList.toggle('view-account-form', viewId === 'account-form');
+    document.body.classList.toggle('view-account-provider', viewId === 'account-provider');
 
 
     // Update active nav links
@@ -453,7 +454,8 @@ class App {
       'new-transaction': 'Ghi Chép Mới',
       'category-picker': 'Chọn Danh Mục',
       'borrow-select': 'Chọn Người Cho Vay',
-      'account-form': 'Thông Tin Tài Khoản'
+      'account-form': 'Thông Tin Tài Khoản',
+      'account-provider': 'Chọn Ngân Hàng & Ví'
     };
     const titleEl = document.getElementById('header-page-title');
     if (titleEl) titleEl.textContent = titles[viewId] || 'Sổ Thu Chi';
@@ -523,6 +525,11 @@ class App {
       return;
     }
 
+    if (this.currentView === 'account-provider') {
+      this.switchView('account-form', true);
+      return;
+    }
+
     if (this.currentView === 'account-form') {
       this.switchView(this.previousView || 'accounts', true);
       return;
@@ -588,7 +595,7 @@ class App {
   setupSwipeToBack() {
     // new-transaction, category-picker, borrow-select: support swipe-to-back.
     // NOTE: new-transaction ONLY allows swipe when editing an existing transaction.
-    const pages = document.querySelectorAll('#view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form');
+    const pages = document.querySelectorAll('#view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form, #view-account-provider');
     if (!pages.length) return;
 
     pages.forEach(page => {

@@ -132,30 +132,52 @@ const UIAccounts = {
     }
   },
 
-  /* ==================== MODAL CHỌN NGÂN HÀNG & VÍ ĐIỆN TỬ ==================== */
-  openProviderModal() {
-    const modal = document.getElementById('modal-bank-provider');
-    if (!modal) return;
-    this.currentProviderTab = 'all';
-    this.currentProviderQuery = '';
+  /* ==================== TRANG CHỌN NGÂN HÀNG & VÍ ĐIỆN TỬ (FULL SCREEN) ==================== */
+  openProviderPage() {
+    const typeSelect = document.getElementById('acc-type-select');
+    const curType = typeSelect ? typeSelect.value : 'bank';
 
+    // Tự động nhảy sang tab phù hợp với loại tài khoản đang chọn
+    if (curType === 'bank') {
+      this.currentProviderTab = 'bank';
+    } else if (curType === 'ewallet') {
+      this.currentProviderTab = 'ewallet';
+    } else if (['cash', 'credit', 'saving'].includes(curType)) {
+      this.currentProviderTab = 'generic';
+    } else {
+      this.currentProviderTab = 'all';
+    }
+
+    this.currentProviderQuery = '';
     const searchInput = document.getElementById('provider-search-input');
     if (searchInput) searchInput.value = '';
 
-    // Reset tab buttons
+    // Cập nhật trạng thái tab buttons
     document.querySelectorAll('.bank-provider-tab-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.tab === 'all');
+      btn.classList.toggle('active', btn.dataset.tab === this.currentProviderTab);
     });
 
     this.renderProviderGrid();
-    modal.classList.add('open');
-    if (window.app?.syncClearableInputs) window.app.syncClearableInputs();
+
+    if (window.app) {
+      window.app.switchView('account-provider');
+      if (window.app.syncClearableInputs) window.app.syncClearableInputs();
+    }
     if (window.lucide) lucide.createIcons();
   },
 
+  openProviderModal() {
+    this.openProviderPage();
+  },
+
+  closeProviderPage() {
+    if (window.app) {
+      window.app.goBack();
+    }
+  },
+
   closeProviderModal() {
-    const modal = document.getElementById('modal-bank-provider');
-    if (modal) modal.classList.remove('open');
+    this.closeProviderPage();
   },
 
   switchProviderTab(tab) {
@@ -180,12 +202,12 @@ const UIAccounts = {
     const tab = this.currentProviderTab;
 
     let filtered = this.PROVIDERS.filter(p => {
-      // Filter by tab
+      // Lọc theo tab
       if (tab === 'bank' && p.type !== 'bank') return false;
       if (tab === 'ewallet' && p.type !== 'ewallet') return false;
       if (tab === 'generic' && !['cash', 'credit', 'saving'].includes(p.type) && !p.code.startsWith('GENERIC_')) return false;
 
-      // Filter by search query
+      // Lọc theo từ khóa tìm kiếm
       if (q) {
         const matchName = p.name.toLowerCase().includes(q);
         const matchShort = p.shortName.toLowerCase().includes(q);
@@ -198,9 +220,9 @@ const UIAccounts = {
 
     if (filtered.length === 0) {
       container.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 28px 12px; color: var(--text-muted);">
-          <i data-lucide="search-x" style="width: 32px; height: 32px; margin: 0 auto 8px; opacity: 0.5;"></i>
-          <p style="font-size: 0.88rem;">Không tìm thấy ngân hàng hoặc ví phù hợp</p>
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px 16px; color: var(--text-muted);">
+          <i data-lucide="search-x" style="width: 36px; height: 36px; margin: 0 auto 10px; opacity: 0.5;"></i>
+          <p style="font-size: 0.9rem; font-weight: 500;">Không tìm thấy ngân hàng hoặc ví phù hợp</p>
         </div>
       `;
       if (window.lucide) lucide.createIcons();
@@ -209,7 +231,7 @@ const UIAccounts = {
 
     container.innerHTML = filtered.map(p => {
       const isSelected = currentBankCode === p.code;
-      const typeLabel = p.type === 'bank' ? 'Ngân hàng' : (p.type === 'ewallet' ? 'Ví điện tử' : 'Mặc định');
+      const typeLabel = p.type === 'bank' ? 'Ngân hàng' : (p.type === 'ewallet' ? 'Ví điện tử' : (p.type === 'credit' ? 'Thẻ tín dụng' : (p.type === 'saving' ? 'Tiết kiệm' : 'Tiền mặt')));
       return `
         <div class="bank-provider-card ${isSelected ? 'selected' : ''}" onclick="UIAccounts.selectProvider('${p.code}')">
           ${this.renderLogoBadge(p, 36)}
@@ -217,7 +239,7 @@ const UIAccounts = {
             <span class="bank-provider-card-name" title="${escapeHTML(p.name)}">${escapeHTML(p.name)}</span>
             <span class="bank-provider-card-sub">${escapeHTML(p.shortName || p.code)} • ${typeLabel}</span>
           </div>
-          ${isSelected ? '<i data-lucide="check-circle-2" style="width:16px;height:16px;color:var(--primary);margin-left:auto;"></i>' : ''}
+          ${isSelected ? '<i data-lucide="check-circle-2" style="width:16px;height:16px;color:var(--primary);margin-left:auto;flex-shrink:0;"></i>' : ''}
         </div>
       `;
     }).join('');
@@ -242,13 +264,13 @@ const UIAccounts = {
       preview.style.background = 'transparent';
     }
 
-    // Auto update account type
+    // Tự động nhảy sang phân loại tương ứng (Ngân hàng, Ví điện tử, Tiền mặt,...)
     if (typeSelect && p.type) {
       typeSelect.value = p.type;
-      this.handleTypeChange(p.type);
+      this.handleTypeChange(p.type, true);
     }
 
-    // Auto populate account name if empty or previous provider name
+    // Tự động điền tên nếu ô tên đang để trống hoặc là tên mặc định cũ
     if (nameInput) {
       const curVal = nameInput.value.trim();
       const isGenericDefault = !curVal || this.PROVIDERS.some(prov => prov.name === curVal);
@@ -257,7 +279,8 @@ const UIAccounts = {
       }
     }
 
-    this.closeProviderModal();
+    // Quay lại màn hình nhập thông tin tài khoản
+    this.closeProviderPage();
     if (window.lucide) lucide.createIcons();
   },
 
@@ -916,7 +939,7 @@ const UIAccounts = {
   },
 
   /* ==================== ACCOUNT FORM & EDITING ==================== */
-  handleTypeChange(type) {
+  handleTypeChange(type, skipProviderSync = false) {
     const iconMap = {
       cash: { icon: 'wallet', color: '#10b981' },
       bank: { icon: 'landmark', color: '#4f46e5' },
@@ -930,6 +953,39 @@ const UIAccounts = {
       el.style.background = `${info.color}22`;
       el.style.color = info.color;
       el.innerHTML = `<i data-lucide="${info.icon}"></i>`;
+      if (window.lucide) lucide.createIcons();
+    }
+
+    if (skipProviderSync) return;
+
+    // Khi người dùng tự tay đổi Loại tài khoản (VD: từ Ngân hàng sang Ví điện tử hoặc Tiền mặt),
+    // tự động kiểm tra và chuyển logo sang loại phù hợp
+    const bankInput = document.getElementById('acc-bank-code-input');
+    const curCode = bankInput ? bankInput.value : '';
+    const curProv = curCode ? this.PROVIDERS.find(x => x.code === curCode) : null;
+
+    if (!curProv || curProv.type !== type) {
+      // Tìm nhà cung cấp / logo mặc định phù hợp với loại mới
+      const defProv = this.PROVIDERS.find(x => x.type === type && (x.code.startsWith('GENERIC_') || ['CASH', 'CREDIT', 'SAVING'].includes(x.code)));
+      const display = document.getElementById('acc-provider-display');
+      const preview = document.getElementById('acc-form-logo-preview');
+
+      if (defProv) {
+        if (bankInput) bankInput.value = defProv.code;
+        if (display) display.textContent = defProv.name;
+        if (preview) {
+          preview.innerHTML = this.renderLogoBadge(defProv, 36);
+          preview.style.background = 'transparent';
+        }
+      } else {
+        if (bankInput) bankInput.value = '';
+        if (display) display.textContent = 'Mặc định';
+        if (preview) {
+          preview.innerHTML = `<i data-lucide="${info.icon}"></i>`;
+          preview.style.background = `${info.color}22`;
+          preview.style.color = info.color;
+        }
+      }
       if (window.lucide) lucide.createIcons();
     }
   },
