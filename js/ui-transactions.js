@@ -1500,40 +1500,65 @@ const UITransactions = {
     await this.updateSelectedToAccountDisplay();
   },
 
+  openSourceAccountPicker() {
+    const curVal = document.getElementById('tx-account-select')?.value || '';
+    const type = document.getElementById('tx-type-selector')?.value || 'expense';
+    let title = 'Chọn Nguồn Tiền';
+    if (type === 'income') title = 'Chọn Tài Khoản Nhận';
+    else if (type === 'transfer') title = 'Chuyển Từ Tài Khoản';
+    else if (type === 'borrow') title = 'Nhận Vào Tài Khoản';
+    else if (type === 'lend') title = 'Trích Tiền Cho Vay';
+
+    if (window.UIAccounts) {
+      window.UIAccounts.openSourceAccountPicker({
+        title: title,
+        allowNone: false,
+        selectedId: curVal,
+        onSelect: async (accId) => {
+          if (!accId) return;
+          const fromSelect = document.getElementById('tx-account-select');
+          if (fromSelect) fromSelect.value = accId;
+          await this.updateSelectedAccountDisplay();
+          this.saveDraft();
+        }
+      });
+    }
+  },
+
+  openToAccountPicker() {
+    const curVal = document.getElementById('tx-to-account-select')?.value || '';
+    if (window.UIAccounts) {
+      window.UIAccounts.openSourceAccountPicker({
+        title: 'Chuyển Đến Tài Khoản',
+        allowNone: false,
+        selectedId: curVal,
+        onSelect: async (accId) => {
+          if (!accId) return;
+          const toSelect = document.getElementById('tx-to-account-select');
+          if (toSelect) toSelect.value = accId;
+          await this.updateSelectedToAccountDisplay();
+          this.saveDraft();
+        }
+      });
+    }
+  },
+
   toggleAccountDropdown(e) {
     if (e) e.stopPropagation();
-    this.closeToAccountDropdown();
-    const menu = document.getElementById('tx-account-dropdown-menu');
-    const chevron = document.getElementById('tx-account-chevron');
-    if (!menu) return;
-    const isOpen = menu.style.display === 'block';
-    menu.style.display = isOpen ? 'none' : 'block';
-    if (chevron) chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    this.openSourceAccountPicker();
   },
 
   closeAccountDropdown() {
-    const menu = document.getElementById('tx-account-dropdown-menu');
-    const chevron = document.getElementById('tx-account-chevron');
-    if (menu) menu.style.display = 'none';
-    if (chevron) chevron.style.transform = 'rotate(0deg)';
+    if (window.UIAccounts) window.UIAccounts.closeSourceAccountPicker();
   },
 
   toggleToAccountDropdown(e) {
     if (e) e.stopPropagation();
-    this.closeAccountDropdown();
-    const menu = document.getElementById('tx-to-account-dropdown-menu');
-    const chevron = document.getElementById('tx-to-account-chevron');
-    if (!menu) return;
-    const isOpen = menu.style.display === 'block';
-    menu.style.display = isOpen ? 'none' : 'block';
-    if (chevron) chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    this.openToAccountPicker();
   },
 
   closeToAccountDropdown() {
-    const menu = document.getElementById('tx-to-account-dropdown-menu');
-    const chevron = document.getElementById('tx-to-account-chevron');
-    if (menu) menu.style.display = 'none';
-    if (chevron) chevron.style.transform = 'rotate(0deg)';
+    if (window.UIAccounts) window.UIAccounts.closeSourceAccountPicker();
   },
 
   async selectAccount(id, name, type) {
