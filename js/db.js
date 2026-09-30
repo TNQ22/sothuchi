@@ -543,8 +543,8 @@ async function addAsset(data) {
   const buyPrice = data.isGift ? 0 : Number(data.buyPrice || 0);
   const currentPrice = Number(data.currentPrice || buyPrice || 0);
   const extraCosts = Number(data.extraCosts || 0);
-  const totalBuyValue = data.isGift ? extraCosts : (quantity * buyPrice + extraCosts);
-  const totalCurrentValue = quantity * currentPrice;
+  const totalBuyValue = Math.round(data.isGift ? extraCosts : (quantity * buyPrice + extraCosts));
+  const totalCurrentValue = Math.round(quantity * currentPrice);
   const sourceAccountId = data.sourceAccountId ? Number(data.sourceAccountId) : null;
 
   const asset = {
@@ -595,7 +595,7 @@ async function updateAsset(id, data) {
   const now = Date.now();
   const quantity = Number(data.quantity !== undefined ? data.quantity : 1);
   const currentPrice = Number(data.currentPrice !== undefined ? data.currentPrice : 0);
-  const totalCurrentValue = quantity * currentPrice;
+  const totalCurrentValue = Math.round(quantity * currentPrice);
 
   await db.assets.update(Number(id), {
     ...data,

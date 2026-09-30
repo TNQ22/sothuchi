@@ -386,7 +386,7 @@
                 <i data-lucide="gem"></i>
               </div>
               <div>
-                <h3 class="accounts-group-title">Quản lý tài sản <span class="badge-beta">Beta</span></h3>
+                <h3 class="accounts-group-title">Quản lý tài sản</h3>
                 <span class="accounts-group-subtitle stat-amount" id="label-assets-total">0đ</span>
               </div>
             </div>
@@ -1434,7 +1434,8 @@
                   </div>
                   <div class="tx-info-content">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Số tiền khởi điểm hiện có (VNĐ)</div>
-                    <input type="number" id="acc-current-amount-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" style="font-size: 0.95rem; font-weight: 600;">
+                    <input type="number" id="acc-current-amount-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" style="font-size: 0.95rem; font-weight: 600;" oninput="UIAccounts.formatInputLiveHint(this, 'acc-current-amount-hint')">
+                    <div id="acc-current-amount-hint" style="font-size: 0.78rem; color: var(--primary); font-weight: 600; margin-top: 3px;">0đ</div>
                   </div>
                 </div>
 
@@ -1490,7 +1491,8 @@
 
                 <div id="acc-recurring-box" style="display: none; padding-top: 10px; border-top: 1px dashed var(--border-color);">
                   <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 4px;">Số tiền nạp định kỳ (VNĐ/tháng)</div>
-                  <input type="number" id="acc-recurring-amount-input" class="tx-clean-input" placeholder="Ví dụ: 2000000" min="0" step="any" style="font-weight: 600;">
+                  <input type="number" id="acc-recurring-amount-input" class="tx-clean-input" placeholder="Ví dụ: 2000000" min="0" step="any" style="font-weight: 600;" oninput="UIAccounts.formatInputLiveHint(this, 'acc-recurring-amount-hint')">
+                  <div id="acc-recurring-amount-hint" style="font-size: 0.78rem; color: var(--primary); font-weight: 600; margin-top: 3px;">0đ</div>
                 </div>
 
                 <div class="acc-exclude-report-box" style="margin-top: 8px;">
@@ -1623,7 +1625,8 @@
                   </div>
                   <div class="tx-info-content">
                     <div id="asset-buyprice-label" style="font-size: 0.74rem; color: var(--text-muted);">Giá mua / Đơn vị (VNĐ)</div>
-                    <input type="number" id="asset-buyprice-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" oninput="UIAccounts.calcAssetPreview()" style="font-size: 0.95rem; font-weight: 600;">
+                    <input type="number" id="asset-buyprice-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" oninput="UIAccounts.calcAssetPreview(); UIAccounts.formatInputLiveHint(this, 'asset-buyprice-hint');" style="font-size: 0.95rem; font-weight: 600;">
+                    <div id="asset-buyprice-hint" style="font-size: 0.78rem; color: #f43f5e; font-weight: 600; margin-top: 3px;">0đ</div>
                   </div>
                 </div>
 
@@ -1634,7 +1637,8 @@
                   </div>
                   <div class="tx-info-content">
                     <div id="asset-curprice-label" style="font-size: 0.74rem; color: var(--text-muted);">Giá thị trường hiện tại / Đơn vị (VNĐ)</div>
-                    <input type="number" id="asset-currentprice-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" oninput="UIAccounts.calcAssetPreview()" style="font-size: 0.95rem; font-weight: 700; color: var(--primary);">
+                    <input type="number" id="asset-currentprice-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" oninput="UIAccounts.calcAssetPreview(); UIAccounts.formatInputLiveHint(this, 'asset-curprice-hint');" style="font-size: 0.95rem; font-weight: 700; color: var(--primary);">
+                    <div id="asset-curprice-hint" style="font-size: 0.78rem; color: var(--primary); font-weight: 700; margin-top: 3px;">0đ</div>
                   </div>
                 </div>
 
@@ -1656,7 +1660,8 @@
                   </div>
                   <div class="tx-info-content">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Chi phí khác (Trước bạ, môi giới, bảo dưỡng, thuế...)</div>
-                    <input type="number" id="asset-extracosts-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" oninput="UIAccounts.calcAssetPreview()" style="font-size: 0.92rem; font-weight: 600;">
+                    <input type="number" id="asset-extracosts-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" oninput="UIAccounts.calcAssetPreview(); UIAccounts.formatInputLiveHint(this, 'asset-extracosts-hint');" style="font-size: 0.92rem; font-weight: 600;">
+                    <div id="asset-extracosts-hint" style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600; margin-top: 3px;">0đ</div>
                   </div>
                 </div>
 
@@ -2360,7 +2365,8 @@
           </div>
           <div class="form-group">
             <label class="form-label">Số tiền tất toán thực nhận (Gốc + Lãi) (VNĐ)</label>
-            <input type="number" id="settle-saving-amount-input" class="form-control" placeholder="0" min="1" step="any" required style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">
+            <input type="number" id="settle-saving-amount-input" class="form-control" placeholder="0" min="1" step="any" required style="font-size: 1.1rem; font-weight: 700; color: var(--primary);" oninput="UIAccounts.formatInputLiveHint(this, 'settle-saving-amount-hint')">
+            <div id="settle-saving-amount-hint" style="font-size: 0.84rem; color: var(--primary); font-weight: 700; margin-top: 4px;">0đ</div>
           </div>
           <div class="form-group">
             <label class="form-label">Chuyển tiền vào tài khoản</label>

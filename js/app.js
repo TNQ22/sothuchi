@@ -538,6 +538,12 @@ class App {
       return;
     }
 
+    // Các trang con của tab Tài khoản -> quay lại danh sách tài khoản
+    if (['savings-form', 'accumulation-form', 'asset-form'].includes(this.currentView)) {
+      this.switchView('accounts', true);
+      return;
+    }
+
     // new-transaction → CHỈ trở về khi đang sửa giao dịch HOẶC khi mở từ menu 3 chấm của tài khoản
     if (this.currentView === 'new-transaction') {
       const txId = document.getElementById('tx-id-input')?.value;

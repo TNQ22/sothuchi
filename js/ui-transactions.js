@@ -180,6 +180,21 @@ const UITransactions = {
       cur = accBalText?.textContent?.trim() || accBalInput?.value?.trim() || '0';
       const curSymbol = document.getElementById('acc-currency-symbol')?.textContent?.trim() || 'đ';
       if (curSymbolEl) curSymbolEl.textContent = curSymbol;
+    } else if (target === 'saving-amount') {
+      const savingInput = document.getElementById('saving-amount-input');
+      const savingText = document.getElementById('saving-amount-text');
+      cur = savingText?.textContent?.trim() || savingInput?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = 'đ';
+    } else if (target === 'acc-target-amount') {
+      const targetInput = document.getElementById('acc-target-amount-input');
+      const targetText = document.getElementById('acc-target-amount-text');
+      cur = targetText?.textContent?.trim() || targetInput?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = 'đ';
+    } else if (target === 'asset-price') {
+      const assetInput = document.getElementById('asset-price-input');
+      const assetText = document.getElementById('asset-price-text');
+      cur = assetText?.textContent?.trim() || assetInput?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = 'đ';
     } else {
       const input = document.getElementById('tx-amount-input');
       const amountText = document.getElementById('tx-amount-text');
@@ -234,6 +249,32 @@ const UITransactions = {
       const rawNum = finalFormatted.replace(/\./g, '');
       if (accBalInput) accBalInput.value = rawNum;
       if (accBalText) accBalText.textContent = finalFormatted;
+    } else if (this.activeKeypadTarget === 'saving-amount') {
+      const savingInput = document.getElementById('saving-amount-input');
+      const savingText = document.getElementById('saving-amount-text');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (savingInput) savingInput.value = rawNum;
+      if (savingText) savingText.textContent = finalFormatted;
+      if (window.UIAccounts && typeof window.UIAccounts.calcSavingsPreview === 'function') {
+        window.UIAccounts.calcSavingsPreview();
+      }
+    } else if (this.activeKeypadTarget === 'acc-target-amount') {
+      const targetInput = document.getElementById('acc-target-amount-input');
+      const targetText = document.getElementById('acc-target-amount-text');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (targetInput) targetInput.value = rawNum;
+      if (targetText) targetText.textContent = finalFormatted;
+    } else if (this.activeKeypadTarget === 'asset-price') {
+      const assetInput = document.getElementById('asset-price-input');
+      const assetText = document.getElementById('asset-price-text');
+      const curPriceInput = document.getElementById('asset-currentprice-input');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (assetInput) assetInput.value = rawNum;
+      if (assetText) assetText.textContent = finalFormatted;
+      if (curPriceInput) curPriceInput.value = rawNum;
+      if (window.UIAccounts && typeof window.UIAccounts.calcAssetPreview === 'function') {
+        window.UIAccounts.calcAssetPreview();
+      }
     } else {
       const input = document.getElementById('tx-amount-input');
       const amountText = document.getElementById('tx-amount-text');

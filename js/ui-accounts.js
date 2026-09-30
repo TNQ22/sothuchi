@@ -1796,6 +1796,8 @@ const UIAccounts = {
       document.getElementById('acc-exclude-report-input').checked = false;
     }
 
+    this.formatInputLiveHint(document.getElementById('acc-current-amount-input'), 'acc-current-amount-hint');
+    this.formatInputLiveHint(document.getElementById('acc-recurring-amount-input'), 'acc-recurring-amount-hint');
     if (window.app) window.app.switchView('accumulation-form');
     if (window.lucide) lucide.createIcons();
   },
@@ -2065,6 +2067,9 @@ const UIAccounts = {
     }
 
     this.calcAssetPreview();
+    this.formatInputLiveHint(document.getElementById('asset-buyprice-input'), 'asset-buyprice-hint');
+    this.formatInputLiveHint(document.getElementById('asset-currentprice-input'), 'asset-curprice-hint');
+    this.formatInputLiveHint(document.getElementById('asset-extracosts-input'), 'asset-extracosts-hint');
 
     if (window.app) window.app.switchView('asset-form');
     if (window.lucide) lucide.createIcons();
@@ -2119,9 +2124,9 @@ const UIAccounts = {
     const curPrice = Number(document.getElementById('asset-currentprice-input')?.value || 0);
     const extraCosts = Number(document.getElementById('asset-extracosts-input')?.value || 0);
 
-    const totalBuy = (qty * buyPrice) + extraCosts;
-    const totalCurrent = (qty * curPrice);
-    const pnl = totalCurrent - totalBuy;
+    const totalBuy = Math.round((qty * buyPrice) + extraCosts);
+    const totalCurrent = Math.round(qty * curPrice);
+    const pnl = Math.round(totalCurrent - totalBuy);
     const pnlPercent = totalBuy > 0 ? ((pnl / totalBuy) * 100).toFixed(1) : 0;
 
     const totalBuyEl = document.getElementById('asset-preview-total-buy');
@@ -2483,6 +2488,14 @@ const UIAccounts = {
     }
   },
 
+  /* Helper định dạng số tiền tức thì có dấu phân cách hàng nghìn */
+  formatInputLiveHint(inputEl, hintId) {
+    const hintEl = document.getElementById(hintId);
+    if (!hintEl) return;
+    const val = Math.round(Number(inputEl?.value || 0));
+    hintEl.textContent = new Intl.NumberFormat('vi-VN').format(val) + 'đ';
+  },
+
   /* ==================== ACTION SHEET CHUNG (3 CHẤM) ==================== */
   currentItemAction: null,
 
@@ -2699,13 +2712,7 @@ const UIAccounts = {
     if (badgeCount) badgeCount.textContent = activeSavings.length;
 
     if (activeSavings.length === 0) {
-      container.innerHTML = `
-        <div style="text-align: center; padding: 24px 16px; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
-          <i data-lucide="piggy-bank" style="width: 32px; height: 32px; margin: 0 auto 8px; opacity: 0.5; color: #0ea5e9;"></i>
-          <p style="font-weight: 600; margin-bottom: 2px;">Chưa có sổ tiết kiệm nào</p>
-          <p style="font-size: 0.8rem;">Bấm "Thêm sổ" để theo dõi kỳ hạn và lãi suất tiền gửi</p>
-        </div>
-      `;
+      container.innerHTML = '';
     } else {
       container.innerHTML = activeSavings.map(s => {
         const prov = s.bankCode ? this.PROVIDERS.find(x => x.code === s.bankCode) : null;
@@ -2803,13 +2810,7 @@ const UIAccounts = {
     if (badgeCount) badgeCount.textContent = list.length;
 
     if (list.length === 0) {
-      container.innerHTML = `
-        <div style="text-align: center; padding: 24px 16px; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
-          <i data-lucide="target" style="width: 32px; height: 32px; margin: 0 auto 8px; opacity: 0.5; color: #f59e0b;"></i>
-          <p style="font-weight: 600; margin-bottom: 2px;">Chưa có mục tiêu tích lũy nào</p>
-          <p style="font-size: 0.8rem;">Bấm "Thêm mục tiêu" để đặt kế hoạch mua sắm, du lịch...</p>
-        </div>
-      `;
+      container.innerHTML = '';
     } else {
       container.innerHTML = list.map(item => {
         const cur = item.currentAmount || 0;
@@ -2871,13 +2872,7 @@ const UIAccounts = {
     const list = await db.assets.where('isDeleted').equals(0).toArray();
 
     if (list.length === 0) {
-      container.innerHTML = `
-        <div style="text-align: center; padding: 24px 16px; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
-          <i data-lucide="gem" style="width: 32px; height: 32px; margin: 0 auto 8px; opacity: 0.5; color: #a855f7;"></i>
-          <p style="font-weight: 600; margin-bottom: 2px;">Chưa có tài sản nào</p>
-          <p style="font-size: 0.8rem;">Bấm "Thêm tài sản" để quản lý Bất động sản, Vàng, Ngoại tệ, Xe cộ...</p>
-        </div>
-      `;
+      container.innerHTML = '';
     } else {
       const typeIcons = {
         real_estate: { icon: 'home', color: '#10b981', label: 'BĐS' },
@@ -2890,9 +2885,9 @@ const UIAccounts = {
       container.innerHTML = list.map(item => {
         const cfg = typeIcons[item.assetType] || typeIcons.other;
         const qty = item.quantity || 1;
-        const totalCur = qty * (item.currentPrice || 0);
-        const totalBuy = (qty * (item.buyPrice || 0)) + (item.extraCosts || 0);
-        const pnl = totalCur - totalBuy;
+        const totalCur = Math.round(qty * (item.currentPrice || 0));
+        const totalBuy = Math.round((qty * (item.buyPrice || 0)) + (item.extraCosts || 0));
+        const pnl = Math.round(totalCur - totalBuy);
         const pnlPct = totalBuy > 0 ? ((pnl / totalBuy) * 100).toFixed(1) : 0;
         const isProf = pnl >= 0;
         const sign = isProf ? '+' : '';
@@ -2956,13 +2951,7 @@ const UIAccounts = {
 
     // 1. Render danh sách tài khoản ĐANG HOẠT ĐỘNG
     if (activeAccounts.length === 0) {
-      container.innerHTML = `
-        <div style="text-align: center; padding: 32px 20px; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
-          <i data-lucide="wallet" style="width: 36px; height: 36px; margin: 0 auto 10px; opacity: 0.5;"></i>
-          <p style="font-weight: 600; margin-bottom: 4px;">Chưa có tài khoản nào đang hoạt động</p>
-          <p style="font-size: 0.85rem;">Bấm "Thêm Tài Khoản Mới" ở trên hoặc kích hoạt lại tài khoản đã ngừng sử dụng bên dưới</p>
-        </div>
-      `;
+      container.innerHTML = '';
     } else {
       let html = '';
       activeAccounts.forEach((a, index) => {
