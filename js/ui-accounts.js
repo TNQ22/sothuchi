@@ -170,7 +170,8 @@ const UIAccounts = {
       { id: 'modal-settle-saving', fn: () => this.closeSettleSavingModal() },
       { id: 'modal-deposit-accumulation', fn: () => this.closeDepositAccModal() },
       { id: 'modal-liquidate-asset', fn: () => this.closeLiquidateModal() },
-      { id: 'modal-item-actions', fn: () => this.closeItemActionSheet() }
+      { id: 'modal-item-actions', fn: () => this.closeItemActionSheet() },
+      { id: 'modal-source-account-picker', fn: () => this.closeSourceAccountPicker() }
     ];
 
     modalBackdrops.forEach(({ id, fn }) => {
