@@ -6,6 +6,7 @@
  * - Hàng thứ: T2, T3, T4, T5, T6, T7, CN
  * - Vòng tròn màu xanh lá cây ở ngày được chọn
  * - Nút "Hôm nay" và "Xong"
+ * - Chế độ 'date': Chạm trực tiếp vào ngày sẽ tự động chọn và đóng ngay lập tức!
  */
 
 const UICalendar = {
@@ -233,7 +234,7 @@ const UICalendar = {
    * Open the custom calendar
    * @param {Object} options
    *   mode: 'datetime' | 'date' | 'month'
-   *   initialDate: 'YYYY-MM-DD' (optional)
+   *   initialDate: 'YYYY-MM-DD' or 'DD/MM/YYYY' (optional)
    *   initialTime: 'HH:mm' (optional)
    *   onSelect: function(dateStr, timeStr)
    */
@@ -244,18 +245,33 @@ const UICalendar = {
     this.mode = options.mode || 'datetime';
     this.onSelectCallback = options.onSelect || null;
 
-    // Parse initial date
+    // Parse initial date (Hỗ trợ linh hoạt cả YYYY-MM-DD, DD/MM/YYYY hoặc YYYY-MM)
     if (options.initialDate) {
-      const parts = options.initialDate.split('-').map(Number);
-      if (parts.length === 3 && !isNaN(parts[0])) {
-        this.selectedDate = new Date(parts[0], parts[1] - 1, parts[2]);
-      } else if (parts.length === 2 && !isNaN(parts[0])) {
-        // Month only (YYYY-MM)
-        this.selectedDate = new Date(parts[0], parts[1] - 1, 1);
+      const dateStr = String(options.initialDate).trim();
+      if (dateStr.includes('/')) {
+        const parts = dateStr.split('/').map(Number);
+        if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+          this.selectedDate = new Date(parts[2], parts[1] - 1, parts[0]);
+        } else {
+          this.selectedDate = new Date();
+        }
+      } else if (dateStr.includes('-')) {
+        const parts = dateStr.split('-').map(Number);
+        if (parts.length === 3 && !isNaN(parts[0])) {
+          this.selectedDate = new Date(parts[0], parts[1] - 1, parts[2]);
+        } else if (parts.length === 2 && !isNaN(parts[0])) {
+          // Month only (YYYY-MM)
+          this.selectedDate = new Date(parts[0], parts[1] - 1, 1);
+        } else {
+          this.selectedDate = new Date();
+        }
       } else {
         this.selectedDate = new Date();
       }
     } else {
+      this.selectedDate = new Date();
+    }
+    if (!this.selectedDate || isNaN(this.selectedDate.getTime())) {
       this.selectedDate = new Date();
     }
 
@@ -313,6 +329,7 @@ const UICalendar = {
     // Show modal
     const modal = document.getElementById('modal-custom-calendar');
     if (modal) {
+      modal.style.display = 'flex';
       modal.classList.add('open');
     }
   },
@@ -521,6 +538,9 @@ const UICalendar = {
         this.updateTopBarDisplays();
         this.closeMonthSelector();
         this.renderCalendar();
+        if (this.mode === 'month') {
+          this.confirmSelection();
+        }
       };
       grid.appendChild(btn);
     }
@@ -604,6 +624,7 @@ const UICalendar = {
     if (this.activeTab === 'time') {
       this.updateTimeView();
     }
+    // Chỉ cập nhật hiển thị, người dùng bấm "Xong" để xác nhận lưu và đóng
   },
 
   confirmSelection() {

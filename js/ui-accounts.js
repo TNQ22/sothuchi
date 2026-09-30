@@ -1511,6 +1511,7 @@ const UIAccounts = {
       document.getElementById('saving-maturity-action-select').value = saving.maturityAction || 'rollover_all';
       document.getElementById('saving-desc-input').value = saving.description || '';
       document.getElementById('saving-exclude-report-input').checked = !!saving.excludeFromReport;
+      await this.updateSavingsSourceDisplay(saving.sourceAccountId || '');
 
       if (bankCodeInput) bankCodeInput.value = saving.bankCode || '';
       if (saving.bankCode) {
@@ -1563,17 +1564,135 @@ const UIAccounts = {
     }
   },
 
-  async populateSavingsSourceAccounts() {
-    const select = document.getElementById('saving-source-account-select');
-    if (!select) return;
+  /* ==================== SOURCE ACCOUNT PICKER (MODAL CHỌN NGUỒN TIỀN KÈM LOGO) ==================== */
+  _sourcePickerCallback: null,
+
+  async openSourceAccountPicker(options = {}) {
+    const title = options.title || 'Chọn Nguồn Tiền';
+    const allowNone = options.allowNone !== false;
+    const noneLabel = options.noneLabel || 'Không trích tiền (Ngoài ví / Có sẵn)';
+    const noneDesc = options.noneDesc || 'Không trừ số dư ví';
+    const selectedId = options.selectedId !== undefined ? String(options.selectedId || '') : '';
+    this._sourcePickerCallback = options.onSelect || null;
+
+    const modal = document.getElementById('modal-source-account-picker');
+    const titleEl = document.getElementById('source-account-picker-title');
+    const listEl = document.getElementById('source-account-picker-list');
+
+    if (titleEl) titleEl.textContent = title;
+    if (!listEl) return;
+
+    listEl.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);"><i data-lucide="loader" class="spin"></i> Đang tải danh sách ví...</div>';
+    if (window.lucide) lucide.createIcons();
+
+    if (modal) modal.classList.add('open');
+
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
     const active = accounts.filter(a => !a.isArchived);
 
-    let html = '<option value="">Không trích tiền (Đã có sẵn / Ngoài ví)</option>';
-    active.forEach(a => {
-      html += `<option value="${a.id}">Ví: ${escapeHTML(a.name)} (Dư: ${new Intl.NumberFormat('vi-VN').format(a.balance)}đ)</option>`;
+    let html = '';
+
+    // Tùy chọn 0: Không trích tiền / Ngoài ví
+    if (allowNone) {
+      const isSelected = selectedId === '';
+      html += `
+        <div class="source-acc-item ${isSelected ? 'active' : ''}" onclick="UIAccounts.selectSourceAccount('')">
+          <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+            <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(148, 163, 184, 0.15); color: var(--text-muted); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i data-lucide="slash" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div style="min-width: 0;">
+              <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(noneLabel)}</div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">${escapeHTML(noneDesc)}</div>
+            </div>
+          </div>
+          ${isSelected ? '<i data-lucide="check" style="width: 20px; height: 20px; color: var(--primary); flex-shrink: 0;"></i>' : ''}
+        </div>
+      `;
+    }
+
+    // Các tài khoản ví ngân hàng kèm logo thực tế
+    active.forEach(acc => {
+      const isSelected = String(acc.id) === selectedId;
+      const balanceStr = new Intl.NumberFormat('vi-VN').format(acc.balance) + 'đ';
+      const balanceColor = acc.balance >= 0 ? '#10b981' : '#ef4444';
+      const typeText = acc.type === 'bank' ? (acc.bankCode || 'Tài khoản ngân hàng') : (acc.type === 'ewallet' ? 'Ví điện tử' : (acc.type === 'credit' ? 'Thẻ tín dụng' : 'Tiền mặt'));
+
+      html += `
+        <div class="source-acc-item ${isSelected ? 'active' : ''}" onclick="UIAccounts.selectSourceAccount('${acc.id}')">
+          <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+            ${this.renderLogoBadge(acc, 40)}
+            <div style="min-width: 0;">
+              <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(acc.name)}</div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">${escapeHTML(typeText)} • <span style="font-weight: 600; color: ${balanceColor};">Dư: ${balanceStr}</span></div>
+            </div>
+          </div>
+          ${isSelected ? '<i data-lucide="check" style="width: 20px; height: 20px; color: var(--primary); flex-shrink: 0;"></i>' : ''}
+        </div>
+      `;
     });
-    select.innerHTML = html;
+
+    listEl.innerHTML = html;
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeSourceAccountPicker() {
+    const modal = document.getElementById('modal-source-account-picker');
+    if (modal) modal.classList.remove('open');
+  },
+
+  selectSourceAccount(accId) {
+    this.closeSourceAccountPicker();
+    if (typeof this._sourcePickerCallback === 'function') {
+      this._sourcePickerCallback(accId);
+    }
+  },
+
+  /* Sổ tiết kiệm */
+  openSavingsSourcePicker() {
+    const curVal = document.getElementById('saving-source-account-select')?.value || '';
+    this.openSourceAccountPicker({
+      title: 'Chọn Nguồn Tiền Gửi',
+      allowNone: true,
+      noneLabel: 'Không trích tiền (Đã có sẵn / Ngoài ví)',
+      noneDesc: 'Không trừ số dư ví hiện có',
+      selectedId: curVal,
+      onSelect: (accId) => this.updateSavingsSourceDisplay(accId)
+    });
+  },
+
+  async updateSavingsSourceDisplay(accId) {
+    const input = document.getElementById('saving-source-account-select');
+    const logoEl = document.getElementById('saving-source-logo-preview');
+    const nameEl = document.getElementById('saving-source-account-name');
+    const balEl = document.getElementById('saving-source-account-balance');
+    if (input) input.value = accId || '';
+
+    if (!accId) {
+      if (logoEl) {
+        logoEl.innerHTML = '<i data-lucide="arrow-down-left"></i>';
+        logoEl.style.background = 'rgba(16, 185, 129, 0.15)';
+        logoEl.style.color = '#10b981';
+      }
+      if (nameEl) nameEl.textContent = 'Không trích tiền (Đã có sẵn)';
+      if (balEl) balEl.textContent = 'Không trừ số dư ví';
+    } else {
+      const acc = await db.accounts.get(Number(accId));
+      if (acc) {
+        if (logoEl) {
+          logoEl.innerHTML = this.renderLogoBadge(acc, 34);
+          logoEl.style.background = 'transparent';
+        }
+        if (nameEl) nameEl.textContent = acc.name;
+        if (balEl) balEl.textContent = `Số dư: ${new Intl.NumberFormat('vi-VN').format(acc.balance)}đ`;
+      }
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async populateSavingsSourceAccounts() {
+    const curVal = document.getElementById('saving-source-account-select')?.value || '';
+    await this.updateSavingsSourceDisplay(curVal);
   },
 
   openSavingsBankPicker() {
@@ -1714,18 +1833,13 @@ const UIAccounts = {
     if (settleText) settleText.textContent = new Intl.NumberFormat('vi-VN').format(totalEstimate);
     this.setDateInputValue('settle-saving-date-input', new Date().toISOString().split('T')[0]);
 
-    // Populate target accounts
-    const select = document.getElementById('settle-saving-target-account');
-    if (select) {
-      const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
-      const active = accounts.filter(a => !a.isArchived);
-      let html = '';
-      active.forEach(a => {
-        const isSel = saving.sourceAccountId === a.id ? 'selected' : '';
-        html += `<option value="${a.id}" ${isSel}>${escapeHTML(a.name)} (Dư: ${new Intl.NumberFormat('vi-VN').format(a.balance)}đ)</option>`;
-      });
-      select.innerHTML = html;
-    }
+    // Populate target accounts with real logos
+    const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    const active = accounts.filter(a => !a.isArchived);
+    const targetId = (saving.sourceAccountId && active.some(a => a.id === saving.sourceAccountId))
+      ? saving.sourceAccountId
+      : (active[0]?.id || '');
+    await this.updateSettleTargetDisplay(targetId);
 
     const modal = document.getElementById('modal-settle-saving');
     if (modal) modal.classList.add('open');
@@ -1841,17 +1955,50 @@ const UIAccounts = {
     }
   },
 
-  async populateAccumulationSourceAccounts() {
-    const select = document.getElementById('acc-source-account-select');
-    if (!select) return;
-    const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
-    const active = accounts.filter(a => !a.isArchived);
-
-    let html = '<option value="">Không trích tiền (Đã có sẵn / Ngoài ví)</option>';
-    active.forEach(a => {
-      html += `<option value="${a.id}">Ví: ${escapeHTML(a.name)} (Dư: ${new Intl.NumberFormat('vi-VN').format(a.balance)}đ)</option>`;
+  openAccumulationSourcePicker() {
+    const curVal = document.getElementById('acc-source-account-select')?.value || '';
+    this.openSourceAccountPicker({
+      title: 'Chọn Nguồn Tiền Khởi Điểm',
+      allowNone: true,
+      noneLabel: 'Không trích tiền (Đã có sẵn)',
+      noneDesc: 'Không trừ số dư ví hiện có',
+      selectedId: curVal,
+      onSelect: (accId) => this.updateAccumulationSourceDisplay(accId)
     });
-    select.innerHTML = html;
+  },
+
+  async updateAccumulationSourceDisplay(accId) {
+    const input = document.getElementById('acc-source-account-select');
+    const logoEl = document.getElementById('acc-source-logo-preview');
+    const nameEl = document.getElementById('acc-source-account-name');
+    const balEl = document.getElementById('acc-source-account-balance');
+    if (input) input.value = accId || '';
+
+    if (!accId) {
+      if (logoEl) {
+        logoEl.innerHTML = '<i data-lucide="arrow-down-left"></i>';
+        logoEl.style.background = 'rgba(79, 70, 229, 0.15)';
+        logoEl.style.color = '#4f46e5';
+      }
+      if (nameEl) nameEl.textContent = 'Không trích tiền (Đã có sẵn)';
+      if (balEl) balEl.textContent = 'Không trừ số dư ví';
+    } else {
+      const acc = await db.accounts.get(Number(accId));
+      if (acc) {
+        if (logoEl) {
+          logoEl.innerHTML = this.renderLogoBadge(acc, 34);
+          logoEl.style.background = 'transparent';
+        }
+        if (nameEl) nameEl.textContent = acc.name;
+        if (balEl) balEl.textContent = `Số dư: ${new Intl.NumberFormat('vi-VN').format(acc.balance)}đ`;
+      }
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async populateAccumulationSourceAccounts() {
+    const curVal = document.getElementById('acc-source-account-select')?.value || '';
+    await this.updateAccumulationSourceDisplay(curVal);
   },
 
   async handleAccumulationSubmit() {
@@ -1929,16 +2076,7 @@ const UIAccounts = {
     if (depInput) depInput.value = '0';
     if (depText) depText.textContent = '0';
 
-    const select = document.getElementById('deposit-acc-source-select');
-    if (select) {
-      const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
-      const active = accounts.filter(a => !a.isArchived);
-      let html = '<option value="">Không trích/chuyển ví</option>';
-      active.forEach(a => {
-        html += `<option value="${a.id}">Ví: ${escapeHTML(a.name)} (Dư: ${new Intl.NumberFormat('vi-VN').format(a.balance)}đ)</option>`;
-      });
-      select.innerHTML = html;
-    }
+    await this.updateDepositSourceDisplay(acc.sourceAccountId || '');
 
     const modal = document.getElementById('modal-deposit-accumulation');
     if (modal) modal.classList.add('open');
@@ -2107,6 +2245,7 @@ const UIAccounts = {
       document.getElementById('asset-location-input').value = item.location || '';
       document.getElementById('asset-note-input').value = item.note || '';
       document.getElementById('asset-include-networth-input').checked = item.includeInNetWorth !== undefined ? !!item.includeInNetWorth : true;
+      await this.updateAssetSourceDisplay(item.sourceAccountId || '');
     } else {
       if (idInput) idInput.value = '';
       this.setDateInputValue('asset-buy-date-input', todayStr);
@@ -2461,17 +2600,173 @@ const UIAccounts = {
     select.innerHTML = list.map(x => `<option value="${x.id}">${escapeHTML(x.name)}</option>`).join('');
   },
 
-  async populateAssetSourceAccounts() {
-    const select = document.getElementById('asset-source-account-select');
-    if (!select) return;
-    const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
-    const active = accounts.filter(a => !a.isArchived);
-
-    let html = '<option value="">Không trích tiền ví (Đã trả ngoài sổ)</option>';
-    active.forEach(a => {
-      html += `<option value="${a.id}">Ví: ${escapeHTML(a.name)} (Dư: ${new Intl.NumberFormat('vi-VN').format(a.balance)}đ)</option>`;
+  openAssetSourcePicker() {
+    const curVal = document.getElementById('asset-source-account-select')?.value || '';
+    this.openSourceAccountPicker({
+      title: 'Chọn Nguồn Tiền Thanh Toán',
+      allowNone: true,
+      noneLabel: 'Không trích tiền ví (Đã trả ngoài sổ)',
+      noneDesc: 'Không trừ số dư ví hiện có',
+      selectedId: curVal,
+      onSelect: (accId) => this.updateAssetSourceDisplay(accId)
     });
-    select.innerHTML = html;
+  },
+
+  async updateAssetSourceDisplay(accId) {
+    const input = document.getElementById('asset-source-account-select');
+    const logoEl = document.getElementById('asset-source-logo-preview');
+    const nameEl = document.getElementById('asset-source-account-name');
+    const balEl = document.getElementById('asset-source-account-balance');
+    if (input) input.value = accId || '';
+
+    if (!accId) {
+      if (logoEl) {
+        logoEl.innerHTML = '<i data-lucide="arrow-down-left"></i>';
+        logoEl.style.background = 'rgba(79, 70, 229, 0.15)';
+        logoEl.style.color = '#4f46e5';
+      }
+      if (nameEl) nameEl.textContent = 'Không trích tiền ví (Đã trả ngoài sổ)';
+      if (balEl) balEl.textContent = 'Không trừ số dư ví';
+    } else {
+      const acc = await db.accounts.get(Number(accId));
+      if (acc) {
+        if (logoEl) {
+          logoEl.innerHTML = this.renderLogoBadge(acc, 34);
+          logoEl.style.background = 'transparent';
+        }
+        if (nameEl) nameEl.textContent = acc.name;
+        if (balEl) balEl.textContent = `Số dư: ${new Intl.NumberFormat('vi-VN').format(acc.balance)}đ`;
+      }
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async populateAssetSourceAccounts() {
+    const curVal = document.getElementById('asset-source-account-select')?.value || '';
+    await this.updateAssetSourceDisplay(curVal);
+  },
+
+  /* Settle Saving Modal Target Display */
+  openSettleSourcePicker() {
+    const curVal = document.getElementById('settle-saving-target-account')?.value || '';
+    this.openSourceAccountPicker({
+      title: 'Chọn Tài Khoản Nhận Tiền Tất Toán',
+      allowNone: false,
+      selectedId: curVal,
+      onSelect: (accId) => this.updateSettleTargetDisplay(accId)
+    });
+  },
+
+  async updateSettleTargetDisplay(accId) {
+    const input = document.getElementById('settle-saving-target-account');
+    const logoEl = document.getElementById('settle-target-logo-preview');
+    const nameEl = document.getElementById('settle-target-account-name');
+    const balEl = document.getElementById('settle-target-account-balance');
+    if (input) input.value = accId || '';
+
+    if (accId) {
+      const acc = await db.accounts.get(Number(accId));
+      if (acc) {
+        if (logoEl) {
+          logoEl.innerHTML = this.renderLogoBadge(acc, 32);
+          logoEl.style.background = 'transparent';
+        }
+        if (nameEl) nameEl.textContent = acc.name;
+        if (balEl) balEl.textContent = `Số dư: ${new Intl.NumberFormat('vi-VN').format(acc.balance)}đ`;
+      }
+    } else {
+      if (logoEl) {
+        logoEl.innerHTML = '<i data-lucide="wallet"></i>';
+        logoEl.style.background = 'rgba(16, 185, 129, 0.15)';
+        logoEl.style.color = '#10b981';
+      }
+      if (nameEl) nameEl.textContent = 'Chọn tài khoản nhận...';
+      if (balEl) balEl.textContent = '--';
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  /* Deposit Acc Modal Source Display */
+  openDepositSourcePicker() {
+    const mode = document.getElementById('deposit-acc-mode')?.value || 'deposit';
+    const curVal = document.getElementById('deposit-acc-source-select')?.value || '';
+    this.openSourceAccountPicker({
+      title: mode === 'withdraw' ? 'Chọn Tài Khoản Nhận Tiền Rút' : 'Chọn Nguồn Tiền Nạp',
+      allowNone: true,
+      noneLabel: mode === 'withdraw' ? 'Rút tiền ngoài ví (Không chuyển vào ví)' : 'Nạp tiền ngoài ví (Không trích từ ví)',
+      noneDesc: 'Không thay đổi số dư ví',
+      selectedId: curVal,
+      onSelect: (accId) => this.updateDepositSourceDisplay(accId)
+    });
+  },
+
+  async updateDepositSourceDisplay(accId) {
+    const input = document.getElementById('deposit-acc-source-select');
+    const logoEl = document.getElementById('deposit-source-logo-preview');
+    const nameEl = document.getElementById('deposit-source-account-name');
+    const balEl = document.getElementById('deposit-source-account-balance');
+    if (input) input.value = accId || '';
+
+    if (!accId) {
+      if (logoEl) {
+        logoEl.innerHTML = '<i data-lucide="arrow-down-left"></i>';
+        logoEl.style.background = 'rgba(79, 70, 229, 0.15)';
+        logoEl.style.color = '#4f46e5';
+      }
+      if (nameEl) nameEl.textContent = 'Không trích/chuyển ví';
+      if (balEl) balEl.textContent = 'Không thay đổi số dư ví';
+    } else {
+      const acc = await db.accounts.get(Number(accId));
+      if (acc) {
+        if (logoEl) {
+          logoEl.innerHTML = this.renderLogoBadge(acc, 32);
+          logoEl.style.background = 'transparent';
+        }
+        if (nameEl) nameEl.textContent = acc.name;
+        if (balEl) balEl.textContent = `Số dư: ${new Intl.NumberFormat('vi-VN').format(acc.balance)}đ`;
+      }
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  /* Liquidate Asset Modal Target Display */
+  openLiquidateSourcePicker() {
+    const curVal = document.getElementById('liquidate-asset-target-account')?.value || '';
+    this.openSourceAccountPicker({
+      title: 'Chọn Ví Nhận Tiền Bán Tài Sản',
+      allowNone: false,
+      selectedId: curVal,
+      onSelect: (accId) => this.updateLiquidateTargetDisplay(accId)
+    });
+  },
+
+  async updateLiquidateTargetDisplay(accId) {
+    const input = document.getElementById('liquidate-asset-target-account');
+    const logoEl = document.getElementById('liquidate-target-logo-preview');
+    const nameEl = document.getElementById('liquidate-target-account-name');
+    const balEl = document.getElementById('liquidate-target-account-balance');
+    if (input) input.value = accId || '';
+
+    if (accId) {
+      const acc = await db.accounts.get(Number(accId));
+      if (acc) {
+        if (logoEl) {
+          logoEl.innerHTML = this.renderLogoBadge(acc, 32);
+          logoEl.style.background = 'transparent';
+        }
+        if (nameEl) nameEl.textContent = acc.name;
+        if (balEl) balEl.textContent = `Số dư: ${new Intl.NumberFormat('vi-VN').format(acc.balance)}đ`;
+      }
+    } else {
+      if (logoEl) {
+        logoEl.innerHTML = '<i data-lucide="wallet"></i>';
+        logoEl.style.background = 'rgba(16, 185, 129, 0.15)';
+        logoEl.style.color = '#10b981';
+      }
+      if (nameEl) nameEl.textContent = 'Chọn tài khoản nhận...';
+      if (balEl) balEl.textContent = '--';
+    }
+    if (window.lucide) lucide.createIcons();
   },
 
   handleAssetGiftToggle(isGift) {
@@ -2603,16 +2898,13 @@ const UIAccounts = {
     if (liqText) liqText.textContent = new Intl.NumberFormat('vi-VN').format(estVal);
     this.setDateInputValue('liquidate-asset-date-input', new Date().toISOString().split('T')[0]);
 
-    const select = document.getElementById('liquidate-asset-target-account');
-    if (select) {
-      const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
-      const active = accounts.filter(a => !a.isArchived);
-      let html = '';
-      active.forEach(a => {
-        html += `<option value="${a.id}">Ví: ${escapeHTML(a.name)} (Dư: ${new Intl.NumberFormat('vi-VN').format(a.balance)}đ)</option>`;
-      });
-      select.innerHTML = html;
-    }
+    // Populate target accounts with real logos
+    const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    const active = accounts.filter(a => !a.isArchived);
+    const targetId = (asset.sourceAccountId && active.some(a => a.id === asset.sourceAccountId))
+      ? asset.sourceAccountId
+      : (active[0]?.id || '');
+    await this.updateLiquidateTargetDisplay(targetId);
 
     const modal = document.getElementById('modal-liquidate-asset');
     if (modal) modal.classList.add('open');

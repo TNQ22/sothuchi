@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.27">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.33">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -798,12 +798,12 @@
                 </div>
 
                 <!-- Hàng 5: Ngày thu nợ / Ngày trả nợ (Nằm phía trên Thêm chi tiết, chỉ icon và chú thích nền) -->
-                <div class="tx-info-row" id="tx-debt-due-row" style="display: none;">
+                <div class="tx-info-row" id="tx-debt-due-row" style="display: none; cursor: pointer;" onclick="UITransactions.openDueDatePicker()">
                   <div class="tx-info-icon-bubble" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
                     <i data-lucide="calendar-clock"></i>
                   </div>
                   <div class="tx-info-content">
-                    <input type="text" id="tx-due-date-input" class="tx-clean-input" placeholder="Ngày thu nợ" readonly onclick="UITransactions.openDueDatePicker()" style="cursor: pointer;">
+                    <input type="text" id="tx-due-date-input" class="tx-clean-input" placeholder="Ngày thu nợ" readonly style="cursor: pointer; pointer-events: none;">
                   </div>
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
@@ -846,8 +846,8 @@
                       </div>
                       <input type="checkbox" id="tx-is-borrowed-checkbox" style="display: none;">
                       <input type="hidden" id="tx-borrow-person-input" value="">
-                      <div id="borrow-due-date-row" style="display: none; margin-top: 8px; padding-left: 26px;">
-                        <input type="text" id="tx-borrow-due-date-input" class="form-control" style="font-size: 0.85rem; cursor: pointer;" placeholder="Ngày trả nợ" readonly onclick="UITransactions.openBorrowDueDatePicker()">
+                      <div id="borrow-due-date-row" style="display: none; margin-top: 8px; padding-left: 26px; cursor: pointer;" onclick="UITransactions.openBorrowDueDatePicker()">
+                        <input type="text" id="tx-borrow-due-date-input" class="form-control" style="font-size: 0.85rem; cursor: pointer; pointer-events: none;" placeholder="Ngày trả nợ" readonly>
                       </div>
                     </div>
                   </div>
@@ -1231,14 +1231,15 @@
                 </div>
 
                 <!-- Ngày gửi -->
-                <div class="tx-info-row">
+                <div class="tx-info-row" onclick="UIAccounts.openSavingsDatePicker()" style="cursor: pointer;">
                   <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
                     <i data-lucide="calendar"></i>
                   </div>
                   <div class="tx-info-content">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Ngày gửi</div>
-                    <input type="text" id="saving-deposit-date-input" class="tx-clean-input" placeholder="DD/MM/YYYY" readonly onclick="UIAccounts.openSavingsDatePicker()" style="font-size: 0.92rem; font-weight: 600; cursor: pointer;">
+                    <input type="text" id="saving-deposit-date-input" class="tx-clean-input" placeholder="DD/MM/YYYY" readonly style="font-size: 0.92rem; font-weight: 600; cursor: pointer; pointer-events: none;">
                   </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
                 <!-- Kỳ hạn -->
@@ -1310,16 +1311,16 @@
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
-                <!-- Nguồn tiền gửi (Tài khoản trích tiền) -->
-                <div class="tx-info-row">
-                  <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                <!-- Nguồn tiền gửi (Tài khoản trích tiền - Kèm logo) -->
+                <div class="tx-info-row" id="saving-source-account-row" onclick="UIAccounts.openSavingsSourcePicker()" style="cursor: pointer;">
+                  <div class="tx-info-icon-bubble" id="saving-source-logo-preview" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
                     <i data-lucide="arrow-down-left"></i>
                   </div>
-                  <div class="tx-info-content">
+                  <div class="tx-info-content" style="min-width: 0;">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Nguồn tiền (Trích từ ví)</div>
-                    <select id="saving-source-account-select" class="acc-styled-select">
-                      <option value="">Không trích tiền (Đã có sẵn)</option>
-                    </select>
+                    <div id="saving-source-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Không trích tiền (Đã có sẵn)</div>
+                    <div id="saving-source-account-balance" style="font-size: 0.76rem; color: var(--text-muted);">Không trừ số dư ví</div>
+                    <input type="hidden" id="saving-source-account-select" value="">
                   </div>
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
@@ -1458,25 +1459,27 @@
                 </div>
 
                 <!-- Ngày bắt đầu -->
-                <div class="tx-info-row">
+                <div class="tx-info-row" onclick="UIAccounts.openAccStartDatePicker()" style="cursor: pointer;">
                   <div class="tx-info-icon-bubble" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
                     <i data-lucide="calendar"></i>
                   </div>
                   <div class="tx-info-content">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Ngày bắt đầu</div>
-                    <input type="text" id="acc-start-date-input" class="tx-clean-input" placeholder="DD/MM/YYYY" readonly onclick="UIAccounts.openAccStartDatePicker()" style="font-size: 0.92rem; font-weight: 600; cursor: pointer;">
+                    <input type="text" id="acc-start-date-input" class="tx-clean-input" placeholder="DD/MM/YYYY" readonly style="font-size: 0.92rem; font-weight: 600; cursor: pointer; pointer-events: none;">
                   </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
                 <!-- Hạn chót hoàn thành -->
-                <div class="tx-info-row">
+                <div class="tx-info-row" onclick="UIAccounts.openAccTargetDatePicker()" style="cursor: pointer;">
                   <div class="tx-info-icon-bubble" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
                     <i data-lucide="calendar-check"></i>
                   </div>
                   <div class="tx-info-content">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Hạn chót mục tiêu</div>
-                    <input type="text" id="acc-target-date-input" class="tx-clean-input" placeholder="DD/MM/YYYY (Tùy chọn)" readonly onclick="UIAccounts.openAccTargetDatePicker()" style="font-size: 0.92rem; font-weight: 600; cursor: pointer;">
+                    <input type="text" id="acc-target-date-input" class="tx-clean-input" placeholder="DD/MM/YYYY (Tùy chọn)" readonly style="font-size: 0.92rem; font-weight: 600; cursor: pointer; pointer-events: none;">
                   </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
               </div>
 
@@ -1591,14 +1594,15 @@
                 </div>
 
                 <!-- Ngày mua / sở hữu -->
-                <div class="tx-info-row">
+                <div class="tx-info-row" onclick="UIAccounts.openAssetBuyDatePicker()" style="cursor: pointer;">
                   <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
                     <i data-lucide="calendar"></i>
                   </div>
                   <div class="tx-info-content">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Ngày mua / nhận</div>
-                    <input type="text" id="asset-buy-date-input" class="tx-clean-input" placeholder="DD/MM/YYYY" readonly onclick="UIAccounts.openAssetBuyDatePicker()" style="font-size: 0.92rem; font-weight: 600; cursor: pointer;">
+                    <input type="text" id="asset-buy-date-input" class="tx-clean-input" placeholder="DD/MM/YYYY" readonly style="font-size: 0.92rem; font-weight: 600; cursor: pointer; pointer-events: none;">
                   </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
                 <!-- Số lượng & Đơn vị -->
@@ -1678,16 +1682,16 @@
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
-                <!-- Nguồn tiền mua -->
-                <div class="tx-info-row">
-                  <div class="tx-info-icon-bubble" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+                <!-- Nguồn tiền mua (Kèm logo) -->
+                <div class="tx-info-row" id="asset-source-account-row" onclick="UIAccounts.openAssetSourcePicker()" style="cursor: pointer;">
+                  <div class="tx-info-icon-bubble" id="asset-source-logo-preview" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
                     <i data-lucide="arrow-down-left"></i>
                   </div>
-                  <div class="tx-info-content">
+                  <div class="tx-info-content" style="min-width: 0;">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Nguồn tiền thanh toán</div>
-                    <select id="asset-source-account-select" class="acc-styled-select">
-                      <option value="">Không trích tiền ví (Đã trả ngoài sổ)</option>
-                    </select>
+                    <div id="asset-source-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Không trích tiền ví (Đã trả ngoài sổ)</div>
+                    <div id="asset-source-account-balance" style="font-size: 0.76rem; color: var(--text-muted);">Không trừ số dư ví</div>
+                    <input type="hidden" id="asset-source-account-select" value="">
                   </div>
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
@@ -2391,11 +2395,29 @@
           </div>
           <div class="form-group">
             <label class="form-label">Chuyển tiền vào tài khoản</label>
-            <select id="settle-saving-target-account" class="form-control" required></select>
+            <div class="tx-info-row" onclick="UIAccounts.openSettleSourcePicker()" style="cursor: pointer; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 14px;">
+              <div class="tx-info-icon-bubble" id="settle-target-logo-preview" style="background: rgba(16, 185, 129, 0.15); color: #10b981; width: 36px; height: 36px; border-radius: 8px;">
+                <i data-lucide="wallet"></i>
+              </div>
+              <div class="tx-info-content" style="min-width: 0; margin-left: 10px;">
+                <div id="settle-target-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Chọn tài khoản nhận...</div>
+                <div id="settle-target-account-balance" style="font-size: 0.76rem; color: var(--text-muted);">--</div>
+                <input type="hidden" id="settle-saving-target-account" value="" required>
+              </div>
+              <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Ngày tất toán</label>
-            <input type="text" id="settle-saving-date-input" class="form-control" placeholder="DD/MM/YYYY" readonly onclick="UIAccounts.openSettleDatePicker()" style="cursor: pointer; font-weight: 600;">
+            <div class="tx-info-row" onclick="UIAccounts.openSettleDatePicker()" style="cursor: pointer; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 14px;">
+              <div class="tx-info-icon-bubble" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9; width: 36px; height: 36px; border-radius: 8px;">
+                <i data-lucide="calendar"></i>
+              </div>
+              <div class="tx-info-content" style="margin-left: 10px;">
+                <input type="text" id="settle-saving-date-input" class="tx-clean-input" placeholder="DD/MM/YYYY" readonly style="font-size: 0.92rem; font-weight: 600; cursor: pointer; pointer-events: none;">
+              </div>
+              <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -2423,11 +2445,30 @@
           </div>
           <div class="form-group">
             <label class="form-label" id="deposit-acc-amount-label">Số tiền nạp thêm (VNĐ)</label>
-            <input type="number" id="deposit-acc-amount-input" class="form-control" placeholder="0" min="1" step="any" required style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">
+            <div class="tx-info-row" onclick="UIAccounts.openDepositAccKeypad()" style="cursor: pointer; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 14px;">
+              <div class="tx-info-content">
+                <div style="display: flex; align-items: baseline; gap: 4px;">
+                  <span id="deposit-acc-amount-text" style="font-size: 1.2rem; font-weight: 800; color: var(--primary);">0</span>
+                  <span style="font-size: 0.95rem; font-weight: 700; color: var(--primary);">đ</span>
+                </div>
+                <input type="hidden" id="deposit-acc-amount-input" value="0">
+              </div>
+              <i data-lucide="calculator" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label" id="deposit-acc-account-label">Trích từ tài khoản</label>
-            <select id="deposit-acc-source-select" class="form-control"></select>
+            <div class="tx-info-row" onclick="UIAccounts.openDepositSourcePicker()" style="cursor: pointer; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 14px;">
+              <div class="tx-info-icon-bubble" id="deposit-source-logo-preview" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5; width: 36px; height: 36px; border-radius: 8px;">
+                <i data-lucide="arrow-down-left"></i>
+              </div>
+              <div class="tx-info-content" style="min-width: 0; margin-left: 10px;">
+                <div id="deposit-source-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Không trích/chuyển ví</div>
+                <div id="deposit-source-account-balance" style="font-size: 0.76rem; color: var(--text-muted);">Không thay đổi số dư ví</div>
+                <input type="hidden" id="deposit-acc-source-select" value="">
+              </div>
+              <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -2454,15 +2495,42 @@
           </div>
           <div class="form-group">
             <label class="form-label">Số tiền bán được thực tế (VNĐ)</label>
-            <input type="number" id="liquidate-asset-price-input" class="form-control" placeholder="0" min="1" step="any" required style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">
+            <div class="tx-info-row" onclick="UIAccounts.openLiquidateKeypad()" style="cursor: pointer; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 14px;">
+              <div class="tx-info-content">
+                <div style="display: flex; align-items: baseline; gap: 4px;">
+                  <span id="liquidate-asset-price-text" style="font-size: 1.2rem; font-weight: 800; color: var(--primary);">0</span>
+                  <span style="font-size: 0.95rem; font-weight: 700; color: var(--primary);">đ</span>
+                </div>
+                <input type="hidden" id="liquidate-asset-price-input" value="0">
+              </div>
+              <i data-lucide="calculator" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Chuyển tiền thu được vào ví</label>
-            <select id="liquidate-asset-target-account" class="form-control" required></select>
+            <div class="tx-info-row" onclick="UIAccounts.openLiquidateSourcePicker()" style="cursor: pointer; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 14px;">
+              <div class="tx-info-icon-bubble" id="liquidate-target-logo-preview" style="background: rgba(16, 185, 129, 0.15); color: #10b981; width: 36px; height: 36px; border-radius: 8px;">
+                <i data-lucide="wallet"></i>
+              </div>
+              <div class="tx-info-content" style="min-width: 0; margin-left: 10px;">
+                <div id="liquidate-target-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Chọn tài khoản nhận...</div>
+                <div id="liquidate-target-account-balance" style="font-size: 0.76rem; color: var(--text-muted);">--</div>
+                <input type="hidden" id="liquidate-asset-target-account" value="" required>
+              </div>
+              <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+            </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Ngày bán</label>
-            <input type="text" id="liquidate-asset-date-input" class="form-control" placeholder="DD/MM/YYYY" readonly onclick="UIAccounts.openLiquidateDatePicker()" style="cursor: pointer; font-weight: 600;">
+            <label class="form-label">Ngày thanh lý</label>
+            <div class="tx-info-row" onclick="UIAccounts.openLiquidateDatePicker()" style="cursor: pointer; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 14px;">
+              <div class="tx-info-icon-bubble" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9; width: 36px; height: 36px; border-radius: 8px;">
+                <i data-lucide="calendar"></i>
+              </div>
+              <div class="tx-info-content" style="margin-left: 10px;">
+                <input type="text" id="liquidate-asset-date-input" class="tx-clean-input" placeholder="DD/MM/YYYY" readonly style="font-size: 0.92rem; font-weight: 600; cursor: pointer; pointer-events: none;">
+              </div>
+              <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -2495,6 +2563,132 @@
     </div>
   </div>
 
+  
+    <!-- Modal: Bộ Chọn Lịch & Giờ Tùy Chỉnh (UICalendar) -->
+  <div id="modal-custom-calendar" class="custom-cal-overlay" style="z-index: 100010;">
+    <div class="custom-cal-backdrop" id="custom-cal-backdrop" onclick="UICalendar.close()"></div>
+    <div class="custom-cal-container">
+      <!-- Top Bar: Date | Time -->
+      <div class="custom-cal-topbar" id="cal-topbar">
+        <button type="button" class="custom-cal-top-item active" id="cal-top-date" title="Chọn ngày" onclick="UICalendar.switchTab('date')">
+          <span id="cal-top-date-text">Hôm nay</span>
+        </button>
+        <div class="custom-cal-top-divider" id="cal-top-divider"></div>
+        <button type="button" class="custom-cal-top-item" id="cal-top-time" title="Chọn giờ" onclick="UICalendar.switchTab('time')">
+          <span id="cal-top-time-text">--:--</span>
+        </button>
+      </div>
+
+      <!-- Main Card Dialog -->
+      <div class="custom-cal-card">
+        <!-- DATE PICKER VIEW -->
+        <div class="custom-cal-date-view" id="cal-date-view">
+          <!-- Calendar Navigation Header -->
+          <div class="custom-cal-header">
+            <button type="button" class="custom-cal-nav-btn" id="cal-prev-month" title="Tháng trước" onclick="UICalendar.changeMonth(-1)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+
+            <button type="button" class="custom-cal-month-pill" id="cal-month-pill" title="Chọn nhanh tháng/năm" onclick="UICalendar.toggleMonthSelector()">
+              <span id="cal-month-pill-text">Tháng 9/2026</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-left: 2px;"><path d="M7 10l5 5 5-5z"/></svg>
+            </button>
+
+            <button type="button" class="custom-cal-nav-btn" id="cal-next-month" title="Tháng sau" onclick="UICalendar.changeMonth(1)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Month / Year Quick Dropdown Selector Panel -->
+          <div class="custom-cal-month-selector" id="cal-month-selector" style="display: none;">
+            <div class="custom-cal-year-nav">
+              <button type="button" class="custom-cal-nav-btn" id="cal-prev-year" onclick="UICalendar.changeYear(-1)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              </button>
+              <span class="custom-cal-year-title" id="cal-year-title">2026</span>
+              <button type="button" class="custom-cal-nav-btn" id="cal-next-year" onclick="UICalendar.changeYear(1)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
+            </div>
+            <div class="custom-cal-months-grid" id="cal-months-grid"></div>
+          </div>
+
+          <!-- Weekday Header: T2, T3, T4, T5, T6, T7, CN -->
+          <div class="custom-cal-weekdays">
+            <span>T2</span>
+            <span>T3</span>
+            <span>T4</span>
+            <span>T5</span>
+            <span>T6</span>
+            <span>T7</span>
+            <span>CN</span>
+          </div>
+
+          <!-- Days Grid -->
+          <div class="custom-cal-days-grid" id="cal-days-grid"></div>
+        </div>
+
+        <!-- TIME PICKER VIEW -->
+        <div class="custom-cal-time-view" id="cal-time-view" style="display: none;">
+          <div class="custom-cal-time-header">Chọn thời gian</div>
+          <div class="custom-cal-time-display-box">
+            <div class="custom-cal-time-field">
+              <span class="custom-cal-time-val" id="cal-hour-val">11</span>
+              <span class="custom-cal-time-label">Giờ</span>
+            </div>
+            <span class="custom-cal-time-colon">:</span>
+            <div class="custom-cal-time-field">
+              <span class="custom-cal-time-val" id="cal-min-val">22</span>
+              <span class="custom-cal-time-label">Phút</span>
+            </div>
+          </div>
+
+          <!-- Time Wheel / Selectors -->
+          <div class="custom-cal-time-columns">
+            <div class="custom-cal-time-col">
+              <div class="custom-cal-time-col-title">Giờ (0 - 23)</div>
+              <div class="custom-cal-time-list" id="cal-hours-list"></div>
+            </div>
+            <div class="custom-cal-time-col">
+              <div class="custom-cal-time-col-title">Phút (0 - 59)</div>
+              <div class="custom-cal-time-list" id="cal-mins-list"></div>
+            </div>
+          </div>
+
+          <!-- Quick Time Presets -->
+          <div class="custom-cal-time-presets">
+            <button type="button" class="cal-time-preset-btn" onclick="UICalendar.setTimeNow()">Hiện tại</button>
+            <button type="button" class="cal-time-preset-btn" onclick="UICalendar.adjustMinutes(-15)">-15p</button>
+            <button type="button" class="cal-time-preset-btn" onclick="UICalendar.adjustMinutes(15)">+15p</button>
+            <button type="button" class="cal-time-preset-btn" onclick="UICalendar.adjustMinutes(60)">+1h</button>
+          </div>
+        </div>
+
+        <!-- Bottom Action Buttons: Hôm nay & Xong -->
+        <div class="custom-cal-actions">
+          <button type="button" class="custom-cal-btn-today" id="cal-btn-today" onclick="UICalendar.selectToday()">Hôm nay</button>
+          <button type="button" class="custom-cal-btn-done" id="cal-btn-done" onclick="UICalendar.confirmSelection()">Xong</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Chọn Nguồn Tiền (Kèm Logo Ngân Hàng / Ví Điện Tử) -->
+  <div id="modal-source-account-picker" class="modal-overlay" style="z-index: 100002;">
+    <div class="modal-backdrop" onclick="UIAccounts.closeSourceAccountPicker()"></div>
+    <div class="modal-dialog modal-dialog-bottom" style="max-width: 480px; max-height: 82vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 20px 20px 0 0;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; background: var(--bg-card);">
+        <h3 id="source-account-picker-title" style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-primary);">Chọn Nguồn Tiền</h3>
+        <button type="button" class="btn-icon" onclick="UIAccounts.closeSourceAccountPicker()" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--bg-hover); border: none; color: var(--text-muted); cursor: pointer;">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+      <div id="source-account-picker-list" style="overflow-y: auto; padding: 14px 16px 24px 16px; display: flex; flex-direction: column; gap: 8px; max-height: calc(82vh - 65px);">
+        <!-- Danh sách tài khoản kèm logo -->
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div id="toast-container"></div>
 
@@ -2508,18 +2702,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.27"></script>
+  <script src="./js/backup.js?v=1.9.33"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.27"></script>
-  <script src="./js/ui-transactions.js?v=1.9.27"></script>
-  <script src="./js/ui-debts.js?v=1.9.27"></script>
-  <script src="./js/ui-accounts.js?v=1.9.27"></script>
-  <script src="./js/ui-budgets.js?v=1.9.27"></script>
-  <script src="./js/ui-analytics.js?v=1.9.27"></script>
-  <script src="./js/ui-settings.js?v=1.9.27"></script>
+  <script src="./js/ui-calendar.js?v=1.9.33"></script>
+  <script src="./js/ui-transactions.js?v=1.9.33"></script>
+  <script src="./js/ui-debts.js?v=1.9.33"></script>
+  <script src="./js/ui-accounts.js?v=1.9.33"></script>
+  <script src="./js/ui-budgets.js?v=1.9.33"></script>
+  <script src="./js/ui-analytics.js?v=1.9.33"></script>
+  <script src="./js/ui-settings.js?v=1.9.33"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.27"></script>
+  <script src="./js/app.js?v=1.9.33"></script>
 </body>
 </html>

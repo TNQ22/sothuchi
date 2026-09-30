@@ -64,39 +64,58 @@ const UITransactions = {
       });
     }
 
-    // Popup Keypad Button Handlers
-    // Dùng pointerdown thay vì click để hỗ trợ multi-touch:
-    // mỗi ngón tay chạm sẽ kích hoạt riêng biệt, không bị hủy khi có nhiều ngón đang giữ
+    // Popup Keypad Button Handlers (Hỗ trợ nhạy cả pointerdown và click cho mọi thiết bị)
+    const triggerKey = (btn, e) => {
+      if (e && e.cancelable) {
+        try { e.preventDefault(); } catch (_) {}
+      }
+      const key = btn.dataset.key;
+      this.handleKeypadKey(key);
+      btn.classList.add('pressed');
+      setTimeout(() => btn.classList.remove('pressed'), 120);
+    };
+
     document.querySelectorAll('#modal-keypad .keypad-btn').forEach(btn => {
+      let pointerHandled = false;
       btn.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        // Capture pointer để không bị mất nếu ngón tay trượt ra ngoài nút
+        pointerHandled = true;
         try { btn.setPointerCapture(e.pointerId); } catch (_) {}
-        const key = btn.dataset.key;
-        this.handleKeypadKey(key);
-        // Hiệu ứng nhấn ngay lập tức
-        btn.classList.add('pressed');
+        triggerKey(btn, e);
+        setTimeout(() => { pointerHandled = false; }, 300);
       });
-      btn.addEventListener('pointerup', (e) => {
-        e.preventDefault();
-        btn.classList.remove('pressed');
-      });
-      btn.addEventListener('pointercancel', () => {
-        btn.classList.remove('pressed');
+      btn.addEventListener('pointerup', () => btn.classList.remove('pressed'));
+      btn.addEventListener('pointercancel', () => btn.classList.remove('pressed'));
+      btn.addEventListener('click', (e) => {
+        if (pointerHandled) return;
+        triggerKey(btn, e);
       });
     });
 
     // Popup Keypad Quick Chips (+10k, +50k, ...)
+    const triggerChip = (chip, e) => {
+      if (e && e.cancelable) {
+        try { e.preventDefault(); } catch (_) {}
+      }
+      const val = Number(chip.dataset.val);
+      this.handleKeypadQuickAdd(val);
+      chip.classList.add('pressed');
+      setTimeout(() => chip.classList.remove('pressed'), 150);
+    };
+
     document.querySelectorAll('#modal-keypad .keypad-chip').forEach(chip => {
+      let pointerHandled = false;
       chip.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+        pointerHandled = true;
         try { chip.setPointerCapture(e.pointerId); } catch (_) {}
-        const val = Number(chip.dataset.val);
-        this.handleKeypadQuickAdd(val);
-        chip.classList.add('pressed');
+        triggerChip(chip, e);
+        setTimeout(() => { pointerHandled = false; }, 300);
       });
       chip.addEventListener('pointerup', () => chip.classList.remove('pressed'));
       chip.addEventListener('pointercancel', () => chip.classList.remove('pressed'));
+      chip.addEventListener('click', (e) => {
+        if (pointerHandled) return;
+        triggerChip(chip, e);
+      });
     });
 
     // Tap on keypad live display to toggle select-all / overwrite state

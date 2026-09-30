@@ -2859,7 +2859,7 @@ body:has(#view-account-provider.active) .app-header {
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  z-index: 99999 !important;
+  z-index: 100010 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -4520,4 +4520,36 @@ body:has(#view-account-provider.active) .app-header {
 }
 .rotating {
   animation: spin-anim 0.8s linear infinite !important;
+}
+
+
+/* ==================== SOURCE ACCOUNT PICKER (NGUỒN TIỀN CÓ LOGO) ==================== */
+.source-acc-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.source-acc-item:hover {
+  border-color: var(--primary);
+  background: rgba(79, 70, 229, 0.05);
+}
+
+.source-acc-item:active {
+  transform: scale(0.99);
+}
+
+.source-acc-item.active {
+  background: rgba(79, 70, 229, 0.08);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
 }
