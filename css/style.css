@@ -1640,6 +1640,16 @@ body:has(#view-account-provider.active) .app-header {
     padding: 14px 12px;
   }
 
+  .accounts-group-container {
+    padding: 14px 12px;
+    margin-top: 18px;
+    border-radius: var(--radius-md);
+  }
+
+  .asset-type-group {
+    padding: 10px 10px 8px;
+  }
+
   .stats-grid {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
@@ -4201,62 +4211,244 @@ body:has(#view-account-provider.active) .app-header {
   font-variant-numeric: tabular-nums;
 }
 
-/* 2. Group Sections */
+/* 2. Group Sections - Vùng bao quanh rõ ràng cho từng nhóm tài sản */
 .accounts-group-container {
-  margin-top: 24px;
+  margin-top: 22px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-theme="light"] .accounts-group-container {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
 .accounts-group-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
+}
+
+[data-theme="light"] .accounts-group-header {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
 }
 
 .accounts-group-title-wrap {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .accounts-group-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .accounts-group-title {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  letter-spacing: -0.01em;
 }
 
 .accounts-group-subtitle {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--primary);
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--text-primary);
   display: block;
-  margin-top: 1px;
+  margin-top: 2px;
   font-variant-numeric: tabular-nums;
 }
 
 .group-count-badge {
   font-size: 0.72rem;
   background: var(--bg-hover);
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: 10px;
   color: var(--text-muted);
   font-weight: 600;
+  border: 1px solid var(--border-color);
+}
+
+/* Light mode adjustments for inner cards inside group container */
+[data-theme="light"] .accounts-group-container .account-list-item,
+[data-theme="light"] .accounts-group-container .group-item-card {
+  background: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+[data-theme="light"] .accounts-group-container .account-list-item:hover,
+[data-theme="light"] .accounts-group-container .group-item-card:hover {
+  background: #f1f5f9;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+/* Empty State inside Group Containers */
+.accounts-group-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 26px 16px;
+  text-align: center;
+}
+
+.accounts-group-empty-state .empty-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.accounts-group-empty-state .empty-text {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* 4. Asset Types Sub-Grouping (BĐS, Kim loại quý, Ngoại tệ, Crypto, Khác) */
+.assets-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.asset-type-group {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-theme="light"] .asset-type-group {
+  background: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.asset-type-group:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+[data-theme="light"] .asset-type-group:hover {
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.asset-type-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border-color);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+[data-theme="light"] .asset-type-header {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+.asset-type-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.asset-type-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.asset-type-name-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.asset-type-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.asset-type-header-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.asset-type-subtotal {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.asset-type-pnl {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.asset-type-pnl.profit {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.asset-type-pnl.loss {
+  background: rgba(244, 63, 94, 0.15);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
+.asset-type-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+[data-theme="light"] .asset-type-group .group-item-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .asset-type-group .group-item-card:hover {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.15);
 }
 
 .badge-beta {

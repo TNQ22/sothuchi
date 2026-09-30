@@ -3375,6 +3375,12 @@ const UIAccounts = {
 
     const labelAst = document.getElementById('label-assets-total');
     if (labelAst) labelAst.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalAssets)}đ`;
+
+    const badgeAst = document.getElementById('badge-assets-count');
+    if (badgeAst) {
+      const astCount = await db.assets.where('isDeleted').equals(0).count();
+      badgeAst.textContent = astCount;
+    }
   },
 
   async renderSavings() {
@@ -3394,7 +3400,14 @@ const UIAccounts = {
     if (badgeCount) badgeCount.textContent = activeSavings.length;
 
     if (activeSavings.length === 0) {
-      container.innerHTML = '';
+      container.innerHTML = `
+        <div class="accounts-group-empty-state">
+          <div class="empty-icon-wrap" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9;">
+            <i data-lucide="piggy-bank" style="width: 22px; height: 22px;"></i>
+          </div>
+          <p class="empty-text">Chưa có sổ tiết kiệm nào</p>
+        </div>
+      `;
     } else {
       container.innerHTML = activeSavings.map(s => {
         const prov = s.bankCode ? this.PROVIDERS.find(x => x.code === s.bankCode) : null;
@@ -3493,7 +3506,14 @@ const UIAccounts = {
     if (badgeCount) badgeCount.textContent = list.length;
 
     if (list.length === 0) {
-      container.innerHTML = '';
+      container.innerHTML = `
+        <div class="accounts-group-empty-state">
+          <div class="empty-icon-wrap" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
+            <i data-lucide="target" style="width: 22px; height: 22px;"></i>
+          </div>
+          <p class="empty-text">Chưa có sổ tích lũy nào</p>
+        </div>
+      `;
     } else {
       container.innerHTML = list.map(item => {
         const cur = item.currentAmount || 0;
@@ -3550,23 +3570,54 @@ const UIAccounts = {
 
   async renderAssets() {
     const container = document.getElementById('assets-list-container');
+    const badgeAst = document.getElementById('badge-assets-count');
     if (!container) return;
 
     const list = await db.assets.where('isDeleted').equals(0).toArray();
+    if (badgeAst) badgeAst.textContent = list.length;
 
     if (list.length === 0) {
-      container.innerHTML = '';
-    } else {
-      const typeIcons = {
-        real_estate: { icon: 'home', color: '#10b981', label: 'BĐS' },
-        precious_metal: { icon: 'sparkles', color: '#f59e0b', label: 'Vàng/Bạc' },
-        foreign_currency: { icon: 'dollar-sign', color: '#0ea5e9', label: 'Ngoại tệ' },
-        crypto: { icon: 'coins', color: '#f59e0b', label: 'Crypto' },
-        other: { icon: 'package', color: '#8b5cf6', label: 'Khác' }
-      };
+      container.innerHTML = `
+        <div class="accounts-group-empty-state">
+          <div class="empty-icon-wrap" style="background: rgba(168, 85, 247, 0.12); color: #a855f7;">
+            <i data-lucide="gem" style="width: 22px; height: 22px;"></i>
+          </div>
+          <p class="empty-text">Chưa có tài sản nào</p>
+        </div>
+      `;
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
 
-      container.innerHTML = list.map(item => {
-        const cfg = typeIcons[item.assetType] || typeIcons.other;
+    const typeMeta = {
+      real_estate: { icon: 'home', color: '#10b981', label: 'Bất động sản' },
+      precious_metal: { icon: 'sparkles', color: '#f59e0b', label: 'Kim loại quý' },
+      foreign_currency: { icon: 'dollar-sign', color: '#0ea5e9', label: 'Ngoại tệ' },
+      crypto: { icon: 'coins', color: '#f59e0b', label: 'Tiền điện tử (Crypto)' },
+      other: { icon: 'package', color: '#8b5cf6', label: 'Tài sản khác' }
+    };
+
+    const typeOrder = ['real_estate', 'precious_metal', 'foreign_currency', 'crypto', 'other'];
+
+    // Nhóm tài sản theo từng loại (Asset Type)
+    const grouped = {};
+    for (const item of list) {
+      const t = item.assetType || 'other';
+      if (!grouped[t]) grouped[t] = [];
+      grouped[t].push(item);
+    }
+
+    let html = '';
+    for (const t of typeOrder) {
+      const items = grouped[t];
+      if (!items || items.length === 0) continue;
+
+      const meta = typeMeta[t] || typeMeta.other;
+
+      let groupCurTotal = 0;
+      let groupBuyTotal = 0;
+
+      const itemsHtml = items.map(item => {
         const qty = item.quantity || 1;
         const totalCur = Math.round(qty * (item.currentPrice || 0));
         const totalBuy = Math.round((qty * (item.buyPrice || 0)) + (item.extraCosts || 0));
@@ -3575,17 +3626,20 @@ const UIAccounts = {
         const isProf = pnl >= 0;
         const sign = isProf ? '+' : '';
 
+        groupCurTotal += totalCur;
+        groupBuyTotal += totalBuy;
+
         return `
           <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('asset', ${item.id})">
             <div class="group-card-header">
               <div class="group-card-title-row">
-                <div class="group-card-icon-wrap" style="background: ${cfg.color}22; color: ${cfg.color};">
-                  <i data-lucide="${cfg.icon}" style="width: 20px; height: 20px;"></i>
+                <div class="group-card-icon-wrap" style="background: ${meta.color}22; color: ${meta.color};">
+                  <i data-lucide="${meta.icon}" style="width: 20px; height: 20px;"></i>
                 </div>
                 <div style="min-width: 0; flex: 1;">
                   <div class="group-card-name" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
                   <div class="group-card-sub">
-                    <span class="term-badge">${cfg.label}</span>
+                    <span class="term-badge">${meta.label}</span>
                     <span>${qty} ${escapeHTML(item.unit || '')}</span>
                     ${item.location ? `<span>• ${escapeHTML(item.location)}</span>` : ''}
                   </div>
@@ -3608,7 +3662,42 @@ const UIAccounts = {
           </div>
         `;
       }).join('');
+
+      const groupPnl = Math.round(groupCurTotal - groupBuyTotal);
+      const groupPnlPct = groupBuyTotal > 0 ? ((groupPnl / groupBuyTotal) * 100).toFixed(1) : 0;
+      const isGroupProf = groupPnl >= 0;
+      const groupSign = isGroupProf ? '+' : '';
+
+      html += `
+        <div class="asset-type-group">
+          <div class="asset-type-header">
+            <div class="asset-type-title-wrap">
+              <div class="asset-type-icon" style="background: ${meta.color}22; color: ${meta.color};">
+                <i data-lucide="${meta.icon}" style="width: 16px; height: 16px;"></i>
+              </div>
+              <div class="asset-type-name-info">
+                <span class="asset-type-title">${meta.label}</span>
+                <span class="group-count-badge">${items.length}</span>
+              </div>
+            </div>
+            <div class="asset-type-header-stats">
+              <span class="asset-type-subtotal stat-amount">${new Intl.NumberFormat('vi-VN').format(groupCurTotal)}đ</span>
+              ${groupBuyTotal > 0 ? `
+                <span class="asset-type-pnl stat-amount ${isGroupProf ? 'profit' : 'loss'}">
+                  ${groupSign}${new Intl.NumberFormat('vi-VN').format(groupPnl)}đ (${groupSign}${groupPnlPct}%)
+                </span>
+              ` : ''}
+            </div>
+          </div>
+          <div class="asset-type-items-list">
+            ${itemsHtml}
+          </div>
+        </div>
+      `;
     }
+
+    container.innerHTML = html;
+    if (window.lucide) lucide.createIcons();
   },
 
     /* ==================== RENDER DANH SÁCH TÀI KHOẢN ==================== */
@@ -3634,7 +3723,14 @@ const UIAccounts = {
 
     // 1. Render danh sách tài khoản ĐANG HOẠT ĐỘNG
     if (activeAccounts.length === 0) {
-      container.innerHTML = '';
+      container.innerHTML = `
+        <div class="accounts-group-empty-state">
+          <div class="empty-icon-wrap" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
+            <i data-lucide="wallet" style="width: 22px; height: 22px;"></i>
+          </div>
+          <p class="empty-text">Chưa có tài khoản chi tiêu nào</p>
+        </div>
+      `;
     } else {
       let html = '';
       activeAccounts.forEach((a, index) => {
