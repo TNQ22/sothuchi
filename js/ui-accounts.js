@@ -2210,11 +2210,13 @@ const UIAccounts = {
     // Auto price row visibility & status
     const autoPriceRow = document.getElementById('asset-auto-price-row');
     const autoStatusEl = document.getElementById('label-auto-price-status');
-    const isLiveSupported = assetType === 'foreign_currency' || assetType === 'crypto';
+    const isLiveSupported = assetType === 'foreign_currency' || assetType === 'crypto' || assetType === 'precious_metal';
     if (autoPriceRow) {
       autoPriceRow.style.display = isLiveSupported ? 'flex' : 'none';
       if (autoStatusEl) {
-        autoStatusEl.textContent = assetType === 'crypto' ? 'Tự động lấy giá Crypto trực tuyến' : 'Tự động lấy tỷ giá ngoại tệ mới nhất';
+        if (assetType === 'crypto') autoStatusEl.textContent = 'Tự động lấy giá Crypto trực tuyến';
+        else if (assetType === 'precious_metal') autoStatusEl.textContent = 'Tự động lấy giá Vàng/Bạc theo thị trường';
+        else autoStatusEl.textContent = 'Tự động lấy tỷ giá ngoại tệ mới nhất';
       }
     }
 
@@ -2549,6 +2551,10 @@ const UIAccounts = {
       }
       if (subTypeSelect) subTypeSelect.value = val;
 
+      if (['foreign_currency', 'crypto', 'precious_metal'].includes(assetType)) {
+        this.fetchLiveMarketPrice(false);
+      }
+
       if (nameInput) {
         const curName = nameInput.value.trim();
         const autoNames = [
@@ -2599,6 +2605,12 @@ const UIAccounts = {
     if (!select) return;
     const list = this.ASSET_SUBTYPES[assetType] || this.ASSET_SUBTYPES.real_estate;
     select.innerHTML = list.map(x => `<option value="${x.id}">${escapeHTML(x.name)}</option>`).join('');
+    select.onchange = () => {
+      const aType = document.getElementById('asset-type-input')?.value;
+      if (['foreign_currency', 'crypto', 'precious_metal'].includes(aType)) {
+        this.fetchLiveMarketPrice(false);
+      }
+    };
   },
 
   openAssetSourcePicker() {
@@ -2954,6 +2966,103 @@ const UIAccounts = {
   _rateCache: null,
   _rateCacheTime: 0,
 
+  /* Lấy giá kim loại quý (Vàng, Bạc, Bạch kim) trực tuyến */
+  async getPreciousMetalPrice(subType = 'sjc_gold', unit = 'Chỉ') {
+    const fx = await this.getLatestFxRates();
+    const usdVnd = fx.VND || 25900;
+
+    let ounceGoldUsd = 0;
+    let ounceSilverUsd = 0;
+    let ouncePlatUsd = 0;
+
+    // 1. Lấy giá vàng từ Binance PAXG (1 PAXG = 1 troy ounce Vàng 999.9)
+    try {
+      const bRes = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=PAXGUSDT');
+      if (bRes.ok) {
+        const bData = await bRes.json();
+        if (bData && bData.price) ounceGoldUsd = Number(bData.price);
+      }
+    } catch (e) {
+      console.warn('Binance PAXG error, fallback to Fawaz Ahmed API:', e);
+    }
+
+    // 2. Fallback giá vàng & lấy thêm Bạc, Bạch kim từ jsDelivr currency-api
+    try {
+      if (!ounceGoldUsd) {
+        const gRes = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/xau.json');
+        if (gRes.ok) {
+          const gData = await gRes.json();
+          if (gData?.xau?.usd) ounceGoldUsd = Number(gData.xau.usd);
+        }
+      }
+
+      if (subType === 'silver') {
+        const sRes = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/xag.json');
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          if (sData?.xag?.usd) ounceSilverUsd = Number(sData.xag.usd);
+        }
+      } else if (subType === 'platinum') {
+        const pRes = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/xpt.json');
+        if (pRes.ok) {
+          const pData = await pRes.json();
+          if (pData?.xpt?.usd) ouncePlatUsd = Number(pData.xpt.usd);
+        }
+      }
+    } catch (e) {
+      console.warn('Metal currency-api fallback error:', e);
+    }
+
+    // Giá mặc định dự phòng nếu mất mạng hoàn toàn
+    if (!ounceGoldUsd) ounceGoldUsd = 4150;
+    if (!ounceSilverUsd) ounceSilverUsd = 58;
+    if (!ouncePlatUsd) ouncePlatUsd = 1680;
+
+    // 1 troy ounce = 31.1034768 gram
+    // 1 lượng (cây) = 37.5 gram = 1.205653 ounce
+    // 1 chỉ = 3.75 gram = 0.120565 ounce
+    let baseOunceUsd = ounceGoldUsd;
+    let qualityRatio = 1.0; // Hệ số hàm lượng
+
+    if (subType === 'sjc_gold') {
+      baseOunceUsd = ounceGoldUsd;
+      qualityRatio = 1.05; // Vàng miếng SJC trong nước có thương hiệu / chênh lệch chuẩn
+    } else if (subType === 'ring_gold') {
+      baseOunceUsd = ounceGoldUsd;
+      qualityRatio = 1.0; // Vàng nhẫn tròn trơn 9999 (24K)
+    } else if (subType === 'white_gold') {
+      baseOunceUsd = ounceGoldUsd;
+      qualityRatio = 0.75; // Vàng tây 18K (75%)
+    } else if (subType === 'silver') {
+      baseOunceUsd = ounceSilverUsd;
+      qualityRatio = 1.0;
+    } else if (subType === 'platinum') {
+      baseOunceUsd = ouncePlatUsd;
+      qualityRatio = 1.0;
+    }
+
+    const priceOunceVnd = baseOunceUsd * usdVnd * qualityRatio;
+    const priceLuongVnd = priceOunceVnd * (37.5 / 31.1034768);
+    const priceChiVnd = priceLuongVnd / 10;
+    const priceGramVnd = priceOunceVnd / 31.1034768;
+
+    const u = (unit || '').toLowerCase().trim();
+    if (u === 'lượng' || u === 'cây' || u === 'luong' || u === 'cay') {
+      return Math.round(priceLuongVnd);
+    } else if (u === 'chỉ' || u === 'chi') {
+      return Math.round(priceChiVnd);
+    } else if (u === 'gram' || u === 'g') {
+      return Math.round(priceGramVnd);
+    } else if (u === 'kg' || u === 'kilogram') {
+      return Math.round(priceGramVnd * 1000);
+    } else if (u === 'ounce' || u === 'oz') {
+      return Math.round(priceOunceVnd);
+    }
+
+    // Mặc định tính theo Chỉ (đơn vị phổ biến nhất ở VN)
+    return Math.round(priceChiVnd);
+  },
+
   async getLatestFxRates() {
     const now = Date.now();
     // Cache trong 5 phút
@@ -3009,7 +3118,7 @@ const UIAccounts = {
     const spinIcon = document.getElementById('icon-auto-price-spin');
     const autoStatusEl = document.getElementById('label-auto-price-status');
 
-    if (!['foreign_currency', 'crypto'].includes(assetType) || !curPriceInput) return;
+    if (!['foreign_currency', 'crypto', 'precious_metal'].includes(assetType) || !curPriceInput) return;
 
     if (spinIcon) spinIcon.classList.add('rotating');
     if (autoStatusEl) autoStatusEl.textContent = 'Đang tải giá mới nhất...';
@@ -3024,7 +3133,19 @@ const UIAccounts = {
       let calculatedPrice = 0;
       let labelName = subType;
 
-      if (assetType === 'foreign_currency') {
+      if (assetType === 'precious_metal') {
+        const metalSub = document.getElementById('asset-subtype-select')?.value || 'sjc_gold';
+        const metalUnit = (unitSelect && unitSelect !== 'CUSTOM' ? unitSelect : customUnit) || 'Chỉ';
+        const subNames = {
+          sjc_gold: 'Vàng SJC',
+          ring_gold: 'Vàng nhẫn 9999',
+          white_gold: 'Vàng tây 18K',
+          silver: 'Bạc',
+          platinum: 'Bạch kim'
+        };
+        labelName = `${subNames[metalSub] || 'Kim loại quý'} (/${metalUnit})`;
+        calculatedPrice = await this.getPreciousMetalPrice(metalSub, metalUnit);
+      } else if (assetType === 'foreign_currency') {
         labelName = subType;
         if (subType === 'USD') {
           calculatedPrice = Math.round(usdVnd);
@@ -3119,10 +3240,10 @@ const UIAccounts = {
 
     try {
       const allAssets = await db.assets.where('isDeleted').equals(0).toArray();
-      const liveItems = allAssets.filter(a => a.status !== 'liquidated' && (a.assetType === 'foreign_currency' || a.assetType === 'crypto'));
+      const liveItems = allAssets.filter(a => a.status !== 'liquidated' && ['foreign_currency', 'crypto', 'precious_metal'].includes(a.assetType));
 
       if (liveItems.length === 0) {
-        showToast('Chưa có tài sản Ngoại tệ hoặc Crypto nào để làm mới', 'info');
+        showToast('Chưa có tài sản Ngoại tệ, Crypto hoặc Kim loại quý nào để làm mới', 'info');
         return;
       }
 
@@ -3133,23 +3254,27 @@ const UIAccounts = {
 
       for (const item of liveItems) {
         let newPrice = 0;
-        const sub = (item.subType || '').toUpperCase();
+        const sub = item.subType || '';
 
-        if (item.assetType === 'foreign_currency') {
-          if (sub === 'USD') newPrice = usdVnd;
-          else if (rates[sub]) newPrice = usdVnd / rates[sub];
+        if (item.assetType === 'precious_metal') {
+          newPrice = await this.getPreciousMetalPrice(sub, item.unit || 'Chỉ');
+        } else if (item.assetType === 'foreign_currency') {
+          const fSub = sub.toUpperCase();
+          if (fSub === 'USD') newPrice = usdVnd;
+          else if (rates[fSub]) newPrice = usdVnd / rates[fSub];
         } else if (item.assetType === 'crypto') {
-          if (sub === 'USDT') {
+          const cSub = sub.toUpperCase();
+          if (cSub === 'USDT') {
             newPrice = usdVnd;
-          } else if (sub !== 'OTHER_CRYPTO') {
+          } else if (cSub !== 'OTHER_CRYPTO') {
             try {
-              const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${sub}USDT`);
+              const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${cSub}USDT`);
               if (res.ok) {
                 const d = await res.json();
                 if (d && d.price) newPrice = Number(d.price) * usdVnd;
               }
             } catch (e) {
-              console.warn('Live refresh err for ' + sub, e);
+              console.warn('Live refresh err for ' + cSub, e);
             }
           }
         }
@@ -3761,7 +3886,7 @@ const UIAccounts = {
                 </div>
               </div>
               <div class="account-balance-wrapper">
-                <span class="account-balance ${a.balance < 0 ? 'expense-text' : ''}">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
+                <span class="account-balance stat-amount ${a.balance < 0 ? 'expense-text' : ''}">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
               </div>
             </div>
 
@@ -3817,7 +3942,7 @@ const UIAccounts = {
                   </div>
                 </div>
                 <div class="account-balance-wrapper">
-                  <span class="account-balance" style="color: var(--text-muted);">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
+                  <span class="account-balance stat-amount" style="color: var(--text-muted);">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
                 </div>
               </div>
 

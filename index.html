@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.35">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.36">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -274,22 +274,22 @@
             <div class="networth-mini-pill">
               <span class="mini-pill-dot" style="background: #10b981;"></span>
               <span class="mini-pill-label">Chi tiêu:</span>
-              <span class="mini-pill-val stat-amount" id="networth-mini-expense">0đ</span>
+              <span class="mini-pill-val stat-amount" id="networth-mini-expense" style="color: #10b981;">0đ</span>
             </div>
             <div class="networth-mini-pill">
               <span class="mini-pill-dot" style="background: #0ea5e9;"></span>
               <span class="mini-pill-label">Tiết kiệm:</span>
-              <span class="mini-pill-val stat-amount" id="networth-mini-savings">0đ</span>
+              <span class="mini-pill-val stat-amount" id="networth-mini-savings" style="color: #0ea5e9;">0đ</span>
             </div>
             <div class="networth-mini-pill">
               <span class="mini-pill-dot" style="background: #f59e0b;"></span>
               <span class="mini-pill-label">Tích lũy:</span>
-              <span class="mini-pill-val stat-amount" id="networth-mini-accumulations">0đ</span>
+              <span class="mini-pill-val stat-amount" id="networth-mini-accumulations" style="color: #f59e0b;">0đ</span>
             </div>
             <div class="networth-mini-pill">
               <span class="mini-pill-dot" style="background: #a855f7;"></span>
               <span class="mini-pill-label">Tài sản:</span>
-              <span class="mini-pill-val stat-amount" id="networth-mini-assets">0đ</span>
+              <span class="mini-pill-val stat-amount" id="networth-mini-assets" style="color: #a855f7;">0đ</span>
             </div>
           </div>
         </div>
@@ -306,8 +306,8 @@
                 <span class="accounts-group-subtitle stat-amount" id="label-expense-acc-total">0đ</span>
               </div>
             </div>
-            <button type="button" class="btn-group-action" onclick="UIAccounts.openAddModal()" title="Thêm tài khoản chi tiêu">
-              <i data-lucide="plus" style="width: 15px; height: 15px;"></i> Thêm ví
+            <button type="button" class="btn-group-circle-add" onclick="UIAccounts.openAddModal()" title="Thêm ví chi tiêu" aria-label="Thêm ví chi tiêu">
+              <i data-lucide="plus"></i>
             </button>
           </div>
 
@@ -338,8 +338,8 @@
                 <span class="accounts-group-subtitle stat-amount" id="label-savings-total">0đ</span>
               </div>
             </div>
-            <button type="button" class="btn-group-action" onclick="UIAccounts.openSavingsForm()" title="Thêm sổ tiết kiệm">
-              <i data-lucide="plus" style="width: 15px; height: 15px;"></i> Thêm sổ
+            <button type="button" class="btn-group-circle-add" onclick="UIAccounts.openSavingsForm()" title="Thêm sổ tiết kiệm" aria-label="Thêm sổ tiết kiệm">
+              <i data-lucide="plus"></i>
             </button>
           </div>
 
@@ -370,8 +370,8 @@
                 <span class="accounts-group-subtitle stat-amount" id="label-accumulations-total">0đ</span>
               </div>
             </div>
-            <button type="button" class="btn-group-action" onclick="UIAccounts.openAccumulationForm()" title="Thêm mục tiêu tích lũy">
-              <i data-lucide="plus" style="width: 15px; height: 15px;"></i> Thêm mục tiêu
+            <button type="button" class="btn-group-circle-add" onclick="UIAccounts.openAccumulationForm()" title="Thêm mục tiêu tích lũy" aria-label="Thêm mục tiêu tích lũy">
+              <i data-lucide="plus"></i>
             </button>
           </div>
 
@@ -390,12 +390,12 @@
                 <span class="accounts-group-subtitle stat-amount" id="label-assets-total">0đ</span>
               </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <button type="button" class="btn-icon" style="width: 32px; height: 32px; border-radius: 50%; background: var(--bg-hover); color: #0ea5e9; border: 1px solid var(--border-color);" onclick="UIAccounts.refreshAllLivePrices()" title="Cập nhật tỷ giá & giá Crypto trực tuyến">
-                <i data-lucide="refresh-cw" id="icon-refresh-all-assets" style="width: 15px; height: 15px;"></i>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="btn-group-circle-add" style="color: #0ea5e9;" onclick="UIAccounts.refreshAllLivePrices()" title="Cập nhật giá ngoại tệ, vàng/bạc & crypto trực tuyến" aria-label="Làm mới giá">
+                <i data-lucide="refresh-cw" id="icon-refresh-all-assets"></i>
               </button>
-              <button type="button" class="btn-group-action" onclick="UIAccounts.openAssetTypePicker()" title="Thêm tài sản">
-                <i data-lucide="plus" style="width: 15px; height: 15px;"></i> Thêm tài sản
+              <button type="button" class="btn-group-circle-add" onclick="UIAccounts.openAssetTypePicker()" title="Thêm tài sản" aria-label="Thêm tài sản">
+                <i data-lucide="plus"></i>
               </button>
             </div>
           </div>

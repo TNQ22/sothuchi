@@ -64,7 +64,7 @@ const UITransactions = {
       });
     }
 
-    // Popup Keypad Button Handlers (Hỗ trợ nhạy cả pointerdown và click cho mọi thiết bị)
+    // Popup Keypad Button Handlers (Ngăn chặn dội phím / double-trigger trên cả desktop & mobile)
     const triggerKey = (btn, e) => {
       if (e && e.cancelable) {
         try { e.preventDefault(); } catch (_) {}
@@ -76,17 +76,20 @@ const UITransactions = {
     };
 
     document.querySelectorAll('#modal-keypad .keypad-btn').forEach(btn => {
-      let pointerHandled = false;
+      let lastTouchTime = 0;
       btn.addEventListener('pointerdown', (e) => {
-        pointerHandled = true;
-        try { btn.setPointerCapture(e.pointerId); } catch (_) {}
-        triggerKey(btn, e);
-        setTimeout(() => { pointerHandled = false; }, 300);
+        if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+          lastTouchTime = Date.now();
+          triggerKey(btn, e);
+        }
       });
       btn.addEventListener('pointerup', () => btn.classList.remove('pressed'));
       btn.addEventListener('pointercancel', () => btn.classList.remove('pressed'));
       btn.addEventListener('click', (e) => {
-        if (pointerHandled) return;
+        if (Date.now() - lastTouchTime < 450) {
+          if (e.cancelable) e.preventDefault();
+          return;
+        }
         triggerKey(btn, e);
       });
     });
@@ -103,17 +106,20 @@ const UITransactions = {
     };
 
     document.querySelectorAll('#modal-keypad .keypad-chip').forEach(chip => {
-      let pointerHandled = false;
+      let lastTouchTime = 0;
       chip.addEventListener('pointerdown', (e) => {
-        pointerHandled = true;
-        try { chip.setPointerCapture(e.pointerId); } catch (_) {}
-        triggerChip(chip, e);
-        setTimeout(() => { pointerHandled = false; }, 300);
+        if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+          lastTouchTime = Date.now();
+          triggerChip(chip, e);
+        }
       });
       chip.addEventListener('pointerup', () => chip.classList.remove('pressed'));
       chip.addEventListener('pointercancel', () => chip.classList.remove('pressed'));
       chip.addEventListener('click', (e) => {
-        if (pointerHandled) return;
+        if (Date.now() - lastTouchTime < 450) {
+          if (e.cancelable) e.preventDefault();
+          return;
+        }
         triggerChip(chip, e);
       });
     });
@@ -521,7 +527,7 @@ const UITransactions = {
 
   handleKeypadQuickAdd(val) {
     const now = Date.now();
-    if (this._lastQuickAddVal === val && now - (this._lastQuickAddTime || 0) < 60) {
+    if (this._lastQuickAddVal === val && now - (this._lastQuickAddTime || 0) < 350) {
       return;
     }
     this._lastQuickAddVal = val;

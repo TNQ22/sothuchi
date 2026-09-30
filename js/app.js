@@ -240,8 +240,14 @@ class App {
       if (window.lucide) lucide.createIcons();
     }
 
-    // Mask numbers with ****** instead of eye-straining blur
-    document.querySelectorAll('.stat-amount, .tx-amount, .debt-amounts div div:nth-child(2)').forEach(el => {
+    const networthEyeIcon = document.getElementById('account-privacy-eye-icon');
+    if (networthEyeIcon) {
+      networthEyeIcon.setAttribute('data-lucide', enabled ? 'eye-off' : 'eye');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    // Mask numbers with ****** instead of eye-straining blur (bao gồm số dư các ví/tài khoản chi tiêu)
+    document.querySelectorAll('.stat-amount, .tx-amount, .account-balance, .debt-amounts div div:nth-child(2)').forEach(el => {
       if (enabled) {
         if (!el.dataset.rawAmount && el.textContent.trim() !== '******') {
           el.dataset.rawAmount = el.textContent.trim();
