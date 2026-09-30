@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.33">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.34">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -668,12 +668,12 @@
 
               <!-- Ô 3: THÔNG TIN TÀI KHOẢN - NGÀY GIỜ - GHI CHÚ -->
               <div class="tx-section-card tx-details-card">
-                <!-- Hàng 1: Tài khoản trích tiền (custom dropdown inline) -->
-                <div class="tx-info-row tx-account-dropdown-wrapper" id="tx-account-row" onclick="UITransactions.toggleAccountDropdown(event)">
+                <!-- Hàng 1: Nguồn tiền / Tài khoản trích tiền (Chạm mở Popup Bottom-sheet) -->
+                <div class="tx-info-row" id="tx-account-row" onclick="UITransactions.openSourceAccountPicker()" style="cursor: pointer;">
                   <div class="tx-info-icon-bubble" id="tx-account-icon-bubble">
                     <i data-lucide="wallet"></i>
                   </div>
-                  <div class="tx-info-content">
+                  <div class="tx-info-content" style="min-width: 0;">
                     <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
                       <span id="tx-account-dir-tag" class="tx-transfer-dir-tag from" style="display: none;">Từ tài khoản</span>
                       <div id="tx-account-label" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">Chọn tài khoản</div>
@@ -682,14 +682,10 @@
                     <!-- Hidden native select for form submission -->
                     <select id="tx-account-select" required style="display:none;"></select>
                   </div>
-                  <i data-lucide="chevron-down" class="tx-info-chevron" id="tx-account-chevron"></i>
-                </div>
-                <!-- Account dropdown list (inline, no page navigation) -->
-                <div id="tx-account-dropdown-menu" class="tx-account-dropdown-menu" style="display:none;">
-                  <div id="tx-account-dropdown-list" class="tx-account-list"></div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron" id="tx-account-chevron"></i>
                 </div>
 
-                <!-- Hàng chuyển đến tài khoản (khi là chuyển khoản) -->
+                <!-- Hàng chuyển đến tài khoản (khi là chuyển khoản - Chạm mở Popup Bottom-sheet) -->
                 <div id="tx-transfer-target-group" style="display: none;">
                   <div class="tx-transfer-divider">
                     <div class="tx-transfer-divider-line"></div>
@@ -699,11 +695,11 @@
                     <div class="tx-transfer-divider-line"></div>
                   </div>
 
-                  <div class="tx-info-row tx-account-dropdown-wrapper" id="tx-to-account-row" onclick="UITransactions.toggleToAccountDropdown(event)">
+                  <div class="tx-info-row" id="tx-to-account-row" onclick="UITransactions.openToAccountPicker()" style="cursor: pointer;">
                     <div class="tx-info-icon-bubble" id="tx-to-account-icon-bubble">
                       <i data-lucide="landmark"></i>
                     </div>
-                    <div class="tx-info-content">
+                    <div class="tx-info-content" style="min-width: 0;">
                       <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
                         <span class="tx-transfer-dir-tag to">Đến tài khoản</span>
                         <div id="tx-to-account-label" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">Chọn tài khoản nhận</div>
@@ -712,11 +708,7 @@
                       <!-- Hidden native select for destination account -->
                       <select id="tx-to-account-select" style="display:none;"></select>
                     </div>
-                    <i data-lucide="chevron-down" class="tx-info-chevron" id="tx-to-account-chevron"></i>
-                  </div>
-                  <!-- To Account dropdown list -->
-                  <div id="tx-to-account-dropdown-menu" class="tx-account-dropdown-menu" style="display:none;">
-                    <div id="tx-to-account-dropdown-list" class="tx-account-list"></div>
+                    <i data-lucide="chevron-right" class="tx-info-chevron" id="tx-to-account-chevron"></i>
                   </div>
                 </div>
 
@@ -1444,16 +1436,16 @@
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
-                <!-- Nguồn tiền khởi điểm -->
-                <div class="tx-info-row">
-                  <div class="tx-info-icon-bubble" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+                <!-- Nguồn tiền khởi điểm (Kèm logo) -->
+                <div class="tx-info-row" id="acc-source-account-row" onclick="UIAccounts.openAccumulationSourcePicker()" style="cursor: pointer;">
+                  <div class="tx-info-icon-bubble" id="acc-source-logo-preview" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
                     <i data-lucide="arrow-down-left"></i>
                   </div>
-                  <div class="tx-info-content">
+                  <div class="tx-info-content" style="min-width: 0;">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Trích tiền khởi điểm từ ví</div>
-                    <select id="acc-source-account-select" class="acc-styled-select">
-                      <option value="">Không trích tiền (Đã có sẵn)</option>
-                    </select>
+                    <div id="acc-source-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Không trích tiền (Đã có sẵn)</div>
+                    <div id="acc-source-account-balance" style="font-size: 0.76rem; color: var(--text-muted);">Không trừ số dư ví</div>
+                    <input type="hidden" id="acc-source-account-select" value="">
                   </div>
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
@@ -2702,18 +2694,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.33"></script>
+  <script src="./js/backup.js?v=1.9.34"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.33"></script>
-  <script src="./js/ui-transactions.js?v=1.9.33"></script>
-  <script src="./js/ui-debts.js?v=1.9.33"></script>
-  <script src="./js/ui-accounts.js?v=1.9.33"></script>
-  <script src="./js/ui-budgets.js?v=1.9.33"></script>
-  <script src="./js/ui-analytics.js?v=1.9.33"></script>
-  <script src="./js/ui-settings.js?v=1.9.33"></script>
+  <script src="./js/ui-calendar.js?v=1.9.34"></script>
+  <script src="./js/ui-transactions.js?v=1.9.34"></script>
+  <script src="./js/ui-debts.js?v=1.9.34"></script>
+  <script src="./js/ui-accounts.js?v=1.9.34"></script>
+  <script src="./js/ui-budgets.js?v=1.9.34"></script>
+  <script src="./js/ui-analytics.js?v=1.9.34"></script>
+  <script src="./js/ui-settings.js?v=1.9.34"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.33"></script>
+  <script src="./js/app.js?v=1.9.34"></script>
 </body>
 </html>
