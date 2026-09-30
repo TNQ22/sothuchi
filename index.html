@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.36">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.37">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1561,7 +1561,17 @@
 
               <!-- THÔNG TIN TÀI SẢN -->
               <div class="tx-section-card tx-details-card">
-                <input type="hidden" id="asset-subtype-select" value="">
+                <!-- Phân loại chi tiết (Vàng SJC, Vàng nhẫn 9999, Bạc, Đất nền, Căn hộ...) -->
+                <div class="tx-info-row" id="asset-subtype-row">
+                  <div class="tx-info-icon-bubble" id="asset-subtype-bubble" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                    <i data-lucide="tag"></i>
+                  </div>
+                  <div class="tx-info-content" style="flex: 1; min-width: 0;">
+                    <div id="asset-subtype-label" style="font-size: 0.74rem; color: var(--text-muted);">Phân loại chi tiết *</div>
+                    <select id="asset-subtype-select" class="acc-styled-select" style="margin-top: 2px;">
+                    </select>
+                  </div>
+                </div>
 
                 <!-- Tên tài sản -->
                 <div class="tx-info-row">

@@ -2262,6 +2262,14 @@ const UIAccounts = {
       if (extraCostsText) extraCostsText.textContent = '0';
       document.getElementById('asset-is-gift-input').checked = false;
       document.getElementById('asset-include-networth-input').checked = true;
+
+      // Gợi ý tên tài sản theo phân loại được chọn
+      const subSelect = document.getElementById('asset-subtype-select');
+      const nameInput = document.getElementById('asset-name-input');
+      if (subSelect && subSelect.options.length > 0 && nameInput && !nameInput.value) {
+        nameInput.value = subSelect.options[0].text;
+      }
+
       if (isLiveSupported) {
         this.fetchLiveMarketPrice(false);
       }
@@ -2602,11 +2610,54 @@ const UIAccounts = {
 
   populateAssetSubTypes(assetType) {
     const select = document.getElementById('asset-subtype-select');
+    const row = document.getElementById('asset-subtype-row');
+    const label = document.getElementById('asset-subtype-label');
+    const bubble = document.getElementById('asset-subtype-bubble');
     if (!select) return;
-    const list = this.ASSET_SUBTYPES[assetType] || this.ASSET_SUBTYPES.real_estate;
+
+    // Đối với Ngoại tệ và Crypto, danh sách đồng tiền đã nằm ở ô chọn Đơn vị
+    if (assetType === 'foreign_currency' || assetType === 'crypto') {
+      if (row) row.style.display = 'none';
+      return;
+    }
+
+    if (row) row.style.display = 'flex';
+    if (label) {
+      if (assetType === 'precious_metal') label.textContent = 'Phân loại kim loại quý *';
+      else if (assetType === 'real_estate') label.textContent = 'Loại hình BĐS *';
+      else label.textContent = 'Phân loại chi tiết *';
+    }
+
+    if (bubble) {
+      if (assetType === 'precious_metal') {
+        bubble.innerHTML = '<i data-lucide="sparkles"></i>';
+        bubble.style.background = 'rgba(245, 158, 11, 0.15)';
+        bubble.style.color = '#f59e0b';
+      } else if (assetType === 'real_estate') {
+        bubble.innerHTML = '<i data-lucide="home"></i>';
+        bubble.style.background = 'rgba(16, 185, 129, 0.15)';
+        bubble.style.color = '#10b981';
+      } else {
+        bubble.innerHTML = '<i data-lucide="tag"></i>';
+        bubble.style.background = 'rgba(139, 92, 246, 0.15)';
+        bubble.style.color = '#8b5cf6';
+      }
+      if (window.lucide) lucide.createIcons();
+    }
+
+    const list = this.ASSET_SUBTYPES[assetType] || this.ASSET_SUBTYPES.other;
     select.innerHTML = list.map(x => `<option value="${x.id}">${escapeHTML(x.name)}</option>`).join('');
+
     select.onchange = () => {
       const aType = document.getElementById('asset-type-input')?.value;
+      const nameInput = document.getElementById('asset-name-input');
+      const selectedItem = list.find(x => x.id === select.value);
+      if (selectedItem && nameInput) {
+        const allSubNames = Object.values(this.ASSET_SUBTYPES).flat().map(s => s.name);
+        if (!nameInput.value || allSubNames.includes(nameInput.value.trim())) {
+          nameInput.value = selectedItem.name;
+        }
+      }
       if (['foreign_currency', 'crypto', 'precious_metal'].includes(aType)) {
         this.fetchLiveMarketPrice(false);
       }
