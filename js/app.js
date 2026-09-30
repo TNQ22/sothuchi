@@ -177,6 +177,7 @@ class App {
     // 6. Setup Touch Swipe Gestures (Swipe from left to right to go back)
     this.setupSwipeToBack();
     this.setupModalSwipeGestures();
+    this.setupModalBackdropDismiss();
 
     // 7. Setup Global Shortcuts & Listeners
     this.setupGlobalShortcuts();
@@ -804,8 +805,11 @@ class App {
       }
 
       if (e.key === 'Escape') {
-        // Close any open modals
-        document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+        // Close any open modal / popup / sheet
+        const openModal = document.querySelector('.modal-overlay.open, .keypad-popup-overlay.open, .custom-cal-overlay.open');
+        if (openModal) {
+          this.dismissModal(openModal);
+        }
       }
     });
   }
@@ -888,6 +892,123 @@ class App {
     }
   }
 
+    /**
+   * Universal Modal / Popup / Bottom Sheet Dismissal
+   * Safely closes any modal, action sheet, keypad, or calendar across the entire app
+   */
+  dismissModal(overlay) {
+    if (!overlay) return;
+    const id = overlay.id;
+    try {
+      switch (id) {
+        case 'modal-source-account-picker':
+          if (window.UIAccounts) window.UIAccounts.closeSourceAccountPicker();
+          break;
+        case 'modal-account-actions':
+          if (window.UIAccounts) window.UIAccounts.closeActionSheet();
+          break;
+        case 'modal-account-statement':
+          if (window.UIAccounts) window.UIAccounts.closeStatementModal();
+          break;
+        case 'modal-account-create-type':
+          if (window.UIAccounts) window.UIAccounts.closeCreateTypeSheet();
+          break;
+        case 'modal-asset-type-picker':
+          if (window.UIAccounts) window.UIAccounts.closeAssetTypePicker();
+          break;
+        case 'modal-settle-saving':
+          if (window.UIAccounts) window.UIAccounts.closeSettleSavingModal();
+          break;
+        case 'modal-deposit-accumulation':
+          if (window.UIAccounts) window.UIAccounts.closeDepositAccModal();
+          break;
+        case 'modal-liquidate-asset':
+          if (window.UIAccounts) window.UIAccounts.closeLiquidateModal();
+          break;
+        case 'modal-item-actions':
+          if (window.UIAccounts) window.UIAccounts.closeItemActionSheet();
+          break;
+        case 'modal-category-manager':
+          if (window.UITransactions) window.UITransactions.closeCategoryManager();
+          break;
+        case 'modal-debt':
+          if (window.UIDebts) window.UIDebts.closeModal();
+          break;
+        case 'modal-debt-payment':
+          if (window.UIDebts) window.UIDebts.closePaymentModal();
+          break;
+        case 'modal-budget':
+          if (window.UIBudgets) window.UIBudgets.closeModal();
+          break;
+        case 'modal-keypad':
+          if (window.UITransactions) window.UITransactions.closeKeypad();
+          break;
+        case 'modal-custom-calendar':
+          if (window.UICalendar) window.UICalendar.close();
+          break;
+        default:
+          overlay.classList.remove('open');
+          break;
+      }
+    } catch (err) {
+      console.warn('Error during modal dismissal:', err);
+    }
+    overlay.classList.remove('open');
+  }
+
+  /**
+   * Tap / Click outside popup whitespace to dismiss
+   * Applies to ALL modals, bottom sheets, keypad, and calendars app-wide.
+   */
+  setupModalBackdropDismiss() {
+    // 1. Direct overlay listeners
+    const overlays = document.querySelectorAll('.modal-overlay, .keypad-popup-overlay, .custom-cal-overlay');
+    overlays.forEach(overlay => {
+      let isPointerDownOutside = false;
+
+      overlay.addEventListener('pointerdown', (e) => {
+        const inside = e.target.closest('.modal-dialog, .keypad-popup-sheet, .custom-cal-container');
+        isPointerDownOutside = !inside;
+      });
+
+      overlay.addEventListener('click', (e) => {
+        const inside = e.target.closest('.modal-dialog, .keypad-popup-sheet, .custom-cal-container');
+        if (isPointerDownOutside && !inside) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.dismissModal(overlay);
+        }
+        isPointerDownOutside = false;
+      });
+    });
+
+    // 2. Global document listener fallback for dynamically created overlays or edge touch events
+    let globalOutsideTarget = null;
+    document.addEventListener('pointerdown', (e) => {
+      const openModal = document.querySelector('.modal-overlay.open, .keypad-popup-overlay.open, .custom-cal-overlay.open');
+      if (openModal) {
+        const inside = e.target.closest('.modal-dialog, .keypad-popup-sheet, .custom-cal-container');
+        if (!inside && (e.target === openModal || openModal.contains(e.target))) {
+          globalOutsideTarget = openModal;
+        } else {
+          globalOutsideTarget = null;
+        }
+      } else {
+        globalOutsideTarget = null;
+      }
+    }, { passive: true });
+
+    document.addEventListener('click', (e) => {
+      if (globalOutsideTarget && globalOutsideTarget.classList.contains('open')) {
+        const inside = e.target.closest('.modal-dialog, .keypad-popup-sheet, .custom-cal-container');
+        if (!inside) {
+          this.dismissModal(globalOutsideTarget);
+        }
+      }
+      globalOutsideTarget = null;
+    });
+  }
+
   setupModalSwipeGestures() {
 
     // Hỗ trợ vuốt xuống (hoặc vuốt sang phải) trên Modal/Action Sheet để đóng nhanh
@@ -922,14 +1043,7 @@ class App {
         const isSwipeRight = deltaX > 80 && Math.abs(deltaX) > Math.abs(deltaY) && startX < window.innerWidth * 0.4;
 
         if (isSwipeDown || isSwipeRight) {
-          overlay.classList.remove('open');
-          if (overlay.id === 'modal-account-actions' && window.UIAccounts) {
-            window.UIAccounts.closeActionSheet();
-          } else if (overlay.id === 'modal-account-statement' && window.UIAccounts) {
-            window.UIAccounts.closeStatementModal();
-          } else if (overlay.id === 'modal-account' && window.UIAccounts) {
-            window.UIAccounts.closeModal();
-          }
+          this.dismissModal(overlay);
         }
       }, { passive: true });
     });

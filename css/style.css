@@ -1148,6 +1148,9 @@ body:has(#view-account-provider.active) .app-header {
   visibility: hidden;
   pointer-events: none;
   transition: opacity 0.2s ease, visibility 0.2s ease;
+
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .modal-overlay.open {
@@ -1169,6 +1172,10 @@ body:has(#view-account-provider.active) .app-header {
   transform: scale(0.96);
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
+
+  cursor: default;
+  position: relative;
+  z-index: 1;
 }
 
 .modal-overlay.open .modal-dialog {
@@ -2597,6 +2604,9 @@ body:has(#view-account-provider.active) .app-header {
   visibility: hidden;
   transition: opacity 0.2s ease, visibility 0.2s ease;
   pointer-events: none;
+
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 .keypad-popup-overlay.open {
   opacity: 1;
@@ -2628,6 +2638,8 @@ body:has(#view-account-provider.active) .app-header {
   display: flex;
   flex-direction: column;
   gap: 10px;
+
+  cursor: default;
 }
 .keypad-popup-overlay.open .keypad-popup-sheet {
   transform: translateY(0);
@@ -2868,6 +2880,9 @@ body:has(#view-account-provider.active) .app-header {
   visibility: hidden;
   pointer-events: none;
   transition: opacity 0.22s ease, visibility 0.22s ease;
+
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .custom-cal-overlay.open {
@@ -2895,6 +2910,10 @@ body:has(#view-account-provider.active) .app-header {
   z-index: 2;
   transform: scale(0.95);
   transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+
+  cursor: default;
+  position: relative;
+  z-index: 1;
 }
 
 .custom-cal-overlay.open .custom-cal-container {
@@ -4552,4 +4571,19 @@ body:has(#view-account-provider.active) .app-header {
   background: rgba(79, 70, 229, 0.08);
   border-color: var(--primary);
   box-shadow: 0 0 0 1px var(--primary);
+}
+
+
+/* Modal Backdrop for Full Dimmed Area */
+.modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
