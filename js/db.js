@@ -471,6 +471,15 @@ async function addAccumulation(data) {
     updatedAt: now
   };
 
+  // Chống nhân đôi nếu submit liên tiếp trong vòng 2.5 giây
+  const recentAccDup = await db.accumulations
+    .filter(a => !a.isDeleted && a.name === accumulation.name && a.targetAmount === accumulation.targetAmount && Math.abs((a.updatedAt || 0) - now) < 2500)
+    .first();
+  if (recentAccDup) {
+    console.warn('Blocked duplicate accumulation submission:', accumulation.name);
+    return recentAccDup.id;
+  }
+
   await db.transaction('rw', db.accumulations, db.accounts, async () => {
     await db.accumulations.add(accumulation);
     // Trích tiền khởi điểm từ tài khoản nếu có chọn
@@ -573,6 +582,15 @@ async function addAsset(data) {
     isDeleted: 0,
     updatedAt: now
   };
+
+  // Chống nhân đôi nếu submit liên tiếp trong vòng 2.5 giây
+  const recentAssetDup = await db.assets
+    .filter(x => !x.isDeleted && x.name === asset.name && x.type === asset.type && Math.abs((x.updatedAt || 0) - now) < 2500)
+    .first();
+  if (recentAssetDup) {
+    console.warn('Blocked duplicate asset submission:', asset.name);
+    return recentAssetDup.id;
+  }
 
   await db.transaction('rw', db.assets, db.accounts, async () => {
     await db.assets.add(asset);

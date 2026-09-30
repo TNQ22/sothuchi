@@ -1504,7 +1504,7 @@ const UIAccounts = {
       document.getElementById('saving-name-input').value = saving.name || '';
       if (amountInput) amountInput.value = saving.depositAmount || saving.balance || 0;
       if (amountText) amountText.textContent = new Intl.NumberFormat('vi-VN').format(saving.depositAmount || saving.balance || 0);
-      if (depositDateInput) depositDateInput.value = saving.depositDate || todayStr;
+      this.setDateInputValue('saving-deposit-date-input', saving.depositDate || todayStr);
       if (termSelect) termSelect.value = saving.termMonths !== undefined ? saving.termMonths : 6;
       if (rateInput) rateInput.value = saving.interestRate !== undefined ? saving.interestRate : 6.5;
       document.getElementById('saving-interest-payment-select').value = saving.interestPaymentType || 'end';
@@ -1533,7 +1533,7 @@ const UIAccounts = {
       if (titleEl) titleEl.textContent = 'Thêm Sổ Tiết Kiệm';
       if (amountInput) amountInput.value = '0';
       if (amountText) amountText.textContent = '0';
-      if (depositDateInput) depositDateInput.value = todayStr;
+      this.setDateInputValue('saving-deposit-date-input', todayStr);
       if (termSelect) termSelect.value = '6';
       if (rateInput) rateInput.value = '6.5';
       if (bankCodeInput) bankCodeInput.value = '';
@@ -1584,7 +1584,7 @@ const UIAccounts = {
 
   calcSavingsPreview() {
     const amountVal = Number(document.getElementById('saving-amount-input')?.value || 0);
-    const depositDateStr = document.getElementById('saving-deposit-date-input')?.value;
+    const depositDateStr = this.getDateInputValue('saving-deposit-date-input');
     const termMonths = parseInt(document.getElementById('saving-term-select')?.value || '0', 10);
     const rate = parseFloat(document.getElementById('saving-interest-rate-input')?.value || '0');
 
@@ -1619,11 +1619,19 @@ const UIAccounts = {
   },
 
   async handleSavingsSubmit() {
-    const id = document.getElementById('saving-id-input')?.value;
-    const name = document.getElementById('saving-name-input')?.value.trim();
-    const amount = Number(document.getElementById('saving-amount-input')?.value || 0);
-    const bankCode = document.getElementById('saving-bank-code-input')?.value || '';
-    const depositDate = document.getElementById('saving-deposit-date-input')?.value;
+    if (this._isSubmittingSavings) return;
+    this._isSubmittingSavings = true;
+    const submitBtn = document.querySelector('#savings-form button[type="submit"]');
+    const headerBtn = document.querySelector('#view-savings-form .tx-header-done-btn');
+    if (submitBtn) submitBtn.disabled = true;
+    if (headerBtn) headerBtn.disabled = true;
+
+    try {
+      const id = document.getElementById('saving-id-input')?.value;
+      const name = document.getElementById('saving-name-input')?.value.trim();
+      const amount = Number(document.getElementById('saving-amount-input')?.value || 0);
+      const bankCode = document.getElementById('saving-bank-code-input')?.value || '';
+      const depositDate = this.getDateInputValue('saving-deposit-date-input');
     const termMonths = parseInt(document.getElementById('saving-term-select')?.value || '6', 10);
     const interestRate = parseFloat(document.getElementById('saving-interest-rate-input')?.value || '0');
     const interestPaymentType = document.getElementById('saving-interest-payment-select')?.value;
@@ -1685,6 +1693,11 @@ const UIAccounts = {
 
     this.closeSavingsForm();
     await window.app.refreshAll();
+    } finally {
+      this._isSubmittingSavings = false;
+      if (submitBtn) submitBtn.disabled = false;
+      if (headerBtn) headerBtn.disabled = false;
+    }
   },
 
   async openSettleSavingModal(id) {
@@ -1694,9 +1707,12 @@ const UIAccounts = {
     document.getElementById('settle-saving-id-input').value = saving.id;
     document.getElementById('settle-saving-name-display').value = saving.name;
 
-    const totalEstimate = (saving.balance || saving.depositAmount || 0) + (saving.expectedInterest || 0);
-    document.getElementById('settle-saving-amount-input').value = totalEstimate;
-    document.getElementById('settle-saving-date-input').value = new Date().toISOString().split('T')[0];
+    const totalEstimate = Math.round((saving.balance || saving.depositAmount || 0) + (saving.expectedInterest || 0));
+    const settleInput = document.getElementById('settle-saving-amount-input');
+    const settleText = document.getElementById('settle-saving-amount-text');
+    if (settleInput) settleInput.value = totalEstimate;
+    if (settleText) settleText.textContent = new Intl.NumberFormat('vi-VN').format(totalEstimate);
+    this.setDateInputValue('settle-saving-date-input', new Date().toISOString().split('T')[0]);
 
     // Populate target accounts
     const select = document.getElementById('settle-saving-target-account');
@@ -1725,7 +1741,7 @@ const UIAccounts = {
     const id = document.getElementById('settle-saving-id-input')?.value;
     const finalAmount = Number(document.getElementById('settle-saving-amount-input')?.value || 0);
     const targetAccountId = document.getElementById('settle-saving-target-account')?.value;
-    const settleDate = document.getElementById('settle-saving-date-input')?.value;
+    const settleDate = this.getDateInputValue('settle-saving-date-input');
 
     if (!id || finalAmount <= 0 || !targetAccountId) {
       showToast('Vui lòng điền đầy đủ thông tin tất toán', 'error');
@@ -1774,14 +1790,21 @@ const UIAccounts = {
       if (idInput) idInput.value = item.id;
       if (titleEl) titleEl.textContent = 'Sửa Sổ Tích Lũy';
       document.getElementById('acc-goal-name-input').value = item.name || '';
+      const curVal = item.currentAmount || 0;
       if (targetInput) targetInput.value = item.targetAmount || 0;
       if (targetText) targetText.textContent = new Intl.NumberFormat('vi-VN').format(item.targetAmount || 0);
-      if (currentInput) currentInput.value = item.currentAmount || 0;
-      if (startDateInput) startDateInput.value = item.startDate || todayStr;
-      if (targetDateInput) targetDateInput.value = item.targetDate || '';
+      if (currentInput) currentInput.value = curVal;
+      const curText = document.getElementById('acc-current-amount-text');
+      if (curText) curText.textContent = new Intl.NumberFormat('vi-VN').format(curVal);
+      this.setDateInputValue('acc-start-date-input', item.startDate || todayStr);
+      this.setDateInputValue('acc-target-date-input', item.targetDate || '');
       document.getElementById('acc-has-recurring-input').checked = !!item.hasRecurring;
       document.getElementById('acc-recurring-box').style.display = item.hasRecurring ? 'block' : 'none';
-      document.getElementById('acc-recurring-amount-input').value = item.recurringAmount || '';
+      const recVal = item.recurringAmount || 0;
+      const recInput = document.getElementById('acc-recurring-amount-input');
+      const recText = document.getElementById('acc-recurring-amount-text');
+      if (recInput) recInput.value = recVal;
+      if (recText) recText.textContent = new Intl.NumberFormat('vi-VN').format(recVal);
       document.getElementById('acc-exclude-report-input').checked = !!item.excludeFromReport;
     } else {
       if (idInput) idInput.value = '';
@@ -1789,10 +1812,16 @@ const UIAccounts = {
       if (targetInput) targetInput.value = '0';
       if (targetText) targetText.textContent = '0';
       if (currentInput) currentInput.value = '0';
-      if (startDateInput) startDateInput.value = todayStr;
-      if (targetDateInput) targetDateInput.value = '';
+      const curText = document.getElementById('acc-current-amount-text');
+      if (curText) curText.textContent = '0';
+      this.setDateInputValue('acc-start-date-input', todayStr);
+      this.setDateInputValue('acc-target-date-input', '');
       document.getElementById('acc-has-recurring-input').checked = false;
       document.getElementById('acc-recurring-box').style.display = 'none';
+      const recInput = document.getElementById('acc-recurring-amount-input');
+      const recText = document.getElementById('acc-recurring-amount-text');
+      if (recInput) recInput.value = '0';
+      if (recText) recText.textContent = '0';
       document.getElementById('acc-exclude-report-input').checked = false;
     }
 
@@ -1826,13 +1855,21 @@ const UIAccounts = {
   },
 
   async handleAccumulationSubmit() {
-    const id = document.getElementById('accumulation-id-input')?.value;
-    const name = document.getElementById('acc-goal-name-input')?.value.trim();
-    const targetAmount = Number(document.getElementById('acc-target-amount-input')?.value || 0);
-    const currentAmount = Number(document.getElementById('acc-current-amount-input')?.value || 0);
-    const sourceAccountId = document.getElementById('acc-source-account-select')?.value || null;
-    const startDate = document.getElementById('acc-start-date-input')?.value;
-    const targetDate = document.getElementById('acc-target-date-input')?.value;
+    if (this._isSubmittingAcc) return;
+    this._isSubmittingAcc = true;
+    const submitBtn = document.querySelector('#accumulation-form button[type="submit"]');
+    const headerBtn = document.querySelector('#view-accumulation-form .tx-header-done-btn');
+    if (submitBtn) submitBtn.disabled = true;
+    if (headerBtn) headerBtn.disabled = true;
+
+    try {
+      const id = document.getElementById('accumulation-id-input')?.value;
+      const name = document.getElementById('acc-goal-name-input')?.value.trim();
+      const targetAmount = Number(document.getElementById('acc-target-amount-input')?.value || 0);
+      const currentAmount = Number(document.getElementById('acc-current-amount-input')?.value || 0);
+      const sourceAccountId = document.getElementById('acc-source-account-select')?.value || null;
+      const startDate = this.getDateInputValue('acc-start-date-input');
+      const targetDate = this.getDateInputValue('acc-target-date-input');
     const hasRecurring = document.getElementById('acc-has-recurring-input')?.checked ? 1 : 0;
     const recurringAmount = hasRecurring ? Number(document.getElementById('acc-recurring-amount-input')?.value || 0) : 0;
     const excludeFromReport = document.getElementById('acc-exclude-report-input')?.checked ? 1 : 0;
@@ -1871,6 +1908,11 @@ const UIAccounts = {
 
     this.closeAccumulationForm();
     await window.app.refreshAll();
+    } finally {
+      this._isSubmittingAcc = false;
+      if (submitBtn) submitBtn.disabled = false;
+      if (headerBtn) headerBtn.disabled = false;
+    }
   },
 
   async openDepositAccModal(id, mode = 'deposit') {
@@ -1882,7 +1924,10 @@ const UIAccounts = {
     document.getElementById('deposit-acc-name-display').value = acc.name;
     document.getElementById('deposit-acc-modal-title').textContent = mode === 'deposit' ? 'Nạp Tiền Tích Lũy' : 'Rút Tiền Tích Lũy';
     document.getElementById('deposit-acc-amount-label').textContent = mode === 'deposit' ? 'Số tiền nạp thêm (VNĐ)' : 'Số tiền rút ra (VNĐ)';
-    document.getElementById('deposit-acc-amount-input').value = '';
+    const depInput = document.getElementById('deposit-acc-amount-input');
+    const depText = document.getElementById('deposit-acc-amount-text');
+    if (depInput) depInput.value = '0';
+    if (depText) depText.textContent = '0';
 
     const select = document.getElementById('deposit-acc-source-select');
     if (select) {
@@ -2003,8 +2048,8 @@ const UIAccounts = {
     const typeConfigs = {
       real_estate: { title: 'Tạo Bất Động Sản', icon: 'home', unit: 'm²', qtyLabel: 'Diện tích (m²)', color: '#10b981', showLoc: true },
       precious_metal: { title: 'Tạo Kim Loại Quý', icon: 'sparkles', unit: 'Chỉ', qtyLabel: 'Khối lượng / Số lượng', color: '#f59e0b', showLoc: false },
-      foreign_currency: { title: 'Tạo Tài Sản Ngoại Tệ', icon: 'dollar-sign', unit: 'USD', qtyLabel: 'Số lượng ngoại tệ', color: '#0ea5e9', showLoc: false },
-      crypto: { title: 'Tạo Tiền Điện Tử (Crypto)', icon: 'coins', unit: 'USDT', qtyLabel: 'Số lượng Coin / Token', color: '#f59e0b', showLoc: false },
+      foreign_currency: { title: 'Tạo Tài Sản Ngoại Tệ', icon: 'dollar-sign', unit: 'USD', qtyLabel: 'Số lượng *', color: '#0ea5e9', showLoc: false },
+      crypto: { title: 'Tạo Tiền Điện Tử (Crypto)', icon: 'coins', unit: 'USDT', qtyLabel: 'Số lượng *', color: '#f59e0b', showLoc: false },
       other: { title: 'Tạo Tài Sản Khác', icon: 'package', unit: 'Chiếc', qtyLabel: 'Số lượng', color: '#8b5cf6', showLoc: false }
     };
     const cfg = typeConfigs[assetType] || typeConfigs.real_estate;
@@ -2019,7 +2064,7 @@ const UIAccounts = {
     if (unitInput && !assetId) unitInput.value = cfg.unit;
     if (locRow) locRow.style.display = cfg.showLoc ? 'flex' : 'none';
 
-    // Populate sub-types
+    // Populate sub-types and units
     this.populateAssetSubTypes(assetType);
     await this.populateAssetSourceAccounts();
 
@@ -2036,6 +2081,10 @@ const UIAccounts = {
 
     const todayStr = new Date().toISOString().split('T')[0];
 
+    const buyPriceText = document.getElementById('asset-buyprice-text');
+    const curPriceText = document.getElementById('asset-currentprice-text');
+    const extraCostsText = document.getElementById('asset-extracosts-text');
+
     if (assetId) {
       const item = await db.assets.get(Number(assetId));
       if (!item) return;
@@ -2043,22 +2092,32 @@ const UIAccounts = {
       document.getElementById('asset-name-input').value = item.name || '';
       document.getElementById('asset-subtype-select').value = item.subType || '';
       document.getElementById('asset-is-gift-input').checked = !!item.isGift;
-      if (buyDateInput) buyDateInput.value = item.buyDate || todayStr;
+      this.setDateInputValue('asset-buy-date-input', item.buyDate || todayStr);
       document.getElementById('asset-quantity-input').value = item.quantity || 1;
-      if (unitInput) unitInput.value = item.unit || cfg.unit;
-      if (buyPriceInput) buyPriceInput.value = item.buyPrice || 0;
-      if (curPriceInput) curPriceInput.value = item.currentPrice || 0;
-      if (extraCostsInput) extraCostsInput.value = item.extraCosts || 0;
+      this.populateAssetUnits(assetType, item.unit || cfg.unit);
+      const bPrice = item.buyPrice || 0;
+      const cPrice = item.currentPrice || 0;
+      const eCosts = item.extraCosts || 0;
+      if (buyPriceInput) buyPriceInput.value = bPrice;
+      if (buyPriceText) buyPriceText.textContent = new Intl.NumberFormat('vi-VN').format(bPrice);
+      if (curPriceInput) curPriceInput.value = cPrice;
+      if (curPriceText) curPriceText.textContent = new Intl.NumberFormat('vi-VN').format(cPrice);
+      if (extraCostsInput) extraCostsInput.value = eCosts;
+      if (extraCostsText) extraCostsText.textContent = new Intl.NumberFormat('vi-VN').format(eCosts);
       document.getElementById('asset-location-input').value = item.location || '';
       document.getElementById('asset-note-input').value = item.note || '';
       document.getElementById('asset-include-networth-input').checked = item.includeInNetWorth !== undefined ? !!item.includeInNetWorth : true;
     } else {
       if (idInput) idInput.value = '';
-      if (buyDateInput) buyDateInput.value = todayStr;
+      this.setDateInputValue('asset-buy-date-input', todayStr);
       document.getElementById('asset-quantity-input').value = '1';
+      this.populateAssetUnits(assetType, cfg.unit);
       if (buyPriceInput) buyPriceInput.value = '0';
+      if (buyPriceText) buyPriceText.textContent = '0';
       if (curPriceInput) curPriceInput.value = '0';
+      if (curPriceText) curPriceText.textContent = '0';
       if (extraCostsInput) extraCostsInput.value = '0';
+      if (extraCostsText) extraCostsText.textContent = '0';
       document.getElementById('asset-is-gift-input').checked = false;
       document.getElementById('asset-include-networth-input').checked = true;
       if (isLiveSupported) {
@@ -2083,6 +2142,316 @@ const UIAccounts = {
     if (window.UITransactions) {
       UITransactions.openKeypad('asset-price');
     }
+  },
+
+  openAccCurrentKeypad() {
+    if (window.UITransactions) {
+      UITransactions.openKeypad('acc-current-amount');
+    }
+  },
+
+  openAccRecurringKeypad() {
+    if (window.UITransactions) {
+      UITransactions.openKeypad('acc-recurring-amount');
+    }
+  },
+
+  openAssetBuyPriceKeypad() {
+    if (window.UITransactions) {
+      UITransactions.openKeypad('asset-buyprice');
+    }
+  },
+
+  openAssetCurrentPriceKeypad() {
+    if (window.UITransactions) {
+      UITransactions.openKeypad('asset-currentprice');
+    }
+  },
+
+  openAssetExtraCostsKeypad() {
+    if (window.UITransactions) {
+      UITransactions.openKeypad('asset-extracosts');
+    }
+  },
+
+  openSettleKeypad() {
+    if (window.UITransactions) {
+      UITransactions.openKeypad('settle-saving-amount');
+    }
+  },
+
+  openDepositAccKeypad() {
+    if (window.UITransactions) {
+      UITransactions.openKeypad('deposit-acc-amount');
+    }
+  },
+
+  openLiquidateKeypad() {
+    if (window.UITransactions) {
+      UITransactions.openKeypad('liquidate-asset-price');
+    }
+  },
+
+  /* ==================== DATE PICKER & FORMAT DD/MM/YYYY ==================== */
+  openDatePicker(targetInputId, options = {}) {
+    const input = document.getElementById(targetInputId);
+    if (!input) return;
+    const curVal = input.dataset.rawDate || (input.value.includes('/') ? input.value.split('/').reverse().join('-') : input.value) || new Date().toISOString().split('T')[0];
+
+    const cal = window.UICalendar || (typeof UICalendar !== 'undefined' ? UICalendar : null);
+    if (cal) {
+      cal.open({
+        mode: 'date',
+        initialDate: curVal,
+        onSelect: (isoDateStr) => {
+          input.dataset.rawDate = isoDateStr;
+          const [y, m, d] = isoDateStr.split('-');
+          input.value = `${d}/${m}/${y}`;
+          if (options.onSelect) options.onSelect(isoDateStr);
+        }
+      });
+    }
+  },
+
+  setDateInputValue(inputId, isoDate) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    if (!isoDate) {
+      el.value = '';
+      el.dataset.rawDate = '';
+      return;
+    }
+    const iso = isoDate.includes('T') ? isoDate.split('T')[0] : isoDate;
+    el.dataset.rawDate = iso;
+    const parts = iso.split('-');
+    if (parts.length === 3) {
+      el.value = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    } else {
+      el.value = iso;
+    }
+  },
+
+  getDateInputValue(inputId) {
+    const el = document.getElementById(inputId);
+    if (!el) return '';
+    if (el.dataset.rawDate) return el.dataset.rawDate;
+    const val = el.value.trim();
+    if (!val) return '';
+    if (val.includes('/')) {
+      const parts = val.split('/');
+      if (parts.length === 3) {
+        return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
+    }
+    return val;
+  },
+
+  openSavingsDatePicker() {
+    this.openDatePicker('saving-deposit-date-input', {
+      onSelect: () => this.calcSavingsPreview()
+    });
+  },
+
+  openAccStartDatePicker() {
+    this.openDatePicker('acc-start-date-input');
+  },
+
+  openAccTargetDatePicker() {
+    this.openDatePicker('acc-target-date-input');
+  },
+
+  openAssetBuyDatePicker() {
+    this.openDatePicker('asset-buy-date-input');
+  },
+
+  openSettleDatePicker() {
+    this.openDatePicker('settle-saving-date-input');
+  },
+
+  openLiquidateDatePicker() {
+    this.openDatePicker('liquidate-asset-date-input');
+  },
+
+  /* ==================== CLEANUP DUPLICATE ACCUMULATIONS ==================== */
+  async cleanupDuplicateAccumulations() {
+    try {
+      const items = await db.accumulations.where('isDeleted').equals(0).toArray();
+      if (items.length <= 1) return;
+      const seen = new Map();
+      for (const item of items) {
+        const key = `${item.name.toLowerCase().trim()}_${item.targetAmount}`;
+        if (seen.has(key)) {
+          const first = seen.get(key);
+          const timeDiff = Math.abs((item.updatedAt || 0) - (first.updatedAt || 0));
+          if (timeDiff < 15000 || item.currentAmount === first.currentAmount) {
+            console.log('Tự động dọn dẹp sổ tích lũy nhân đôi:', item.id);
+            await db.accumulations.update(item.id, { isDeleted: 1, updatedAt: Date.now() });
+            if (item.sourceAccountId && item.currentAmount > 0) {
+              const srcAcc = await db.accounts.get(item.sourceAccountId);
+              if (srcAcc) {
+                await db.accounts.update(item.sourceAccountId, {
+                  balance: srcAcc.balance + item.currentAmount,
+                  updatedAt: Date.now()
+                });
+                console.log(`Đã hoàn lại ${item.currentAmount}đ vào ví ${srcAcc.name}`);
+              }
+            }
+          }
+        } else {
+          seen.set(key, item);
+        }
+      }
+    } catch (err) {
+      console.warn('cleanupDuplicateAccumulations error:', err);
+    }
+  },
+
+  ASSET_UNITS: {
+    foreign_currency: [
+      { id: 'USD', name: 'USD (Đô la Mỹ)' },
+      { id: 'EUR', name: 'EUR (Đồng Euro)' },
+      { id: 'JPY', name: 'JPY (Yên Nhật)' },
+      { id: 'GBP', name: 'GBP (Bảng Anh)' },
+      { id: 'AUD', name: 'AUD (Đô Úc)' },
+      { id: 'CAD', name: 'CAD (Đô Canada)' },
+      { id: 'SGD', name: 'SGD (Đô Singapore)' },
+      { id: 'CNY', name: 'CNY (Nhân dân tệ)' },
+      { id: 'CUSTOM', name: 'Ngoại tệ khác (Tùy chỉnh)...' }
+    ],
+    crypto: [
+      { id: 'USDT', name: 'USDT (Tether)' },
+      { id: 'BTC', name: 'BTC (Bitcoin)' },
+      { id: 'ETH', name: 'ETH (Ethereum)' },
+      { id: 'BNB', name: 'BNB (Binance Coin)' },
+      { id: 'SOL', name: 'SOL (Solana)' },
+      { id: 'XRP', name: 'XRP (Ripple)' },
+      { id: 'DOGE', name: 'DOGE (Dogecoin)' },
+      { id: 'ADA', name: 'ADA (Cardano)' },
+      { id: 'TRX', name: 'TRX (Tron)' },
+      { id: 'CUSTOM', name: 'Coin / Token khác...' }
+    ],
+    precious_metal: [
+      { id: 'Chỉ', name: 'Chỉ (Vàng / Bạc)' },
+      { id: 'Lượng', name: 'Lượng (Cây)' },
+      { id: 'Gram', name: 'Gram (g)' },
+      { id: 'Kg', name: 'Kilogram (kg)' },
+      { id: 'Ounce', name: 'Ounce (oz)' },
+      { id: 'CUSTOM', name: 'Đơn vị khác...' }
+    ],
+    real_estate: [
+      { id: 'm²', name: 'm² (Mét vuông)' },
+      { id: 'ha', name: 'ha (Héc-ta)' },
+      { id: 'Căn', name: 'Căn (Căn hộ / Nhà)' },
+      { id: 'Lô', name: 'Lô (Đất nền)' },
+      { id: 'CUSTOM', name: 'Đơn vị khác...' }
+    ],
+    other: [
+      { id: 'Chiếc', name: 'Chiếc' },
+      { id: 'Cái', name: 'Cái' },
+      { id: 'Bộ', name: 'Bộ' },
+      { id: 'Gói', name: 'Gói' },
+      { id: 'CUSTOM', name: 'Đơn vị khác...' }
+    ]
+  },
+
+  populateAssetUnits(assetType, currentUnit = '') {
+    const select = document.getElementById('asset-unit-select');
+    const customInput = document.getElementById('asset-unit-input');
+    const subTypeSelect = document.getElementById('asset-subtype-select');
+    if (!select) return;
+
+    const list = this.ASSET_UNITS[assetType] || this.ASSET_UNITS.other;
+    select.innerHTML = list.map(u => `<option value="${u.id}">${escapeHTML(u.name)}</option>`).join('');
+
+    const matched = list.find(u => u.id === currentUnit);
+    if (matched) {
+      select.value = currentUnit;
+      if (customInput) {
+        customInput.value = currentUnit;
+        customInput.style.display = 'none';
+      }
+      if (subTypeSelect) subTypeSelect.value = currentUnit;
+    } else if (currentUnit) {
+      select.value = 'CUSTOM';
+      if (customInput) {
+        customInput.value = currentUnit;
+        customInput.style.display = 'block';
+      }
+      if (subTypeSelect) subTypeSelect.value = currentUnit;
+    } else {
+      const defVal = list[0]?.id || '';
+      select.value = defVal;
+      if (customInput) {
+        customInput.value = defVal;
+        customInput.style.display = 'none';
+      }
+      if (subTypeSelect) subTypeSelect.value = defVal;
+    }
+  },
+
+  handleAssetUnitChange(val) {
+    const customInput = document.getElementById('asset-unit-input');
+    const subTypeSelect = document.getElementById('asset-subtype-select');
+    const assetType = document.getElementById('asset-type-input')?.value;
+    const nameInput = document.getElementById('asset-name-input');
+
+    if (val === 'CUSTOM') {
+      if (customInput) {
+        customInput.style.display = 'block';
+        customInput.value = '';
+        customInput.focus();
+      }
+      if (subTypeSelect) subTypeSelect.value = '';
+    } else {
+      if (customInput) {
+        customInput.style.display = 'none';
+        customInput.value = val;
+      }
+      if (subTypeSelect) subTypeSelect.value = val;
+
+      if (nameInput) {
+        const curName = nameInput.value.trim();
+        const autoNames = [
+          'Đô la Mỹ (USD)', 'Euro (EUR)', 'Yên Nhật (JPY)', 'Bảng Anh (GBP)',
+          'Đô Úc (AUD)', 'Đô Canada (CAD)', 'Đô Singapore (SGD)', 'Nhân dân tệ (CNY)',
+          'Tether (USDT)', 'Bitcoin (BTC)', 'Ethereum (ETH)', 'Binance Coin (BNB)',
+          'Solana (SOL)', 'Ripple (XRP)', 'Dogecoin (DOGE)', 'Cardano (ADA)', 'Tron (TRX)',
+          'Vàng SJC', 'Nhẫn Trơn 9999', 'Bạc'
+        ];
+        if (!curName || autoNames.some(n => curName.includes(n) || n.includes(curName))) {
+          const mapNames = {
+            USD: 'Đô la Mỹ (USD)',
+            EUR: 'Euro (EUR)',
+            JPY: 'Yên Nhật (JPY)',
+            GBP: 'Bảng Anh (GBP)',
+            AUD: 'Đô Úc (AUD)',
+            CAD: 'Đô Canada (CAD)',
+            SGD: 'Đô Singapore (SGD)',
+            CNY: 'Nhân dân tệ (CNY)',
+            USDT: 'Tether (USDT)',
+            BTC: 'Bitcoin (BTC)',
+            ETH: 'Ethereum (ETH)',
+            BNB: 'Binance Coin (BNB)',
+            SOL: 'Solana (SOL)',
+            XRP: 'Ripple (XRP)',
+            DOGE: 'Dogecoin (DOGE)',
+            ADA: 'Cardano (ADA)',
+            TRX: 'Tron (TRX)',
+            'Chỉ': 'Vàng SJC (Chỉ)',
+            'Lượng': 'Vàng SJC (Cây / Lượng)'
+          };
+          if (mapNames[val]) {
+            nameInput.value = mapNames[val];
+          }
+        }
+      }
+
+      if (['foreign_currency', 'crypto'].includes(assetType)) {
+        this.fetchLiveMarketPrice(true);
+      }
+    }
+
+    this.calcAssetPreview();
   },
 
   populateAssetSubTypes(assetType) {
@@ -2149,17 +2518,27 @@ const UIAccounts = {
   },
 
   async handleAssetSubmit() {
-    const id = document.getElementById('asset-id-input')?.value;
-    const assetType = document.getElementById('asset-type-input')?.value || 'real_estate';
-    const subType = document.getElementById('asset-subtype-select')?.value;
-    const name = document.getElementById('asset-name-input')?.value.trim();
-    const isGift = document.getElementById('asset-is-gift-input')?.checked ? 1 : 0;
-    const buyDate = document.getElementById('asset-buy-date-input')?.value;
-    const quantity = Number(document.getElementById('asset-quantity-input')?.value || 1);
-    const unit = document.getElementById('asset-unit-input')?.value.trim() || 'đơn vị';
-    const buyPrice = isGift ? 0 : Number(document.getElementById('asset-buyprice-input')?.value || 0);
-    const currentPrice = Number(document.getElementById('asset-currentprice-input')?.value || 0);
-    const extraCosts = Number(document.getElementById('asset-extracosts-input')?.value || 0);
+    if (this._isSubmittingAsset) return;
+    this._isSubmittingAsset = true;
+    const submitBtn = document.querySelector('#asset-form button[type="submit"]');
+    const headerBtn = document.querySelector('#view-asset-form .tx-header-done-btn');
+    if (submitBtn) submitBtn.disabled = true;
+    if (headerBtn) headerBtn.disabled = true;
+
+    try {
+      const id = document.getElementById('asset-id-input')?.value;
+      const assetType = document.getElementById('asset-type-input')?.value || 'real_estate';
+      const unitSelect = document.getElementById('asset-unit-select')?.value;
+      const customUnit = document.getElementById('asset-unit-input')?.value?.trim();
+      const unit = (unitSelect && unitSelect !== 'CUSTOM' ? unitSelect : customUnit) || 'm²';
+      const subType = document.getElementById('asset-subtype-select')?.value || unit;
+      const name = document.getElementById('asset-name-input')?.value.trim();
+      const isGift = document.getElementById('asset-is-gift-input')?.checked ? 1 : 0;
+      const buyDate = this.getDateInputValue('asset-buy-date-input');
+      const quantity = Number(document.getElementById('asset-quantity-input')?.value || 1);
+      const buyPrice = isGift ? 0 : Number(document.getElementById('asset-buyprice-input')?.value || 0);
+      const currentPrice = Number(document.getElementById('asset-currentprice-input')?.value || 0);
+      const extraCosts = Number(document.getElementById('asset-extracosts-input')?.value || 0);
     const sourceAccountId = document.getElementById('asset-source-account-select')?.value || null;
     const location = document.getElementById('asset-location-input')?.value.trim() || '';
     const note = document.getElementById('asset-note-input')?.value.trim() || '';
@@ -2204,6 +2583,11 @@ const UIAccounts = {
 
     this.closeAssetForm();
     await window.app.refreshAll();
+    } finally {
+      this._isSubmittingAsset = false;
+      if (submitBtn) submitBtn.disabled = false;
+      if (headerBtn) headerBtn.disabled = false;
+    }
   },
 
   async openLiquidateModal(id) {
@@ -2212,9 +2596,12 @@ const UIAccounts = {
 
     document.getElementById('liquidate-asset-id-input').value = asset.id;
     document.getElementById('liquidate-asset-name-display').value = asset.name;
-    const estVal = (asset.quantity || 1) * (asset.currentPrice || asset.buyPrice || 0);
-    document.getElementById('liquidate-asset-price-input').value = estVal;
-    document.getElementById('liquidate-asset-date-input').value = new Date().toISOString().split('T')[0];
+    const estVal = Math.round((asset.quantity || 1) * (asset.currentPrice || asset.buyPrice || 0));
+    const liqInput = document.getElementById('liquidate-asset-price-input');
+    const liqText = document.getElementById('liquidate-asset-price-text');
+    if (liqInput) liqInput.value = estVal;
+    if (liqText) liqText.textContent = new Intl.NumberFormat('vi-VN').format(estVal);
+    this.setDateInputValue('liquidate-asset-date-input', new Date().toISOString().split('T')[0]);
 
     const select = document.getElementById('liquidate-asset-target-account');
     if (select) {
@@ -2241,7 +2628,7 @@ const UIAccounts = {
     const id = document.getElementById('liquidate-asset-id-input')?.value;
     const price = Number(document.getElementById('liquidate-asset-price-input')?.value || 0);
     const targetAccountId = document.getElementById('liquidate-asset-target-account')?.value;
-    const liquidateDate = document.getElementById('liquidate-asset-date-input')?.value;
+    const liquidateDate = this.getDateInputValue('liquidate-asset-date-input');
 
     if (!id || price <= 0 || !targetAccountId) {
       showToast('Vui lòng điền đầy đủ thông tin bán tài sản', 'error');
@@ -2321,7 +2708,9 @@ const UIAccounts = {
 
   async fetchLiveMarketPrice(showFeedback = true) {
     const assetType = document.getElementById('asset-type-input')?.value;
-    const subType = document.getElementById('asset-subtype-select')?.value;
+    const unitSelect = document.getElementById('asset-unit-select')?.value;
+    const customUnit = document.getElementById('asset-unit-input')?.value?.trim();
+    const subType = (unitSelect && unitSelect !== 'CUSTOM' ? unitSelect : customUnit) || document.getElementById('asset-subtype-select')?.value || 'USD';
     const curPriceInput = document.getElementById('asset-currentprice-input');
     const curPriceText = document.getElementById('asset-price-text');
     const spinIcon = document.getElementById('icon-auto-price-spin');
@@ -2802,6 +3191,7 @@ const UIAccounts = {
   },
 
   async renderAccumulations() {
+    await this.cleanupDuplicateAccumulations();
     const container = document.getElementById('accumulations-list-container');
     const badgeCount = document.getElementById('badge-accumulations-count');
     if (!container) return;

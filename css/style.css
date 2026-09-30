@@ -2589,7 +2589,7 @@ body:has(#view-account-provider.active) .app-header {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 200;
+  z-index: 100000 !important;
   display: flex;
   align-items: flex-end;
   justify-content: center;

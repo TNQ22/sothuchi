@@ -195,6 +195,46 @@ const UITransactions = {
       const assetText = document.getElementById('asset-price-text');
       cur = assetText?.textContent?.trim() || assetInput?.value?.trim() || '0';
       if (curSymbolEl) curSymbolEl.textContent = 'đ';
+    } else if (target === 'acc-current-amount') {
+      const input = document.getElementById('acc-current-amount-input');
+      const text = document.getElementById('acc-current-amount-text');
+      cur = text?.textContent?.trim() || input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = 'đ';
+    } else if (target === 'acc-recurring-amount') {
+      const input = document.getElementById('acc-recurring-amount-input');
+      const text = document.getElementById('acc-recurring-amount-text');
+      cur = text?.textContent?.trim() || input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = 'đ';
+    } else if (target === 'asset-buyprice') {
+      const input = document.getElementById('asset-buyprice-input');
+      const text = document.getElementById('asset-buyprice-text');
+      cur = text?.textContent?.trim() || input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = 'đ';
+    } else if (target === 'asset-currentprice') {
+      const input = document.getElementById('asset-currentprice-input');
+      const text = document.getElementById('asset-currentprice-text');
+      cur = text?.textContent?.trim() || input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = 'đ';
+    } else if (target === 'asset-extracosts') {
+      const input = document.getElementById('asset-extracosts-input');
+      const text = document.getElementById('asset-extracosts-text');
+      cur = text?.textContent?.trim() || input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = 'đ';
+    } else if (target === 'settle-saving-amount') {
+      const input = document.getElementById('settle-saving-amount-input');
+      const text = document.getElementById('settle-saving-amount-text');
+      cur = text?.textContent?.trim() || input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = 'đ';
+    } else if (target === 'deposit-acc-amount') {
+      const input = document.getElementById('deposit-acc-amount-input');
+      const text = document.getElementById('deposit-acc-amount-text');
+      cur = text?.textContent?.trim() || input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = 'đ';
+    } else if (target === 'liquidate-asset-price') {
+      const input = document.getElementById('liquidate-asset-price-input');
+      const text = document.getElementById('liquidate-asset-price-text');
+      cur = text?.textContent?.trim() || input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = 'đ';
     } else {
       const input = document.getElementById('tx-amount-input');
       const amountText = document.getElementById('tx-amount-text');
@@ -275,6 +315,63 @@ const UITransactions = {
       if (window.UIAccounts && typeof window.UIAccounts.calcAssetPreview === 'function') {
         window.UIAccounts.calcAssetPreview();
       }
+    } else if (this.activeKeypadTarget === 'acc-current-amount') {
+      const input = document.getElementById('acc-current-amount-input');
+      const text = document.getElementById('acc-current-amount-text');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (input) input.value = rawNum;
+      if (text) text.textContent = finalFormatted;
+    } else if (this.activeKeypadTarget === 'acc-recurring-amount') {
+      const input = document.getElementById('acc-recurring-amount-input');
+      const text = document.getElementById('acc-recurring-amount-text');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (input) input.value = rawNum;
+      if (text) text.textContent = finalFormatted;
+    } else if (this.activeKeypadTarget === 'asset-buyprice') {
+      const input = document.getElementById('asset-buyprice-input');
+      const text = document.getElementById('asset-buyprice-text');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (input) input.value = rawNum;
+      if (text) text.textContent = finalFormatted;
+      if (window.UIAccounts && typeof window.UIAccounts.calcAssetPreview === 'function') {
+        window.UIAccounts.calcAssetPreview();
+      }
+    } else if (this.activeKeypadTarget === 'asset-currentprice') {
+      const input = document.getElementById('asset-currentprice-input');
+      const text = document.getElementById('asset-currentprice-text');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (input) input.value = rawNum;
+      if (text) text.textContent = finalFormatted;
+      if (window.UIAccounts && typeof window.UIAccounts.calcAssetPreview === 'function') {
+        window.UIAccounts.calcAssetPreview();
+      }
+    } else if (this.activeKeypadTarget === 'asset-extracosts') {
+      const input = document.getElementById('asset-extracosts-input');
+      const text = document.getElementById('asset-extracosts-text');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (input) input.value = rawNum;
+      if (text) text.textContent = finalFormatted;
+      if (window.UIAccounts && typeof window.UIAccounts.calcAssetPreview === 'function') {
+        window.UIAccounts.calcAssetPreview();
+      }
+    } else if (this.activeKeypadTarget === 'settle-saving-amount') {
+      const input = document.getElementById('settle-saving-amount-input');
+      const text = document.getElementById('settle-saving-amount-text');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (input) input.value = rawNum;
+      if (text) text.textContent = finalFormatted;
+    } else if (this.activeKeypadTarget === 'deposit-acc-amount') {
+      const input = document.getElementById('deposit-acc-amount-input');
+      const text = document.getElementById('deposit-acc-amount-text');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (input) input.value = rawNum;
+      if (text) text.textContent = finalFormatted;
+    } else if (this.activeKeypadTarget === 'liquidate-asset-price') {
+      const input = document.getElementById('liquidate-asset-price-input');
+      const text = document.getElementById('liquidate-asset-price-text');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (input) input.value = rawNum;
+      if (text) text.textContent = finalFormatted;
     } else {
       const input = document.getElementById('tx-amount-input');
       const amountText = document.getElementById('tx-amount-text');
@@ -283,7 +380,13 @@ const UITransactions = {
     }
 
     modal.classList.remove('open');
-    if (!['account-balance', 'saving-amount', 'acc-target-amount', 'asset-price'].includes(this.activeKeypadTarget)) {
+    const nonTxTargets = [
+      'account-balance', 'saving-amount', 'acc-target-amount', 'asset-price',
+      'acc-current-amount', 'acc-recurring-amount',
+      'asset-buyprice', 'asset-currentprice', 'asset-extracosts',
+      'settle-saving-amount', 'deposit-acc-amount', 'liquidate-asset-price'
+    ];
+    if (!nonTxTargets.includes(this.activeKeypadTarget)) {
       this.saveDraft();
     }
   },

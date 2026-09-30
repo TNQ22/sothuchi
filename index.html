@@ -1237,7 +1237,7 @@
                   </div>
                   <div class="tx-info-content">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Ngày gửi</div>
-                    <input type="date" id="saving-deposit-date-input" class="tx-clean-input" onchange="UIAccounts.calcSavingsPreview()" style="font-size: 0.92rem; font-weight: 600;">
+                    <input type="text" id="saving-deposit-date-input" class="tx-clean-input" placeholder="DD/MM/YYYY" readonly onclick="UIAccounts.openSavingsDatePicker()" style="font-size: 0.92rem; font-weight: 600; cursor: pointer;">
                   </div>
                 </div>
 
@@ -1427,16 +1427,20 @@
                   </div>
                 </div>
 
-                <!-- Số tiền hiện đã có -->
-                <div class="tx-info-row">
+                <!-- Số tiền hiện đã có (Bàn phím tùy chỉnh) -->
+                <div class="tx-info-row" onclick="UIAccounts.openAccCurrentKeypad()" style="cursor: pointer;">
                   <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
                     <i data-lucide="wallet-2"></i>
                   </div>
                   <div class="tx-info-content">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Số tiền khởi điểm hiện có (VNĐ)</div>
-                    <input type="number" id="acc-current-amount-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" style="font-size: 0.95rem; font-weight: 600;" oninput="UIAccounts.formatInputLiveHint(this, 'acc-current-amount-hint')">
-                    <div id="acc-current-amount-hint" style="font-size: 0.78rem; color: var(--primary); font-weight: 600; margin-top: 3px;">0đ</div>
+                    <div style="display: flex; align-items: baseline; gap: 4px; margin-top: 2px;">
+                      <span id="acc-current-amount-text" style="font-size: 1.05rem; font-weight: 700; color: #10b981;">0</span>
+                      <span style="font-size: 0.85rem; font-weight: 600; color: #10b981;">đ</span>
+                    </div>
+                    <input type="hidden" id="acc-current-amount-input" value="0">
                   </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
                 <!-- Nguồn tiền khởi điểm -->
@@ -1460,7 +1464,7 @@
                   </div>
                   <div class="tx-info-content">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Ngày bắt đầu</div>
-                    <input type="date" id="acc-start-date-input" class="tx-clean-input" style="font-size: 0.92rem; font-weight: 600;">
+                    <input type="text" id="acc-start-date-input" class="tx-clean-input" placeholder="DD/MM/YYYY" readonly onclick="UIAccounts.openAccStartDatePicker()" style="font-size: 0.92rem; font-weight: 600; cursor: pointer;">
                   </div>
                 </div>
 
@@ -1471,7 +1475,7 @@
                   </div>
                   <div class="tx-info-content">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Hạn chót mục tiêu</div>
-                    <input type="date" id="acc-target-date-input" class="tx-clean-input" style="font-size: 0.92rem; font-weight: 600;">
+                    <input type="text" id="acc-target-date-input" class="tx-clean-input" placeholder="DD/MM/YYYY (Tùy chọn)" readonly onclick="UIAccounts.openAccTargetDatePicker()" style="font-size: 0.92rem; font-weight: 600; cursor: pointer;">
                   </div>
                 </div>
               </div>
@@ -1490,9 +1494,17 @@
                 </div>
 
                 <div id="acc-recurring-box" style="display: none; padding-top: 10px; border-top: 1px dashed var(--border-color);">
-                  <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 4px;">Số tiền nạp định kỳ (VNĐ/tháng)</div>
-                  <input type="number" id="acc-recurring-amount-input" class="tx-clean-input" placeholder="Ví dụ: 2000000" min="0" step="any" style="font-weight: 600;" oninput="UIAccounts.formatInputLiveHint(this, 'acc-recurring-amount-hint')">
-                  <div id="acc-recurring-amount-hint" style="font-size: 0.78rem; color: var(--primary); font-weight: 600; margin-top: 3px;">0đ</div>
+                  <div class="tx-info-row" onclick="UIAccounts.openAccRecurringKeypad()" style="cursor: pointer; padding: 4px 0;">
+                    <div class="tx-info-content">
+                      <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 2px;">Số tiền nạp định kỳ (VNĐ/tháng)</div>
+                      <div style="display: flex; align-items: baseline; gap: 4px;">
+                        <span id="acc-recurring-amount-text" style="font-size: 1.05rem; font-weight: 700; color: var(--primary);">0</span>
+                        <span style="font-size: 0.85rem; font-weight: 600; color: var(--primary);">đ</span>
+                      </div>
+                      <input type="hidden" id="acc-recurring-amount-input" value="0">
+                    </div>
+                    <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                  </div>
                 </div>
 
                 <div class="acc-exclude-report-box" style="margin-top: 8px;">
@@ -1554,24 +1566,12 @@
 
               <!-- THÔNG TIN TÀI SẢN -->
               <div class="tx-section-card tx-details-card">
-                <!-- Phân loại tài sản -->
-                <div class="tx-info-row">
-                  <div class="tx-info-icon-bubble" id="asset-type-bubble" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
-                    <i data-lucide="home"></i>
-                  </div>
-                  <div class="tx-info-content">
-                    <div style="font-size: 0.74rem; color: var(--text-muted);">Phân loại chi tiết</div>
-                    <select id="asset-subtype-select" class="acc-styled-select">
-                      <!-- Dynamically rendered based on assetType -->
-                    </select>
-                  </div>
-                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
-                </div>
+                <input type="hidden" id="asset-subtype-select" value="">
 
                 <!-- Tên tài sản -->
                 <div class="tx-info-row">
-                  <div class="tx-info-icon-bubble" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
-                    <i data-lucide="tag"></i>
+                  <div class="tx-info-icon-bubble" id="asset-type-bubble" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
+                    <i data-lucide="gem"></i>
                   </div>
                   <div class="tx-info-content">
                     <input type="text" id="asset-name-input" class="tx-clean-input" placeholder="Tên tài sản *" required style="font-size: 0.95rem; font-weight: 600;">
@@ -1597,7 +1597,7 @@
                   </div>
                   <div class="tx-info-content">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Ngày mua / nhận</div>
-                    <input type="date" id="asset-buy-date-input" class="tx-clean-input" style="font-size: 0.92rem; font-weight: 600;">
+                    <input type="text" id="asset-buy-date-input" class="tx-clean-input" placeholder="DD/MM/YYYY" readonly onclick="UIAccounts.openAssetBuyDatePicker()" style="font-size: 0.92rem; font-weight: 600; cursor: pointer;">
                   </div>
                 </div>
 
@@ -1608,38 +1608,47 @@
                   </div>
                   <div class="tx-info-content" style="display: flex; gap: 10px; align-items: center;">
                     <div style="flex: 1;">
-                      <div id="asset-qty-label" style="font-size: 0.74rem; color: var(--text-muted);">Diện tích / Số lượng *</div>
+                      <div id="asset-qty-label" style="font-size: 0.74rem; color: var(--text-muted);">Số lượng *</div>
                       <input type="number" id="asset-quantity-input" class="tx-clean-input" placeholder="1" step="any" min="0.0001" value="1" oninput="UIAccounts.calcAssetPreview()" required style="font-weight: 600; font-size: 0.95rem;">
                     </div>
-                    <div style="width: 100px;">
-                      <div style="font-size: 0.74rem; color: var(--text-muted);">Đơn vị</div>
-                      <input type="text" id="asset-unit-input" class="tx-clean-input" placeholder="m² / Chỉ" value="m²" style="font-weight: 600; text-align: center;">
+                    <div style="min-width: 130px;" id="asset-unit-wrapper">
+                      <div style="font-size: 0.74rem; color: var(--text-muted);">Đơn vị *</div>
+                      <select id="asset-unit-select" class="acc-styled-select" onchange="UIAccounts.handleAssetUnitChange(this.value)" style="font-weight: 700; font-size: 0.92rem;"></select>
+                      <input type="text" id="asset-unit-input" class="tx-clean-input" placeholder="Tùy chỉnh" value="" style="font-weight: 600; display: none; margin-top: 4px;" oninput="UIAccounts.calcAssetPreview()">
                     </div>
                   </div>
                 </div>
 
-                <!-- Giá mua -->
-                <div class="tx-info-row" id="asset-buyprice-row">
+                <!-- Giá mua (Bàn phím tùy chỉnh) -->
+                <div class="tx-info-row" id="asset-buyprice-row" onclick="UIAccounts.openAssetBuyPriceKeypad()" style="cursor: pointer;">
                   <div class="tx-info-icon-bubble" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
                     <i data-lucide="receipt"></i>
                   </div>
                   <div class="tx-info-content">
                     <div id="asset-buyprice-label" style="font-size: 0.74rem; color: var(--text-muted);">Giá mua / Đơn vị (VNĐ)</div>
-                    <input type="number" id="asset-buyprice-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" oninput="UIAccounts.calcAssetPreview(); UIAccounts.formatInputLiveHint(this, 'asset-buyprice-hint');" style="font-size: 0.95rem; font-weight: 600;">
-                    <div id="asset-buyprice-hint" style="font-size: 0.78rem; color: #f43f5e; font-weight: 600; margin-top: 3px;">0đ</div>
+                    <div style="display: flex; align-items: baseline; gap: 4px; margin-top: 2px;">
+                      <span id="asset-buyprice-text" style="font-size: 1.05rem; font-weight: 700; color: #f43f5e;">0</span>
+                      <span style="font-size: 0.85rem; font-weight: 600; color: #f43f5e;">đ</span>
+                    </div>
+                    <input type="hidden" id="asset-buyprice-input" value="0">
                   </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
-                <!-- Giá hiện tại -->
-                <div class="tx-info-row" id="asset-currentprice-row">
+                <!-- Giá hiện tại (Bàn phím tùy chỉnh) -->
+                <div class="tx-info-row" id="asset-currentprice-row" onclick="UIAccounts.openAssetCurrentPriceKeypad()" style="cursor: pointer;">
                   <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
                     <i data-lucide="trending-up"></i>
                   </div>
                   <div class="tx-info-content">
                     <div id="asset-curprice-label" style="font-size: 0.74rem; color: var(--text-muted);">Giá thị trường hiện tại / Đơn vị (VNĐ)</div>
-                    <input type="number" id="asset-currentprice-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" oninput="UIAccounts.calcAssetPreview(); UIAccounts.formatInputLiveHint(this, 'asset-curprice-hint');" style="font-size: 0.95rem; font-weight: 700; color: var(--primary);">
-                    <div id="asset-curprice-hint" style="font-size: 0.78rem; color: var(--primary); font-weight: 700; margin-top: 3px;">0đ</div>
+                    <div style="display: flex; align-items: baseline; gap: 4px; margin-top: 2px;">
+                      <span id="asset-currentprice-text" style="font-size: 1.05rem; font-weight: 700; color: var(--primary);">0</span>
+                      <span style="font-size: 0.85rem; font-weight: 600; color: var(--primary);">đ</span>
+                    </div>
+                    <input type="hidden" id="asset-currentprice-input" value="0">
                   </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
                 <!-- Tự động cập nhật tỷ giá ngoại tệ / giá crypto trực tuyến -->
@@ -1653,16 +1662,20 @@
                   </button>
                 </div>
 
-                <!-- Chi phí khác -->
-                <div class="tx-info-row">
+                <!-- Chi phí khác (Bàn phím tùy chỉnh) -->
+                <div class="tx-info-row" id="asset-extracosts-row" onclick="UIAccounts.openAssetExtraCostsKeypad()" style="cursor: pointer;">
                   <div class="tx-info-icon-bubble" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted);">
                     <i data-lucide="plus-circle"></i>
                   </div>
                   <div class="tx-info-content">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Chi phí khác (Trước bạ, môi giới, bảo dưỡng, thuế...)</div>
-                    <input type="number" id="asset-extracosts-input" class="tx-clean-input" placeholder="0" min="0" step="any" value="0" oninput="UIAccounts.calcAssetPreview(); UIAccounts.formatInputLiveHint(this, 'asset-extracosts-hint');" style="font-size: 0.92rem; font-weight: 600;">
-                    <div id="asset-extracosts-hint" style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600; margin-top: 3px;">0đ</div>
+                    <div style="display: flex; align-items: baseline; gap: 4px; margin-top: 2px;">
+                      <span id="asset-extracosts-text" style="font-size: 1.02rem; font-weight: 600; color: var(--text-primary);">0</span>
+                      <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">đ</span>
+                    </div>
+                    <input type="hidden" id="asset-extracosts-input" value="0">
                   </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
                 <!-- Nguồn tiền mua -->
@@ -2365,8 +2378,16 @@
           </div>
           <div class="form-group">
             <label class="form-label">Số tiền tất toán thực nhận (Gốc + Lãi) (VNĐ)</label>
-            <input type="number" id="settle-saving-amount-input" class="form-control" placeholder="0" min="1" step="any" required style="font-size: 1.1rem; font-weight: 700; color: var(--primary);" oninput="UIAccounts.formatInputLiveHint(this, 'settle-saving-amount-hint')">
-            <div id="settle-saving-amount-hint" style="font-size: 0.84rem; color: var(--primary); font-weight: 700; margin-top: 4px;">0đ</div>
+            <div class="tx-info-row" onclick="UIAccounts.openSettleKeypad()" style="cursor: pointer; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 14px;">
+              <div class="tx-info-content">
+                <div style="display: flex; align-items: baseline; gap: 4px;">
+                  <span id="settle-saving-amount-text" style="font-size: 1.2rem; font-weight: 800; color: var(--primary);">0</span>
+                  <span style="font-size: 0.95rem; font-weight: 700; color: var(--primary);">đ</span>
+                </div>
+                <input type="hidden" id="settle-saving-amount-input" value="0">
+              </div>
+              <i data-lucide="calculator" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Chuyển tiền vào tài khoản</label>
@@ -2374,7 +2395,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Ngày tất toán</label>
-            <input type="date" id="settle-saving-date-input" class="form-control" required>
+            <input type="text" id="settle-saving-date-input" class="form-control" placeholder="DD/MM/YYYY" readonly onclick="UIAccounts.openSettleDatePicker()" style="cursor: pointer; font-weight: 600;">
           </div>
         </div>
         <div class="modal-footer">
@@ -2441,7 +2462,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Ngày bán</label>
-            <input type="date" id="liquidate-asset-date-input" class="form-control" required>
+            <input type="text" id="liquidate-asset-date-input" class="form-control" placeholder="DD/MM/YYYY" readonly onclick="UIAccounts.openLiquidateDatePicker()" style="cursor: pointer; font-weight: 600;">
           </div>
         </div>
         <div class="modal-footer">
