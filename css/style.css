@@ -5219,10 +5219,96 @@ body:has(#view-account-provider.active) .app-header {
 }
 
 /* Lock all account & asset containers to 100% viewport width and clamp overflow */
-.accounts-group-container {
-  overflow: hidden !important;
+html, body {
+  width: 100% !important;
   max-width: 100% !important;
+  overflow-x: hidden !important;
   box-sizing: border-box !important;
+}
+
+#app-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.main-wrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.page-view {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+#view-accounts {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.accounts-group-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.accounts-group-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.accounts-group-title-wrap {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  max-width: calc(100% - 75px) !important;
+  overflow: hidden !important;
+}
+
+.accounts-group-title-wrap > div:nth-child(2) {
+  min-width: 0 !important;
+  flex: 1 1 0% !important;
+  overflow: hidden !important;
+}
+
+.accounts-group-title {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
+}
+
+.accounts-group-subtitle {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
+}
+
+.accounts-group-actions {
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
 }
 
 .assets-cards-list,
@@ -5244,11 +5330,44 @@ body:has(#view-account-provider.active) .app-header {
 }
 
 .asset-type-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
+}
+
+.asset-type-title-wrap {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  max-width: calc(100% - 100px) !important;
+  overflow: hidden !important;
+}
+
+.asset-type-title {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
+}
+
+.asset-type-header-stats {
+  flex-shrink: 0 !important;
+  max-width: 95px !important;
+  overflow: hidden !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+}
+
+.asset-type-subtotal {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: inline-block !important;
+  max-width: 100% !important;
 }
 
 .asset-type-items-list {
@@ -5268,6 +5387,10 @@ body:has(#view-account-provider.active) .app-header {
 }
 
 .group-card-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
@@ -5276,17 +5399,23 @@ body:has(#view-account-provider.active) .app-header {
 }
 
 .group-card-title-row {
-  max-width: calc(100% - 36px) !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
   flex: 1 1 0% !important;
+  min-width: 0 !important;
+  max-width: calc(100% - 36px) !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
 .group-card-info-wrap {
-  max-width: 100% !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
   flex: 1 1 0% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: 0 !important; /* CRITICAL FOR WEBKIT: eliminates intrinsic min-content push */
+  overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
 .group-card-name {
@@ -5297,10 +5426,35 @@ body:has(#view-account-provider.active) .app-header {
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  word-break: break-all !important;
+  box-sizing: border-box !important;
+}
+
+.group-card-sub {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+
+.group-card-more-btn {
+  flex-shrink: 0 !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .group-card-body {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-end !important;
+  margin-top: 6px !important;
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
@@ -5313,4 +5467,13 @@ body:has(#view-account-provider.active) .app-header {
   min-width: 0 !important;
   overflow: hidden !important;
   flex-shrink: 0 !important;
+  text-align: right !important;
+}
+
+.pnl-badge {
+  display: inline-block !important;
+  max-width: 100% !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
