@@ -47,7 +47,6 @@ const UIAccounts = {
     // --- MẶC ĐỊNH / KHÁC (GENERIC) ---
     { code: 'CASH', name: 'Tiền mặt', shortName: 'Tiền mặt', fullName: 'Ví tiền mặt', type: 'cash', color: '#10b981', icon: 'wallet' },
     { code: 'CREDIT', name: 'Thẻ tín dụng', shortName: 'Tín dụng', fullName: 'Thẻ tín dụng / Credit Card', type: 'credit', color: '#f59e0b', icon: 'credit-card' },
-    { code: 'SAVING', name: 'Sổ tiết kiệm', shortName: 'Tiết kiệm', fullName: 'Sổ tiết kiệm / Tích lũy', type: 'saving', color: '#0ea5e9', icon: 'piggy-bank' },
     { code: 'GENERIC_BANK', name: 'Ngân hàng khác', shortName: 'Ngân hàng', fullName: 'Tài khoản ngân hàng', type: 'bank', color: '#4f46e5', icon: 'landmark' },
     { code: 'GENERIC_EWALLET', name: 'Ví điện tử khác', shortName: 'Ví điện tử', fullName: 'Ví điện tử khác', type: 'ewallet', color: '#ec4899', icon: 'smartphone' }
   ],
@@ -186,18 +185,22 @@ const UIAccounts = {
 
   /* ==================== TRANG CHỌN NGÂN HÀNG & VÍ ĐIỆN TỬ (FULL SCREEN) ==================== */
   openProviderPage() {
-    const typeSelect = document.getElementById('acc-type-select');
-    const curType = typeSelect ? typeSelect.value : 'bank';
-
-    // Tự động nhảy sang tab phù hợp với loại tài khoản đang chọn
-    if (curType === 'bank') {
+    if (this._pickerTarget === 'saving') {
       this.currentProviderTab = 'bank';
-    } else if (curType === 'ewallet') {
-      this.currentProviderTab = 'ewallet';
-    } else if (['cash', 'credit', 'saving'].includes(curType)) {
-      this.currentProviderTab = 'generic';
     } else {
-      this.currentProviderTab = 'all';
+      const typeSelect = document.getElementById('acc-type-select');
+      const curType = typeSelect ? typeSelect.value : 'bank';
+
+      // Tự động nhảy sang tab phù hợp với loại tài khoản đang chọn
+      if (curType === 'bank') {
+        this.currentProviderTab = 'bank';
+      } else if (curType === 'ewallet') {
+        this.currentProviderTab = 'ewallet';
+      } else if (['cash', 'credit'].includes(curType)) {
+        this.currentProviderTab = 'generic';
+      } else {
+        this.currentProviderTab = 'all';
+      }
     }
 
     this.currentProviderQuery = '';
@@ -223,8 +226,14 @@ const UIAccounts = {
   },
 
   closeProviderPage() {
+    const isSaving = this._pickerTarget === 'saving';
+    this._pickerTarget = null;
     if (window.app) {
-      window.app.goBack();
+      if (isSaving) {
+        window.app.switchView('savings-form', true);
+      } else {
+        window.app.switchView('account-form', true);
+      }
     }
   },
 
@@ -249,7 +258,7 @@ const UIAccounts = {
     const container = document.getElementById('bank-provider-grid');
     if (!container) return;
 
-    const currentBankCode = document.getElementById('acc-bank-code-input')?.value || '';
+    const currentBankCode = this._pickerTarget === 'saving' ? (document.getElementById('saving-bank-code-input')?.value || '') : (document.getElementById('acc-bank-code-input')?.value || '');
     const q = this.currentProviderQuery;
     const tab = this.currentProviderTab;
 
@@ -257,7 +266,7 @@ const UIAccounts = {
       // Lọc theo tab
       if (tab === 'bank' && p.type !== 'bank') return false;
       if (tab === 'ewallet' && p.type !== 'ewallet') return false;
-      if (tab === 'generic' && !['cash', 'credit', 'saving'].includes(p.type) && !p.code.startsWith('GENERIC_')) return false;
+      if (tab === 'generic' && !['cash', 'credit'].includes(p.type) && !p.code.startsWith('GENERIC_')) return false;
 
       // Lọc theo từ khóa tìm kiếm
       if (q) {
@@ -302,6 +311,33 @@ const UIAccounts = {
   selectProvider(code) {
     const p = this.PROVIDERS.find(x => x.code === code);
     if (!p) return;
+
+    if (this._pickerTarget === 'saving') {
+      const bankInput = document.getElementById('saving-bank-code-input');
+      const display = document.getElementById('saving-bank-display');
+      const preview = document.getElementById('saving-bank-logo-preview');
+      const nameInput = document.getElementById('saving-name-input');
+
+      if (bankInput) bankInput.value = p.code;
+      if (display) display.textContent = p.name;
+      if (preview) {
+        preview.innerHTML = this.renderLogoBadge(p, 32);
+        preview.style.background = 'transparent';
+      }
+
+      // Tự động điền/gợi ý tên sổ nếu tên đang trống hoặc là tên mặc định
+      if (nameInput) {
+        const curVal = nameInput.value.trim();
+        const isGeneric = !curVal || this.PROVIDERS.some(prov => curVal === prov.name || curVal === `Sổ ${prov.shortName || prov.name}` || curVal === prov.shortName);
+        if (isGeneric) {
+          nameInput.value = `Sổ ${p.shortName || p.name}`;
+        }
+      }
+
+      this.closeProviderPage();
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
 
     const bankInput = document.getElementById('acc-bank-code-input');
     const display = document.getElementById('acc-provider-display');
@@ -1066,6 +1102,7 @@ const UIAccounts = {
   },
 
   async openAddModal() {
+    this._pickerTarget = 'account';
     const form = document.getElementById('account-form');
     if (form) form.reset();
 
@@ -1133,6 +1170,7 @@ const UIAccounts = {
   },
 
   async openEditModal(accId) {
+    this._pickerTarget = 'account';
     const acc = await db.accounts.get(Number(accId));
     if (!acc) return;
 
@@ -1271,6 +1309,11 @@ const UIAccounts = {
       showToast('Đã cập nhật thông tin tài khoản', 'success');
     } else {
       const existing = await db.accounts.where('isDeleted').equals(0).toArray();
+      const dup = existing.find(a => a.name.trim().toLowerCase() === name.toLowerCase() && a.type === type);
+      if (dup) {
+        showToast(`Tài khoản "${name}" đã tồn tại!`, 'warning');
+        return;
+      }
       const maxOrder = existing.reduce((max, a) => Math.max(max, a.order ?? 0), -1);
       const newOrder = maxOrder + 1;
 
@@ -3940,6 +3983,10 @@ const UIAccounts = {
   async render() {
     const container = document.getElementById('accounts-list-container');
     if (!container) return;
+
+    if (typeof deduplicateAccounts === 'function') {
+      await deduplicateAccounts();
+    }
 
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
     accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));

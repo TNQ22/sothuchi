@@ -536,7 +536,9 @@ class App {
     }
 
     if (this.currentView === 'account-provider') {
-      this.switchView('account-form', true);
+      const isSaving = (window.UIAccounts && window.UIAccounts._pickerTarget === 'saving');
+      if (window.UIAccounts) window.UIAccounts._pickerTarget = null;
+      this.switchView(isSaving ? 'savings-form' : 'account-form', true);
       return;
     }
 
