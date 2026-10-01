@@ -2129,7 +2129,7 @@ const UIAccounts = {
     precious_metal: [
       { id: 'sjc_gold', name: 'Vàng miếng SJC' },
       { id: 'ring_gold', name: 'Vàng nhẫn 9999 (24K)' },
-      { id: 'white_gold', name: 'Vàng tây / Vàng trắng (18K, 14K)' },
+      { id: 'white_gold', name: 'Vàng tây (18K, 14K)' },
       { id: 'silver', name: 'Bạc miếng / Bạc tích trữ' },
       { id: 'platinum', name: 'Bạch kim (Platinum)' }
     ],
@@ -3628,7 +3628,7 @@ const UIAccounts = {
                 <div class="group-card-icon-wrap" style="background: transparent;">
                   ${this.renderLogoBadge(prov || s.bankCode || { icon: 'piggy-bank', color: '#0ea5e9' }, 38)}
                 </div>
-                <div style="min-width: 0; flex: 1;">
+                <div class="group-card-info-wrap">
                   <div class="group-card-name" title="${escapeHTML(s.name)}">${escapeHTML(s.name)}</div>
                   <div class="group-card-sub">
                     <span class="rate-badge">${s.interestRate || 0}%/năm</span>
@@ -3637,7 +3637,7 @@ const UIAccounts = {
                   </div>
                 </div>
               </div>
-              <button type="button" class="btn-icon" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('savings', ${s.id})" title="Tùy chọn">
+              <button type="button" class="btn-icon group-card-more-btn" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('savings', ${s.id})" title="Tùy chọn">
                 <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
               </button>
             </div>
@@ -3735,7 +3735,7 @@ const UIAccounts = {
                 <div class="group-card-icon-wrap" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
                   <i data-lucide="target" style="width: 20px; height: 20px;"></i>
                 </div>
-                <div style="min-width: 0; flex: 1;">
+                <div class="group-card-info-wrap">
                   <div class="group-card-name" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
                   <div class="group-card-sub">
                     <span>${targetDateStr}</span>
@@ -3852,7 +3852,7 @@ const UIAccounts = {
                   </div>
                 </div>
               </div>
-              <button type="button" class="btn-icon" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('asset', ${item.id})" title="Tùy chọn">
+              <button type="button" class="btn-icon group-card-more-btn" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('asset', ${item.id})" title="Tùy chọn">
                 <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
               </button>
             </div>

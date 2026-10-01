@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.37">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.38">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -306,9 +306,11 @@
                 <span class="accounts-group-subtitle stat-amount" id="label-expense-acc-total">0đ</span>
               </div>
             </div>
-            <button type="button" class="btn-group-circle-add" onclick="UIAccounts.openAddModal()" title="Thêm ví chi tiêu" aria-label="Thêm ví chi tiêu">
-              <i data-lucide="plus"></i>
-            </button>
+            <div class="accounts-group-actions">
+              <button type="button" class="btn-group-circle-add" onclick="UIAccounts.openAddModal()" title="Thêm ví chi tiêu" aria-label="Thêm ví chi tiêu">
+                <i data-lucide="plus"></i>
+              </button>
+            </div>
           </div>
 
           <div id="accounts-list-container" class="accounts-list"></div>
@@ -338,9 +340,11 @@
                 <span class="accounts-group-subtitle stat-amount" id="label-savings-total">0đ</span>
               </div>
             </div>
-            <button type="button" class="btn-group-circle-add" onclick="UIAccounts.openSavingsForm()" title="Thêm sổ tiết kiệm" aria-label="Thêm sổ tiết kiệm">
-              <i data-lucide="plus"></i>
-            </button>
+            <div class="accounts-group-actions">
+              <button type="button" class="btn-group-circle-add" onclick="UIAccounts.openSavingsForm()" title="Thêm sổ tiết kiệm" aria-label="Thêm sổ tiết kiệm">
+                <i data-lucide="plus"></i>
+              </button>
+            </div>
           </div>
 
           <div id="savings-list-container" class="savings-cards-list"></div>
@@ -370,9 +374,11 @@
                 <span class="accounts-group-subtitle stat-amount" id="label-accumulations-total">0đ</span>
               </div>
             </div>
-            <button type="button" class="btn-group-circle-add" onclick="UIAccounts.openAccumulationForm()" title="Thêm mục tiêu tích lũy" aria-label="Thêm mục tiêu tích lũy">
-              <i data-lucide="plus"></i>
-            </button>
+            <div class="accounts-group-actions">
+              <button type="button" class="btn-group-circle-add" onclick="UIAccounts.openAccumulationForm()" title="Thêm mục tiêu tích lũy" aria-label="Thêm mục tiêu tích lũy">
+                <i data-lucide="plus"></i>
+              </button>
+            </div>
           </div>
 
           <div id="accumulations-list-container" class="accumulations-cards-list"></div>
@@ -390,7 +396,7 @@
                 <span class="accounts-group-subtitle stat-amount" id="label-assets-total">0đ</span>
               </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="accounts-group-actions">
               <button type="button" class="btn-group-circle-add" style="color: #0ea5e9;" onclick="UIAccounts.refreshAllLivePrices()" title="Cập nhật giá ngoại tệ, vàng/bạc & crypto trực tuyến" aria-label="Làm mới giá">
                 <i data-lucide="refresh-cw" id="icon-refresh-all-assets"></i>
               </button>
