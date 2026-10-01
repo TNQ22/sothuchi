@@ -3622,22 +3622,22 @@ const UIAccounts = {
         const expectedProfit = s.expectedInterest ? `+Lãi dự kiến: ${new Intl.NumberFormat('vi-VN').format(s.expectedInterest)}đ` : '';
 
         return `
-          <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('savings', ${s.id})">
-            <div class="group-card-header">
-              <div class="group-card-title-row">
-                <div class="group-card-icon-wrap" style="background: transparent;">
+          <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('savings', ${s.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
+            <div class="group-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0;">
+              <div class="group-card-title-row" style="display: flex; align-items: center; gap: 8px; flex: 1 1 0%; min-width: 0; max-width: calc(100% - 36px); overflow: hidden;">
+                <div class="group-card-icon-wrap" style="background: transparent; flex-shrink: 0;">
                   ${this.renderLogoBadge(prov || s.bankCode || { icon: 'piggy-bank', color: '#0ea5e9' }, 38)}
                 </div>
-                <div class="group-card-info-wrap">
-                  <div class="group-card-name" title="${escapeHTML(s.name)}">${escapeHTML(s.name)}</div>
-                  <div class="group-card-sub">
+                <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; overflow: hidden;">
+                  <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; font-weight: 700;" title="${escapeHTML(s.name)}">${escapeHTML(s.name)}</div>
+                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     <span class="rate-badge">${s.interestRate || 0}%/năm</span>
                     <span class="term-badge">${s.termMonths ? s.termMonths + ' tháng' : 'Không kỳ hạn'}</span>
                     ${s.excludeFromReport ? '<span class="account-badge exclude"><i data-lucide="eye-off" style="width:10px;height:10px;"></i> Ẩn báo cáo</span>' : ''}
                   </div>
                 </div>
               </div>
-              <button type="button" class="btn-icon group-card-more-btn" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('savings', ${s.id})" title="Tùy chọn">
+              <button type="button" class="btn-icon group-card-more-btn" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('savings', ${s.id})" title="Tùy chọn" style="flex-shrink: 0; width: 28px; height: 28px; min-width: 28px; border: none; background: transparent; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
                 <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
               </button>
             </div>
@@ -3729,14 +3729,14 @@ const UIAccounts = {
         const targetDateStr = item.targetDate ? `Hạn chót: ${item.targetDate.split('-').reverse().join('/')}` : 'Không giới hạn';
 
         return `
-          <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('accumulation', ${item.id})">
+          <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('accumulation', ${item.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
             <div class="group-card-header">
               <div class="group-card-title-row">
                 <div class="group-card-icon-wrap" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
                   <i data-lucide="target" style="width: 20px; height: 20px;"></i>
                 </div>
-                <div class="group-card-info-wrap">
-                  <div class="group-card-name" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
+                <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; overflow: hidden;">
+                  <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; font-weight: 700;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
                   <div class="group-card-sub">
                     <span>${targetDateStr}</span>
                     ${item.hasRecurring ? '<span class="term-badge"><i data-lucide="repeat" style="width:10px;height:10px;"></i> Định kỳ</span>' : ''}
@@ -3837,22 +3837,22 @@ const UIAccounts = {
         groupBuyTotal += totalBuy;
 
         return `
-          <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('asset', ${item.id})">
-            <div class="group-card-header">
-              <div class="group-card-title-row">
-                <div class="group-card-icon-wrap" style="background: ${meta.color}22; color: ${meta.color};">
+          <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('asset', ${item.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
+            <div class="group-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0;">
+              <div class="group-card-title-row" style="display: flex; align-items: center; gap: 8px; flex: 1 1 0%; min-width: 0; max-width: calc(100% - 36px); overflow: hidden;">
+                <div class="group-card-icon-wrap" style="background: ${meta.color}22; color: ${meta.color}; flex-shrink: 0;">
                   <i data-lucide="${meta.icon}" style="width: 20px; height: 20px;"></i>
                 </div>
-                <div style="min-width: 0; flex: 1;">
-                  <div class="group-card-name" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
-                  <div class="group-card-sub">
+                <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; overflow: hidden;">
+                  <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; font-weight: 700;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
+                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     <span class="term-badge">${meta.label}</span>
                     <span>${qty} ${escapeHTML(item.unit || '')}</span>
                     ${item.location ? `<span>• ${escapeHTML(item.location)}</span>` : ''}
                   </div>
                 </div>
               </div>
-              <button type="button" class="btn-icon group-card-more-btn" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('asset', ${item.id})" title="Tùy chọn">
+              <button type="button" class="btn-icon group-card-more-btn" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('asset', ${item.id})" title="Tùy chọn" style="flex-shrink: 0; width: 28px; height: 28px; min-width: 28px; border: none; background: transparent; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
                 <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
               </button>
             </div>
@@ -3876,18 +3876,18 @@ const UIAccounts = {
       const groupSign = isGroupProf ? '+' : '';
 
       html += `
-        <div class="asset-type-group">
-          <div class="asset-type-header">
-            <div class="asset-type-title-wrap">
-              <div class="asset-type-icon" style="background: ${meta.color}22; color: ${meta.color};">
+        <div class="asset-type-group" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
+          <div class="asset-type-header" style="display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; min-width: 0; box-sizing: border-box;">
+            <div class="asset-type-title-wrap" style="display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 0%; overflow: hidden;">
+              <div class="asset-type-icon" style="background: ${meta.color}22; color: ${meta.color}; flex-shrink: 0;">
                 <i data-lucide="${meta.icon}" style="width: 16px; height: 16px;"></i>
               </div>
-              <div class="asset-type-name-info">
-                <span class="asset-type-title">${meta.label}</span>
-                <span class="group-count-badge">${items.length}</span>
+              <div class="asset-type-name-info" style="display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden;">
+                <span class="asset-type-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${meta.label}</span>
+                <span class="group-count-badge" style="flex-shrink: 0;">${items.length}</span>
               </div>
             </div>
-            <div class="asset-type-header-stats">
+            <div class="asset-type-header-stats" style="flex-shrink: 0; display: flex; align-items: center; gap: 6px;">
               <span class="asset-type-subtotal stat-amount">${new Intl.NumberFormat('vi-VN').format(groupCurTotal)}đ</span>
               ${groupBuyTotal > 0 ? `
                 <span class="asset-type-pnl stat-amount ${isGroupProf ? 'profit' : 'loss'}">
@@ -3896,7 +3896,7 @@ const UIAccounts = {
               ` : ''}
             </div>
           </div>
-          <div class="asset-type-items-list">
+          <div class="asset-type-items-list" style="width: 100%; max-width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 8px;">
             ${itemsHtml}
           </div>
         </div>
@@ -3956,8 +3956,8 @@ const UIAccounts = {
                 ${this.renderLogoBadge(a, 36)}
               </div>
               <div class="account-info">
-                <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                  <span class="account-name" title="${escapeHTML(a.name)}">${escapeHTML(a.name)}</span>
+                <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
+                  <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; flex: 1 1 0%; min-width: 0; max-width: 100%; font-weight: 700;">${escapeHTML(a.name)}</span>
                   ${a.excludeFromReport ? '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn báo cáo</span>' : ''}
                 </div>
                 <div class="account-sub-row">

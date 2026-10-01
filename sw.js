@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v1.9.35';
+const CACHE_NAME = 'sothuchi-pwa-v1.9.40';
 
 const PRECACHE_ASSETS = [
   './',
@@ -107,7 +107,7 @@ self.addEventListener('fetch', (event) => {
 
   // Handle asset requests
   event.respondWith(
-    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
+    caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
         // Revalidate in background when online
         fetch(event.request).then((networkResponse) => {

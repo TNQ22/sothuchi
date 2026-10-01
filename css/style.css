@@ -4977,9 +4977,24 @@ body:has(#view-account-provider.active) .app-header {
 }
 
 /* Thẻ chi tiết tài sản / sổ tiết kiệm (Khung bên trong cùng) */
-.group-item-card {
-  padding: 11px 12px;
+.assets-cards-list,
+.savings-cards-list,
+.accumulations-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.group-item-card {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
   box-sizing: border-box;
   overflow: hidden;
   border-radius: var(--radius-md);
@@ -4993,6 +5008,7 @@ body:has(#view-account-provider.active) .app-header {
   margin-bottom: 6px;
   min-width: 0;
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
 }
 
@@ -5000,14 +5016,16 @@ body:has(#view-account-provider.active) .app-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
+  flex: 1 1 0%;
   min-width: 0;
+  max-width: calc(100% - 36px);
   overflow: hidden;
 }
 
 .group-card-info-wrap {
   min-width: 0;
-  flex: 1;
+  flex: 1 1 0%;
+  max-width: 100%;
   overflow: hidden;
 }
 
@@ -5020,6 +5038,7 @@ body:has(#view-account-provider.active) .app-header {
   text-overflow: ellipsis;
   display: block;
   width: 100%;
+  max-width: 100%;
 }
 
 .group-card-sub {
