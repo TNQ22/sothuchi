@@ -3777,7 +3777,7 @@ const UIAccounts = {
       document.getElementById('loan-due-day-select').value = loan.dueDay || 1;
       document.getElementById('loan-desc-input').value = loan.description || '';
       document.getElementById('loan-exclude-report-input').checked = !!loan.excludeFromReport;
-      await this.updateLoanDisburseDisplay(loan.disbursementAccountId || '');
+      await this.updateLoanDisburseDisplay(loan.disbursementAccountId || '', true);
 
       if (bankCodeInput) bankCodeInput.value = loan.bankCode || '';
       if (loan.bankCode) {
@@ -3808,7 +3808,7 @@ const UIAccounts = {
       document.getElementById('loan-due-day-select').value = '1';
       document.getElementById('loan-desc-input').value = '';
       document.getElementById('loan-exclude-report-input').checked = false;
-      await this.updateLoanDisburseDisplay('');
+      await this.updateLoanDisburseDisplay('', false);
 
       if (bankCodeInput) bankCodeInput.value = '';
       if (bankDisplay) bankDisplay.textContent = 'Chưa chọn (Mặc định)';
@@ -3847,7 +3847,7 @@ const UIAccounts = {
     this.openProviderPage();
   },
 
-  async updateLoanDisburseDisplay(accId) {
+  async updateLoanDisburseDisplay(accId, isEdit = false) {
     const input = document.getElementById('loan-disburse-account-select');
     const logoEl = document.getElementById('loan-disburse-logo-preview');
     const nameEl = document.getElementById('loan-disburse-account-name');
@@ -3860,7 +3860,7 @@ const UIAccounts = {
       logoEl.style.background = 'rgba(16, 185, 129, 0.15)';
       logoEl.style.color = '#10b981';
       nameEl.textContent = 'Không cộng vào ví (Đã có sẵn)';
-      balEl.textContent = 'Không làm thay đổi số dư ví';
+      balEl.textContent = isEdit ? 'Khoản vay ngoài ví (Không tự giải ngân vào ví)' : 'Không làm thay đổi số dư ví';
       if (window.lucide) lucide.createIcons();
       return;
     }
@@ -3871,22 +3871,27 @@ const UIAccounts = {
       logoEl.innerHTML = this.renderLogoBadge(prov || acc, 36);
       logoEl.style.background = 'transparent';
       nameEl.textContent = acc.name;
-      balEl.textContent = `Số dư: ${new Intl.NumberFormat('vi-VN').format(acc.balance || 0)}đ`;
+      balEl.textContent = isEdit 
+        ? 'Đã ghi nhận khi tạo sổ (Không giải ngân lại khi sửa)' 
+        : `Số dư: ${new Intl.NumberFormat('vi-VN').format(acc.balance || 0)}đ (Sẽ cộng tiền vay khi lưu)`;
     }
     if (window.lucide) lucide.createIcons();
   },
 
   openLoanDisbursePicker() {
+    const isEdit = !!document.getElementById('loan-id-input')?.value;
     const curVal = document.getElementById('loan-disburse-account-select')?.value || '';
-    this.openAccountPicker({
-      currentValue: curVal,
-      title: 'Tài khoản nhận giải ngân',
-      subtitle: 'Chọn tài khoản để tự động cộng tiền vay vào số dư',
+    this.openSourceAccountPicker({
+      title: isEdit ? 'Tài Khoản Ghi Nhận Giải Ngân' : 'Tài Khoản Nhận Giải Ngân',
       allowNone: true,
-      noneLabel: 'Không cộng vào ví (Đã có sẵn)',
-      noneSubtitle: 'Chỉ theo dõi nghĩa vụ nợ, không thay đổi số dư ví',
+      noneLabel: 'Không cộng vào ví (Đã có sẵn / Ngoài ví)',
+      noneDesc: isEdit ? 'Không làm thay đổi số dư ví' : 'Chỉ theo dõi nghĩa vụ nợ, không thay đổi số dư ví',
+      selectedId: curVal,
       onSelect: (selectedId) => {
-        this.updateLoanDisburseDisplay(selectedId);
+        this.updateLoanDisburseDisplay(selectedId, isEdit);
+        if (isEdit) {
+          showToast('Đã đổi tài khoản ghi nhận (Không tự động giải ngân lại khi sửa)', 'info');
+        }
       }
     });
   },
@@ -3992,6 +3997,9 @@ const UIAccounts = {
       }
       this.closeLoanForm();
       await this.render();
+      if (window.app && typeof window.app.refreshAll === 'function') {
+        await window.app.refreshAll();
+      }
     } catch (e) {
       console.error(e);
       showToast('Lỗi lưu sổ vay: ' + e.message, 'error');
@@ -4204,13 +4212,12 @@ const UIAccounts = {
 
   openPayLoanSourcePicker() {
     const curVal = document.getElementById('pay-loan-source-account-input')?.value || '';
-    this.openAccountPicker({
-      currentValue: curVal,
-      title: 'Tài khoản trích tiền',
-      subtitle: 'Chọn tài khoản để trừ tiền trả nợ gốc',
+    this.openSourceAccountPicker({
+      title: 'Tài Khoản Trích Tiền Trả Nợ',
       allowNone: true,
       noneLabel: 'Không trích tiền ví',
-      noneSubtitle: 'Chỉ cập nhật dư nợ sổ vay, không trừ tiền ví',
+      noneDesc: 'Chỉ cập nhật dư nợ sổ vay, không trừ tiền ví',
+      selectedId: curVal,
       onSelect: (selectedId) => {
         this.updatePayLoanSourceDisplay(selectedId);
       }
@@ -4234,6 +4241,9 @@ const UIAccounts = {
       showToast('Đã ghi nhận trả nợ gốc sổ vay thành công!', 'success');
       this.closePayLoanModal();
       await this.render();
+      if (window.app && typeof window.app.refreshAll === 'function') {
+        await window.app.refreshAll();
+      }
     } catch (e) {
       console.error(e);
       showToast('Lỗi: ' + e.message, 'error');

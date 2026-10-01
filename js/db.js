@@ -694,10 +694,28 @@ async function addLoan(loanData) {
 }
 
 async function updateLoan(id, loanData) {
+  const lId = Number(id);
   const now = new Date().toISOString();
-  await db.loans.update(Number(id), {
-    ...loanData,
-    updatedAt: now
+  await db.transaction('rw', db.loans, async () => {
+    const oldLoan = await db.loans.get(lId);
+    if (!oldLoan || oldLoan.isDeleted) return;
+
+    let remaining = oldLoan.remainingAmount !== undefined ? oldLoan.remainingAmount : (oldLoan.loanAmount || 0);
+
+    // Nếu người dùng thay đổi số tiền vay ban đầu (ví dụ lúc tạo gõ nhầm):
+    if (loanData.loanAmount !== undefined && loanData.loanAmount !== oldLoan.loanAmount) {
+      const history = oldLoan.repaymentHistory || [];
+      const totalPaid = history.reduce((sum, h) => sum + (h.amount || 0), 0);
+      remaining = Math.max(0, loanData.loanAmount - totalPaid);
+    }
+
+    // Tuyệt đối KHÔNG tự ý giải ngân lại/cộng thêm tiền vào ví khi sửa sổ vay
+    await db.loans.update(lId, {
+      ...loanData,
+      remainingAmount: remaining,
+      status: remaining <= 0 ? 'settled' : 'active',
+      updatedAt: now
+    });
   });
   triggerAutoSync();
 }
