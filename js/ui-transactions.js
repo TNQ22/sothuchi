@@ -210,6 +210,16 @@ const UITransactions = {
       const savingText = document.getElementById('saving-amount-text');
       cur = savingText?.textContent?.trim() || savingInput?.value?.trim() || '0';
       if (curSymbolEl) curSymbolEl.textContent = 'đ';
+    } else if (target === 'loan-amount') {
+      const loanInput = document.getElementById('loan-amount-input');
+      const loanText = document.getElementById('loan-amount-text');
+      cur = loanText?.textContent?.trim() || loanInput?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = 'đ';
+    } else if (target === 'pay-loan-amount') {
+      const pInput = document.getElementById('pay-loan-amount-input');
+      const pText = document.getElementById('pay-loan-amount-text');
+      cur = pText?.textContent?.trim() || pInput?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = 'đ';
     } else if (target === 'acc-target-amount') {
       const targetInput = document.getElementById('acc-target-amount-input');
       const targetText = document.getElementById('acc-target-amount-text');
@@ -341,6 +351,21 @@ const UITransactions = {
       if (window.UIAccounts && typeof window.UIAccounts.calcSavingsPreview === 'function') {
         window.UIAccounts.calcSavingsPreview();
       }
+    } else if (this.activeKeypadTarget === 'loan-amount') {
+      const loanInput = document.getElementById('loan-amount-input');
+      const loanText = document.getElementById('loan-amount-text');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (loanInput) loanInput.value = rawNum;
+      if (loanText) loanText.textContent = finalFormatted;
+      if (window.UIAccounts && typeof window.UIAccounts.calcLoanPreview === 'function') {
+        window.UIAccounts.calcLoanPreview();
+      }
+    } else if (this.activeKeypadTarget === 'pay-loan-amount') {
+      const pInput = document.getElementById('pay-loan-amount-input');
+      const pText = document.getElementById('pay-loan-amount-text');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (pInput) pInput.value = rawNum;
+      if (pText) pText.textContent = finalFormatted;
     } else if (this.activeKeypadTarget === 'acc-target-amount') {
       const targetInput = document.getElementById('acc-target-amount-input');
       const targetText = document.getElementById('acc-target-amount-text');
@@ -433,7 +458,7 @@ const UITransactions = {
 
     modal.classList.remove('open');
     const nonTxTargets = [
-      'account-balance', 'saving-amount', 'acc-target-amount', 'asset-price', 'asset-quantity',
+      'account-balance', 'saving-amount', 'loan-amount', 'pay-loan-amount', 'acc-target-amount', 'asset-price', 'asset-quantity',
       'acc-current-amount', 'acc-recurring-amount',
       'asset-buyprice', 'asset-currentprice', 'asset-extracosts',
       'settle-saving-amount', 'deposit-acc-amount', 'liquidate-asset-price'

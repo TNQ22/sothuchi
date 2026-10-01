@@ -233,7 +233,8 @@ class GoogleDriveSync {
         recurring: await db.recurring.toArray(),
         savings: db.savings ? await db.savings.toArray() : [],
         accumulations: db.accumulations ? await db.accumulations.toArray() : [],
-        assets: db.assets ? await db.assets.toArray() : []
+        assets: db.assets ? await db.assets.toArray() : [],
+        loans: db.loans ? await db.loans.toArray() : []
       };
       return local;
     }
@@ -291,6 +292,7 @@ class GoogleDriveSync {
     const finalSavings = db.savings ? await mergeTable(db.savings, await db.savings.toArray(), remoteData.savings) : [];
     const finalAccumulations = db.accumulations ? await mergeTable(db.accumulations, await db.accumulations.toArray(), remoteData.accumulations) : [];
     const finalAssets = db.assets ? await mergeTable(db.assets, await db.assets.toArray(), remoteData.assets) : [];
+    const finalLoans = db.loans ? await mergeTable(db.loans, await db.loans.toArray(), remoteData.loans) : [];
 
     return {
       transactions: finalTransactions,
@@ -301,7 +303,8 @@ class GoogleDriveSync {
       recurring: finalRecurring,
       savings: finalSavings,
       accumulations: finalAccumulations,
-      assets: finalAssets
+      assets: finalAssets,
+      loans: finalLoans
     };
   }
 }

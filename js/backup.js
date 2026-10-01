@@ -16,6 +16,7 @@ const BackupService = {
     const savings = db.savings ? await db.savings.toArray() : [];
     const accumulations = db.accumulations ? await db.accumulations.toArray() : [];
     const assets = db.assets ? await db.assets.toArray() : [];
+    const loans = db.loans ? await db.loans.toArray() : [];
 
     const dataPayload = {
       version: '2.0.0',
@@ -30,7 +31,8 @@ const BackupService = {
         settings,
         savings,
         accumulations,
-        assets
+        assets,
+        loans
       }
     };
 
@@ -80,12 +82,13 @@ const BackupService = {
             throw new Error('Định dạng tệp sao lưu không hợp lệ.');
           }
 
-          const { transactions, accounts, categories, debts, budgets, recurring, savings, accumulations, assets } = parsed.data;
+          const { transactions, accounts, categories, debts, budgets, recurring, savings, accumulations, assets, loans } = parsed.data;
 
           const storesToLock = [db.transactions, db.accounts, db.categories, db.debts, db.budgets, db.recurring];
           if (db.savings) storesToLock.push(db.savings);
           if (db.accumulations) storesToLock.push(db.accumulations);
           if (db.assets) storesToLock.push(db.assets);
+          if (db.loans) storesToLock.push(db.loans);
 
           await db.transaction('rw', storesToLock, async () => {
             if (transactions && transactions.length) {
@@ -123,6 +126,10 @@ const BackupService = {
             if (assets && assets.length && db.assets) {
               await db.assets.clear();
               await db.assets.bulkAdd(assets);
+            }
+            if (loans && loans.length && db.loans) {
+              await db.loans.clear();
+              await db.loans.bulkAdd(loans);
             }
           });
 

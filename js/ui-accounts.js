@@ -167,6 +167,7 @@ const UIAccounts = {
       { id: 'modal-account-create-type', fn: () => this.closeCreateTypeSheet() },
       { id: 'modal-asset-type-picker', fn: () => this.closeAssetTypePicker() },
       { id: 'modal-settle-saving', fn: () => this.closeSettleSavingModal() },
+      { id: 'modal-pay-loan', fn: () => this.closePayLoanModal() },
       { id: 'modal-deposit-accumulation', fn: () => this.closeDepositAccModal() },
       { id: 'modal-liquidate-asset', fn: () => this.closeLiquidateModal() },
       { id: 'modal-item-actions', fn: () => this.closeItemActionSheet() },
@@ -185,7 +186,7 @@ const UIAccounts = {
 
   /* ==================== TRANG CHỌN NGÂN HÀNG & VÍ ĐIỆN TỬ (FULL SCREEN) ==================== */
   openProviderPage() {
-    if (this._pickerTarget === 'saving') {
+    if (this._pickerTarget === 'saving' || this._pickerTarget === 'loan') {
       this.currentProviderTab = 'bank';
     } else {
       const typeSelect = document.getElementById('acc-type-select');
@@ -226,11 +227,13 @@ const UIAccounts = {
   },
 
   closeProviderPage() {
-    const isSaving = this._pickerTarget === 'saving';
+    const target = this._pickerTarget;
     this._pickerTarget = null;
     if (window.app) {
-      if (isSaving) {
+      if (target === 'saving') {
         window.app.switchView('savings-form', true);
+      } else if (target === 'loan') {
+        window.app.switchView('loan-form', true);
       } else {
         window.app.switchView('account-form', true);
       }
@@ -258,7 +261,7 @@ const UIAccounts = {
     const container = document.getElementById('bank-provider-grid');
     if (!container) return;
 
-    const currentBankCode = this._pickerTarget === 'saving' ? (document.getElementById('saving-bank-code-input')?.value || '') : (document.getElementById('acc-bank-code-input')?.value || '');
+    const currentBankCode = this._pickerTarget === 'saving' ? (document.getElementById('saving-bank-code-input')?.value || '') : (this._pickerTarget === 'loan' ? (document.getElementById('loan-bank-code-input')?.value || '') : (document.getElementById('acc-bank-code-input')?.value || ''));
     const q = this.currentProviderQuery;
     const tab = this.currentProviderTab;
 
@@ -331,6 +334,32 @@ const UIAccounts = {
         const isGeneric = !curVal || this.PROVIDERS.some(prov => curVal === prov.name || curVal === `Sổ ${prov.shortName || prov.name}` || curVal === prov.shortName);
         if (isGeneric) {
           nameInput.value = `Sổ ${p.shortName || p.name}`;
+        }
+      }
+
+      this.closeProviderPage();
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    if (this._pickerTarget === 'loan') {
+      const bankInput = document.getElementById('loan-bank-code-input');
+      const display = document.getElementById('loan-bank-display');
+      const preview = document.getElementById('loan-bank-logo-preview');
+      const nameInput = document.getElementById('loan-name-input');
+
+      if (bankInput) bankInput.value = p.code;
+      if (display) display.textContent = p.name;
+      if (preview) {
+        preview.innerHTML = this.renderLogoBadge(p, 32);
+        preview.style.background = 'transparent';
+      }
+
+      if (nameInput) {
+        const curVal = nameInput.value.trim();
+        const isGeneric = !curVal || this.PROVIDERS.some(prov => curVal === prov.name || curVal === `Vay ${prov.shortName || prov.name}` || curVal === prov.shortName);
+        if (isGeneric) {
+          nameInput.value = `Vay ${p.shortName || p.name}`;
         }
       }
 
@@ -1486,6 +1515,8 @@ const UIAccounts = {
       this.openSavingsForm();
     } else if (type === 'accumulation') {
       this.openAccumulationForm();
+    } else if (type === 'loan') {
+      this.openLoanForm();
     } else if (type === 'asset') {
       this.openAssetTypePicker();
     }
@@ -3495,6 +3526,59 @@ const UIAccounts = {
     const bodyEl = document.getElementById('item-actions-body');
     if (!modal || !bodyEl) return;
 
+    if (type === 'loan') {
+      db.loans.get(Number(id)).then(l => {
+        if (!l) return;
+        if (titleEl) titleEl.textContent = l.name;
+        const remaining = l.remainingAmount !== undefined ? l.remainingAmount : (l.loanAmount || 0);
+        if (subtitleEl) subtitleEl.textContent = `Dư nợ: ${new Intl.NumberFormat('vi-VN').format(remaining)}đ / ${new Intl.NumberFormat('vi-VN').format(l.loanAmount || 0)}đ ${l.status === 'settled' ? '(Đã tất toán)' : ''}`;
+        if (iconEl) {
+          iconEl.innerHTML = '<i data-lucide="badge-percent"></i>';
+          iconEl.style.background = 'rgba(239, 68, 68, 0.15)';
+          iconEl.style.color = '#ef4444';
+        }
+
+        let btns = '';
+        if (l.status === 'active') {
+          btns += `
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openPayLoanModal(${l.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                <i data-lucide="credit-card" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Trả nợ gốc / Tất toán</span>
+                <span class="action-sheet-item-desc">Ghi nhận đợt trả nợ gốc hoặc tất toán toàn bộ sổ vay</span>
+              </div>
+            </button>
+          `;
+        }
+        btns += `
+          <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openLoanForm(${l.id})">
+            <div class="action-sheet-item-icon" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+              <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="action-sheet-item-text">
+              <span class="action-sheet-item-title">Sửa thông tin sổ vay</span>
+              <span class="action-sheet-item-desc">Thay đổi lãi suất, kỳ hạn, ngân hàng...</span>
+            </div>
+          </button>
+          <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.deleteLoanItem(${l.id})">
+            <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+              <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="action-sheet-item-text">
+              <span class="action-sheet-item-title">Xóa sổ vay</span>
+              <span class="action-sheet-item-desc">Xóa hoàn toàn khỏi ứng dụng</span>
+            </div>
+          </button>
+        `;
+        bodyEl.innerHTML = btns;
+        modal.classList.add('open');
+        if (window.lucide) lucide.createIcons();
+      });
+      return;
+    }
+
     if (type === 'savings') {
       db.savings.get(Number(id)).then(s => {
         if (!s) return;
@@ -3649,6 +3733,523 @@ const UIAccounts = {
     this.currentItemAction = null;
   },
 
+  
+  /* ==================== SỔ VAY NGÂN HÀNG (LOANS) ==================== */
+  isSettledLoansExpanded: false,
+
+  toggleSettledLoansList() {
+    this.isSettledLoansExpanded = !this.isSettledLoansExpanded;
+    const list = document.getElementById('settled-loans-list');
+    const chevron = document.getElementById('settled-loans-toggle-icon');
+    if (list) list.style.display = this.isSettledLoansExpanded ? 'flex' : 'none';
+    if (chevron) chevron.classList.toggle('rotated', this.isSettledLoansExpanded);
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async openLoanForm(loanId = null) {
+    const idInput = document.getElementById('loan-id-input');
+    const titleEl = document.getElementById('loan-form-title');
+    const startDateInput = document.getElementById('loan-start-date-input');
+    const termSelect = document.getElementById('loan-term-select');
+    const rateInput = document.getElementById('loan-interest-rate-input');
+    const amountInput = document.getElementById('loan-amount-input');
+    const amountText = document.getElementById('loan-amount-text');
+    const bankDisplay = document.getElementById('loan-bank-display');
+    const bankCodeInput = document.getElementById('loan-bank-code-input');
+    const bankLogoPreview = document.getElementById('loan-bank-logo-preview');
+
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    if (loanId) {
+      const loan = await db.loans.get(Number(loanId));
+      if (!loan) return;
+      if (idInput) idInput.value = loan.id;
+      if (titleEl) titleEl.textContent = 'Sửa Sổ Vay Ngân Hàng';
+
+      document.getElementById('loan-name-input').value = loan.name || '';
+      if (amountInput) amountInput.value = loan.loanAmount || 0;
+      if (amountText) amountText.textContent = new Intl.NumberFormat('vi-VN').format(loan.loanAmount || 0);
+      this.setDateInputValue('loan-start-date-input', loan.startDate || todayStr);
+      if (termSelect) termSelect.value = loan.termMonths !== undefined ? loan.termMonths : 12;
+      if (rateInput) rateInput.value = loan.interestRate !== undefined ? loan.interestRate : 8.5;
+      document.getElementById('loan-repayment-type-select').value = loan.repaymentType || 'reducing';
+      document.getElementById('loan-due-day-select').value = loan.dueDay || 1;
+      document.getElementById('loan-desc-input').value = loan.description || '';
+      document.getElementById('loan-exclude-report-input').checked = !!loan.excludeFromReport;
+      await this.updateLoanDisburseDisplay(loan.disbursementAccountId || '');
+
+      if (bankCodeInput) bankCodeInput.value = loan.bankCode || '';
+      if (loan.bankCode) {
+        const prov = this.PROVIDERS.find(x => x.code === loan.bankCode);
+        if (bankDisplay) bankDisplay.textContent = prov ? prov.name : loan.bankCode;
+        if (bankLogoPreview) {
+          bankLogoPreview.innerHTML = this.renderLogoBadge(prov || loan.bankCode, 32);
+          bankLogoPreview.style.background = 'transparent';
+        }
+      } else {
+        if (bankDisplay) bankDisplay.textContent = 'Chưa chọn (Mặc định)';
+        if (bankLogoPreview) {
+          bankLogoPreview.innerHTML = '<i data-lucide="landmark"></i>';
+          bankLogoPreview.style.background = 'rgba(79, 70, 229, 0.15)';
+          bankLogoPreview.style.color = '#4f46e5';
+        }
+      }
+    } else {
+      if (idInput) idInput.value = '';
+      if (titleEl) titleEl.textContent = 'Thêm Sổ Vay Ngân Hàng';
+      document.getElementById('loan-name-input').value = '';
+      if (amountInput) amountInput.value = '0';
+      if (amountText) amountText.textContent = '0';
+      this.setDateInputValue('loan-start-date-input', todayStr);
+      if (termSelect) termSelect.value = '12';
+      if (rateInput) rateInput.value = '8.5';
+      document.getElementById('loan-repayment-type-select').value = 'reducing';
+      document.getElementById('loan-due-day-select').value = '1';
+      document.getElementById('loan-desc-input').value = '';
+      document.getElementById('loan-exclude-report-input').checked = false;
+      await this.updateLoanDisburseDisplay('');
+
+      if (bankCodeInput) bankCodeInput.value = '';
+      if (bankDisplay) bankDisplay.textContent = 'Chưa chọn (Mặc định)';
+      if (bankLogoPreview) {
+        bankLogoPreview.innerHTML = '<i data-lucide="landmark"></i>';
+        bankLogoPreview.style.background = 'rgba(79, 70, 229, 0.15)';
+        bankLogoPreview.style.color = '#4f46e5';
+      }
+    }
+
+    this.calcLoanPreview();
+    if (window.app) {
+      window.app.switchView('loan-form');
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeLoanForm() {
+    if (window.app) window.app.switchView('accounts', true);
+  },
+
+  openLoanKeypad() {
+    if (window.UITransactions) {
+      UITransactions.openKeypad('loan-amount');
+    }
+  },
+
+  openLoanDatePicker() {
+    this.openDatePicker('loan-start-date-input', {
+      onSelect: () => this.calcLoanPreview()
+    });
+  },
+
+  openLoanBankPicker() {
+    this._pickerTarget = 'loan';
+    this.openProviderPage();
+  },
+
+  async updateLoanDisburseDisplay(accId) {
+    const input = document.getElementById('loan-disburse-account-select');
+    const logoEl = document.getElementById('loan-disburse-logo-preview');
+    const nameEl = document.getElementById('loan-disburse-account-name');
+    const balEl = document.getElementById('loan-disburse-account-balance');
+    if (!input || !logoEl || !nameEl || !balEl) return;
+
+    input.value = accId || '';
+    if (!accId) {
+      logoEl.innerHTML = '<i data-lucide="arrow-down-left"></i>';
+      logoEl.style.background = 'rgba(16, 185, 129, 0.15)';
+      logoEl.style.color = '#10b981';
+      nameEl.textContent = 'Không cộng vào ví (Đã có sẵn)';
+      balEl.textContent = 'Không làm thay đổi số dư ví';
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    const acc = await db.accounts.get(Number(accId));
+    if (acc) {
+      const prov = this.PROVIDERS.find(x => x.code === acc.bankCode);
+      logoEl.innerHTML = this.renderLogoBadge(prov || acc, 36);
+      logoEl.style.background = 'transparent';
+      nameEl.textContent = acc.name;
+      balEl.textContent = `Số dư: ${new Intl.NumberFormat('vi-VN').format(acc.balance || 0)}đ`;
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  openLoanDisbursePicker() {
+    const curVal = document.getElementById('loan-disburse-account-select')?.value || '';
+    this.openAccountPicker({
+      currentValue: curVal,
+      title: 'Tài khoản nhận giải ngân',
+      subtitle: 'Chọn tài khoản để tự động cộng tiền vay vào số dư',
+      allowNone: true,
+      noneLabel: 'Không cộng vào ví (Đã có sẵn)',
+      noneSubtitle: 'Chỉ theo dõi nghĩa vụ nợ, không thay đổi số dư ví',
+      onSelect: (selectedId) => {
+        this.updateLoanDisburseDisplay(selectedId);
+      }
+    });
+  },
+
+  calcLoanPreview() {
+    const amountVal = Number(document.getElementById('loan-amount-input')?.value || 0);
+    const termMonths = parseInt(document.getElementById('loan-term-select')?.value || '12', 10);
+    const rateYear = parseFloat(document.getElementById('loan-interest-rate-input')?.value || '0');
+    const repaymentType = document.getElementById('loan-repayment-type-select')?.value || 'reducing';
+
+    const pPrincipalEl = document.getElementById('loan-preview-principal-val');
+    const pInterestEl = document.getElementById('loan-preview-interest-val');
+    const pTotalEl = document.getElementById('loan-preview-total-val');
+    const pTotalInterestEl = document.getElementById('loan-preview-total-interest-val');
+
+    if (amountVal <= 0 || termMonths <= 0) {
+      if (pPrincipalEl) pPrincipalEl.textContent = '0đ';
+      if (pInterestEl) pInterestEl.textContent = '0đ';
+      if (pTotalEl) pTotalEl.textContent = '0đ';
+      if (pTotalInterestEl) pTotalInterestEl.textContent = '~0đ';
+      return;
+    }
+
+    const rateMonth = (rateYear / 100) / 12;
+    let firstPrincipal = 0;
+    let firstInterest = Math.round(amountVal * rateMonth);
+    let firstTotal = 0;
+    let totalInterest = 0;
+
+    if (repaymentType === 'reducing') {
+      firstPrincipal = Math.round(amountVal / termMonths);
+      firstTotal = firstPrincipal + firstInterest;
+      totalInterest = Math.round(((amountVal * (termMonths + 1)) / 2) * rateMonth);
+    } else if (repaymentType === 'annuity') {
+      if (rateMonth > 0) {
+        firstTotal = Math.round(amountVal * (rateMonth * Math.pow(1 + rateMonth, termMonths)) / (Math.pow(1 + rateMonth, termMonths) - 1));
+        firstPrincipal = firstTotal - firstInterest;
+        totalInterest = (firstTotal * termMonths) - amountVal;
+      } else {
+        firstPrincipal = Math.round(amountVal / termMonths);
+        firstTotal = firstPrincipal;
+        totalInterest = 0;
+      }
+    } else {
+      // 'end': Trả gốc cuối kỳ
+      firstPrincipal = 0;
+      firstTotal = firstInterest;
+      totalInterest = Math.round(amountVal * rateMonth * termMonths);
+    }
+
+    if (pPrincipalEl) pPrincipalEl.textContent = `${new Intl.NumberFormat('vi-VN').format(firstPrincipal)}đ`;
+    if (pInterestEl) pInterestEl.textContent = `+${new Intl.NumberFormat('vi-VN').format(firstInterest)}đ`;
+    if (pTotalEl) pTotalEl.textContent = `${new Intl.NumberFormat('vi-VN').format(firstTotal)}đ`;
+    if (pTotalInterestEl) pTotalInterestEl.textContent = `~${new Intl.NumberFormat('vi-VN').format(totalInterest)}đ`;
+  },
+
+  async handleLoanSubmit() {
+    const id = document.getElementById('loan-id-input')?.value;
+    const name = document.getElementById('loan-name-input')?.value.trim();
+    const loanAmount = Number(document.getElementById('loan-amount-input')?.value || 0);
+    const bankCode = document.getElementById('loan-bank-code-input')?.value || '';
+    const startDate = this.getDateInputValue('loan-start-date-input');
+    const termMonths = parseInt(document.getElementById('loan-term-select')?.value || '12', 10);
+    const interestRate = parseFloat(document.getElementById('loan-interest-rate-input')?.value || '0');
+    const repaymentType = document.getElementById('loan-repayment-type-select')?.value || 'reducing';
+    const dueDay = parseInt(document.getElementById('loan-due-day-select')?.value || '1', 10);
+    const disbursementAccountId = document.getElementById('loan-disburse-account-select')?.value || null;
+    const description = document.getElementById('loan-desc-input')?.value.trim() || '';
+    const excludeFromReport = document.getElementById('loan-exclude-report-input')?.checked ? 1 : 0;
+
+    if (!name) {
+      showToast('Vui lòng nhập tên sổ vay', 'warning');
+      document.getElementById('loan-name-input')?.focus();
+      return;
+    }
+    if (loanAmount <= 0) {
+      showToast('Vui lòng nhập số tiền vay', 'warning');
+      this.openLoanKeypad();
+      return;
+    }
+
+    const payload = {
+      name,
+      bankCode,
+      loanAmount,
+      startDate,
+      termMonths,
+      interestRate,
+      repaymentType,
+      dueDay,
+      disbursementAccountId: disbursementAccountId ? Number(disbursementAccountId) : null,
+      description,
+      excludeFromReport
+    };
+
+    try {
+      if (id) {
+        await updateLoan(id, payload);
+        showToast('Đã cập nhật sổ vay thành công!', 'success');
+      } else {
+        await addLoan(payload);
+        showToast('Đã tạo sổ vay ngân hàng thành công!', 'success');
+      }
+      this.closeLoanForm();
+      await this.render();
+    } catch (e) {
+      console.error(e);
+      showToast('Lỗi lưu sổ vay: ' + e.message, 'error');
+    }
+  },
+
+  async renderLoans() {
+    const container = document.getElementById('loans-list-container');
+    const badgeCount = document.getElementById('badge-loans-count');
+    const settledSec = document.getElementById('settled-loans-section');
+    const settledList = document.getElementById('settled-loans-list');
+    const settledLabel = document.getElementById('settled-loans-toggle-label');
+    const settledChevron = document.getElementById('settled-loans-toggle-icon');
+    if (!container || !db.loans) return;
+
+    const allLoans = await db.loans.where('isDeleted').equals(0).toArray();
+    const activeLoans = allLoans.filter(l => l.status !== 'settled');
+    const settledLoans = allLoans.filter(l => l.status === 'settled');
+
+    if (badgeCount) badgeCount.textContent = activeLoans.length;
+
+    if (activeLoans.length === 0) {
+      container.innerHTML = `
+        <div class="accounts-empty-card">
+          <div class="empty-icon-wrap" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">
+            <i data-lucide="badge-percent" style="width: 22px; height: 22px;"></i>
+          </div>
+          <p class="empty-text">Chưa có sổ vay ngân hàng nào</p>
+        </div>
+      `;
+    } else {
+      container.innerHTML = activeLoans.map(l => {
+        const prov = l.bankCode ? this.PROVIDERS.find(x => x.code === l.bankCode) : null;
+        const remaining = l.remainingAmount !== undefined ? l.remainingAmount : (l.loanAmount || 0);
+        const percentPaid = l.loanAmount > 0 ? Math.round(((l.loanAmount - remaining) / l.loanAmount) * 100) : 0;
+        const dueDayText = l.dueDay ? `Trả ngày ${l.dueDay} hàng tháng` : '';
+
+        return `
+          <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('loan', ${l.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
+            <div class="group-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0;">
+              <div class="group-card-title-row" style="display: flex; align-items: center; gap: 8px; flex: 1 1 0%; min-width: 0; max-width: calc(100% - 36px); overflow: hidden;">
+                <div class="group-card-icon-wrap" style="background: transparent; flex-shrink: 0;">
+                  ${this.renderLogoBadge(prov || l.bankCode || { icon: 'badge-percent', color: '#ef4444' }, 38)}
+                </div>
+                <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
+                  <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; font-weight: 700;" title="${escapeHTML(l.name)}">${escapeHTML(l.name)}</div>
+                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <span class="rate-badge" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">${l.interestRate || 0}%/năm</span>
+                    <span class="term-badge">${l.termMonths ? l.termMonths + ' tháng' : ''}</span>
+                    <span style="font-size: 0.72rem; color: var(--text-muted);">${dueDayText}</span>
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="btn-icon group-card-more-btn" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('loan', ${l.id})" title="Tùy chọn" style="flex-shrink: 0; width: 28px; height: 28px; min-width: 28px; border: none; background: transparent; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
+                <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
+              </button>
+            </div>
+
+            <div class="group-card-body" style="flex-direction: column; gap: 6px;">
+              <div style="display: flex; justify-content: space-between; align-items: baseline; width: 100%;">
+                <div>
+                  <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Dư nợ gốc còn lại</span>
+                  <span class="group-card-amount stat-amount" style="color: #ef4444;">${new Intl.NumberFormat('vi-VN').format(remaining)}đ</span>
+                </div>
+                <div style="text-align: right;">
+                  <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Khoản vay gốc</span>
+                  <span style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary);">${new Intl.NumberFormat('vi-VN').format(l.loanAmount || 0)}đ</span>
+                </div>
+              </div>
+              <!-- Progress bar -->
+              <div style="width: 100%; height: 5px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; overflow: hidden; margin-top: 2px;">
+                <div style="width: ${Math.min(100, Math.max(0, percentPaid))}%; height: 100%; background: #10b981; border-radius: 3px;"></div>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted);">
+                <span>Đã trả: ${percentPaid}%</span>
+                <span>Còn lại: ${100 - percentPaid}%</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    if (settledSec && settledList) {
+      if (settledLoans.length === 0) {
+        settledSec.style.display = 'none';
+        settledList.innerHTML = '';
+      } else {
+        settledSec.style.display = 'block';
+        if (settledLabel) settledLabel.textContent = `Sổ vay đã tất toán (${settledLoans.length})`;
+        settledList.style.display = this.isSettledLoansExpanded ? 'flex' : 'none';
+        if (settledChevron) settledChevron.classList.toggle('rotated', this.isSettledLoansExpanded);
+
+        settledList.innerHTML = settledLoans.map(l => {
+          const prov = l.bankCode ? this.PROVIDERS.find(x => x.code === l.bankCode) : null;
+          const settleDateStr = l.settledDate ? l.settledDate.split('-').reverse().join('/') : '';
+
+          return `
+            <div class="group-item-card archived" onclick="UIAccounts.openItemActionSheet('loan', ${l.id})">
+              <div class="group-card-header">
+                <div class="group-card-title-row">
+                  <div class="group-card-icon-wrap" style="background: transparent; opacity: 0.65;">
+                    ${this.renderLogoBadge(prov || l.bankCode || { icon: 'badge-percent', color: '#ef4444' }, 36)}
+                  </div>
+                  <div style="min-width: 0; flex: 1;">
+                    <div class="group-card-name" style="text-decoration: line-through; opacity: 0.7;">${escapeHTML(l.name)}</div>
+                    <div class="group-card-sub">
+                      <span class="settled-badge" style="color: #10b981; background: rgba(16, 185, 129, 0.12);"><i data-lucide="check-circle" style="width:10px;height:10px;"></i> Đã tất toán</span>
+                      ${settleDateStr ? `<span style="font-size: 0.75rem; color: var(--text-muted);">${settleDateStr}</span>` : ''}
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn-icon" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('loan', ${l.id})">
+                  <i data-lucide="more-vertical" style="width: 16px; height: 16px;"></i>
+                </button>
+              </div>
+              <div class="group-card-body">
+                <div>
+                  <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Số tiền vay ban đầu</span>
+                  <span class="group-card-amount stat-amount" style="opacity: 0.7;">${new Intl.NumberFormat('vi-VN').format(l.loanAmount || 0)}đ</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  },
+
+  // Pay loan modal
+  async openPayLoanModal(loanId) {
+    const loan = await db.loans.get(Number(loanId));
+    if (!loan) return;
+
+    const remaining = loan.remainingAmount !== undefined ? loan.remainingAmount : (loan.loanAmount || 0);
+
+    document.getElementById('pay-loan-id-input').value = loan.id;
+    document.getElementById('pay-loan-name-display').value = loan.name;
+    document.getElementById('pay-loan-remaining-display').value = `${new Intl.NumberFormat('vi-VN').format(remaining)}đ`;
+
+    const pAmountInput = document.getElementById('pay-loan-amount-input');
+    const pAmountText = document.getElementById('pay-loan-amount-text');
+    if (pAmountInput) pAmountInput.value = '0';
+    if (pAmountText) pAmountText.textContent = '0';
+
+    this.setDateInputValue('pay-loan-date-input', new Date().toISOString().split('T')[0]);
+    await this.updatePayLoanSourceDisplay('');
+
+    const modal = document.getElementById('modal-pay-loan');
+    if (modal) modal.classList.add('open');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closePayLoanModal() {
+    const modal = document.getElementById('modal-pay-loan');
+    if (modal) modal.classList.remove('open');
+  },
+
+  openPayLoanKeypad() {
+    if (window.UITransactions) {
+      UITransactions.openKeypad('pay-loan-amount');
+    }
+  },
+
+  openPayLoanDatePicker() {
+    this.openDatePicker('pay-loan-date-input');
+  },
+
+  fillPayLoanAll() {
+    const id = document.getElementById('pay-loan-id-input')?.value;
+    if (!id) return;
+    db.loans.get(Number(id)).then(loan => {
+      if (!loan) return;
+      const remaining = loan.remainingAmount !== undefined ? loan.remainingAmount : (loan.loanAmount || 0);
+      const pAmountInput = document.getElementById('pay-loan-amount-input');
+      const pAmountText = document.getElementById('pay-loan-amount-text');
+      if (pAmountInput) pAmountInput.value = remaining;
+      if (pAmountText) pAmountText.textContent = new Intl.NumberFormat('vi-VN').format(remaining);
+    });
+  },
+
+  async updatePayLoanSourceDisplay(accId) {
+    const input = document.getElementById('pay-loan-source-account-input');
+    const logoEl = document.getElementById('pay-loan-source-logo-preview');
+    const nameEl = document.getElementById('pay-loan-source-account-name');
+    const balEl = document.getElementById('pay-loan-source-account-balance');
+    if (!input || !logoEl || !nameEl || !balEl) return;
+
+    input.value = accId || '';
+    if (!accId) {
+      logoEl.innerHTML = '<i data-lucide="wallet"></i>';
+      logoEl.style.background = 'rgba(16, 185, 129, 0.15)';
+      logoEl.style.color = '#10b981';
+      nameEl.textContent = 'Không trích tiền ví';
+      balEl.textContent = 'Không trừ số dư tài khoản';
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    const acc = await db.accounts.get(Number(accId));
+    if (acc) {
+      const prov = this.PROVIDERS.find(x => x.code === acc.bankCode);
+      logoEl.innerHTML = this.renderLogoBadge(prov || acc, 36);
+      logoEl.style.background = 'transparent';
+      nameEl.textContent = acc.name;
+      balEl.textContent = `Số dư: ${new Intl.NumberFormat('vi-VN').format(acc.balance || 0)}đ`;
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  openPayLoanSourcePicker() {
+    const curVal = document.getElementById('pay-loan-source-account-input')?.value || '';
+    this.openAccountPicker({
+      currentValue: curVal,
+      title: 'Tài khoản trích tiền',
+      subtitle: 'Chọn tài khoản để trừ tiền trả nợ gốc',
+      allowNone: true,
+      noneLabel: 'Không trích tiền ví',
+      noneSubtitle: 'Chỉ cập nhật dư nợ sổ vay, không trừ tiền ví',
+      onSelect: (selectedId) => {
+        this.updatePayLoanSourceDisplay(selectedId);
+      }
+    });
+  },
+
+  async confirmPayLoan() {
+    const id = document.getElementById('pay-loan-id-input')?.value;
+    const amount = Number(document.getElementById('pay-loan-amount-input')?.value || 0);
+    const sourceAccountId = document.getElementById('pay-loan-source-account-input')?.value || null;
+    const dateStr = this.getDateInputValue('pay-loan-date-input');
+
+    if (!id || amount <= 0) {
+      showToast('Vui lòng nhập số tiền trả nợ hợp lệ', 'warning');
+      this.openPayLoanKeypad();
+      return;
+    }
+
+    try {
+      await payLoan(id, amount, sourceAccountId, dateStr);
+      showToast('Đã ghi nhận trả nợ gốc sổ vay thành công!', 'success');
+      this.closePayLoanModal();
+      await this.render();
+    } catch (e) {
+      console.error(e);
+      showToast('Lỗi: ' + e.message, 'error');
+    }
+  },
+
+  async deleteLoanItem(id) {
+    const l = await db.loans.get(Number(id));
+    if (!l) return;
+    if (confirm(`Bạn có chắc chắn muốn xóa sổ vay "${l.name}"?\nHành động này không thể hoàn tác.`)) {
+      await deleteLoan(id);
+      showToast('Đã xóa sổ vay thành công', 'success');
+      await this.render();
+    }
+  },
+
   /* ==================== RENDER NET WORTH & 4 SECTIONS ==================== */
   async renderNetWorthHeader() {
     const netWorthData = await getNetWorth();
@@ -3667,6 +4268,18 @@ const UIAccounts = {
 
     const astEl = document.getElementById('networth-mini-assets');
     if (astEl) astEl.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalAssets)}đ`;
+
+    const loanEl = document.getElementById('networth-mini-loans');
+    if (loanEl) loanEl.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalLoans || 0)}đ`;
+
+    const labelLoan = document.getElementById('label-loans-total');
+    if (labelLoan) labelLoan.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalLoans || 0)}đ`;
+
+    const badgeLoan = document.getElementById('badge-loans-count');
+    if (badgeLoan && db.loans) {
+      const activeLoanCount = await db.loans.where('isDeleted').equals(0).and(l => l.status !== 'settled').count();
+      badgeLoan.textContent = activeLoanCount;
+    }
 
     // Section subtotal labels
     const labelExp = document.getElementById('label-expense-acc-total');
@@ -4146,6 +4759,7 @@ const UIAccounts = {
     await this.renderNetWorthHeader();
     await this.renderSavings();
     await this.renderAccumulations();
+    await this.renderLoans();
     await this.renderAssets();
 
     if (window.app && typeof window.app.applyPrivacyMode === 'function') {

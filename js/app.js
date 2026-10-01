@@ -377,7 +377,7 @@ class App {
     this.lastAddTabClickTime = 0;
     const primaryViews = ['dashboard', 'accounts', 'budgets', 'settings', 'transactions', 'debts', 'analytics'];
     const isPrimary = primaryViews.includes(viewId);
-    const isTxPage = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form'].includes(viewId);
+    const isTxPage = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form'].includes(viewId);
 
     // Instantly hide/show the header in JS FIRST — before any class/DOM changes.
     // CSS :has() and body-class selectors update asynchronously (next paint frame),
@@ -405,7 +405,7 @@ class App {
     }
 
     // 2. Lưu previousView trước khi chuyển vào các trang con (ghi chép, danh mục, ...)
-    const txSubViews = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form'];
+    const txSubViews = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form'];
     if (txSubViews.includes(viewId) && !txSubViews.includes(this.currentView)) {
       if (this.openedFromAccountMenu) {
         this.previousView = this.currentView;
@@ -464,6 +464,7 @@ class App {
       'account-form': 'Thông Tin Tài Khoản',
       'account-provider': 'Chọn Ngân Hàng & Ví',
       'savings-form': 'Sổ Tiết Kiệm',
+      'loan-form': 'Sổ Vay Ngân Hàng',
       'accumulation-form': 'Sổ Tích Lũy',
       'asset-form': 'Quản Lý Tài Sản'
     };
@@ -536,9 +537,15 @@ class App {
     }
 
     if (this.currentView === 'account-provider') {
-      const isSaving = (window.UIAccounts && window.UIAccounts._pickerTarget === 'saving');
+      const target = (window.UIAccounts && window.UIAccounts._pickerTarget);
       if (window.UIAccounts) window.UIAccounts._pickerTarget = null;
-      this.switchView(isSaving ? 'savings-form' : 'account-form', true);
+      if (target === 'saving') {
+        this.switchView('savings-form', true);
+      } else if (target === 'loan') {
+        this.switchView('loan-form', true);
+      } else {
+        this.switchView('account-form', true);
+      }
       return;
     }
 
@@ -548,7 +555,7 @@ class App {
     }
 
     // Các trang con của tab Tài khoản -> quay lại danh sách tài khoản
-    if (['savings-form', 'accumulation-form', 'asset-form'].includes(this.currentView)) {
+    if (['savings-form', 'accumulation-form', 'asset-form', 'loan-form'].includes(this.currentView)) {
       this.switchView('accounts', true);
       return;
     }
@@ -593,7 +600,7 @@ class App {
       }
 
       // category-picker & borrow-select always support back to new-transaction
-      if (['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form'].includes(this.currentView)) {
+      if (['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form'].includes(this.currentView)) {
         window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
         this.goBack();
       } else if (this.currentView === 'new-transaction') {
@@ -613,7 +620,7 @@ class App {
   setupSwipeToBack() {
     // new-transaction, category-picker, borrow-select: support swipe-to-back.
     // NOTE: new-transaction ONLY allows swipe when editing an existing transaction.
-    const pages = document.querySelectorAll('#view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form, #view-account-provider, #view-savings-form, #view-accumulation-form, #view-asset-form');
+    const pages = document.querySelectorAll('#view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form, #view-account-provider, #view-savings-form, #view-accumulation-form, #view-asset-form, #view-loan-form');
     if (!pages.length) return;
 
     pages.forEach(page => {
@@ -936,6 +943,9 @@ class App {
           break;
         case 'modal-settle-saving':
           if (window.UIAccounts) window.UIAccounts.closeSettleSavingModal();
+          break;
+        case 'modal-pay-loan':
+          if (window.UIAccounts) window.UIAccounts.closePayLoanModal();
           break;
         case 'modal-deposit-accumulation':
           if (window.UIAccounts) window.UIAccounts.closeDepositAccModal();

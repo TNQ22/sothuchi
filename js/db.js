@@ -30,7 +30,9 @@ db.version(2).stores({
   // Bảng quản lý sổ tích lũy theo mục tiêu
   accumulations: '++id, name, targetAmount, currentAmount, status, isDeleted, updatedAt',
   // Bảng quản lý tài sản (BĐS, Kim loại quý, Ngoại tệ, Tài sản khác)
-  assets: '++id, assetType, subType, name, status, includeInNetWorth, isDeleted, updatedAt'
+  assets: '++id, assetType, subType, name, status, includeInNetWorth, isDeleted, updatedAt',
+  // Bảng quản lý sổ vay ngân hàng
+  loans: '++id, name, bankCode, loanAmount, remainingAmount, status, isDeleted, updatedAt'
 });
 
 // Default Seed Categories
@@ -660,6 +662,95 @@ async function deleteAsset(id) {
   triggerAutoSync();
 }
 
+// ==================== LOANS (SỔ VAY NGÂN HÀNG) CRUD ====================
+async function addLoan(loanData) {
+  const now = new Date().toISOString();
+  const loan = {
+    ...loanData,
+    remainingAmount: loanData.loanAmount,
+    status: 'active',
+    isDeleted: 0,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  let id;
+  if (loan.disbursementAccountId) {
+    await db.transaction('rw', db.loans, db.accounts, db.transactions, async () => {
+      id = await db.loans.add(loan);
+      const acc = await db.accounts.get(Number(loan.disbursementAccountId));
+      if (acc && !loan.excludeFromReport) {
+        await db.accounts.update(acc.id, {
+          balance: (acc.balance || 0) + loan.loanAmount,
+          updatedAt: now
+        });
+      }
+    });
+  } else {
+    id = await db.loans.add(loan);
+  }
+  triggerAutoSync();
+  return id;
+}
+
+async function updateLoan(id, loanData) {
+  const now = new Date().toISOString();
+  await db.loans.update(Number(id), {
+    ...loanData,
+    updatedAt: now
+  });
+  triggerAutoSync();
+}
+
+async function payLoan(loanId, paymentAmount, sourceAccountId = null, dateStr = null) {
+  const lId = Number(loanId);
+  const now = new Date().toISOString();
+  const pDate = dateStr || now.split('T')[0];
+
+  await db.transaction('rw', db.loans, db.accounts, async () => {
+    const loan = await db.loans.get(lId);
+    if (!loan || loan.isDeleted) return;
+
+    const newRemaining = Math.max(0, (loan.remainingAmount || loan.loanAmount || 0) - paymentAmount);
+    const isFullyPaid = newRemaining <= 0;
+
+    const history = loan.repaymentHistory || [];
+    history.push({
+      date: pDate,
+      amount: paymentAmount,
+      sourceAccountId: sourceAccountId ? Number(sourceAccountId) : null,
+      note: 'Trả nợ gốc sổ vay',
+      createdAt: now
+    });
+
+    await db.loans.update(lId, {
+      remainingAmount: newRemaining,
+      status: isFullyPaid ? 'settled' : 'active',
+      settledDate: isFullyPaid ? pDate : null,
+      repaymentHistory: history,
+      updatedAt: now
+    });
+
+    if (sourceAccountId) {
+      const src = await db.accounts.get(Number(sourceAccountId));
+      if (src) {
+        await db.accounts.update(src.id, {
+          balance: (src.balance || 0) - paymentAmount,
+          updatedAt: now
+        });
+      }
+    }
+  });
+
+  triggerAutoSync();
+}
+
+async function deleteLoan(id) {
+  const now = new Date().toISOString();
+  await db.loans.update(Number(id), { isDeleted: 1, updatedAt: now });
+  triggerAutoSync();
+}
+
 // Calculation Utilities
 async function getNetWorth() {
   const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
@@ -700,11 +791,22 @@ async function getNetWorth() {
     console.warn('Assets read error:', e);
   }
 
+  // Sổ vay ngân hàng (Nghĩa vụ nợ gốc còn lại)
+  let totalLoans = 0;
+  try {
+    if (db.loans) {
+      const loanList = await db.loans.where('isDeleted').equals(0).toArray();
+      totalLoans = loanList.filter(l => l.status !== 'settled').reduce((sum, l) => sum + (l.remainingAmount !== undefined ? l.remainingAmount : (l.loanAmount || 0)), 0);
+    }
+  } catch (e) {
+    console.warn('Loans read error:', e);
+  }
+
   const activeDebts = await db.debts.where('isDeleted').equals(0).toArray();
   // lend = nợ cần thu (tài sản tăng)
   // borrow = nợ cần trả (nghĩa vụ tài chính)
   const totalLend = activeDebts.filter(d => d.type === 'lend' && d.status !== 'settled').reduce((s, d) => s + d.remainingAmount, 0);
-  const totalBorrow = activeDebts.filter(d => d.type === 'borrow' && d.status !== 'settled').reduce((s, d) => s + d.remainingAmount, 0);
+  const totalBorrow = activeDebts.filter(d => d.type === 'borrow' && d.status !== 'settled').reduce((s, d) => s + d.remainingAmount, 0) + totalLoans;
 
   const grandTotalAssets = totalAccountBalance + totalSavings + totalAccumulations + totalAssets;
 
@@ -713,6 +815,7 @@ async function getNetWorth() {
     totalSavings,
     totalAccumulations,
     totalAssets,
+    totalLoans,
     grandTotalAssets,
     totalLend,
     totalBorrow,
