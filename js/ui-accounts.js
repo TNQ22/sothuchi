@@ -2183,6 +2183,37 @@ const UIAccounts = {
 
     if (typeInput) typeInput.value = assetType;
 
+    // Gắn sự kiện gõ tay Tên tài sản để nhận diện thông minh loại Vàng / Bạc / Đá quý
+    const nameInputEl = document.getElementById('asset-name-input');
+    if (nameInputEl) {
+      nameInputEl.oninput = () => {
+        const curType = document.getElementById('asset-type-input')?.value;
+        if (curType === 'precious_metal') {
+          const val = nameInputEl.value.toLowerCase();
+          const subSelect = document.getElementById('asset-subtype-select');
+          if (subSelect) {
+            let matchedSub = null;
+            if (val.includes('bạc') || val.includes('bac') || val.includes('silver')) {
+              matchedSub = 'silver';
+            } else if (val.includes('bạch kim') || val.includes('bach kim') || val.includes('plat')) {
+              matchedSub = 'platinum';
+            } else if (val.includes('tây') || val.includes('tay') || val.includes('trắng') || val.includes('trang') || val.includes('18k') || val.includes('14k') || val.includes('10k')) {
+              matchedSub = 'white_gold';
+            } else if (val.includes('nhẫn') || val.includes('nhan') || val.includes('9999') || val.includes('24k') || val.includes('ta') || val.includes('trơn')) {
+              matchedSub = 'ring_gold';
+            } else if (val.includes('sjc') || val.includes('miếng') || val.includes('mieng')) {
+              matchedSub = 'sjc_gold';
+            }
+
+            if (matchedSub && subSelect.value !== matchedSub) {
+              subSelect.value = matchedSub;
+              this.fetchLiveMarketPrice(false);
+            }
+          }
+        }
+      };
+    }
+
     // Config labels & icons by assetType
     const typeConfigs = {
       real_estate: { title: 'Tạo Bất Động Sản', icon: 'home', unit: 'm²', qtyLabel: 'Diện tích (m²)', color: '#10b981', showLoc: true },
@@ -2481,8 +2512,8 @@ const UIAccounts = {
       { id: 'CUSTOM', name: 'Coin / Token khác...' }
     ],
     precious_metal: [
-      { id: 'Chỉ', name: 'Chỉ (Vàng / Bạc)' },
-      { id: 'Lượng', name: 'Lượng (Cây)' },
+      { id: 'Chỉ', name: 'Chỉ (3.75g)' },
+      { id: 'Lượng', name: 'Lượng / Cây (37.5g)' },
       { id: 'Gram', name: 'Gram (g)' },
       { id: 'Kg', name: 'Kilogram (kg)' },
       { id: 'Ounce', name: 'Ounce (oz)' },
