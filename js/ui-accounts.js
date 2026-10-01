@@ -2317,13 +2317,11 @@ const UIAccounts = {
       document.getElementById('asset-is-gift-input').checked = false;
       document.getElementById('asset-include-networth-input').checked = true;
 
-      // Khi chưa làm gì (mới mở form): để trống ô tên và số lượng, chỉ hiển thị placeholder gợi ý
-      const subSelect = document.getElementById('asset-subtype-select');
+      // Khi chưa làm gì (mới mở form): để trống ô tên và số lượng, chỉ ghi chữ chìm "Tên tài sản *"
       const nameInput = document.getElementById('asset-name-input');
       if (nameInput) {
         nameInput.value = '';
-        const defPlaceholder = subSelect && subSelect.options.length > 0 ? subSelect.options[subSelect.selectedIndex >= 0 ? subSelect.selectedIndex : 0].text : 'Tên tài sản';
-        nameInput.placeholder = `Ví dụ: ${defPlaceholder}...`;
+        nameInput.placeholder = 'Tên tài sản *';
       }
 
       if (isLiveSupported) {
@@ -2621,7 +2619,7 @@ const UIAccounts = {
         this.fetchLiveMarketPrice(false);
       }
 
-      if (nameInput) {
+      if (nameInput && ['foreign_currency', 'crypto'].includes(assetType)) {
         const mapNames = {
           USD: 'Đô la Mỹ (USD)',
           EUR: 'Euro (EUR)',
@@ -2639,9 +2637,7 @@ const UIAccounts = {
           XRP: 'Ripple (XRP)',
           DOGE: 'Dogecoin (DOGE)',
           ADA: 'Cardano (ADA)',
-          TRX: 'Tron (TRX)',
-          'Chỉ': 'Vàng SJC (Chỉ)',
-          'Lượng': 'Vàng SJC (Cây / Lượng)'
+          TRX: 'Tron (TRX)'
         };
         if (mapNames[val]) {
           nameInput.value = mapNames[val];
@@ -2666,6 +2662,7 @@ const UIAccounts = {
     // Đối với Ngoại tệ và Crypto, danh sách đồng tiền đã nằm ở ô chọn Đơn vị
     if (assetType === 'foreign_currency' || assetType === 'crypto') {
       if (row) row.style.display = 'none';
+      if (select) select.innerHTML = '';
       return;
     }
 
