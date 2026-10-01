@@ -2307,7 +2307,10 @@ const UIAccounts = {
       document.getElementById('asset-name-input').value = item.name || '';
       document.getElementById('asset-is-gift-input').checked = !!item.isGift;
       this.setDateInputValue('asset-buy-date-input', item.buyDate || todayStr);
-      document.getElementById('asset-quantity-input').value = item.quantity || '';
+      const qVal = item.quantity !== undefined && item.quantity !== null ? item.quantity : 0;
+      document.getElementById('asset-quantity-input').value = qVal;
+      const qText = document.getElementById('asset-quantity-text');
+      if (qText) qText.textContent = qVal > 0 ? (Number.isInteger(qVal) ? new Intl.NumberFormat('vi-VN').format(qVal) : String(qVal).replace('.', ',')) : '0';
       this.populateAssetUnits(assetType, item.unit || cfg.unit);
 
       // Khôi phục phân loại an toàn
@@ -2346,8 +2349,11 @@ const UIAccounts = {
       
       const qtyInput = document.getElementById('asset-quantity-input');
       if (qtyInput) {
-        qtyInput.value = '';
-        qtyInput.placeholder = 'Nhập số lượng...';
+        qtyInput.value = '0';
+      }
+      const qtyText = document.getElementById('asset-quantity-text');
+      if (qtyText) {
+        qtyText.textContent = '0';
       }
       
       this.populateAssetUnits(assetType, cfg.unit);
@@ -2386,10 +2392,18 @@ const UIAccounts = {
     if (window.app) window.app.switchView('accounts', true);
   },
 
-  openAssetKeypad() {
+  handleAssetTopAmountClick() {
+    showToast('Giá trị hiện tại được tự động tính từ Số lượng và Đơn giá bên dưới', 'info');
+  },
+
+  openAssetQuantityKeypad() {
     if (window.UITransactions) {
-      UITransactions.openKeypad('asset-price');
+      UITransactions.openKeypad('asset-quantity');
     }
+  },
+
+  openAssetKeypad() {
+    this.handleAssetTopAmountClick();
   },
 
   openAccCurrentKeypad() {
@@ -2659,7 +2673,7 @@ const UIAccounts = {
       }
 
       if (['foreign_currency', 'crypto', 'precious_metal'].includes(assetType)) {
-        this.fetchLiveMarketPrice(false);
+        this.fetchLiveMarketPrice(false, true);
       }
 
       if (nameInput && ['foreign_currency', 'crypto'].includes(assetType)) {
@@ -2745,6 +2759,8 @@ const UIAccounts = {
       }
       if (['foreign_currency', 'crypto', 'precious_metal'].includes(aType)) {
         this.fetchLiveMarketPrice(false, true);
+      } else {
+        this.calcAssetPreview();
       }
     };
   },
@@ -3010,7 +3026,7 @@ const UIAccounts = {
 
       if (quantity <= 0) {
         showToast('Vui lòng nhập số lượng / khối lượng tài sản', 'warning');
-        document.getElementById('asset-quantity-input')?.focus();
+        this.openAssetQuantityKeypad();
         return;
       }
 
@@ -3265,7 +3281,7 @@ const UIAccounts = {
     const customUnit = document.getElementById('asset-unit-input')?.value?.trim();
     const subType = (unitSelect && unitSelect !== 'CUSTOM' ? unitSelect : customUnit) || document.getElementById('asset-subtype-select')?.value || 'USD';
     const curPriceInput = document.getElementById('asset-currentprice-input');
-    const curPriceText = document.getElementById('asset-price-text');
+    const curPriceText = document.getElementById('asset-currentprice-text');
     const spinIcon = document.getElementById('icon-auto-price-spin');
     const autoStatusEl = document.getElementById('label-auto-price-status');
 
@@ -3361,7 +3377,17 @@ const UIAccounts = {
         this._latestLivePrice = calculatedPrice;
         if (applyToInput) {
           curPriceInput.value = calculatedPrice;
-          if (curPriceText) curPriceText.textContent = new Intl.NumberFormat('vi-VN').format(calculatedPrice);
+          const actualCurText = document.getElementById('asset-currentprice-text');
+          if (actualCurText) actualCurText.textContent = new Intl.NumberFormat('vi-VN').format(calculatedPrice);
+
+          const buyPriceInput = document.getElementById('asset-buyprice-input');
+          const buyPriceText = document.getElementById('asset-buyprice-text');
+          const curBuyVal = Number(buyPriceInput?.value || 0);
+          if (curBuyVal === 0) {
+            if (buyPriceInput) buyPriceInput.value = calculatedPrice;
+            if (buyPriceText) buyPriceText.textContent = new Intl.NumberFormat('vi-VN').format(calculatedPrice);
+          }
+
           this.calcAssetPreview();
         }
 

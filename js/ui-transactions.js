@@ -230,6 +230,12 @@ const UITransactions = {
       const text = document.getElementById('acc-recurring-amount-text');
       cur = text?.textContent?.trim() || input?.value?.trim() || '0';
       if (curSymbolEl) curSymbolEl.textContent = 'đ';
+    } else if (target === 'asset-quantity') {
+      const input = document.getElementById('asset-quantity-input');
+      const text = document.getElementById('asset-quantity-text');
+      cur = text?.textContent?.trim() || input?.value?.trim() || '0';
+      const unitVal = (document.getElementById('asset-unit-select')?.value !== 'CUSTOM' ? document.getElementById('asset-unit-select')?.value : document.getElementById('asset-unit-input')?.value) || '';
+      if (curSymbolEl) curSymbolEl.textContent = unitVal;
     } else if (target === 'asset-buyprice') {
       const input = document.getElementById('asset-buyprice-input');
       const text = document.getElementById('asset-buyprice-text');
@@ -296,11 +302,23 @@ const UITransactions = {
     let valStr = display ? display.textContent.trim() : '0';
     const evaluated = this.evaluateAmountExpression(valStr);
     let finalFormatted = '0';
-    if (evaluated !== null && evaluated > 0) {
-      finalFormatted = new Intl.NumberFormat('vi-VN').format(evaluated);
+
+    if (this.activeKeypadTarget === 'asset-quantity') {
+      let numVal = 0;
+      if (evaluated !== null && evaluated > 0) {
+        numVal = evaluated;
+      } else {
+        const rawDec = valStr.replace(/\./g, '').replace(',', '.');
+        numVal = Number(rawDec) || 0;
+      }
+      finalFormatted = numVal > 0 ? (Number.isInteger(numVal) ? new Intl.NumberFormat('vi-VN').format(numVal) : String(numVal).replace('.', ',')) : '0';
     } else {
-      const raw = valStr.replace(/[^0-9]/g, '');
-      finalFormatted = raw && Number(raw) > 0 ? new Intl.NumberFormat('vi-VN').format(Number(raw)) : '0';
+      if (evaluated !== null && evaluated > 0) {
+        finalFormatted = new Intl.NumberFormat('vi-VN').format(evaluated);
+      } else {
+        const raw = valStr.replace(/[^0-9]/g, '');
+        finalFormatted = raw && Number(raw) > 0 ? new Intl.NumberFormat('vi-VN').format(Number(raw)) : '0';
+      }
     }
 
     if (this.activeKeypadTarget === 'fee') {
@@ -352,6 +370,15 @@ const UITransactions = {
       const rawNum = finalFormatted.replace(/\./g, '');
       if (input) input.value = rawNum;
       if (text) text.textContent = finalFormatted;
+    } else if (this.activeKeypadTarget === 'asset-quantity') {
+      const input = document.getElementById('asset-quantity-input');
+      const text = document.getElementById('asset-quantity-text');
+      const rawDec = finalFormatted.replace(/\./g, '').replace(',', '.');
+      if (input) input.value = rawDec;
+      if (text) text.textContent = finalFormatted;
+      if (window.UIAccounts && typeof window.UIAccounts.calcAssetPreview === 'function') {
+        window.UIAccounts.calcAssetPreview();
+      }
     } else if (this.activeKeypadTarget === 'asset-buyprice') {
       const input = document.getElementById('asset-buyprice-input');
       const text = document.getElementById('asset-buyprice-text');
@@ -406,7 +433,7 @@ const UITransactions = {
 
     modal.classList.remove('open');
     const nonTxTargets = [
-      'account-balance', 'saving-amount', 'acc-target-amount', 'asset-price',
+      'account-balance', 'saving-amount', 'acc-target-amount', 'asset-price', 'asset-quantity',
       'acc-current-amount', 'acc-recurring-amount',
       'asset-buyprice', 'asset-currentprice', 'asset-extracosts',
       'settle-saving-amount', 'deposit-acc-amount', 'liquidate-asset-price'
@@ -481,6 +508,9 @@ const UITransactions = {
       } else if (key === 'done') {
         this.closeKeypad();
         return;
+      } else if (key === ',' || key === '.') {
+        display.textContent = '0,';
+        return;
       } else {
         // Gõ số mới: ghi đè hoàn toàn giá trị cũ
         const raw = key.replace(/^0+/, '');
@@ -514,9 +544,23 @@ const UITransactions = {
       }
     } else if (key === 'done') {
       this.closeKeypad();
-    } else {
-      // Numbers: 1-9, 0, 00, 000
+    } else if (key === ',' || key === '.') {
       if (cur.includes('+')) {
+        const parts = cur.split('+');
+        const lastPart = parts[parts.length - 1].trim();
+        if (!lastPart.includes(',')) {
+          display.textContent = cur + ',';
+        }
+      } else {
+        if (!cur.includes(',')) {
+          display.textContent = (cur || '0') + ',';
+        }
+      }
+    } else {
+      // Numbers: 1-9, 0, 000
+      if (cur.includes('+')) {
+        display.textContent = cur + key;
+      } else if (cur.includes(',')) {
         display.textContent = cur + key;
       } else {
         const raw = (cur.replace(/\./g, '') + key).replace(/^0+/, '');

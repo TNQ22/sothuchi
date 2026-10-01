@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.49">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.50">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1552,7 +1552,7 @@
 
             <div class="tx-page-body" style="padding: 12px 14px; display: flex; flex-direction: column; gap: 12px;">
               <!-- SỐ TIỀN / GIÁ TRỊ HIỆN TẠI -->
-              <div class="tx-section-card tx-amount-card acc-amount-card" onclick="UIAccounts.openAssetKeypad()">
+              <div class="tx-section-card tx-amount-card acc-amount-card" onclick="UIAccounts.handleAssetTopAmountClick()" style="cursor: pointer;">
                 <div class="acc-amount-header-row" style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px;">
                   <i data-lucide="gem" style="width: 15px; height: 15px; color: #a855f7;"></i>
                   <span id="asset-amount-card-label" style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Giá Trị Hiện Tại (VNĐ)</span>
@@ -1617,15 +1617,18 @@
                   <div class="tx-info-icon-bubble" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
                     <i data-lucide="layers"></i>
                   </div>
-                  <div class="tx-info-content" style="display: flex; gap: 10px; align-items: center;">
-                    <div style="flex: 1;">
+                  <div class="tx-info-content" style="display: flex; gap: 8px; align-items: center;">
+                    <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="UIAccounts.openAssetQuantityKeypad()">
                       <div id="asset-qty-label" style="font-size: 0.74rem; color: var(--text-muted);">Số lượng *</div>
-                      <input type="number" id="asset-quantity-input" class="tx-clean-input" placeholder="Nhập số lượng..." step="any" min="0.0001" value="" oninput="UIAccounts.calcAssetPreview()" required style="font-weight: 600; font-size: 0.95rem;">
+                      <div style="display: flex; align-items: baseline; gap: 4px; margin-top: 2px;">
+                        <span id="asset-quantity-text" style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%;">0</span>
+                      </div>
+                      <input type="hidden" id="asset-quantity-input" value="0">
                     </div>
-                    <div style="min-width: 120px; text-align: right; display: flex; flex-direction: column; align-items: flex-end;" id="asset-unit-wrapper">
+                    <div style="flex-shrink: 0; max-width: 135px; min-width: 85px; text-align: right; display: flex; flex-direction: column; align-items: flex-end;" id="asset-unit-wrapper">
                       <div style="font-size: 0.74rem; color: var(--text-muted); width: 100%; text-align: right;">Đơn vị *</div>
-                      <select id="asset-unit-select" class="acc-styled-select" onchange="UIAccounts.handleAssetUnitChange(this.value)" style="font-weight: 700; font-size: 0.92rem; text-align: right; text-align-last: right; direction: rtl; width: 100%;"></select>
-                      <input type="text" id="asset-unit-input" class="tx-clean-input" placeholder="Tùy chỉnh" value="" style="font-weight: 600; display: none; margin-top: 4px; text-align: right; width: 100%;" oninput="UIAccounts.calcAssetPreview()">
+                      <select id="asset-unit-select" class="acc-styled-select" onchange="UIAccounts.handleAssetUnitChange(this.value)" style="font-weight: 700; font-size: 0.88rem; text-align: right; text-align-last: right; direction: rtl; width: 100%; padding: 4px 6px;"></select>
+                      <input type="text" id="asset-unit-input" class="tx-clean-input" placeholder="Tùy chỉnh" value="" style="font-weight: 600; display: none; margin-top: 4px; text-align: right; width: 100%; font-size: 0.88rem;" oninput="UIAccounts.calcAssetPreview()">
                     </div>
                   </div>
                 </div>
@@ -1839,7 +1842,7 @@
 
         <button type="button" class="keypad-btn action" data-key="000">000</button>
         <button type="button" class="keypad-btn" data-key="0">0</button>
-        <button type="button" class="keypad-btn action" data-key="00">00</button>
+        <button type="button" class="keypad-btn action" data-key="," style="font-size: 1.3rem; font-weight: 700;">,</button>
         <button type="button" class="keypad-btn action-primary" data-key="done">✓ Xong</button>
       </div>
     </div>
@@ -2709,18 +2712,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.49"></script>
+  <script src="./js/backup.js?v=1.9.50"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.49"></script>
-  <script src="./js/ui-transactions.js?v=1.9.49"></script>
-  <script src="./js/ui-debts.js?v=1.9.49"></script>
-  <script src="./js/ui-accounts.js?v=1.9.49"></script>
-  <script src="./js/ui-budgets.js?v=1.9.49"></script>
-  <script src="./js/ui-analytics.js?v=1.9.49"></script>
-  <script src="./js/ui-settings.js?v=1.9.49"></script>
+  <script src="./js/ui-calendar.js?v=1.9.50"></script>
+  <script src="./js/ui-transactions.js?v=1.9.50"></script>
+  <script src="./js/ui-debts.js?v=1.9.50"></script>
+  <script src="./js/ui-accounts.js?v=1.9.50"></script>
+  <script src="./js/ui-budgets.js?v=1.9.50"></script>
+  <script src="./js/ui-analytics.js?v=1.9.50"></script>
+  <script src="./js/ui-settings.js?v=1.9.50"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.49"></script>
+  <script src="./js/app.js?v=1.9.50"></script>
 </body>
 </html>

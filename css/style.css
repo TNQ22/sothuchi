@@ -5481,6 +5481,14 @@ html, body {
 /* Right-align asset unit select and wrapper */
 #asset-unit-wrapper {
   text-align: right !important;
+  max-width: 140px;
+}
+#asset-quantity-row .tx-info-content {
+  min-width: 0;
+}
+#asset-quantity-row .tx-info-content > div:first-child {
+  min-width: 0;
+  flex: 1;
 }
 
 #asset-unit-select {
