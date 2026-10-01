@@ -898,7 +898,7 @@ class App {
 
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (!refreshing) {
+          if (!refreshing && navigator.onLine) {
             refreshing = true;
             console.log('[ServiceWorker] Controller updated, refreshing page');
             window.location.reload();
