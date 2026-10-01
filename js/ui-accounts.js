@@ -2262,11 +2262,28 @@ const UIAccounts = {
       if (!item) return;
       if (idInput) idInput.value = item.id;
       document.getElementById('asset-name-input').value = item.name || '';
-      document.getElementById('asset-subtype-select').value = item.subType || '';
       document.getElementById('asset-is-gift-input').checked = !!item.isGift;
       this.setDateInputValue('asset-buy-date-input', item.buyDate || todayStr);
-      document.getElementById('asset-quantity-input').value = item.quantity || 1;
+      document.getElementById('asset-quantity-input').value = item.quantity || '';
       this.populateAssetUnits(assetType, item.unit || cfg.unit);
+
+      // Khôi phục phân loại an toàn
+      let savedSubType = item.subType || '';
+      if (assetType === 'precious_metal') {
+        const validSubs = ['sjc_gold', 'ring_gold', 'white_gold', 'silver', 'platinum'];
+        if (!savedSubType || !validSubs.includes(savedSubType)) {
+          const n = (item.name || '').toLowerCase();
+          if (n.includes('bạc') || n.includes('bac') || n.includes('silver')) savedSubType = 'silver';
+          else if (n.includes('bạch kim') || n.includes('bach kim') || n.includes('plat')) savedSubType = 'platinum';
+          else if (n.includes('tây') || n.includes('tay') || n.includes('18k')) savedSubType = 'white_gold';
+          else if (n.includes('nhẫn') || n.includes('nhan') || n.includes('9999') || n.includes('24k')) savedSubType = 'ring_gold';
+          else savedSubType = 'sjc_gold';
+        }
+      }
+      const subTypeSelect = document.getElementById('asset-subtype-select');
+      if (subTypeSelect && savedSubType) {
+        subTypeSelect.value = savedSubType;
+      }
       const bPrice = item.buyPrice || 0;
       const cPrice = item.currentPrice || 0;
       const eCosts = item.extraCosts || 0;
@@ -2547,7 +2564,6 @@ const UIAccounts = {
   populateAssetUnits(assetType, currentUnit = '') {
     const select = document.getElementById('asset-unit-select');
     const customInput = document.getElementById('asset-unit-input');
-    const subTypeSelect = document.getElementById('asset-subtype-select');
     if (!select) return;
 
     const list = this.ASSET_UNITS[assetType] || this.ASSET_UNITS.other;
@@ -2560,14 +2576,12 @@ const UIAccounts = {
         customInput.value = currentUnit;
         customInput.style.display = 'none';
       }
-      if (subTypeSelect) subTypeSelect.value = currentUnit;
     } else if (currentUnit) {
       select.value = 'CUSTOM';
       if (customInput) {
         customInput.value = currentUnit;
         customInput.style.display = 'block';
       }
-      if (subTypeSelect) subTypeSelect.value = currentUnit;
     } else {
       const defVal = list[0]?.id || '';
       select.value = defVal;
@@ -2575,7 +2589,6 @@ const UIAccounts = {
         customInput.value = defVal;
         customInput.style.display = 'none';
       }
-      if (subTypeSelect) subTypeSelect.value = defVal;
     }
   },
 
@@ -2591,13 +2604,18 @@ const UIAccounts = {
         customInput.value = '';
         customInput.focus();
       }
-      if (subTypeSelect) subTypeSelect.value = '';
+      if (['foreign_currency', 'crypto'].includes(assetType) && subTypeSelect) {
+        subTypeSelect.value = '';
+      }
     } else {
       if (customInput) {
         customInput.style.display = 'none';
         customInput.value = val;
       }
-      if (subTypeSelect) subTypeSelect.value = val;
+      if (['foreign_currency', 'crypto'].includes(assetType) && subTypeSelect) {
+        const hasOpt = Array.from(subTypeSelect.options).some(o => o.value === val);
+        if (hasOpt) subTypeSelect.value = val;
+      }
 
       if (['foreign_currency', 'crypto', 'precious_metal'].includes(assetType)) {
         this.fetchLiveMarketPrice(false);
@@ -2918,7 +2936,19 @@ const UIAccounts = {
       const unitSelect = document.getElementById('asset-unit-select')?.value;
       const customUnit = document.getElementById('asset-unit-input')?.value?.trim();
       const unit = (unitSelect && unitSelect !== 'CUSTOM' ? unitSelect : customUnit) || 'm²';
-      const subType = document.getElementById('asset-subtype-select')?.value || unit;
+      let subType = document.getElementById('asset-subtype-select')?.value;
+      if (assetType === 'precious_metal') {
+        const validSubs = ['sjc_gold', 'ring_gold', 'white_gold', 'silver', 'platinum'];
+        if (!subType || !validSubs.includes(subType)) {
+          const n = (name || '').toLowerCase();
+          if (n.includes('bạc') || n.includes('bac') || n.includes('silver')) subType = 'silver';
+          else if (n.includes('bạch kim') || n.includes('bach kim') || n.includes('plat')) subType = 'platinum';
+          else if (n.includes('tây') || n.includes('tay') || n.includes('18k')) subType = 'white_gold';
+          else if (n.includes('nhẫn') || n.includes('nhan') || n.includes('9999') || n.includes('24k')) subType = 'ring_gold';
+          else subType = 'sjc_gold';
+        }
+      }
+      if (!subType) subType = unit;
       const name = document.getElementById('asset-name-input')?.value?.trim();
       const isGift = document.getElementById('asset-is-gift-input')?.checked ? 1 : 0;
       const buyDate = this.getDateInputValue('asset-buy-date-input');

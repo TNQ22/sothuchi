@@ -5477,3 +5477,23 @@ html, body {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
 }
+
+/* Right-align asset unit select and wrapper */
+#asset-unit-wrapper {
+  text-align: right !important;
+}
+
+#asset-unit-select {
+  text-align: right !important;
+  text-align-last: right !important;
+  direction: rtl !important;
+}
+
+#asset-unit-select option {
+  direction: ltr !important;
+  text-align: right !important;
+}
+
+#asset-unit-input {
+  text-align: right !important;
+}
