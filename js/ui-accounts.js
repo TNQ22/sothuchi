@@ -2287,7 +2287,7 @@ const UIAccounts = {
       const qtyInput = document.getElementById('asset-quantity-input');
       if (qtyInput) {
         qtyInput.value = '';
-        qtyInput.placeholder = '1';
+        qtyInput.placeholder = 'Nhập số lượng...';
       }
       
       this.populateAssetUnits(assetType, cfg.unit);
@@ -2874,7 +2874,7 @@ const UIAccounts = {
 
   calcAssetPreview() {
     const rawQty = document.getElementById('asset-quantity-input')?.value;
-    const qty = rawQty !== '' && !isNaN(Number(rawQty)) ? Number(rawQty) : 1;
+    const qty = rawQty !== '' && !isNaN(Number(rawQty)) ? Number(rawQty) : 0;
     const isGift = document.getElementById('asset-is-gift-input')?.checked;
     const buyPrice = isGift ? 0 : Number(document.getElementById('asset-buyprice-input')?.value || 0);
     const curPrice = Number(document.getElementById('asset-currentprice-input')?.value || 0);
@@ -2919,33 +2919,30 @@ const UIAccounts = {
       const customUnit = document.getElementById('asset-unit-input')?.value?.trim();
       const unit = (unitSelect && unitSelect !== 'CUSTOM' ? unitSelect : customUnit) || 'm²';
       const subType = document.getElementById('asset-subtype-select')?.value || unit;
-      let name = document.getElementById('asset-name-input')?.value.trim();
-      if (!name) {
-        const subSel = document.getElementById('asset-subtype-select');
-        name = subSel?.selectedOptions?.[0]?.text || 'Tài sản mới';
-      }
+      const name = document.getElementById('asset-name-input')?.value?.trim();
       const isGift = document.getElementById('asset-is-gift-input')?.checked ? 1 : 0;
       const buyDate = this.getDateInputValue('asset-buy-date-input');
-      const qtyVal = document.getElementById('asset-quantity-input')?.value;
-      const quantity = Number(qtyVal !== '' && !isNaN(Number(qtyVal)) ? qtyVal : 1);
+      const qtyVal = document.getElementById('asset-quantity-input')?.value?.trim();
+      const quantity = qtyVal !== '' && !isNaN(Number(qtyVal)) ? Number(qtyVal) : 0;
       const buyPrice = isGift ? 0 : Number(document.getElementById('asset-buyprice-input')?.value || 0);
       const currentPrice = Number(document.getElementById('asset-currentprice-input')?.value || 0);
       const extraCosts = Number(document.getElementById('asset-extracosts-input')?.value || 0);
-    const sourceAccountId = document.getElementById('asset-source-account-select')?.value || null;
-    const location = document.getElementById('asset-location-input')?.value.trim() || '';
-    const note = document.getElementById('asset-note-input')?.value.trim() || '';
-    const includeInNetWorth = document.getElementById('asset-include-networth-input')?.checked ? 1 : 0;
+      const sourceAccountId = document.getElementById('asset-source-account-select')?.value || null;
+      const location = document.getElementById('asset-location-input')?.value.trim() || '';
+      const note = document.getElementById('asset-note-input')?.value.trim() || '';
+      const includeInNetWorth = document.getElementById('asset-include-networth-input')?.checked ? 1 : 0;
 
-    if (!name) {
-      showToast('Vui lòng nhập tên tài sản', 'error');
-      document.getElementById('asset-name-input')?.focus();
-      return;
-    }
+      if (!name) {
+        showToast('Vui lòng nhập tên tài sản', 'warning');
+        document.getElementById('asset-name-input')?.focus();
+        return;
+      }
 
-    if (quantity <= 0) {
-      showToast('Số lượng/Diện tích phải > 0', 'error');
-      return;
-    }
+      if (quantity <= 0) {
+        showToast('Vui lòng nhập số lượng / khối lượng tài sản', 'warning');
+        document.getElementById('asset-quantity-input')?.focus();
+        return;
+      }
 
     const payload = {
       assetType,
