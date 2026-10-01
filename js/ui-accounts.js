@@ -2286,7 +2286,7 @@ const UIAccounts = {
       
       const qtyInput = document.getElementById('asset-quantity-input');
       if (qtyInput) {
-        qtyInput.value = '1';
+        qtyInput.value = '';
         qtyInput.placeholder = '1';
       }
       
@@ -2300,17 +2300,18 @@ const UIAccounts = {
       document.getElementById('asset-is-gift-input').checked = false;
       document.getElementById('asset-include-networth-input').checked = true;
 
-      // Tự động chèn tên theo phân loại đang chọn
+      // Khi chưa làm gì (mới mở form): để trống ô tên và số lượng, chỉ hiển thị placeholder gợi ý
       const subSelect = document.getElementById('asset-subtype-select');
       const nameInput = document.getElementById('asset-name-input');
       if (nameInput) {
-        const defName = subSelect && subSelect.options.length > 0 ? subSelect.options[subSelect.selectedIndex >= 0 ? subSelect.selectedIndex : 0].text : '';
-        nameInput.value = defName;
-        nameInput.placeholder = 'Tên tài sản *';
+        nameInput.value = '';
+        const defPlaceholder = subSelect && subSelect.options.length > 0 ? subSelect.options[subSelect.selectedIndex >= 0 ? subSelect.selectedIndex : 0].text : 'Tên tài sản';
+        nameInput.placeholder = `Ví dụ: ${defPlaceholder}...`;
       }
 
       if (isLiveSupported) {
-        this.fetchLiveMarketPrice(false, true);
+        // Chỉ tải tỷ giá tham khảo hiển thị ở dòng trạng thái, không tự ý điền vào ô giá
+        this.fetchLiveMarketPrice(false, false);
       }
     }
 
