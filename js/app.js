@@ -895,6 +895,15 @@ class App {
           .catch(err => {
             console.warn('PWA ServiceWorker registration failed:', err);
           });
+
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            console.log('[ServiceWorker] Controller updated, refreshing page');
+            window.location.reload();
+          }
+        });
       });
     }
   }

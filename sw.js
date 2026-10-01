@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v1.9.40';
+const CACHE_NAME = 'sothuchi-pwa-v1.9.42';
 
 const PRECACHE_ASSETS = [
   './',
@@ -88,18 +88,20 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  // Handle navigation requests (opening app / refreshing)
+  // Handle navigation requests (opening app / refreshing) - NETWORK FIRST for immediate updates!
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      caches.match(event.request, { ignoreSearch: true })
-        .then((cachedResponse) => {
-          if (cachedResponse) return cachedResponse;
-          return caches.match('./index.html')
-            .then(res => res || caches.match('index.html'))
-            .then(res => res || fetch(event.request));
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return networkResponse;
         })
         .catch(() => {
-          return caches.match('./index.html') || caches.match('index.html');
+          return caches.match(event.request, { ignoreSearch: true })
+            .then(res => res || caches.match('./index.html') || caches.match('index.html'));
         })
     );
     return;

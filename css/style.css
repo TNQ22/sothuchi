@@ -5217,3 +5217,100 @@ body:has(#view-account-provider.active) .app-header {
     height: 30px !important;
   }
 }
+
+/* Lock all account & asset containers to 100% viewport width and clamp overflow */
+.accounts-group-container {
+  overflow: hidden !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.assets-cards-list,
+.savings-cards-list,
+.accumulations-cards-list {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.asset-type-group {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.asset-type-header {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.asset-type-items-list {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.group-item-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.group-card-header {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.group-card-title-row {
+  max-width: calc(100% - 36px) !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  flex: 1 1 0% !important;
+}
+
+.group-card-info-wrap {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  flex: 1 1 0% !important;
+}
+
+.group-card-name {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  word-break: break-all !important;
+}
+
+.group-card-body {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.group-card-stat {
+  max-width: 55% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+}

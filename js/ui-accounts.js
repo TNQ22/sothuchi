@@ -2207,7 +2207,7 @@ const UIAccounts = {
 
             if (matchedSub && subSelect.value !== matchedSub) {
               subSelect.value = matchedSub;
-              this.fetchLiveMarketPrice(false);
+              this.fetchLiveMarketPrice(false, false);
             }
           }
         }
@@ -2283,7 +2283,13 @@ const UIAccounts = {
     } else {
       if (idInput) idInput.value = '';
       this.setDateInputValue('asset-buy-date-input', todayStr);
-      document.getElementById('asset-quantity-input').value = '1';
+      
+      const qtyInput = document.getElementById('asset-quantity-input');
+      if (qtyInput) {
+        qtyInput.value = '';
+        qtyInput.placeholder = '1';
+      }
+      
       this.populateAssetUnits(assetType, cfg.unit);
       if (buyPriceInput) buyPriceInput.value = '0';
       if (buyPriceText) buyPriceText.textContent = '0';
@@ -2294,15 +2300,18 @@ const UIAccounts = {
       document.getElementById('asset-is-gift-input').checked = false;
       document.getElementById('asset-include-networth-input').checked = true;
 
-      // Gợi ý tên tài sản theo phân loại được chọn
+      // Để trống ô tên, chỉ hiển thị placeholder gợi ý theo phân loại
       const subSelect = document.getElementById('asset-subtype-select');
       const nameInput = document.getElementById('asset-name-input');
-      if (subSelect && subSelect.options.length > 0 && nameInput && !nameInput.value) {
-        nameInput.value = subSelect.options[0].text;
+      if (nameInput) {
+        nameInput.value = '';
+        const defPlaceholder = subSelect && subSelect.options.length > 0 ? subSelect.options[0].text : 'Tên tài sản';
+        nameInput.placeholder = `Ví dụ: ${defPlaceholder}...`;
       }
 
       if (isLiveSupported) {
-        this.fetchLiveMarketPrice(false);
+        // Chỉ tải tỷ giá tham khảo hiển thị ở dòng trạng thái, không tự ý điền đè vào ô giá
+        this.fetchLiveMarketPrice(false, false);
       }
     }
 
@@ -2595,44 +2604,34 @@ const UIAccounts = {
       }
 
       if (nameInput) {
-        const curName = nameInput.value.trim();
-        const autoNames = [
-          'Đô la Mỹ (USD)', 'Euro (EUR)', 'Yên Nhật (JPY)', 'Bảng Anh (GBP)',
-          'Đô Úc (AUD)', 'Đô Canada (CAD)', 'Đô Singapore (SGD)', 'Nhân dân tệ (CNY)',
-          'Tether (USDT)', 'Bitcoin (BTC)', 'Ethereum (ETH)', 'Binance Coin (BNB)',
-          'Solana (SOL)', 'Ripple (XRP)', 'Dogecoin (DOGE)', 'Cardano (ADA)', 'Tron (TRX)',
-          'Vàng SJC', 'Nhẫn Trơn 9999', 'Bạc'
-        ];
-        if (!curName || autoNames.some(n => curName.includes(n) || n.includes(curName))) {
-          const mapNames = {
-            USD: 'Đô la Mỹ (USD)',
-            EUR: 'Euro (EUR)',
-            JPY: 'Yên Nhật (JPY)',
-            GBP: 'Bảng Anh (GBP)',
-            AUD: 'Đô Úc (AUD)',
-            CAD: 'Đô Canada (CAD)',
-            SGD: 'Đô Singapore (SGD)',
-            CNY: 'Nhân dân tệ (CNY)',
-            USDT: 'Tether (USDT)',
-            BTC: 'Bitcoin (BTC)',
-            ETH: 'Ethereum (ETH)',
-            BNB: 'Binance Coin (BNB)',
-            SOL: 'Solana (SOL)',
-            XRP: 'Ripple (XRP)',
-            DOGE: 'Dogecoin (DOGE)',
-            ADA: 'Cardano (ADA)',
-            TRX: 'Tron (TRX)',
-            'Chỉ': 'Vàng SJC (Chỉ)',
-            'Lượng': 'Vàng SJC (Cây / Lượng)'
-          };
-          if (mapNames[val]) {
-            nameInput.value = mapNames[val];
-          }
+        const mapNames = {
+          USD: 'Đô la Mỹ (USD)',
+          EUR: 'Euro (EUR)',
+          JPY: 'Yên Nhật (JPY)',
+          GBP: 'Bảng Anh (GBP)',
+          AUD: 'Đô Úc (AUD)',
+          CAD: 'Đô Canada (CAD)',
+          SGD: 'Đô Singapore (SGD)',
+          CNY: 'Nhân dân tệ (CNY)',
+          USDT: 'Tether (USDT)',
+          BTC: 'Bitcoin (BTC)',
+          ETH: 'Ethereum (ETH)',
+          BNB: 'Binance Coin (BNB)',
+          SOL: 'Solana (SOL)',
+          XRP: 'Ripple (XRP)',
+          DOGE: 'Dogecoin (DOGE)',
+          ADA: 'Cardano (ADA)',
+          TRX: 'Tron (TRX)',
+          'Chỉ': 'Vàng SJC (Chỉ)',
+          'Lượng': 'Vàng SJC (Cây / Lượng)'
+        };
+        if (mapNames[val]) {
+          nameInput.placeholder = `Ví dụ: ${mapNames[val]}...`;
         }
       }
 
       if (['foreign_currency', 'crypto'].includes(assetType)) {
-        this.fetchLiveMarketPrice(true);
+        this.fetchLiveMarketPrice(false, false);
       }
     }
 
@@ -2684,13 +2683,10 @@ const UIAccounts = {
       const nameInput = document.getElementById('asset-name-input');
       const selectedItem = list.find(x => x.id === select.value);
       if (selectedItem && nameInput) {
-        const allSubNames = Object.values(this.ASSET_SUBTYPES).flat().map(s => s.name);
-        if (!nameInput.value || allSubNames.includes(nameInput.value.trim())) {
-          nameInput.value = selectedItem.name;
-        }
+        nameInput.placeholder = `Ví dụ: ${selectedItem.name}...`;
       }
       if (['foreign_currency', 'crypto', 'precious_metal'].includes(aType)) {
-        this.fetchLiveMarketPrice(false);
+        this.fetchLiveMarketPrice(false, false);
       }
     };
   },
@@ -2877,7 +2873,8 @@ const UIAccounts = {
   },
 
   calcAssetPreview() {
-    const qty = Number(document.getElementById('asset-quantity-input')?.value || 0);
+    const rawQty = document.getElementById('asset-quantity-input')?.value;
+    const qty = rawQty !== '' && !isNaN(Number(rawQty)) ? Number(rawQty) : 1;
     const isGift = document.getElementById('asset-is-gift-input')?.checked;
     const buyPrice = isGift ? 0 : Number(document.getElementById('asset-buyprice-input')?.value || 0);
     const curPrice = Number(document.getElementById('asset-currentprice-input')?.value || 0);
@@ -2922,10 +2919,15 @@ const UIAccounts = {
       const customUnit = document.getElementById('asset-unit-input')?.value?.trim();
       const unit = (unitSelect && unitSelect !== 'CUSTOM' ? unitSelect : customUnit) || 'm²';
       const subType = document.getElementById('asset-subtype-select')?.value || unit;
-      const name = document.getElementById('asset-name-input')?.value.trim();
+      let name = document.getElementById('asset-name-input')?.value.trim();
+      if (!name) {
+        const subSel = document.getElementById('asset-subtype-select');
+        name = subSel?.selectedOptions?.[0]?.text || 'Tài sản mới';
+      }
       const isGift = document.getElementById('asset-is-gift-input')?.checked ? 1 : 0;
       const buyDate = this.getDateInputValue('asset-buy-date-input');
-      const quantity = Number(document.getElementById('asset-quantity-input')?.value || 1);
+      const qtyVal = document.getElementById('asset-quantity-input')?.value;
+      const quantity = Number(qtyVal !== '' && !isNaN(Number(qtyVal)) ? qtyVal : 1);
       const buyPrice = isGift ? 0 : Number(document.getElementById('asset-buyprice-input')?.value || 0);
       const currentPrice = Number(document.getElementById('asset-currentprice-input')?.value || 0);
       const extraCosts = Number(document.getElementById('asset-extracosts-input')?.value || 0);
@@ -3190,7 +3192,7 @@ const UIAccounts = {
     };
   },
 
-  async fetchLiveMarketPrice(showFeedback = true) {
+  async fetchLiveMarketPrice(showFeedback = true, applyToInput = true) {
     const assetType = document.getElementById('asset-type-input')?.value;
     const unitSelect = document.getElementById('asset-unit-select')?.value;
     const customUnit = document.getElementById('asset-unit-input')?.value?.trim();
@@ -3289,15 +3291,18 @@ const UIAccounts = {
       if (curReqId !== this._lastPriceReqId) return;
 
       if (calculatedPrice > 0) {
-        curPriceInput.value = calculatedPrice;
-        if (curPriceText) curPriceText.textContent = new Intl.NumberFormat('vi-VN').format(calculatedPrice);
-        this.calcAssetPreview();
+        this._latestLivePrice = calculatedPrice;
+        if (applyToInput) {
+          curPriceInput.value = calculatedPrice;
+          if (curPriceText) curPriceText.textContent = new Intl.NumberFormat('vi-VN').format(calculatedPrice);
+          this.calcAssetPreview();
+        }
 
         if (autoStatusEl) {
-          autoStatusEl.textContent = `Giá ${labelName}: ${new Intl.NumberFormat('vi-VN').format(calculatedPrice)}đ`;
+          autoStatusEl.textContent = `Tỷ giá thị trường: ${new Intl.NumberFormat('vi-VN').format(calculatedPrice)}đ/${document.getElementById('asset-unit-select')?.value || 'đv'}`;
         }
         if (showFeedback) {
-          showToast(`Đã cập nhật giá ${labelName}: ${new Intl.NumberFormat('vi-VN').format(calculatedPrice)}đ`, 'success');
+          showToast(`Đã lấy giá ${labelName}: ${new Intl.NumberFormat('vi-VN').format(calculatedPrice)}đ`, 'success');
         }
       } else {
         if (autoStatusEl) autoStatusEl.textContent = 'Chưa thể tự lấy giá đồng này';
@@ -3857,13 +3862,13 @@ const UIAccounts = {
               </button>
             </div>
 
-            <div class="group-card-body">
-              <div>
+            <div class="group-card-body" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 6px; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; overflow: hidden;">
+              <div style="min-width: 0; flex: 1 1 auto; overflow: hidden;">
                 <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Giá trị thị trường</span>
-                <span class="group-card-amount stat-amount" style="color: #a855f7;">${new Intl.NumberFormat('vi-VN').format(totalCur)}đ</span>
+                <span class="group-card-amount stat-amount" style="color: #a855f7; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${new Intl.NumberFormat('vi-VN').format(totalCur)}đ</span>
               </div>
-              <div class="group-card-stat">
-                <span class="pnl-badge ${isProf ? 'profit' : 'loss'} stat-amount">${sign}${new Intl.NumberFormat('vi-VN').format(pnl)}đ (${sign}${pnlPct}%)</span>
+              <div class="group-card-stat" style="min-width: 0; flex-shrink: 0; max-width: 55%; overflow: hidden; text-align: right;">
+                <span class="pnl-badge ${isProf ? 'profit' : 'loss'} stat-amount" style="display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${sign}${new Intl.NumberFormat('vi-VN').format(pnl)}đ (${sign}${pnlPct}%)</span>
               </div>
             </div>
           </div>
