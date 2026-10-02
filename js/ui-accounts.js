@@ -4025,6 +4025,7 @@ const UIAccounts = {
           <p class="empty-text">Chưa có sổ vay ngân hàng nào</p>
         </div>
       `;
+      if (window.lucide) lucide.createIcons();
     } else {
       container.innerHTML = activeLoans.map(l => {
         const prov = l.bankCode ? this.PROVIDERS.find(x => x.code === l.bankCode) : null;
@@ -4324,13 +4325,14 @@ const UIAccounts = {
 
     if (activeSavings.length === 0) {
       container.innerHTML = `
-        <div class="accounts-group-empty-state">
+        <div class="accounts-empty-card">
           <div class="empty-icon-wrap" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9;">
             <i data-lucide="piggy-bank" style="width: 22px; height: 22px;"></i>
           </div>
           <p class="empty-text">Chưa có sổ tiết kiệm nào</p>
         </div>
       `;
+      if (window.lucide) lucide.createIcons();
     } else {
       container.innerHTML = activeSavings.map(s => {
         const prov = s.bankCode ? this.PROVIDERS.find(x => x.code === s.bankCode) : null;
@@ -4430,13 +4432,14 @@ const UIAccounts = {
 
     if (list.length === 0) {
       container.innerHTML = `
-        <div class="accounts-group-empty-state">
+        <div class="accounts-empty-card">
           <div class="empty-icon-wrap" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
             <i data-lucide="target" style="width: 22px; height: 22px;"></i>
           </div>
           <p class="empty-text">Chưa có sổ tích lũy nào</p>
         </div>
       `;
+      if (window.lucide) lucide.createIcons();
     } else {
       container.innerHTML = list.map(item => {
         const cur = item.currentAmount || 0;
@@ -4501,7 +4504,7 @@ const UIAccounts = {
 
     if (list.length === 0) {
       container.innerHTML = `
-        <div class="accounts-group-empty-state">
+        <div class="accounts-empty-card">
           <div class="empty-icon-wrap" style="background: rgba(168, 85, 247, 0.12); color: #a855f7;">
             <i data-lucide="gem" style="width: 22px; height: 22px;"></i>
           </div>
@@ -4651,7 +4654,7 @@ const UIAccounts = {
     // 1. Render danh sách tài khoản ĐANG HOẠT ĐỘNG
     if (activeAccounts.length === 0) {
       container.innerHTML = `
-        <div class="accounts-group-empty-state">
+        <div class="accounts-empty-card">
           <div class="empty-icon-wrap" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
             <i data-lucide="wallet" style="width: 22px; height: 22px;"></i>
           </div>
