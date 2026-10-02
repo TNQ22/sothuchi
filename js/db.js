@@ -48,6 +48,8 @@ const DEFAULT_CATEGORIES = [
   { name: 'Giải trí & Phim ảnh', type: 'expense', icon: 'film', color: '#06b6d4', isQuick: 1 },
   { name: 'Giáo dục & Khóa học', type: 'expense', icon: 'graduation-cap', color: '#3b82f6', isQuick: 1 },
   { name: 'Gia đình & Con cái', type: 'expense', icon: 'users', color: '#6366f1', isQuick: 1 },
+  // Trả nợ vay ngân hàng (Danh mục hệ thống)
+  { name: 'Trả nợ vay ngân hàng', type: 'expense', icon: 'badge-percent', color: '#ef4444', isQuick: 0, isSystem: 1, systemKey: 'loan_repay' },
   { name: 'Chi phí khác', type: 'expense', icon: 'more-horizontal', color: '#64748b', isQuick: 1 },
 
   // Thu nhập (Income) - Quick items
@@ -55,6 +57,8 @@ const DEFAULT_CATEGORIES = [
   { name: 'Thưởng & Hoa hồng', type: 'income', icon: 'award', color: '#059669', isQuick: 1 },
   { name: 'Lợi nhuận đầu tư', type: 'income', icon: 'trending-up', color: '#0ea5e9', isQuick: 1 },
   { name: 'Thu nhập phụ', type: 'income', icon: 'briefcase', color: '#8b5cf6', isQuick: 0 },
+  // Giải ngân khoản vay (Danh mục hệ thống)
+  { name: 'Giải ngân khoản vay', type: 'income', icon: 'landmark', color: '#0ea5e9', isQuick: 0, isSystem: 1, systemKey: 'loan_disburse' },
   { name: 'Quà tặng & Cho', type: 'income', icon: 'gift', color: '#ec4899', isQuick: 0 },
   { name: 'Thu nhập khác', type: 'income', icon: 'plus-circle', color: '#64748b', isQuick: 0 }
 ];
@@ -157,6 +161,9 @@ async function initDatabase() {
     }
   }
 
+  // Đảm bảo khởi tạo 2 danh mục hệ thống cho sổ vay và khóa bảo vệ
+  const { disburseCat, repayCat } = await getLoanSystemCategories();
+
   // Tự động kiểm tra và bù giao dịch giải ngân cho các sổ vay đã có tài khoản nhận nhưng chưa có ghi chú thu chi
   if (db.loans) {
     try {
@@ -172,6 +179,7 @@ async function initDatabase() {
               const nowTs = Date.now();
               await db.transactions.add({
                 type: 'income',
+                categoryId: disburseCat ? disburseCat.id : null,
                 amount: l.loanAmount,
                 fee: 0,
                 accountId: acc.id,
@@ -188,7 +196,25 @@ async function initDatabase() {
                 updatedAt: nowTs
               });
             }
+          } else if (!existingTx.categoryId && disburseCat) {
+            await db.transactions.update(existingTx.id, {
+              categoryId: disburseCat.id,
+              updatedAt: Date.now()
+            });
           }
+        }
+      }
+
+      // Tự động gán categoryId cho các giao dịch trả nợ gốc hiện có nếu chưa có categoryId
+      if (repayCat) {
+        const repayTxs = await db.transactions
+          .filter(t => (t.loanAction === 'repay' || (t.note && t.note.startsWith('Trả nợ gốc sổ vay:'))) && !t.categoryId && !t.isDeleted)
+          .toArray();
+        for (const rTx of repayTxs) {
+          await db.transactions.update(rTx.id, {
+            categoryId: repayCat.id,
+            updatedAt: Date.now()
+          });
         }
       }
     } catch (err) {
@@ -296,6 +322,67 @@ async function deleteTransaction(txId) {
   triggerAutoSync();
 }
 
+// Helper đảm bảo danh mục hệ thống cho sổ vay ngân hàng luôn tồn tại và được bảo vệ
+async function getLoanSystemCategories() {
+  const cats = await db.categories.toArray();
+
+  let disburseCat = cats.find(c => c.systemKey === 'loan_disburse' || c.name === 'Giải ngân khoản vay');
+  if (!disburseCat) {
+    const now = Date.now();
+    const id = await db.categories.add({
+      name: 'Giải ngân khoản vay',
+      type: 'income',
+      icon: 'landmark',
+      color: '#0ea5e9',
+      isQuick: 0,
+      isSystem: 1,
+      systemKey: 'loan_disburse',
+      isDeleted: 0,
+      updatedAt: now
+    });
+    disburseCat = { id, name: 'Giải ngân khoản vay', type: 'income', icon: 'landmark', color: '#0ea5e9', isSystem: 1, systemKey: 'loan_disburse' };
+  } else if (!disburseCat.isSystem || !disburseCat.systemKey || disburseCat.isDeleted) {
+    await db.categories.update(disburseCat.id, {
+      isSystem: 1,
+      systemKey: 'loan_disburse',
+      isDeleted: 0,
+      updatedAt: Date.now()
+    });
+    disburseCat.isSystem = 1;
+    disburseCat.systemKey = 'loan_disburse';
+    disburseCat.isDeleted = 0;
+  }
+
+  let repayCat = cats.find(c => c.systemKey === 'loan_repay' || c.name === 'Trả nợ vay ngân hàng');
+  if (!repayCat) {
+    const now = Date.now();
+    const id = await db.categories.add({
+      name: 'Trả nợ vay ngân hàng',
+      type: 'expense',
+      icon: 'badge-percent',
+      color: '#ef4444',
+      isQuick: 0,
+      isSystem: 1,
+      systemKey: 'loan_repay',
+      isDeleted: 0,
+      updatedAt: now
+    });
+    repayCat = { id, name: 'Trả nợ vay ngân hàng', type: 'expense', icon: 'badge-percent', color: '#ef4444', isSystem: 1, systemKey: 'loan_repay' };
+  } else if (!repayCat.isSystem || !repayCat.systemKey || repayCat.isDeleted) {
+    await db.categories.update(repayCat.id, {
+      isSystem: 1,
+      systemKey: 'loan_repay',
+      isDeleted: 0,
+      updatedAt: Date.now()
+    });
+    repayCat.isSystem = 1;
+    repayCat.systemKey = 'loan_repay';
+    repayCat.isDeleted = 0;
+  }
+
+  return { disburseCat, repayCat };
+}
+
 // Category Operations (CRUD)
 async function addCategory(data) {
   const now = Date.now();
@@ -313,6 +400,16 @@ async function addCategory(data) {
 }
 
 async function updateCategory(id, data) {
+  const cat = await db.categories.get(Number(id));
+  if (cat && (cat.isSystem || cat.systemKey)) {
+    // Cho phép đổi trạng thái chọn nhanh isQuick, nhưng khóa không cho sửa tên, loại
+    if (data.name && data.name !== cat.name) {
+      throw new Error('Danh mục hệ thống được bảo vệ, không thể sửa đổi tên!');
+    }
+    if (data.type && data.type !== cat.type) {
+      throw new Error('Danh mục hệ thống được bảo vệ, không thể sửa đổi loại!');
+    }
+  }
   const now = Date.now();
   await db.categories.update(Number(id), {
     ...data,
@@ -322,6 +419,10 @@ async function updateCategory(id, data) {
 }
 
 async function deleteCategory(id) {
+  const cat = await db.categories.get(Number(id));
+  if (cat && (cat.isSystem || cat.systemKey)) {
+    throw new Error('Danh mục hệ thống được bảo vệ, không thể xóa!');
+  }
   const now = Date.now();
   await db.categories.update(Number(id), {
     isDeleted: 1,
@@ -745,8 +846,10 @@ async function addLoan(loanData) {
           updatedAt: nowTs
         });
         // Thêm ghi chú giao dịch thu nhập giải ngân vào ví
+        const { disburseCat } = await getLoanSystemCategories();
         await db.transactions.add({
           type: 'income',
+          categoryId: disburseCat ? disburseCat.id : null,
           amount: loan.loanAmount,
           fee: 0,
           accountId: acc.id,
@@ -829,7 +932,9 @@ async function updateLoan(id, loanData) {
             });
           }
         }
+        const { disburseCat: dCat1 } = await getLoanSystemCategories();
         await db.transactions.update(oldDisburseTx.id, {
+          categoryId: dCat1 ? dCat1.id : (oldDisburseTx.categoryId || null),
           amount: newLoanAmount,
           date: newStartDate,
           note: `Giải ngân sổ vay: ${newName}`,
@@ -852,7 +957,9 @@ async function updateLoan(id, loanData) {
             updatedAt: nowTs
           });
         }
+        const { disburseCat: dCat2 } = await getLoanSystemCategories();
         await db.transactions.update(oldDisburseTx.id, {
+          categoryId: dCat2 ? dCat2.id : (oldDisburseTx.categoryId || null),
           accountId: newDisburseAccId,
           amount: newLoanAmount,
           date: newStartDate,
@@ -870,8 +977,10 @@ async function updateLoan(id, loanData) {
             balance: (acc.balance || 0) + newLoanAmount,
             updatedAt: nowTs
           });
+          const { disburseCat: dCat3 } = await getLoanSystemCategories();
           await db.transactions.add({
             type: 'income',
+            categoryId: dCat3 ? dCat3.id : null,
             amount: newLoanAmount,
             fee: 0,
             accountId: acc.id,
@@ -940,8 +1049,10 @@ async function payLoan(loanId, paymentAmount, sourceAccountId = null, dateStr = 
           updatedAt: nowTs
         });
         // Ghi nhận giao dịch chi phí trả nợ gốc vào ví
+        const { repayCat } = await getLoanSystemCategories();
         await db.transactions.add({
           type: 'expense',
+          categoryId: repayCat ? repayCat.id : null,
           amount: paymentAmount,
           fee: 0,
           accountId: src.id,

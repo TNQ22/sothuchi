@@ -1400,6 +1400,11 @@ const UITransactions = {
     }
 
     if (id) {
+      const cat = await db.categories.get(Number(id));
+      if (cat && (cat.isSystem || cat.systemKey)) {
+        showToast('Danh mục hệ thống được bảo vệ, không thể sửa đổi!', 'warning');
+        return;
+      }
       await updateCategory(id, { name, type, color, icon, isQuick });
       showToast('Đã cập nhật danh mục', 'success');
     } else {
@@ -1415,6 +1420,10 @@ const UITransactions = {
   async editCategory(id) {
     const cat = await db.categories.get(Number(id));
     if (!cat) return;
+    if (cat.isSystem || cat.systemKey) {
+      showToast('Danh mục hệ thống được bảo vệ, không thể chỉnh sửa!', 'warning');
+      return;
+    }
     this.editingCatId = cat.id;
     document.getElementById('cat-crud-id').value = cat.id;
     document.getElementById('cat-crud-name').value = cat.name;
@@ -1429,6 +1438,12 @@ const UITransactions = {
   },
 
   async deleteCategory(id) {
+    const cat = await db.categories.get(Number(id));
+    if (!cat) return;
+    if (cat.isSystem || cat.systemKey) {
+      showToast('Danh mục hệ thống được bảo vệ, không thể xóa!', 'warning');
+      return;
+    }
     if (confirm('Bạn có chắc muốn xóa danh mục này? Các giao dịch cũ vẫn được giữ nguyên.')) {
       await deleteCategory(id);
       showToast('Đã xóa danh mục', 'info');
@@ -1448,14 +1463,23 @@ const UITransactions = {
     if (!container) return;
 
     const cats = await db.categories.where('isDeleted').equals(0).toArray();
-    container.innerHTML = cats.map(c => `
+    container.innerHTML = cats.map(c => {
+      const isSys = !!(c.isSystem || c.systemKey);
+      return `
       <div class="cat-manager-row">
         <div style="display: flex; align-items: center; gap: 10px;">
           <div class="quick-cat-icon" style="background: ${c.color}22; color: ${c.color}; width: 32px; height: 32px;">
             <i data-lucide="${c.icon || 'tag'}" style="width: 16px; height: 16px;"></i>
           </div>
           <div>
-            <div style="font-weight: 600; font-size: 0.88rem;">${escapeHTML(c.name)}</div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-weight: 600; font-size: 0.88rem;">${escapeHTML(c.name)}</span>
+              ${isSys ? `
+                <span title="Danh mục hệ thống cố định, được bảo vệ không thể sửa/xóa" style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: rgba(99, 102, 241, 0.12); color: var(--primary);">
+                  <i data-lucide="lock" style="width: 10px; height: 10px;"></i> Hệ thống
+                </span>
+              ` : ''}
+            </div>
             <div style="font-size: 0.72rem; color: var(--text-muted);">${c.type === 'expense' ? 'Chi Tiêu' : 'Thu Nhập'}</div>
           </div>
         </div>
@@ -1463,11 +1487,18 @@ const UITransactions = {
           <button type="button" class="btn-icon" title="${c.isQuick ? 'Bỏ ghim chọn nhanh' : 'Ghim vào chọn nhanh'}" onclick="UITransactions.toggleQuickCategory(${c.id}, ${!c.isQuick})">
             <i data-lucide="${c.isQuick ? 'pin-off' : 'pin'}" style="width: 16px; height: 16px; color: ${c.isQuick ? 'var(--primary)' : 'var(--text-muted)'};"></i>
           </button>
-          <button type="button" class="btn-icon" onclick="UITransactions.editCategory(${c.id})"><i data-lucide="edit-2" style="width: 16px; height: 16px;"></i></button>
-          <button type="button" class="btn-icon" onclick="UITransactions.deleteCategory(${c.id})"><i data-lucide="trash-2" style="width: 16px; height: 16px; color: var(--expense);"></i></button>
+          ${isSys ? `
+            <span title="Danh mục hệ thống cố định, được bảo vệ an toàn (không cho sửa/xóa)" style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; color: var(--text-muted); opacity: 0.7; cursor: not-allowed;">
+              <i data-lucide="lock" style="width: 15px; height: 15px;"></i>
+            </span>
+          ` : `
+            <button type="button" class="btn-icon" title="Sửa danh mục" onclick="UITransactions.editCategory(${c.id})"><i data-lucide="edit-2" style="width: 16px; height: 16px;"></i></button>
+            <button type="button" class="btn-icon" title="Xóa danh mục" onclick="UITransactions.deleteCategory(${c.id})"><i data-lucide="trash-2" style="width: 16px; height: 16px; color: var(--expense);"></i></button>
+          `}
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     if (window.lucide) lucide.createIcons();
   },
