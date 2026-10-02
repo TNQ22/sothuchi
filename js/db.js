@@ -61,9 +61,9 @@ const DEFAULT_CATEGORIES = [
 
 // Default Seed Accounts
 const DEFAULT_ACCOUNTS = [
-  { name: 'Tiền mặt', type: 'cash', balance: 1500000, initialBalance: 1500000, icon: 'wallet', color: '#10b981' },
-  { name: 'Ngân hàng', type: 'bank', balance: 12500000, initialBalance: 12500000, icon: 'landmark', color: '#4f46e5' },
-  { name: 'MoMo / ZaloPay', type: 'ewallet', balance: 500000, initialBalance: 500000, icon: 'smartphone', color: '#ec4899' }
+  { name: 'Tiền mặt', type: 'cash', balance: 0, initialBalance: 0, icon: 'wallet', color: '#10b981' },
+  { name: 'Ngân hàng', type: 'bank', balance: 0, initialBalance: 0, icon: 'landmark', color: '#4f46e5' },
+  { name: 'Ví điện tử', type: 'ewallet', balance: 0, initialBalance: 0, icon: 'smartphone', color: '#ec4899' }
 ];
 
 // Tự động kiểm tra và gộp tài khoản bị trùng lặp tên & loại (khắc phục nhân đôi trên PWA/Sync)
@@ -131,10 +131,68 @@ async function initDatabase() {
     const now = Date.now();
     await db.accounts.bulkAdd(DEFAULT_ACCOUNTS.map(a => ({ ...a, isDeleted: 0, updatedAt: now })));
   } else {
-    // Auto-migrate account name from 'Tài khoản Ngân hàng' to 'Ngân hàng'
-    const oldBankAcc = await db.accounts.where('name').equals('Tài khoản Ngân hàng').first();
-    if (oldBankAcc) {
-      await db.accounts.update(oldBankAcc.id, { name: 'Ngân hàng', updatedAt: Date.now() });
+    // Tự động chuyển đổi tên và reset số dư ban đầu mẫu về 0đ cho các tài khoản mặc định
+    const defaultAccountsToReset = [
+      { oldNames: ['MoMo / ZaloPay', 'Momo / ZaloPay', 'Ví điện tử'], oldInit: 500000, newName: 'Ví điện tử' },
+      { oldNames: ['Ngân hàng', 'Tài khoản Ngân hàng'], oldInit: 12500000, newName: 'Ngân hàng' },
+      { oldNames: ['Tiền mặt'], oldInit: 1500000, newName: 'Tiền mặt' }
+    ];
+    for (const item of defaultAccountsToReset) {
+      for (const n of item.oldNames) {
+        const acc = await db.accounts.where('name').equals(n).first();
+        if (acc) {
+          const updatePayload = { updatedAt: Date.now() };
+          if (acc.name !== item.newName) {
+            updatePayload.name = item.newName;
+          }
+          if (acc.initialBalance === item.oldInit) {
+            updatePayload.initialBalance = 0;
+            updatePayload.balance = Math.max(0, (acc.balance || 0) - item.oldInit);
+          }
+          if (Object.keys(updatePayload).length > 1 || updatePayload.name) {
+            await db.accounts.update(acc.id, updatePayload);
+          }
+        }
+      }
+    }
+  }
+
+  // Tự động kiểm tra và bù giao dịch giải ngân cho các sổ vay đã có tài khoản nhận nhưng chưa có ghi chú thu chi
+  if (db.loans) {
+    try {
+      const activeLoans = await db.loans.where('isDeleted').equals(0).toArray();
+      for (const l of activeLoans) {
+        if (l.disbursementAccountId && l.loanAmount > 0) {
+          const existingTx = await db.transactions
+            .filter(t => t.loanId === l.id && t.loanAction === 'disburse' && !t.isDeleted)
+            .first();
+          if (!existingTx) {
+            const acc = await db.accounts.get(Number(l.disbursementAccountId));
+            if (acc) {
+              const nowTs = Date.now();
+              await db.transactions.add({
+                type: 'income',
+                amount: l.loanAmount,
+                fee: 0,
+                accountId: acc.id,
+                toAccountId: null,
+                date: l.startDate || new Date().toISOString().split('T')[0],
+                time: '09:00',
+                note: `Giải ngân sổ vay: ${l.name}`,
+                excludeFromReport: l.excludeFromReport ? 1 : 0,
+                images: [],
+                loanId: l.id,
+                loanAction: 'disburse',
+                isDeleted: 0,
+                createdAt: nowTs,
+                updatedAt: nowTs
+              });
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Loan disbursement auto-migration notice:', err);
     }
   }
 
@@ -665,6 +723,7 @@ async function deleteAsset(id) {
 // ==================== LOANS (SỔ VAY NGÂN HÀNG) CRUD ====================
 async function addLoan(loanData) {
   const now = new Date().toISOString();
+  const nowTs = Date.now();
   const loan = {
     ...loanData,
     remainingAmount: loanData.loanAmount,
@@ -675,14 +734,33 @@ async function addLoan(loanData) {
   };
 
   let id;
-  if (loan.disbursementAccountId) {
+  const disburseAccId = loan.disbursementAccountId ? Number(loan.disbursementAccountId) : null;
+  if (disburseAccId && loan.loanAmount > 0) {
     await db.transaction('rw', db.loans, db.accounts, db.transactions, async () => {
       id = await db.loans.add(loan);
-      const acc = await db.accounts.get(Number(loan.disbursementAccountId));
-      if (acc && !loan.excludeFromReport) {
+      const acc = await db.accounts.get(disburseAccId);
+      if (acc) {
         await db.accounts.update(acc.id, {
           balance: (acc.balance || 0) + loan.loanAmount,
-          updatedAt: now
+          updatedAt: nowTs
+        });
+        // Thêm ghi chú giao dịch thu nhập giải ngân vào ví
+        await db.transactions.add({
+          type: 'income',
+          amount: loan.loanAmount,
+          fee: 0,
+          accountId: acc.id,
+          toAccountId: null,
+          date: loan.startDate || now.split('T')[0],
+          time: new Date().toTimeString().slice(0, 5),
+          note: `Giải ngân sổ vay: ${loan.name}`,
+          excludeFromReport: loan.excludeFromReport ? 1 : 0,
+          images: [],
+          loanId: id,
+          loanAction: 'disburse',
+          isDeleted: 0,
+          createdAt: nowTs,
+          updatedAt: nowTs
         });
       }
     });
@@ -696,20 +774,123 @@ async function addLoan(loanData) {
 async function updateLoan(id, loanData) {
   const lId = Number(id);
   const now = new Date().toISOString();
-  await db.transaction('rw', db.loans, async () => {
+  const nowTs = Date.now();
+
+  await db.transaction('rw', db.loans, db.accounts, db.transactions, async () => {
     const oldLoan = await db.loans.get(lId);
     if (!oldLoan || oldLoan.isDeleted) return;
 
     let remaining = oldLoan.remainingAmount !== undefined ? oldLoan.remainingAmount : (oldLoan.loanAmount || 0);
 
-    // Nếu người dùng thay đổi số tiền vay ban đầu (ví dụ lúc tạo gõ nhầm):
+    // Nếu người dùng thay đổi số tiền vay ban đầu (ví dụ sửa lúc nhập nhầm):
     if (loanData.loanAmount !== undefined && loanData.loanAmount !== oldLoan.loanAmount) {
       const history = oldLoan.repaymentHistory || [];
       const totalPaid = history.reduce((sum, h) => sum + (h.amount || 0), 0);
       remaining = Math.max(0, loanData.loanAmount - totalPaid);
     }
 
-    // Tuyệt đối KHÔNG tự ý giải ngân lại/cộng thêm tiền vào ví khi sửa sổ vay
+    // Xử lý đồng bộ ghi chú giao dịch giải ngân vào ví
+    const oldDisburseTx = await db.transactions
+      .filter(t => t.loanId === lId && t.loanAction === 'disburse' && !t.isDeleted)
+      .first();
+
+    const newDisburseAccId = loanData.disbursementAccountId ? Number(loanData.disbursementAccountId) : null;
+    const newLoanAmount = loanData.loanAmount !== undefined ? Number(loanData.loanAmount) : (oldLoan.loanAmount || 0);
+    const newStartDate = loanData.startDate || oldLoan.startDate || now.split('T')[0];
+    const newName = loanData.name || oldLoan.name;
+    const newExclude = loanData.excludeFromReport !== undefined ? (loanData.excludeFromReport ? 1 : 0) : (oldLoan.excludeFromReport ? 1 : 0);
+
+    if (oldDisburseTx) {
+      const oldAccId = oldDisburseTx.accountId;
+      const oldAmount = oldDisburseTx.amount || 0;
+
+      if (!newDisburseAccId) {
+        // Đổi sang không cộng vào ví: hoàn tác số dư ví cũ và xóa giao dịch giải ngân
+        const oldAcc = await db.accounts.get(oldAccId);
+        if (oldAcc) {
+          await db.accounts.update(oldAccId, {
+            balance: (oldAcc.balance || 0) - oldAmount,
+            updatedAt: nowTs
+          });
+        }
+        await db.transactions.update(oldDisburseTx.id, {
+          isDeleted: 1,
+          updatedAt: nowTs
+        });
+      } else if (oldAccId === newDisburseAccId) {
+        // Vẫn cùng ví: điều chỉnh số dư chênh lệch (nếu đổi loanAmount) và cập nhật thông tin giao dịch
+        const diff = newLoanAmount - oldAmount;
+        if (diff !== 0) {
+          const acc = await db.accounts.get(newDisburseAccId);
+          if (acc) {
+            await db.accounts.update(newDisburseAccId, {
+              balance: (acc.balance || 0) + diff,
+              updatedAt: nowTs
+            });
+          }
+        }
+        await db.transactions.update(oldDisburseTx.id, {
+          amount: newLoanAmount,
+          date: newStartDate,
+          note: `Giải ngân sổ vay: ${newName}`,
+          excludeFromReport: newExclude,
+          updatedAt: nowTs
+        });
+      } else {
+        // Đổi sang ví khác: trừ ví cũ, cộng ví mới, cập nhật transaction
+        const oldAcc = await db.accounts.get(oldAccId);
+        if (oldAcc) {
+          await db.accounts.update(oldAccId, {
+            balance: (oldAcc.balance || 0) - oldAmount,
+            updatedAt: nowTs
+          });
+        }
+        const newAcc = await db.accounts.get(newDisburseAccId);
+        if (newAcc) {
+          await db.accounts.update(newDisburseAccId, {
+            balance: (newAcc.balance || 0) + newLoanAmount,
+            updatedAt: nowTs
+          });
+        }
+        await db.transactions.update(oldDisburseTx.id, {
+          accountId: newDisburseAccId,
+          amount: newLoanAmount,
+          date: newStartDate,
+          note: `Giải ngân sổ vay: ${newName}`,
+          excludeFromReport: newExclude,
+          updatedAt: nowTs
+        });
+      }
+    } else {
+      // Chưa từng có giao dịch giải ngân vào ví (lúc tạo để ngoài ví, giờ chọn ví nhận)
+      if (newDisburseAccId && newLoanAmount > 0) {
+        const acc = await db.accounts.get(newDisburseAccId);
+        if (acc) {
+          await db.accounts.update(acc.id, {
+            balance: (acc.balance || 0) + newLoanAmount,
+            updatedAt: nowTs
+          });
+          await db.transactions.add({
+            type: 'income',
+            amount: newLoanAmount,
+            fee: 0,
+            accountId: acc.id,
+            toAccountId: null,
+            date: newStartDate,
+            time: new Date().toTimeString().slice(0, 5),
+            note: `Giải ngân sổ vay: ${newName}`,
+            excludeFromReport: newExclude,
+            images: [],
+            loanId: lId,
+            loanAction: 'disburse',
+            isDeleted: 0,
+            createdAt: nowTs,
+            updatedAt: nowTs
+          });
+        }
+      }
+    }
+
     await db.loans.update(lId, {
       ...loanData,
       remainingAmount: remaining,
@@ -717,15 +898,17 @@ async function updateLoan(id, loanData) {
       updatedAt: now
     });
   });
+
   triggerAutoSync();
 }
 
 async function payLoan(loanId, paymentAmount, sourceAccountId = null, dateStr = null) {
   const lId = Number(loanId);
   const now = new Date().toISOString();
+  const nowTs = Date.now();
   const pDate = dateStr || now.split('T')[0];
 
-  await db.transaction('rw', db.loans, db.accounts, async () => {
+  await db.transaction('rw', db.loans, db.accounts, db.transactions, async () => {
     const loan = await db.loans.get(lId);
     if (!loan || loan.isDeleted) return;
 
@@ -737,7 +920,7 @@ async function payLoan(loanId, paymentAmount, sourceAccountId = null, dateStr = 
       date: pDate,
       amount: paymentAmount,
       sourceAccountId: sourceAccountId ? Number(sourceAccountId) : null,
-      note: 'Trả nợ gốc sổ vay',
+      note: `Trả nợ gốc sổ vay: ${loan.name}`,
       createdAt: now
     });
 
@@ -754,7 +937,25 @@ async function payLoan(loanId, paymentAmount, sourceAccountId = null, dateStr = 
       if (src) {
         await db.accounts.update(src.id, {
           balance: (src.balance || 0) - paymentAmount,
-          updatedAt: now
+          updatedAt: nowTs
+        });
+        // Ghi nhận giao dịch chi phí trả nợ gốc vào ví
+        await db.transactions.add({
+          type: 'expense',
+          amount: paymentAmount,
+          fee: 0,
+          accountId: src.id,
+          toAccountId: null,
+          date: pDate,
+          time: new Date().toTimeString().slice(0, 5),
+          note: `Trả nợ gốc sổ vay: ${loan.name}`,
+          excludeFromReport: loan.excludeFromReport ? 1 : 0,
+          images: [],
+          loanId: lId,
+          loanAction: 'repay',
+          isDeleted: 0,
+          createdAt: nowTs,
+          updatedAt: nowTs
         });
       }
     }
@@ -764,8 +965,43 @@ async function payLoan(loanId, paymentAmount, sourceAccountId = null, dateStr = 
 }
 
 async function deleteLoan(id) {
+  const lId = Number(id);
   const now = new Date().toISOString();
-  await db.loans.update(Number(id), { isDeleted: 1, updatedAt: now });
+  const nowTs = Date.now();
+
+  await db.transaction('rw', db.loans, db.accounts, db.transactions, async () => {
+    const loan = await db.loans.get(lId);
+    if (!loan || loan.isDeleted) return;
+
+    // Tìm các giao dịch liên quan đến sổ vay và hoàn tác số dư ví
+    const relatedTxs = await db.transactions
+      .filter(t => t.loanId === lId && !t.isDeleted)
+      .toArray();
+
+    for (const tx of relatedTxs) {
+      const acc = await db.accounts.get(tx.accountId);
+      if (acc) {
+        if (tx.type === 'income') {
+          await db.accounts.update(acc.id, {
+            balance: (acc.balance || 0) - tx.amount,
+            updatedAt: nowTs
+          });
+        } else if (tx.type === 'expense') {
+          await db.accounts.update(acc.id, {
+            balance: (acc.balance || 0) + tx.amount,
+            updatedAt: nowTs
+          });
+        }
+      }
+      await db.transactions.update(tx.id, {
+        isDeleted: 1,
+        updatedAt: nowTs
+      });
+    }
+
+    await db.loans.update(lId, { isDeleted: 1, updatedAt: now });
+  });
+
   triggerAutoSync();
 }
 

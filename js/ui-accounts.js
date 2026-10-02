@@ -3859,8 +3859,8 @@ const UIAccounts = {
       logoEl.innerHTML = '<i data-lucide="arrow-down-left"></i>';
       logoEl.style.background = 'rgba(16, 185, 129, 0.15)';
       logoEl.style.color = '#10b981';
-      nameEl.textContent = 'Không cộng vào ví (Đã có sẵn)';
-      balEl.textContent = isEdit ? 'Khoản vay ngoài ví (Không tự giải ngân vào ví)' : 'Không làm thay đổi số dư ví';
+      nameEl.textContent = 'Không cộng vào ví (Đã có sẵn / Ngoài ví)';
+      balEl.textContent = 'Chỉ theo dõi nghĩa vụ nợ, không thay đổi số dư ví';
       if (window.lucide) lucide.createIcons();
       return;
     }
@@ -3871,9 +3871,7 @@ const UIAccounts = {
       logoEl.innerHTML = this.renderLogoBadge(prov || acc, 36);
       logoEl.style.background = 'transparent';
       nameEl.textContent = acc.name;
-      balEl.textContent = isEdit 
-        ? 'Đã ghi nhận khi tạo sổ (Không giải ngân lại khi sửa)' 
-        : `Số dư: ${new Intl.NumberFormat('vi-VN').format(acc.balance || 0)}đ (Sẽ cộng tiền vay khi lưu)`;
+      balEl.textContent = `Số dư: ${new Intl.NumberFormat('vi-VN').format(acc.balance || 0)}đ (Nhận giải ngân & ghi chú thu chi vào ví)`;
     }
     if (window.lucide) lucide.createIcons();
   },
@@ -3882,16 +3880,13 @@ const UIAccounts = {
     const isEdit = !!document.getElementById('loan-id-input')?.value;
     const curVal = document.getElementById('loan-disburse-account-select')?.value || '';
     this.openSourceAccountPicker({
-      title: isEdit ? 'Tài Khoản Ghi Nhận Giải Ngân' : 'Tài Khoản Nhận Giải Ngân',
+      title: 'Tài Khoản Nhận Giải Ngân Vào Ví',
       allowNone: true,
       noneLabel: 'Không cộng vào ví (Đã có sẵn / Ngoài ví)',
-      noneDesc: isEdit ? 'Không làm thay đổi số dư ví' : 'Chỉ theo dõi nghĩa vụ nợ, không thay đổi số dư ví',
+      noneDesc: 'Chỉ theo dõi nghĩa vụ nợ, không tạo giao dịch thu chi vào ví',
       selectedId: curVal,
       onSelect: (selectedId) => {
         this.updateLoanDisburseDisplay(selectedId, isEdit);
-        if (isEdit) {
-          showToast('Đã đổi tài khoản ghi nhận (Không tự động giải ngân lại khi sửa)', 'info');
-        }
       }
     });
   },
