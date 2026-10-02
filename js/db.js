@@ -842,7 +842,8 @@ async function addLoan(loanData) {
   let id;
   const disburseAccId = loan.disbursementAccountId ? Number(loan.disbursementAccountId) : null;
   if (disburseAccId && loan.loanAmount > 0) {
-    await db.transaction('rw', db.loans, db.accounts, db.transactions, async () => {
+    const { disburseCat } = await getLoanSystemCategories();
+    await db.transaction('rw', db.loans, db.accounts, db.transactions, db.categories, async () => {
       id = await db.loans.add(loan);
       const acc = await db.accounts.get(disburseAccId);
       if (acc) {
@@ -851,7 +852,6 @@ async function addLoan(loanData) {
           updatedAt: nowTs
         });
         // Thêm ghi chú giao dịch thu nhập giải ngân vào ví
-        const { disburseCat } = await getLoanSystemCategories();
         await db.transactions.add({
           type: 'income',
           categoryId: disburseCat ? disburseCat.id : null,
@@ -884,7 +884,9 @@ async function updateLoan(id, loanData) {
   const now = new Date().toISOString();
   const nowTs = Date.now();
 
-  await db.transaction('rw', db.loans, db.accounts, db.transactions, async () => {
+  const { disburseCat } = await getLoanSystemCategories();
+
+  await db.transaction('rw', db.loans, db.accounts, db.transactions, db.categories, async () => {
     const oldLoan = await db.loans.get(lId);
     if (!oldLoan || oldLoan.isDeleted) return;
 
@@ -937,9 +939,8 @@ async function updateLoan(id, loanData) {
             });
           }
         }
-        const { disburseCat: dCat1 } = await getLoanSystemCategories();
         await db.transactions.update(oldDisburseTx.id, {
-          categoryId: dCat1 ? dCat1.id : (oldDisburseTx.categoryId || null),
+          categoryId: disburseCat ? disburseCat.id : (oldDisburseTx.categoryId || null),
           amount: newLoanAmount,
           date: newStartDate,
           note: `Giải ngân sổ vay: ${newName}`,
@@ -962,9 +963,8 @@ async function updateLoan(id, loanData) {
             updatedAt: nowTs
           });
         }
-        const { disburseCat: dCat2 } = await getLoanSystemCategories();
         await db.transactions.update(oldDisburseTx.id, {
-          categoryId: dCat2 ? dCat2.id : (oldDisburseTx.categoryId || null),
+          categoryId: disburseCat ? disburseCat.id : (oldDisburseTx.categoryId || null),
           accountId: newDisburseAccId,
           amount: newLoanAmount,
           date: newStartDate,
@@ -982,10 +982,9 @@ async function updateLoan(id, loanData) {
             balance: (acc.balance || 0) + newLoanAmount,
             updatedAt: nowTs
           });
-          const { disburseCat: dCat3 } = await getLoanSystemCategories();
           await db.transactions.add({
             type: 'income',
-            categoryId: dCat3 ? dCat3.id : null,
+            categoryId: disburseCat ? disburseCat.id : null,
             amount: newLoanAmount,
             fee: 0,
             accountId: acc.id,
@@ -1022,7 +1021,9 @@ async function payLoan(loanId, paymentAmount, sourceAccountId = null, dateStr = 
   const nowTs = Date.now();
   const pDate = dateStr || now.split('T')[0];
 
-  await db.transaction('rw', db.loans, db.accounts, db.transactions, async () => {
+  const { repayCat } = await getLoanSystemCategories();
+
+  await db.transaction('rw', db.loans, db.accounts, db.transactions, db.categories, async () => {
     const loan = await db.loans.get(lId);
     if (!loan || loan.isDeleted) return;
 
@@ -1054,7 +1055,6 @@ async function payLoan(loanId, paymentAmount, sourceAccountId = null, dateStr = 
           updatedAt: nowTs
         });
         // Ghi nhận giao dịch chi phí trả nợ gốc vào ví
-        const { repayCat } = await getLoanSystemCategories();
         await db.transactions.add({
           type: 'expense',
           categoryId: repayCat ? repayCat.id : null,
