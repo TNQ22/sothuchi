@@ -299,6 +299,11 @@ async function deleteTransaction(txId) {
     const tx = await db.transactions.get(Number(txId));
     if (!tx || tx.isDeleted) return;
 
+    // Giao dịch thuộc Sổ Vay Ngân Hàng phải được quản lý và xóa thông qua Sổ Vay
+    if (tx.loanId) {
+      throw new Error('Giao dịch thuộc Sổ Vay Ngân Hàng, không thể xóa trực tiếp! Vui lòng quản lý trong mục Sổ Vay.');
+    }
+
     const fee = Number(tx.fee) || 0;
 
     // Rollback account balance

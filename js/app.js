@@ -1088,3 +1088,15 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // iOS Safari / Mobile PWA Viewport and Touch Misalignment Fixes
 document.addEventListener('touchstart', () => {}, { passive: true });
+
+// Ngăn phím Enter / "Xong" trên bàn phím ảo tự động gửi và lưu form khi đang nhập liệu vào input
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' || e.keyCode === 13) {
+    const target = e.target;
+    if (target && target.tagName === 'INPUT' && target.type !== 'submit' && target.type !== 'button') {
+      e.preventDefault();
+      e.stopPropagation();
+      target.blur(); // Chỉ đóng bàn phím mềm trên mobile, không tự động lưu form
+    }
+  }
+}, true);

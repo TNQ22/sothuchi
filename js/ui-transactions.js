@@ -2468,6 +2468,13 @@ const UITransactions = {
   /* ==================== FORM SUBMIT ==================== */
   async handleFormSubmit() {
     const id = document.getElementById('tx-id-input').value;
+    if (id) {
+      const existingTx = await db.transactions.get(Number(id));
+      if (existingTx && (existingTx.loanId || existingTx.loanAction)) {
+        showToast('Giao dịch thuộc Sổ Vay Ngân Hàng, không thể sửa tại đây! Vui lòng chỉnh sửa trong Sổ Vay.', 'warning');
+        return;
+      }
+    }
     const type = document.getElementById('tx-type-input').value;
     const subaction = document.getElementById('tx-debt-subaction-input').value;
     const linkedDebtId = document.getElementById('tx-linked-debt-id-input').value;
@@ -2850,7 +2857,7 @@ const UITransactions = {
                 <i data-lucide="${iconName}" style="width: 20px; height: 20px;"></i>
               </div>
               <div class="tx-info">
-                <span class="tx-title">${escapeHTML(title)}</span>
+                <span class="tx-title" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span>${escapeHTML(title)}</span>${(t.loanId || t.loanAction) ? `<span title="Giao dịch liên kết Sổ Vay (Được khóa bảo vệ)" style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; padding: 1px 5px; border-radius: 4px; background: rgba(99, 102, 241, 0.12); color: var(--primary);"><i data-lucide="lock" style="width: 10px; height: 10px;"></i> Sổ vay</span>` : ""}</span>
                 <span class="tx-meta">${accountDisplay}</span>
               </div>
             </div>
@@ -2876,6 +2883,21 @@ const UITransactions = {
   async openEditModal(txId) {
     const tx = await db.transactions.get(Number(txId));
     if (!tx || tx.isDeleted) return;
+
+    // Nếu giao dịch liên kết với Sổ Vay Ngân Hàng: Khóa không cho sửa tại đây để bảo toàn logic
+    if (tx.loanId) {
+      const loan = await db.loans.get(Number(tx.loanId));
+      const loanName = loan ? loan.name : 'Sổ vay ngân hàng';
+      const isDisburse = tx.loanAction === 'disburse' || (tx.note && tx.note.includes('Giải ngân'));
+      const actionText = isDisburse ? 'Giải ngân khoản vay' : 'Trả nợ gốc sổ vay';
+
+      if (confirm('Giao dịch "' + actionText + '" được tạo tự động từ ' + loanName + '.\n\nĐể đảm bảo tính chính xác cho số dư và nghĩa vụ nợ, giao dịch này được khóa không cho sửa trực tiếp tại đây.\n\nBạn có muốn mở "' + loanName + '" trong mục Sổ Vay Ngân Hàng để chỉnh sửa không?')) {
+        if (window.UIAccounts && typeof window.UIAccounts.openLoanForm === 'function') {
+          window.UIAccounts.openLoanForm(tx.loanId);
+        }
+      }
+      return;
+    }
 
     // Reset form trước để tránh dữ liệu cũ
     const form = document.getElementById('transaction-form');
@@ -2954,6 +2976,11 @@ const UITransactions = {
   },
 
   async confirmDeleteTransaction(txId) {
+    const existingTx = await db.transactions.get(Number(txId));
+    if (existingTx && (existingTx.loanId || existingTx.loanAction)) {
+      showToast('Giao dịch thuộc Sổ Vay Ngân Hàng, không thể xóa tại đây! Vui lòng quản lý trong mục Sổ Vay.', 'warning');
+      return;
+    }
     if (!confirm('Bạn có chắc muốn xóa giao dịch này không?\nSố dư tài khoản sẽ được hoàn lại.')) return;
     try {
       await deleteTransaction(txId);
