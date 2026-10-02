@@ -1093,9 +1093,8 @@ document.addEventListener('touchstart', () => {}, { passive: true });
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter' || e.keyCode === 13) {
     const target = e.target;
-    if (target && target.tagName === 'INPUT' && target.type !== 'submit' && target.type !== 'button') {
+    if (target && target.tagName === 'INPUT' && !['submit', 'button', 'checkbox', 'radio'].includes(target.type)) {
       e.preventDefault();
-      e.stopPropagation();
       target.blur(); // Chỉ đóng bàn phím mềm trên mobile, không tự động lưu form
     }
   }

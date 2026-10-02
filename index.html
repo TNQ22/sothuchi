@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.55">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.56">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -2063,6 +2063,9 @@
           <span id="keypad-live-val">0</span>
           <span class="keypad-live-cur">₫</span>
         </div>
+        <button type="button" class="btn-icon keypad-header-close-btn" onclick="UITransactions.closeKeypad()" title="Ẩn bàn phím" style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 255, 255, 0.08); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer; border: none;">
+          <i data-lucide="chevron-down" style="width: 20px; height: 20px;"></i>
+        </button>
       </div>
 
       <!-- Quick Chips -->
@@ -2097,7 +2100,20 @@
         <button type="button" class="keypad-btn action" data-key="000">000</button>
         <button type="button" class="keypad-btn" data-key="0">0</button>
         <button type="button" class="keypad-btn action" data-key="," style="font-size: 1.3rem; font-weight: 700;">,</button>
-        <button type="button" class="keypad-btn action-primary" data-key="done">✓ Xong</button>
+        <button type="button" class="keypad-btn action-primary" data-key="done" title="Ẩn bàn phím" aria-label="Ẩn bàn phím">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none; display: block; margin: auto;">
+            <rect x="2" y="4" width="20" height="12" rx="2"></rect>
+            <line x1="6" y1="8" x2="6.01" y2="8"></line>
+            <line x1="10" y1="8" x2="10.01" y2="8"></line>
+            <line x1="14" y1="8" x2="14.01" y2="8"></line>
+            <line x1="18" y1="8" x2="18.01" y2="8"></line>
+            <line x1="8" y1="11" x2="8.01" y2="11"></line>
+            <line x1="12" y1="11" x2="12.01" y2="11"></line>
+            <line x1="16" y1="11" x2="16.01" y2="11"></line>
+            <line x1="7" y1="13.5" x2="17" y2="13.5"></line>
+            <polyline points="16 19 12 22 8 19"></polyline>
+          </svg>
+        </button>
       </div>
     </div>
   </div>
@@ -3039,18 +3055,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.55"></script>
+  <script src="./js/backup.js?v=1.9.56"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.55"></script>
-  <script src="./js/ui-transactions.js?v=1.9.55"></script>
-  <script src="./js/ui-debts.js?v=1.9.55"></script>
-  <script src="./js/ui-accounts.js?v=1.9.55"></script>
-  <script src="./js/ui-budgets.js?v=1.9.55"></script>
-  <script src="./js/ui-analytics.js?v=1.9.55"></script>
-  <script src="./js/ui-settings.js?v=1.9.55"></script>
+  <script src="./js/ui-calendar.js?v=1.9.56"></script>
+  <script src="./js/ui-transactions.js?v=1.9.56"></script>
+  <script src="./js/ui-debts.js?v=1.9.56"></script>
+  <script src="./js/ui-accounts.js?v=1.9.56"></script>
+  <script src="./js/ui-budgets.js?v=1.9.56"></script>
+  <script src="./js/ui-analytics.js?v=1.9.56"></script>
+  <script src="./js/ui-settings.js?v=1.9.56"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.55"></script>
+  <script src="./js/app.js?v=1.9.56"></script>
 </body>
 </html>

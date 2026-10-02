@@ -77,15 +77,42 @@ const UITransactions = {
 
     document.querySelectorAll('#modal-keypad .keypad-btn').forEach(btn => {
       let lastTouchTime = 0;
+      let isDonePressed = false;
+      const isDoneBtn = btn.dataset.key === 'done';
+
       btn.addEventListener('pointerdown', (e) => {
         if (e.pointerType === 'touch' || e.pointerType === 'pen') {
           lastTouchTime = Date.now();
+          if (isDoneBtn) {
+            isDonePressed = true;
+            btn.classList.add('pressed');
+            if (e.cancelable) e.preventDefault();
+            return;
+          }
           triggerKey(btn, e);
         }
       });
-      btn.addEventListener('pointerup', () => btn.classList.remove('pressed'));
-      btn.addEventListener('pointercancel', () => btn.classList.remove('pressed'));
+
+      btn.addEventListener('pointerup', (e) => {
+        btn.classList.remove('pressed');
+        if (isDoneBtn && isDonePressed && (e.pointerType === 'touch' || e.pointerType === 'pen')) {
+          isDonePressed = false;
+          if (e.cancelable) e.preventDefault();
+          triggerKey(btn, e);
+        }
+      });
+
+      btn.addEventListener('pointercancel', () => {
+        btn.classList.remove('pressed');
+        isDonePressed = false;
+      });
+
       btn.addEventListener('click', (e) => {
+        if (isDoneBtn) {
+          if (e.cancelable) e.preventDefault();
+          triggerKey(btn, e);
+          return;
+        }
         if (Date.now() - lastTouchTime < 450) {
           if (e.cancelable) e.preventDefault();
           return;
@@ -303,6 +330,15 @@ const UITransactions = {
     const modal = document.getElementById('modal-keypad');
     const display = document.getElementById('keypad-live-val');
     if (!modal) return;
+
+    // Ngăn chặn triệt để ghost click / click xuyên thấu làm nhảy lung tung hoặc kích hoạt nút bên dưới
+    const blocker = document.createElement('div');
+    blocker.id = 'keypad-touch-guard';
+    blocker.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999999;background:transparent;cursor:default;touch-action:none;';
+    document.body.appendChild(blocker);
+    setTimeout(() => {
+      if (blocker.parentNode) blocker.remove();
+    }, 400);
 
     if (display) {
       display.classList.remove('is-selected');
