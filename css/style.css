@@ -5898,9 +5898,10 @@ html, body {
   box-shadow: 0 2px 8px rgba(14, 165, 233, 0.35) !important;
 }
 
-/* UICalendar Filter Modes (Theo Tháng / Theo Ngày / Tất cả) */
+/* UICalendar Filter Modes (Theo Tháng / Theo Ngày / Ngày tuỳ chỉnh / Tất cả) */
 .custom-cal-filter-modes {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   background: var(--bg-card);
   padding: 4px;
   border-radius: var(--radius-md);
@@ -5912,9 +5913,8 @@ html, body {
 }
 
 .cal-filter-mode-btn {
-  flex: 1;
-  padding: 8px 4px;
-  font-size: 0.82rem;
+  padding: 8px 2px;
+  font-size: 0.74rem;
   font-weight: 600;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -5924,12 +5924,104 @@ html, body {
   transition: all 0.15s ease;
   text-align: center;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-filter-mode-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .cal-filter-mode-btn.active {
   background: var(--primary);
   color: #ffffff;
+  font-weight: 700;
   box-shadow: 0 2px 8px rgba(13, 148, 136, 0.35);
+}
+
+/* Custom Range Bar (Từ ngày -> Đến ngày) */
+.cal-custom-range-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.cal-range-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.15s ease;
+  background: var(--bg-surface);
+}
+
+.cal-range-field:hover {
+  background: var(--bg-card-hover);
+}
+
+.cal-range-field.active {
+  background: rgba(13, 148, 136, 0.12);
+  border-color: var(--primary);
+}
+
+.cal-range-sublabel {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.cal-range-val {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-feature-settings: "tnum";
+}
+
+.cal-range-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Range Highlighting on Day Cells */
+.custom-cal-day.range-start {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 50% 0 0 50% !important;
+}
+
+.custom-cal-day.range-end {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 0 50% 50% 0 !important;
+}
+
+.custom-cal-day.range-start.range-end {
+  border-radius: 50% !important;
+}
+
+.custom-cal-day.range-in-between {
+  background: rgba(13, 148, 136, 0.22) !important;
+  color: var(--text-primary) !important;
+  border-radius: 0 !important;
+  font-weight: 600 !important;
 }
 
 /* Transactions Full List: Sát lề tương tự như Tài khoản */

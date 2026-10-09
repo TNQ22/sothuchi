@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.60">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.61">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -2972,6 +2972,29 @@
   <div id="modal-custom-calendar" class="custom-cal-overlay" style="z-index: 100010;">
     <div class="custom-cal-backdrop" id="custom-cal-backdrop" onclick="UICalendar.close()"></div>
     <div class="custom-cal-container">
+      <!-- 4 Filter Modes: Theo Tháng / Theo Ngày / Ngày tuỳ chỉnh / Tất cả -->
+      <div class="custom-cal-filter-modes" id="cal-filter-modes" style="display: none;">
+        <button type="button" class="cal-filter-mode-btn" data-mode="month" onclick="UICalendar.selectFilterMode('month')">Theo Tháng</button>
+        <button type="button" class="cal-filter-mode-btn" data-mode="day" onclick="UICalendar.selectFilterMode('day')">Theo Ngày</button>
+        <button type="button" class="cal-filter-mode-btn" data-mode="custom" onclick="UICalendar.selectFilterMode('custom')">Ngày tuỳ chỉnh</button>
+        <button type="button" class="cal-filter-mode-btn" data-mode="all" onclick="UICalendar.selectFilterMode('all')">Tất cả</button>
+      </div>
+
+      <!-- Custom Range Bar: Cho phép chọn Từ ngày -> Đến ngày khi ở chế độ 'custom' -->
+      <div class="cal-custom-range-bar" id="cal-custom-range-bar" style="display: none;">
+        <div class="cal-range-field active" id="cal-range-start-field" onclick="UICalendar.setCustomPickingTarget('start')">
+          <span class="cal-range-sublabel">Từ ngày</span>
+          <span class="cal-range-val" id="cal-range-start-text">01/10/2026</span>
+        </div>
+        <div class="cal-range-arrow">
+          <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+        </div>
+        <div class="cal-range-field" id="cal-range-end-field" onclick="UICalendar.setCustomPickingTarget('end')">
+          <span class="cal-range-sublabel">Đến ngày</span>
+          <span class="cal-range-val" id="cal-range-end-text">09/10/2026</span>
+        </div>
+      </div>
+
       <!-- Top Bar: Date | Time -->
       <div class="custom-cal-topbar" id="cal-topbar">
         <button type="button" class="custom-cal-top-item active" id="cal-top-date" title="Chọn ngày" onclick="UICalendar.switchTab('date')">
@@ -3106,18 +3129,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.60"></script>
+  <script src="./js/backup.js?v=1.9.61"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.60"></script>
-  <script src="./js/ui-transactions.js?v=1.9.60"></script>
-  <script src="./js/ui-debts.js?v=1.9.60"></script>
-  <script src="./js/ui-accounts.js?v=1.9.60"></script>
-  <script src="./js/ui-budgets.js?v=1.9.60"></script>
-  <script src="./js/ui-analytics.js?v=1.9.60"></script>
-  <script src="./js/ui-settings.js?v=1.9.60"></script>
+  <script src="./js/ui-calendar.js?v=1.9.61"></script>
+  <script src="./js/ui-transactions.js?v=1.9.61"></script>
+  <script src="./js/ui-debts.js?v=1.9.61"></script>
+  <script src="./js/ui-accounts.js?v=1.9.61"></script>
+  <script src="./js/ui-budgets.js?v=1.9.61"></script>
+  <script src="./js/ui-analytics.js?v=1.9.61"></script>
+  <script src="./js/ui-settings.js?v=1.9.61"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.60"></script>
+  <script src="./js/app.js?v=1.9.61"></script>
 </body>
 </html>

@@ -12,7 +12,10 @@
 const UICalendar = {
   mode: 'datetime', // 'datetime' | 'date' | 'month'
   showFilterModes: false,
-  filterMode: 'month', // 'month' | 'day' | 'all'
+  filterMode: 'month', // 'month' | 'day' | 'custom' | 'all'
+  customStartDate: null, // Date object
+  customEndDate: null,   // Date object
+  customPickingTarget: 'start', // 'start' | 'end'
   selectedDate: null, // Date object (year, month, day)
   selectedTime: '12:00', // 'HH:mm'
   viewYear: 2026,
@@ -37,11 +40,27 @@ const UICalendar = {
     modal.innerHTML = `
       <div class="custom-cal-backdrop" id="custom-cal-backdrop"></div>
       <div class="custom-cal-container">
-        <!-- Filter Modes (Theo Tháng / Theo Ngày / Tất cả) -->
+        <!-- Filter Modes (Theo Tháng / Theo Ngày / Ngày tuỳ chỉnh / Tất cả) -->
         <div class="custom-cal-filter-modes" id="cal-filter-modes" style="display: none;">
           <button type="button" class="cal-filter-mode-btn" data-mode="month" onclick="UICalendar.selectFilterMode('month')">Theo Tháng</button>
           <button type="button" class="cal-filter-mode-btn" data-mode="day" onclick="UICalendar.selectFilterMode('day')">Theo Ngày</button>
+          <button type="button" class="cal-filter-mode-btn" data-mode="custom" onclick="UICalendar.selectFilterMode('custom')">Ngày tuỳ chỉnh</button>
           <button type="button" class="cal-filter-mode-btn" data-mode="all" onclick="UICalendar.selectFilterMode('all')">Tất cả</button>
+        </div>
+
+        <!-- Custom Range Bar: Cho phép chọn Từ ngày -> Đến ngày khi ở chế độ 'custom' -->
+        <div class="cal-custom-range-bar" id="cal-custom-range-bar" style="display: none;">
+          <div class="cal-range-field active" id="cal-range-start-field" onclick="UICalendar.setCustomPickingTarget('start')">
+            <span class="cal-range-sublabel">Từ ngày</span>
+            <span class="cal-range-val" id="cal-range-start-text">01/10/2026</span>
+          </div>
+          <div class="cal-range-arrow">
+            <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+          </div>
+          <div class="cal-range-field" id="cal-range-end-field" onclick="UICalendar.setCustomPickingTarget('end')">
+            <span class="cal-range-sublabel">Đến ngày</span>
+            <span class="cal-range-val" id="cal-range-end-text">09/10/2026</span>
+          </div>
         </div>
 
         <!-- Top Bar: Date | Time -->
@@ -247,6 +266,48 @@ const UICalendar = {
    *   initialTime: 'HH:mm' (optional)
    *   onSelect: function(dateStr, timeStr)
    */
+  parseDateHelper(val) {
+    if (!val) return new Date();
+    if (val instanceof Date) return val;
+    const str = String(val).trim();
+    if (str.includes('/')) {
+      const parts = str.split('/').map(Number);
+      if (parts.length === 3 && !isNaN(parts[0])) return new Date(parts[2], parts[1] - 1, parts[0]);
+    } else if (str.includes('-')) {
+      const parts = str.split('-').map(Number);
+      if (parts.length === 3 && !isNaN(parts[0])) return new Date(parts[0], parts[1] - 1, parts[2]);
+      if (parts.length === 2 && !isNaN(parts[0])) return new Date(parts[0], parts[1] - 1, 1);
+    }
+    return new Date();
+  },
+
+  setCustomPickingTarget(target) {
+    this.customPickingTarget = target;
+    const startField = document.getElementById('cal-range-start-field');
+    const endField = document.getElementById('cal-range-end-field');
+    if (startField) startField.classList.toggle('active', target === 'start');
+    if (endField) endField.classList.toggle('active', target === 'end');
+  },
+
+  updateCustomRangeDisplay() {
+    const startText = document.getElementById('cal-range-start-text');
+    const endText = document.getElementById('cal-range-end-text');
+    if (startText && this.customStartDate) {
+      const dd = String(this.customStartDate.getDate()).padStart(2, '0');
+      const mm = String(this.customStartDate.getMonth() + 1).padStart(2, '0');
+      const yyyy = this.customStartDate.getFullYear();
+      startText.textContent = `${dd}/${mm}/${yyyy}`;
+    }
+    if (endText && this.customEndDate) {
+      const dd = String(this.customEndDate.getDate()).padStart(2, '0');
+      const mm = String(this.customEndDate.getMonth() + 1).padStart(2, '0');
+      const yyyy = this.customEndDate.getFullYear();
+      endText.textContent = `${dd}/${mm}/${yyyy}`;
+    }
+    this.setCustomPickingTarget(this.customPickingTarget);
+    if (window.lucide) lucide.createIcons();
+  },
+
   open(options = {}) {
     if (!this.initialized || !document.getElementById('modal-custom-calendar')) {
       this.init();
@@ -302,9 +363,26 @@ const UICalendar = {
     this.showFilterModes = !!options.showFilterModes;
     this.filterMode = options.filterMode || 'month';
 
+    if (options.customStartDate) {
+      this.customStartDate = this.parseDateHelper(options.customStartDate);
+    } else if (!this.customStartDate) {
+      const now = new Date();
+      this.customStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+
+    if (options.customEndDate) {
+      this.customEndDate = this.parseDateHelper(options.customEndDate);
+    } else if (!this.customEndDate) {
+      const now = new Date();
+      this.customEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+    this.customPickingTarget = 'start';
+
     const filterModesEl = document.getElementById('cal-filter-modes');
+    const rangeBarEl = document.getElementById('cal-custom-range-bar');
+
     if (filterModesEl) {
-      filterModesEl.style.display = this.showFilterModes ? 'flex' : 'none';
+      filterModesEl.style.display = this.showFilterModes ? 'grid' : 'none';
       if (this.showFilterModes) {
         document.querySelectorAll('.cal-filter-mode-btn').forEach(b => {
           b.classList.toggle('active', b.dataset.mode === this.filterMode);
@@ -317,9 +395,17 @@ const UICalendar = {
         this.mode = 'month';
       } else if (this.filterMode === 'day') {
         this.mode = 'date';
+      } else if (this.filterMode === 'custom') {
+        this.mode = 'custom';
       } else {
         this.mode = 'all';
       }
+      if (rangeBarEl) {
+        rangeBarEl.style.display = this.filterMode === 'custom' ? 'flex' : 'none';
+        if (this.filterMode === 'custom') this.updateCustomRangeDisplay();
+      }
+    } else {
+      if (rangeBarEl) rangeBarEl.style.display = 'none';
     }
 
     // Adjust Top Bar visibility depending on mode
@@ -469,8 +555,27 @@ const UICalendar = {
         cell.classList.add('today');
       }
 
-      if (isSelectedMonth && d === selectedDateNum) {
-        cell.classList.add('selected');
+      const isCustom = this.showFilterModes && this.filterMode === 'custom';
+      if (isCustom && this.customStartDate && this.customEndDate) {
+        const cellTime = new Date(this.viewYear, this.viewMonth, d).getTime();
+        const sTime = new Date(this.customStartDate.getFullYear(), this.customStartDate.getMonth(), this.customStartDate.getDate()).getTime();
+        const eTime = new Date(this.customEndDate.getFullYear(), this.customEndDate.getMonth(), this.customEndDate.getDate()).getTime();
+        const minT = Math.min(sTime, eTime);
+        const maxT = Math.max(sTime, eTime);
+
+        if (cellTime === minT && cellTime === maxT) {
+          cell.classList.add('selected', 'range-start', 'range-end');
+        } else if (cellTime === minT) {
+          cell.classList.add('selected', 'range-start');
+        } else if (cellTime === maxT) {
+          cell.classList.add('selected', 'range-end');
+        } else if (cellTime > minT && cellTime < maxT) {
+          cell.classList.add('range-in-between');
+        }
+      } else {
+        if (isSelectedMonth && d === selectedDateNum) {
+          cell.classList.add('selected');
+        }
       }
 
       cell.onclick = () => {
@@ -497,7 +602,30 @@ const UICalendar = {
   },
 
   selectDay(day, month, year) {
-    this.selectedDate = new Date(year, month, day);
+    const clicked = new Date(year, month, day);
+
+    if (this.showFilterModes && this.filterMode === 'custom') {
+      if (this.customPickingTarget === 'start') {
+        this.customStartDate = clicked;
+        if (this.customEndDate && this.customStartDate.getTime() > this.customEndDate.getTime()) {
+          this.customEndDate = new Date(clicked);
+        }
+        this.customPickingTarget = 'end';
+      } else {
+        if (clicked.getTime() < this.customStartDate.getTime()) {
+          this.customEndDate = new Date(this.customStartDate);
+          this.customStartDate = clicked;
+        } else {
+          this.customEndDate = clicked;
+        }
+        this.customPickingTarget = 'start';
+      }
+      this.updateCustomRangeDisplay();
+      this.renderCalendar();
+      return;
+    }
+
+    this.selectedDate = clicked;
     this.updateTopBarDisplays();
     this.renderCalendar();
     if (this.showFilterModes && this.filterMode === 'day') {
@@ -659,33 +787,74 @@ const UICalendar = {
     }
 
     this.filterMode = mode;
-    this.mode = mode === 'month' ? 'month' : 'date';
 
     document.querySelectorAll('.cal-filter-mode-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.mode === mode);
     });
 
+    const rangeBar = document.getElementById('cal-custom-range-bar');
+    const topBarEl = document.getElementById('cal-topbar');
     const btnToday = document.getElementById('cal-btn-today');
+    const btnDone = document.getElementById('cal-btn-done');
+
     if (mode === 'month') {
-      if (btnToday) btnToday.textContent = 'Tháng này';
+      this.mode = 'month';
+      if (rangeBar) rangeBar.style.display = 'none';
+      if (topBarEl) topBarEl.style.display = 'none';
+      if (btnToday) {
+        btnToday.style.display = 'block';
+        btnToday.textContent = 'Tháng này';
+      }
+      if (btnDone) btnDone.textContent = 'Xong';
       this.openMonthSelector();
-    } else {
-      if (btnToday) btnToday.textContent = 'Hôm nay';
+    } else if (mode === 'day') {
+      this.mode = 'date';
+      if (rangeBar) rangeBar.style.display = 'none';
+      if (topBarEl) topBarEl.style.display = 'none';
+      if (btnToday) {
+        btnToday.style.display = 'block';
+        btnToday.textContent = 'Hôm nay';
+      }
+      if (btnDone) btnDone.textContent = 'Xong';
       this.closeMonthSelector();
+      this.renderCalendar();
+    } else if (mode === 'custom') {
+      this.mode = 'custom';
+      if (rangeBar) rangeBar.style.display = 'flex';
+      if (topBarEl) topBarEl.style.display = 'none';
+      if (btnToday) {
+        btnToday.style.display = 'block';
+        btnToday.textContent = 'Tháng này';
+      }
+      if (btnDone) btnDone.textContent = 'Áp dụng';
+      this.closeMonthSelector();
+      this.updateCustomRangeDisplay();
       this.renderCalendar();
     }
   },
 
   /* ==================== ACTIONS ==================== */
   selectToday() {
-    if (this.showFilterModes && this.filterMode === 'month') {
-      const now = new Date();
-      this.viewYear = now.getFullYear();
-      this.viewMonth = now.getMonth();
-      this.selectedDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      this.renderMonthSelector();
-      this.confirmSelection();
-      return;
+    if (this.showFilterModes) {
+      if (this.filterMode === 'month') {
+        const now = new Date();
+        this.viewYear = now.getFullYear();
+        this.viewMonth = now.getMonth();
+        this.selectedDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        this.renderMonthSelector();
+        this.confirmSelection();
+        return;
+      }
+      if (this.filterMode === 'custom') {
+        const now = new Date();
+        this.customStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        this.customEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        this.viewYear = now.getFullYear();
+        this.viewMonth = now.getMonth();
+        this.updateCustomRangeDisplay();
+        this.renderCalendar();
+        return;
+      }
     }
     const now = new Date();
     this.selectedDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -708,6 +877,31 @@ const UICalendar = {
   },
 
   confirmSelection() {
+    if (this.showFilterModes && this.filterMode === 'custom') {
+      const formatDateStr = (dt) => {
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth() + 1).padStart(2, '0');
+        const d = String(dt.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      };
+      const s = this.customStartDate || new Date();
+      const e = this.customEndDate || new Date();
+      const sTime = s.getTime();
+      const eTime = e.getTime();
+      const startStr = formatDateStr(sTime <= eTime ? s : e);
+      const endStr = formatDateStr(sTime <= eTime ? e : s);
+
+      if (typeof this.onSelectCallback === 'function') {
+        this.onSelectCallback({
+          mode: 'custom',
+          startDate: startStr,
+          endDate: endStr
+        });
+      }
+      this.close();
+      return;
+    }
+
     const yyyy = this.selectedDate.getFullYear();
     const mm = String(this.selectedDate.getMonth() + 1).padStart(2, '0');
     const dd = String(this.selectedDate.getDate()).padStart(2, '0');

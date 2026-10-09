@@ -8,9 +8,11 @@ const UITransactions = {
   filterAccountId: null,
   formInitialized: false,
   searchKeyword: '',
-  timeFilterMode: 'month', // 'month' | 'day' | 'all'
+  timeFilterMode: 'month', // 'month' | 'day' | 'custom' | 'all'
   filterMonth: '', // 'YYYY-MM'
   filterDate: '',  // 'YYYY-MM-DD'
+  filterCustomStart: '', // 'YYYY-MM-DD'
+  filterCustomEnd: '',   // 'YYYY-MM-DD'
   selectedCategory: null,
   activeKeypadInput: null,
   activeKeypadTarget: 'amount', // 'amount' | 'fee'
@@ -198,6 +200,8 @@ const UITransactions = {
     const d = String(now.getDate()).padStart(2, '0');
     if (!this.filterMonth) this.filterMonth = `${y}-${m}`;
     if (!this.filterDate) this.filterDate = `${y}-${m}-${d}`;
+    if (!this.filterCustomStart) this.filterCustomStart = `${y}-${m}-01`;
+    if (!this.filterCustomEnd) this.filterCustomEnd = `${y}-${m}-${d}`;
     this.updateTimeDisplay();
   },
 
@@ -231,12 +235,34 @@ const UITransactions = {
       labelEl.textContent = this.formatDateLabel(this.filterDate);
       if (prevBtn) prevBtn.style.opacity = '1';
       if (nextBtn) nextBtn.style.opacity = '1';
+    } else if (this.timeFilterMode === 'custom') {
+      labelEl.textContent = this.formatCustomRangeLabel(this.filterCustomStart, this.filterCustomEnd);
+      if (prevBtn) prevBtn.style.opacity = '1';
+      if (nextBtn) nextBtn.style.opacity = '1';
     } else {
       labelEl.textContent = 'Toàn bộ thời gian';
       if (prevBtn) prevBtn.style.opacity = '0.3';
       if (nextBtn) nextBtn.style.opacity = '0.3';
     }
     if (window.lucide) lucide.createIcons();
+  },
+
+  formatCustomRangeLabel(startStr, endStr) {
+    if (!startStr || !endStr) return 'Ngày tuỳ chỉnh';
+    const [y1, m1, d1] = startStr.split('-').map(Number);
+    const [y2, m2, d2] = endStr.split('-').map(Number);
+    const dd1 = String(d1).padStart(2, '0');
+    const mm1 = String(m1).padStart(2, '0');
+    const dd2 = String(d2).padStart(2, '0');
+    const mm2 = String(m2).padStart(2, '0');
+
+    if (startStr === endStr) {
+      return `${dd1}/${mm1}/${y1}`;
+    }
+    if (y1 === y2) {
+      return `${dd1}/${mm1} - ${dd2}/${mm2}/${y2}`;
+    }
+    return `${dd1}/${mm1}/${y1} - ${dd2}/${mm2}/${y2}`;
   },
 
   prevTimePeriod() {
@@ -248,6 +274,17 @@ const UITransactions = {
       const [y, m, d] = this.filterDate.split('-').map(Number);
       const dt = new Date(y, m - 1, d - 1);
       this.filterDate = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    } else if (this.timeFilterMode === 'custom') {
+      const [y1, m1, d1] = this.filterCustomStart.split('-').map(Number);
+      const [y2, m2, d2] = this.filterCustomEnd.split('-').map(Number);
+      const s = new Date(y1, m1 - 1, d1);
+      const e = new Date(y2, m2 - 1, d2);
+      const diff = Math.round((e - s) / 86400000) + 1;
+      s.setDate(s.getDate() - diff);
+      e.setDate(e.getDate() - diff);
+      const toStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      this.filterCustomStart = toStr(s);
+      this.filterCustomEnd = toStr(e);
     }
     this.updateTimeDisplay();
     this.render();
@@ -262,6 +299,17 @@ const UITransactions = {
       const [y, m, d] = this.filterDate.split('-').map(Number);
       const dt = new Date(y, m - 1, d + 1);
       this.filterDate = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    } else if (this.timeFilterMode === 'custom') {
+      const [y1, m1, d1] = this.filterCustomStart.split('-').map(Number);
+      const [y2, m2, d2] = this.filterCustomEnd.split('-').map(Number);
+      const s = new Date(y1, m1 - 1, d1);
+      const e = new Date(y2, m2 - 1, d2);
+      const diff = Math.round((e - s) / 86400000) + 1;
+      s.setDate(s.getDate() + diff);
+      e.setDate(e.getDate() + diff);
+      const toStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      this.filterCustomStart = toStr(s);
+      this.filterCustomEnd = toStr(e);
     }
     this.updateTimeDisplay();
     this.render();
@@ -270,10 +318,19 @@ const UITransactions = {
   openTimeFilterPickerModal() {
     if (!window.UICalendar) return;
 
+    let initDate = `${this.filterMonth}-01`;
+    if (this.timeFilterMode === 'day') {
+      initDate = this.filterDate;
+    } else if (this.timeFilterMode === 'custom') {
+      initDate = this.filterCustomStart;
+    }
+
     window.UICalendar.open({
       showFilterModes: true,
       filterMode: this.timeFilterMode,
-      initialDate: this.timeFilterMode === 'day' ? this.filterDate : `${this.filterMonth}-01`,
+      initialDate: initDate,
+      customStartDate: this.filterCustomStart,
+      customEndDate: this.filterCustomEnd,
       onSelect: (res) => {
         if (!res) return;
         if (res.mode === 'all') {
@@ -284,6 +341,10 @@ const UITransactions = {
         } else if (res.mode === 'day' || res.mode === 'date') {
           this.timeFilterMode = 'day';
           this.filterDate = res.date || res.value || this.filterDate;
+        } else if (res.mode === 'custom') {
+          this.timeFilterMode = 'custom';
+          this.filterCustomStart = res.startDate || this.filterCustomStart;
+          this.filterCustomEnd = res.endDate || this.filterCustomEnd;
         }
         this.updateTimeDisplay();
         this.render();
@@ -3066,6 +3127,8 @@ const UITransactions = {
         txs = txs.filter(t => (t.date || '').startsWith(this.filterMonth));
       } else if (this.timeFilterMode === 'day') {
         txs = txs.filter(t => t.date === this.filterDate);
+      } else if (this.timeFilterMode === 'custom') {
+        txs = txs.filter(t => t.date >= this.filterCustomStart && t.date <= this.filterCustomEnd);
       }
     }
 
