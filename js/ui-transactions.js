@@ -25,80 +25,79 @@ const UITransactions = {
   },
 
   async filterByAccount(accId) {
-    this.filterAccountId = accId ? Number(accId) : null;
-    if (window.app) window.app.switchView('transactions');
-    await this.populateHeaderAccountSelect();
+    this.filterAccountId = (accId && accId !== 'all') ? Number(accId) : null;
+    if (window.app && window.app.currentView !== 'transactions') {
+      window.app.switchView('transactions');
+    }
+    await this.updateHeaderAccountDisplay();
     await this.render();
   },
 
   async clearAccountFilter() {
     this.filterAccountId = null;
-    const select = document.getElementById('tx-header-account-select');
-    if (select) select.value = 'all';
+    await this.updateHeaderAccountDisplay();
     await this.render();
   },
 
-  /* ==================== HEADER ACCOUNT SELECT ==================== */
-  async populateHeaderAccountSelect() {
-    const select = document.getElementById('tx-header-account-select');
-    if (!select) return;
-
-    try {
-      const accounts = await db.accounts.where('isArchived').equals(0).toArray();
-      accounts.sort((a, b) => (a.order || 0) - (b.order || 0) || a.id - b.id);
-
-      let html = '<option value="all">Tất cả tài khoản</option>';
-      for (const acc of accounts) {
-        const balFormatted = new Intl.NumberFormat('vi-VN').format(acc.balance || 0);
-        html += `<option value="${acc.id}">${escapeHTML(acc.name)} (${balFormatted}đ)</option>`;
+  /* ==================== HEADER ACCOUNT PICKER ==================== */
+  async openAccountFilterPicker() {
+    if (!window.UIAccounts) return;
+    window.UIAccounts.openSourceAccountPicker({
+      title: 'Lọc Theo Tài Khoản',
+      allowNone: true,
+      noneLabel: 'Tất cả tài khoản',
+      noneDesc: 'Xem toàn bộ giao dịch của mọi tài khoản',
+      noneIcon: 'wallet',
+      selectedId: this.filterAccountId ? String(this.filterAccountId) : '',
+      onSelect: (accId) => {
+        this.filterByAccount(accId);
       }
-      select.innerHTML = html;
-
-      if (this.filterAccountId) {
-        select.value = String(this.filterAccountId);
-      } else {
-        select.value = 'all';
-      }
-    } catch (err) {
-      console.error('Error populating header account select:', err);
-    }
+    });
   },
 
-  async handleHeaderAccountChange(value) {
-    if (value === 'all') {
-      this.filterAccountId = null;
+  async updateHeaderAccountDisplay() {
+    const nameEl = document.getElementById('tx-header-acc-name');
+    const iconEl = document.getElementById('tx-header-acc-icon');
+    if (!nameEl) return;
+
+    if (!this.filterAccountId) {
+      nameEl.textContent = 'Tất cả tài khoản';
+      if (iconEl) iconEl.innerHTML = '<i data-lucide="wallet" style="width: 15px; height: 15px;"></i>';
     } else {
-      this.filterAccountId = Number(value);
+      const acc = await db.accounts.get(Number(this.filterAccountId));
+      if (acc) {
+        nameEl.textContent = acc.name;
+        if (iconEl && window.UIAccounts && typeof window.UIAccounts.renderLogoBadge === 'function') {
+          iconEl.innerHTML = window.UIAccounts.renderLogoBadge(acc, 20);
+        } else if (iconEl) {
+          iconEl.innerHTML = '<i data-lucide="wallet" style="width: 15px; height: 15px;"></i>';
+        }
+      } else {
+        this.filterAccountId = null;
+        nameEl.textContent = 'Tất cả tài khoản';
+        if (iconEl) iconEl.innerHTML = '<i data-lucide="wallet" style="width: 15px; height: 15px;"></i>';
+      }
     }
-    await this.render();
+    if (window.lucide) lucide.createIcons();
   },
 
   /* ==================== SEARCH BAR CONTROLS ==================== */
-  toggleSearchInput() {
-    const searchContainer = document.getElementById('tx-search-bar-container');
+  openSearch() {
+    const searchBar = document.getElementById('tx-header-search-bar');
     const searchInput = document.getElementById('tx-search-input');
-    const searchBtn = document.getElementById('tx-header-search-btn');
-    if (!searchContainer) return;
+    const timeFilterCard = document.getElementById('tx-time-filter-card');
 
-    const isOpen = searchContainer.style.display !== 'none';
-    if (isOpen) {
-      searchContainer.style.display = 'none';
-      if (searchBtn) searchBtn.classList.remove('active');
-      if (this.searchKeyword) {
-        this.searchKeyword = '';
-        if (searchInput) searchInput.value = '';
-        this.render();
-      }
-    } else {
-      searchContainer.style.display = 'flex';
-      if (searchBtn) searchBtn.classList.add('active');
-      if (searchInput) {
-        setTimeout(() => {
-          searchInput.focus();
-          searchInput.select();
-        }, 50);
-      }
+    if (searchBar) searchBar.style.display = 'flex';
+    if (timeFilterCard) timeFilterCard.style.display = 'none';
+
+    if (searchInput) {
+      searchInput.value = this.searchKeyword || '';
+      setTimeout(() => {
+        searchInput.focus();
+        searchInput.select();
+      }, 50);
     }
+    if (window.lucide) lucide.createIcons();
   },
 
   clearSearch() {
@@ -112,16 +111,16 @@ const UITransactions = {
   },
 
   closeSearch() {
-    const searchContainer = document.getElementById('tx-search-bar-container');
+    const searchBar = document.getElementById('tx-header-search-bar');
     const searchInput = document.getElementById('tx-search-input');
-    const searchBtn = document.getElementById('tx-header-search-btn');
-    if (searchContainer) searchContainer.style.display = 'none';
-    if (searchBtn) searchBtn.classList.remove('active');
-    if (this.searchKeyword) {
-      this.searchKeyword = '';
-      if (searchInput) searchInput.value = '';
-      this.render();
-    }
+    const timeFilterCard = document.getElementById('tx-time-filter-card');
+
+    if (searchBar) searchBar.style.display = 'none';
+    if (timeFilterCard) timeFilterCard.style.display = 'block';
+
+    if (searchInput) searchInput.value = '';
+    this.searchKeyword = '';
+    this.render();
   },
 
   /* ==================== TIME FILTER (MONTH / DAY / ALL) ==================== */
@@ -152,26 +151,25 @@ const UITransactions = {
 
   updateTimeDisplay() {
     const labelEl = document.getElementById('tx-time-display-label');
+    const prevBtn = document.getElementById('tx-time-prev-btn');
+    const nextBtn = document.getElementById('tx-time-next-btn');
     if (!labelEl) return;
 
     if (this.timeFilterMode === 'month') {
       const [y, m] = this.filterMonth.split('-');
       labelEl.textContent = `Tháng ${parseInt(m, 10)}/${y}`;
+      if (prevBtn) prevBtn.style.opacity = '1';
+      if (nextBtn) nextBtn.style.opacity = '1';
     } else if (this.timeFilterMode === 'day') {
-      const [y, m, d] = this.filterDate.split('-');
-      const formatted = `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
-      const now = new Date();
-      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      if (this.filterDate === todayStr) {
-        labelEl.textContent = `${formatted} (Hôm nay)`;
-      } else {
-        const dt = new Date(Number(y), Number(m) - 1, Number(d));
-        const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-        labelEl.textContent = `${formatted} (${dayNames[dt.getDay()]})`;
-      }
+      labelEl.textContent = this.formatDateLabel(this.filterDate);
+      if (prevBtn) prevBtn.style.opacity = '1';
+      if (nextBtn) nextBtn.style.opacity = '1';
     } else {
       labelEl.textContent = 'Toàn bộ thời gian';
+      if (prevBtn) prevBtn.style.opacity = '0.3';
+      if (nextBtn) nextBtn.style.opacity = '0.3';
     }
+    if (window.lucide) lucide.createIcons();
   },
 
   prevTimePeriod() {
@@ -202,30 +200,28 @@ const UITransactions = {
     this.render();
   },
 
-  openTimePickerModal() {
+  openTimeFilterPickerModal() {
     if (!window.UICalendar) return;
 
-    if (this.timeFilterMode === 'month') {
-      window.UICalendar.open({
-        mode: 'month',
-        initialDate: `${this.filterMonth}-01`,
-        onSelect: (selectedMonth) => {
-          this.filterMonth = selectedMonth;
-          this.updateTimeDisplay();
-          this.render();
+    window.UICalendar.open({
+      showFilterModes: true,
+      filterMode: this.timeFilterMode,
+      initialDate: this.timeFilterMode === 'day' ? this.filterDate : `${this.filterMonth}-01`,
+      onSelect: (res) => {
+        if (!res) return;
+        if (res.mode === 'all') {
+          this.timeFilterMode = 'all';
+        } else if (res.mode === 'month') {
+          this.timeFilterMode = 'month';
+          this.filterMonth = res.month || res.value || this.filterMonth;
+        } else if (res.mode === 'day' || res.mode === 'date') {
+          this.timeFilterMode = 'day';
+          this.filterDate = res.date || res.value || this.filterDate;
         }
-      });
-    } else if (this.timeFilterMode === 'day') {
-      window.UICalendar.open({
-        mode: 'date',
-        initialDate: this.filterDate,
-        onSelect: (selectedDate) => {
-          this.filterDate = selectedDate;
-          this.updateTimeDisplay();
-          this.render();
-        }
-      });
-    }
+        this.updateTimeDisplay();
+        this.render();
+      }
+    });
   },
 
   /* ==================== DATE HEADER FORMATTING ==================== */
@@ -2982,54 +2978,25 @@ const UITransactions = {
 
     let allTxs = await db.transactions.where('isDeleted').equals(0).toArray();
 
-    // Account filter
+    // 1. Lọc theo tài khoản (Hỗ trợ cả accountId và toAccountId)
     if (this.filterAccountId) {
-      allTxs = allTxs.filter(t => t.accountId === this.filterAccountId || t.toAccountId === this.filterAccountId);
+      const targetAccId = Number(this.filterAccountId);
+      allTxs = allTxs.filter(t => Number(t.accountId) === targetAccId || Number(t.toAccountId) === targetAccId);
     }
 
-    // Render account filter banner
-    const filterBanner = document.getElementById('tx-active-account-filter');
-    if (filterBanner) {
-      if (this.filterAccountId) {
-        const acc = await db.accounts.get(this.filterAccountId);
-        const accName = acc ? acc.name : ('Tài khoản #' + this.filterAccountId);
-        filterBanner.style.display = 'block';
-        filterBanner.innerHTML = `
-          <div class="tx-account-filter-banner">
-            <div class="tx-account-filter-content">
-              <i data-lucide="wallet" style="width: 16px; height: 16px; color: var(--primary); flex-shrink: 0;"></i>
-              <div class="tx-account-filter-text">Lịch sử thu chi tài khoản: <strong>${escapeHTML(accName)}</strong></div>
-            </div>
-            <button type="button" class="tx-account-filter-clear-btn" onclick="UITransactions.clearAccountFilter()" title="Xem tất cả tài khoản">
-              <i data-lucide="x" style="width: 14px; height: 14px;"></i>
-            </button>
-          </div>
-        `;
-      } else {
-        filterBanner.style.display = 'none';
-        filterBanner.innerHTML = '';
+    // 2. Lọc theo thời gian (Nếu đang tìm kiếm từ khóa thì tìm trên tất cả các kỳ)
+    let txs = allTxs;
+    if (!this.searchKeyword) {
+      if (this.timeFilterMode === 'month') {
+        txs = txs.filter(t => (t.date || '').startsWith(this.filterMonth));
+      } else if (this.timeFilterMode === 'day') {
+        txs = txs.filter(t => t.date === this.filterDate);
       }
     }
 
-    // Đồng bộ select dropdown tài khoản trên header nếu có
-    const headerAccSelect = document.getElementById('tx-header-account-select');
-    if (headerAccSelect && headerAccSelect.options.length <= 1) {
-      await this.populateHeaderAccountSelect();
-    } else if (headerAccSelect) {
-      headerAccSelect.value = this.filterAccountId ? String(this.filterAccountId) : 'all';
-    }
-
-    // 1. Dành cho trang Sổ Giao Dịch (Full list): Lọc theo thời gian & Tính tóm tắt kỳ
-    let txs = allTxs;
-    if (this.timeFilterMode === 'month') {
-      txs = txs.filter(t => (t.date || '').startsWith(this.filterMonth));
-    } else if (this.timeFilterMode === 'day') {
-      txs = txs.filter(t => t.date === this.filterDate);
-    }
-
     // Thống kê nhanh tổng quan kỳ đang chọn (trước khi lọc type để xem trọn vẹn thu/chi kỳ)
-    const periodIncome = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const periodExpense = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const periodIncome = txs.filter(t => t.type === 'income').reduce((s, t) => s + (t.amount || 0), 0);
+    const periodExpense = txs.filter(t => t.type === 'expense').reduce((s, t) => s + (t.amount || 0), 0);
     const periodBalance = periodIncome - periodExpense;
 
     const sumIncomeEl = document.getElementById('tx-summary-income');
@@ -3062,14 +3029,18 @@ const UITransactions = {
     txs.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
 
     if (txs.length === 0) {
+      const emptyMsg = this.searchKeyword 
+        ? 'Không tìm thấy giao dịch nào phù hợp với từ khóa' 
+        : 'Chưa có ghi chép nào trong khoảng thời gian này';
       const emptyHtml = `
         <div style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
           <i data-lucide="receipt" style="width: 48px; height: 48px; stroke-width: 1.5; margin-bottom: 12px; opacity: 0.5;"></i>
           <p style="font-size: 1rem; font-weight: 500;">Chưa có giao dịch nào</p>
-          <p style="font-size: 0.85rem; margin-top: 4px;">Bấm nút "+ Thêm Mới" để bắt đầu ghi chép</p>
+          <p style="font-size: 0.85rem; margin-top: 4px;">${escapeHTML(emptyMsg)}</p>
         </div>
       `;
-      containers.forEach(c => c.innerHTML = emptyHtml);
+      if (fullContainer) fullContainer.innerHTML = emptyHtml;
+      if (dashContainer) dashContainer.innerHTML = emptyHtml;
       if (window.lucide) lucide.createIcons();
       return;
     }

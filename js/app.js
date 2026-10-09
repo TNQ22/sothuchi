@@ -477,16 +477,20 @@ class App {
       'asset-form': 'Quản Lý Tài Sản'
     };
     const titleEl = document.getElementById('header-page-title');
-    const txHeaderControls = document.getElementById('tx-header-controls');
+    const txHeaderCenter = document.getElementById('tx-header-center');
+    const txSearchBtn = document.getElementById('tx-header-search-btn');
+    const txSearchBar = document.getElementById('tx-header-search-bar');
     const privacyBtn = document.getElementById('btn-privacy-toggle');
 
     if (viewId === 'transactions') {
       if (titleEl) titleEl.style.display = 'none';
-      if (txHeaderControls) txHeaderControls.style.display = 'flex';
+      if (txHeaderCenter) txHeaderCenter.style.display = 'flex';
+      if (txSearchBtn) txSearchBtn.style.display = 'inline-flex';
+      if (txSearchBar) txSearchBar.style.display = 'none';
       // Xóa và vô hiệu hóa nút hiển thị/ẩn số tiền cho mục lịch sử thu chi
       if (privacyBtn) privacyBtn.style.display = 'none';
       if (window.UITransactions) {
-        window.UITransactions.populateHeaderAccountSelect();
+        window.UITransactions.updateHeaderAccountDisplay();
         window.UITransactions.initTimeFilter();
       }
     } else {
@@ -494,7 +498,9 @@ class App {
         titleEl.style.display = '';
         titleEl.textContent = titles[viewId] || 'Sổ Thu Chi';
       }
-      if (txHeaderControls) txHeaderControls.style.display = 'none';
+      if (txHeaderCenter) txHeaderCenter.style.display = 'none';
+      if (txSearchBtn) txSearchBtn.style.display = 'none';
+      if (txSearchBar) txSearchBar.style.display = 'none';
       if (privacyBtn && !isTxPage) privacyBtn.style.display = '';
       if (window.UITransactions && typeof window.UITransactions.closeSearch === 'function') {
         window.UITransactions.closeSearch();

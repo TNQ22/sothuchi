@@ -11,6 +11,8 @@
 
 const UICalendar = {
   mode: 'datetime', // 'datetime' | 'date' | 'month'
+  showFilterModes: false,
+  filterMode: 'month', // 'month' | 'day' | 'all'
   selectedDate: null, // Date object (year, month, day)
   selectedTime: '12:00', // 'HH:mm'
   viewYear: 2026,
@@ -35,6 +37,13 @@ const UICalendar = {
     modal.innerHTML = `
       <div class="custom-cal-backdrop" id="custom-cal-backdrop"></div>
       <div class="custom-cal-container">
+        <!-- Filter Modes (Theo Tháng / Theo Ngày / Tất cả) -->
+        <div class="custom-cal-filter-modes" id="cal-filter-modes" style="display: none;">
+          <button type="button" class="cal-filter-mode-btn" data-mode="month" onclick="UICalendar.selectFilterMode('month')">Theo Tháng</button>
+          <button type="button" class="cal-filter-mode-btn" data-mode="day" onclick="UICalendar.selectFilterMode('day')">Theo Ngày</button>
+          <button type="button" class="cal-filter-mode-btn" data-mode="all" onclick="UICalendar.selectFilterMode('all')">Tất cả</button>
+        </div>
+
         <!-- Top Bar: Date | Time -->
         <div class="custom-cal-topbar" id="cal-topbar">
           <button type="button" class="custom-cal-top-item active" id="cal-top-date" title="Chọn ngày">
@@ -290,27 +299,57 @@ const UICalendar = {
     this.viewMonth = this.selectedDate.getMonth();
     this.isMonthPickerOpen = false;
 
+    this.showFilterModes = !!options.showFilterModes;
+    this.filterMode = options.filterMode || 'month';
+
+    const filterModesEl = document.getElementById('cal-filter-modes');
+    if (filterModesEl) {
+      filterModesEl.style.display = this.showFilterModes ? 'flex' : 'none';
+      if (this.showFilterModes) {
+        document.querySelectorAll('.cal-filter-mode-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.mode === this.filterMode);
+        });
+      }
+    }
+
+    if (this.showFilterModes) {
+      if (this.filterMode === 'month') {
+        this.mode = 'month';
+      } else if (this.filterMode === 'day') {
+        this.mode = 'date';
+      } else {
+        this.mode = 'all';
+      }
+    }
+
     // Adjust Top Bar visibility depending on mode
     const divider = document.getElementById('cal-top-divider');
     const tabTime = document.getElementById('cal-top-time');
     const tabDate = document.getElementById('cal-top-date');
     const btnToday = document.getElementById('cal-btn-today');
 
-    if (this.mode === 'date') {
-      if (divider) divider.style.display = 'none';
-      if (tabTime) tabTime.style.display = 'none';
-      if (tabDate) tabDate.style.flex = '1';
-      if (btnToday) btnToday.textContent = 'Hôm nay';
-    } else if (this.mode === 'month') {
-      if (divider) divider.style.display = 'none';
-      if (tabTime) tabTime.style.display = 'none';
-      if (tabDate) tabDate.style.flex = '1';
-      if (btnToday) btnToday.textContent = 'Tháng này';
+    const topBarEl = document.getElementById('cal-topbar');
+    if (this.showFilterModes) {
+      if (topBarEl) topBarEl.style.display = 'none';
+      if (btnToday) btnToday.textContent = this.filterMode === 'month' ? 'Tháng này' : 'Hôm nay';
     } else {
-      if (divider) divider.style.display = 'block';
-      if (tabTime) tabTime.style.display = 'flex';
-      if (tabDate) tabDate.style.flex = '';
-      if (btnToday) btnToday.textContent = 'Hôm nay';
+      if (topBarEl) topBarEl.style.display = 'flex';
+      if (this.mode === 'date') {
+        if (divider) divider.style.display = 'none';
+        if (tabTime) tabTime.style.display = 'none';
+        if (tabDate) tabDate.style.flex = '1';
+        if (btnToday) btnToday.textContent = 'Hôm nay';
+      } else if (this.mode === 'month') {
+        if (divider) divider.style.display = 'none';
+        if (tabTime) tabTime.style.display = 'none';
+        if (tabDate) tabDate.style.flex = '1';
+        if (btnToday) btnToday.textContent = 'Tháng này';
+      } else {
+        if (divider) divider.style.display = 'block';
+        if (tabTime) tabTime.style.display = 'flex';
+        if (tabDate) tabDate.style.flex = '';
+        if (btnToday) btnToday.textContent = 'Hôm nay';
+      }
     }
 
     // Switch to initial tab
@@ -461,6 +500,9 @@ const UICalendar = {
     this.selectedDate = new Date(year, month, day);
     this.updateTopBarDisplays();
     this.renderCalendar();
+    if (this.showFilterModes && this.filterMode === 'day') {
+      this.confirmSelection();
+    }
   },
 
   changeMonth(delta) {
@@ -605,8 +647,46 @@ const UICalendar = {
     this.updateTimeView();
   },
 
+  /* ==================== FILTER MODES SWITCHER ==================== */
+  selectFilterMode(mode) {
+    if (mode === 'all') {
+      this.filterMode = 'all';
+      if (typeof this.onSelectCallback === 'function') {
+        this.onSelectCallback({ mode: 'all' });
+      }
+      this.close();
+      return;
+    }
+
+    this.filterMode = mode;
+    this.mode = mode === 'month' ? 'month' : 'date';
+
+    document.querySelectorAll('.cal-filter-mode-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === mode);
+    });
+
+    const btnToday = document.getElementById('cal-btn-today');
+    if (mode === 'month') {
+      if (btnToday) btnToday.textContent = 'Tháng này';
+      this.openMonthSelector();
+    } else {
+      if (btnToday) btnToday.textContent = 'Hôm nay';
+      this.closeMonthSelector();
+      this.renderCalendar();
+    }
+  },
+
   /* ==================== ACTIONS ==================== */
   selectToday() {
+    if (this.showFilterModes && this.filterMode === 'month') {
+      const now = new Date();
+      this.viewYear = now.getFullYear();
+      this.viewMonth = now.getMonth();
+      this.selectedDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      this.renderMonthSelector();
+      this.confirmSelection();
+      return;
+    }
     const now = new Date();
     this.selectedDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     this.viewYear = now.getFullYear();
@@ -637,7 +717,14 @@ const UICalendar = {
     const timeStr = this.selectedTime;
 
     if (typeof this.onSelectCallback === 'function') {
-      if (this.mode === 'month') {
+      if (this.showFilterModes) {
+        this.onSelectCallback({
+          mode: this.filterMode || this.mode,
+          month: monthStr,
+          date: dateStr,
+          value: this.filterMode === 'day' ? dateStr : monthStr
+        });
+      } else if (this.mode === 'month') {
         this.onSelectCallback(monthStr);
       } else if (this.mode === 'date') {
         this.onSelectCallback(dateStr);

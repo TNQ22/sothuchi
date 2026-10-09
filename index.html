@@ -103,23 +103,37 @@
         <div class="header-left">
           <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo">
           <h2 id="header-page-title" class="page-title-badge">Tổng Quan Tài Chính</h2>
+        </div>
 
-          <!-- Header Controls cho Lịch Sử Ghi Chép -->
-          <div id="tx-header-controls" class="tx-header-controls" style="display: none;">
-            <div class="tx-header-acc-wrapper" title="Lọc theo tài khoản">
-              <i data-lucide="wallet" class="tx-header-acc-icon"></i>
-              <select id="tx-header-account-select" class="tx-header-acc-select" aria-label="Lọc theo tài khoản" onchange="UITransactions.handleHeaderAccountChange(this.value)">
-                <option value="all">Tất cả tài khoản</option>
-              </select>
-              <i data-lucide="chevron-down" class="tx-header-acc-chevron"></i>
+        <!-- Header Center cho Lịch Sử Ghi Chép (Listdown Tài Khoản Căn Giữa) -->
+        <div id="tx-header-center" class="tx-header-center" style="display: none;">
+          <button type="button" id="tx-header-account-btn" class="tx-header-acc-btn" onclick="UITransactions.openAccountFilterPicker()" title="Bấm để lọc theo tài khoản">
+            <div id="tx-header-acc-icon" class="tx-header-acc-icon-badge">
+              <i data-lucide="wallet" style="width: 15px; height: 15px;"></i>
             </div>
-            <button type="button" id="tx-header-search-btn" class="btn-icon tx-header-search-btn" title="Tìm kiếm ghi chép" onclick="UITransactions.toggleSearchInput()">
-              <i data-lucide="search" id="tx-header-search-icon" style="width: 18px; height: 18px;"></i>
-            </button>
-          </div>
+            <span id="tx-header-acc-name" class="tx-header-acc-name">Tất cả tài khoản</span>
+            <i data-lucide="chevron-down" class="tx-header-acc-chevron"></i>
+          </button>
+        </div>
+
+        <!-- Header Search Bar che toàn bộ thanh tiêu đề khi mở tìm kiếm -->
+        <div id="tx-header-search-bar" class="tx-header-search-bar" style="display: none;">
+          <i data-lucide="search" class="tx-search-input-icon"></i>
+          <input type="text" id="tx-search-input" class="tx-search-header-input" placeholder="Tìm theo ghi chú, số tiền..." autocomplete="off">
+          <button type="button" class="btn-clear-input" id="btn-clear-tx-search" title="Xóa tìm kiếm" onclick="UITransactions.clearSearch()">
+            <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+          </button>
+          <button type="button" class="tx-search-cancel-btn" onclick="UITransactions.closeSearch()">
+            Hủy
+          </button>
         </div>
 
         <div class="header-actions">
+          <!-- Nút tìm kiếm căn phải cho Lịch Sử Ghi Chép -->
+          <button type="button" id="tx-header-search-btn" class="btn-icon tx-header-search-btn" title="Tìm kiếm giao dịch" onclick="UITransactions.openSearch()" style="display: none;">
+            <i data-lucide="search" style="width: 18px; height: 18px;"></i>
+          </button>
+
           <!-- Privacy Toggle Button -->
           <button id="btn-privacy-toggle" class="btn-icon" title="Ẩn/Hiện số tiền (Phím tắt: P)">
             <i data-lucide="eye" style="width: 20px; height: 20px;"></i>
@@ -204,44 +218,21 @@
 
       <!-- View: Transactions (Sổ giao dịch) -->
       <section id="view-transactions" class="page-view">
-        <!-- Search bar mở rộng khi bấm icon tìm kiếm trên header -->
-        <div id="tx-search-bar-container" class="tx-search-bar-container" style="display: none;">
-          <div class="input-clearable-wrapper tx-search-wrapper">
-            <i data-lucide="search" class="tx-search-input-icon"></i>
-            <input type="text" id="tx-search-input" class="form-control tx-search-input" placeholder="Tìm theo ghi chú, tên danh mục, số tiền...">
-            <button type="button" class="btn-clear-input" id="btn-clear-tx-search" title="Xóa tìm kiếm" aria-label="Xóa tìm kiếm" onclick="UITransactions.clearSearch()">
-              <i data-lucide="x"></i>
+        <!-- Thanh chọn để lọc theo tháng / ngày (Sẽ ẩn khi đang tìm kiếm) -->
+        <div class="tx-time-filter-card" id="tx-time-filter-card">
+          <!-- Cụm điều hướng thời gian thay thế cho các nút chọn tháng/ngày -->
+          <div class="tx-time-navigator" id="tx-time-navigator">
+            <button type="button" class="btn-time-nav" id="tx-time-prev-btn" onclick="UITransactions.prevTimePeriod()" title="Kỳ trước">
+              <i data-lucide="chevron-left" style="width: 18px; height: 18px;"></i>
             </button>
-          </div>
-          <button type="button" class="btn-icon tx-search-close-btn" title="Đóng tìm kiếm" onclick="UITransactions.closeSearch()">
-            <i data-lucide="x"></i>
-          </button>
-        </div>
-
-        <!-- Thanh chọn để lọc theo tháng / ngày -->
-        <div class="tx-time-filter-card">
-          <!-- Tầng 1: Chọn Chế độ thời gian (Tháng / Ngày / Tất cả) & Điều hướng -->
-          <div class="tx-time-top-row">
-            <div class="tx-time-mode-switch">
-              <button type="button" class="tx-time-mode-btn active" data-mode="month" onclick="UITransactions.setTimeFilterMode('month')">Tháng</button>
-              <button type="button" class="tx-time-mode-btn" data-mode="day" onclick="UITransactions.setTimeFilterMode('day')">Ngày</button>
-              <button type="button" class="tx-time-mode-btn" data-mode="all" onclick="UITransactions.setTimeFilterMode('all')">Tất cả</button>
-            </div>
-
-            <!-- Cụm điều hướng thời gian -->
-            <div class="tx-time-navigator" id="tx-time-navigator">
-              <button type="button" class="btn-time-nav" id="tx-time-prev-btn" onclick="UITransactions.prevTimePeriod()" title="Kỳ trước">
-                <i data-lucide="chevron-left" style="width: 18px; height: 18px;"></i>
-              </button>
-              <button type="button" class="btn-time-display" id="tx-time-display-btn" onclick="UITransactions.openTimePickerModal()" title="Bấm để chọn tháng/ngày">
-                <i data-lucide="calendar" style="width: 15px; height: 15px; color: var(--primary);"></i>
-                <span id="tx-time-display-label">Tháng 10/2026</span>
-                <i data-lucide="chevron-down" style="width: 13px; height: 13px; opacity: 0.7;"></i>
-              </button>
-              <button type="button" class="btn-time-nav" id="tx-time-next-btn" onclick="UITransactions.nextTimePeriod()" title="Kỳ sau">
-                <i data-lucide="chevron-right" style="width: 18px; height: 18px;"></i>
-              </button>
-            </div>
+            <button type="button" class="btn-time-display" id="tx-time-display-btn" onclick="UITransactions.openTimeFilterPickerModal()" title="Bấm để chọn tháng, ngày hoặc tất cả">
+              <i data-lucide="calendar" style="width: 15px; height: 15px; color: var(--primary);"></i>
+              <span id="tx-time-display-label">Tháng 10/2026</span>
+              <i data-lucide="chevron-down" style="width: 13px; height: 13px; opacity: 0.7;"></i>
+            </button>
+            <button type="button" class="btn-time-nav" id="tx-time-next-btn" onclick="UITransactions.nextTimePeriod()" title="Kỳ sau">
+              <i data-lucide="chevron-right" style="width: 18px; height: 18px;"></i>
+            </button>
           </div>
 
           <!-- Tầng 2: Thống kê tổng quan kỳ (Thu - Chi - Dòng tiền) -->
@@ -262,17 +253,14 @@
             </div>
           </div>
 
-          <!-- Tầng 3: Bộ lọc loại giao dịch (Tất cả, Chi tiêu, Thu nhập, Chuyển khoản) -->
-          <div class="filter-bar tx-type-filter-bar">
+          <!-- Tầng 3: Bộ lọc loại giao dịch (Tất cả, Chi tiêu, Thu nhập, Chuyển khoản) ép không tràn màn hình -->
+          <div class="tx-type-filter-bar" id="tx-type-filter-bar">
             <button type="button" class="filter-pill tx-filter-pill active" data-type="all">Tất cả</button>
             <button type="button" class="filter-pill tx-filter-pill" data-type="expense">Chi tiêu</button>
             <button type="button" class="filter-pill tx-filter-pill" data-type="income">Thu nhập</button>
             <button type="button" class="filter-pill tx-filter-pill" data-type="transfer">Chuyển khoản</button>
           </div>
         </div>
-
-        <!-- Banner bộ lọc theo tài khoản -->
-        <div id="tx-active-account-filter" style="display: none;"></div>
 
         <!-- Danh sách giao dịch hiển thị sát lề nhất có thể -->
         <div id="transactions-list-container-full" class="transactions-full-list"></div>

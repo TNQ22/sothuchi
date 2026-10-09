@@ -5519,155 +5519,129 @@ html, body {
    TRANSACTIONS VIEW MODERNIZATION (LỊCH SỬ GHI CHÉP & BỘ LỌC TÀI KHOẢN/THỜI GIAN)
    ========================================================================== */
 
-/* Header controls: Account Dropdown & Search Icon */
-.tx-header-controls {
+/* Header Center: Centered Account Filter Button (Căn giữa) */
+.tx-header-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 0;
-  flex: 1;
+  justify-content: center;
+  max-width: calc(100% - 130px);
+  z-index: 2;
+  pointer-events: auto;
 }
 
-.tx-header-acc-wrapper {
-  position: relative;
+.tx-header-acc-btn {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 0 10px;
-  height: 38px;
-  max-width: 240px;
-  min-width: 140px;
+  border-radius: var(--radius-full);
+  padding: 5px 12px 5px 8px;
+  cursor: pointer;
   transition: all 0.2s ease;
+  max-width: 100%;
   box-shadow: var(--shadow-sm);
 }
 
-.tx-header-acc-wrapper:hover {
+.tx-header-acc-btn:hover {
   background: var(--bg-card-hover);
   border-color: var(--border-focus);
 }
 
-.tx-header-acc-icon {
-  width: 16px;
-  height: 16px;
+.tx-header-acc-icon-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--primary);
   flex-shrink: 0;
-  margin-right: 6px;
-  pointer-events: none;
 }
 
-.tx-header-acc-select {
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
+.tx-header-acc-name {
   font-size: 0.9rem;
-  font-weight: 600;
-  outline: none;
-  cursor: pointer;
-  width: 100%;
-  padding-right: 18px;
-  appearance: none;
-  -webkit-appearance: none;
-  text-overflow: ellipsis;
+  font-weight: 700;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-}
-
-.tx-header-acc-select option,
-.tx-header-acc-select optgroup {
-  background: var(--bg-surface);
-  color: var(--text-primary);
+  text-overflow: ellipsis;
+  max-width: 150px;
 }
 
 .tx-header-acc-chevron {
-  position: absolute;
-  right: 8px;
   width: 14px;
   height: 14px;
   color: var(--text-muted);
-  pointer-events: none;
-}
-
-.tx-header-search-btn {
-  width: 38px;
-  height: 38px;
   flex-shrink: 0;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
 }
 
-.tx-header-search-btn:hover {
-  background: var(--bg-card-hover);
-  color: var(--text-primary);
-  border-color: var(--border-focus);
-}
-
-.tx-header-search-btn.active {
-  background: var(--primary-light);
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-/* Collapsible Search Bar */
-.tx-search-bar-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  animation: fadeIn 0.2s ease;
-}
-
-.tx-search-wrapper {
-  flex: 1;
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.tx-search-input-icon {
+/* Header Search Overlay: Mở trực tiếp trên thanh tiêu đề */
+.tx-header-search-bar {
   position: absolute;
-  left: 12px;
+  inset: 0;
+  background: var(--bg-surface);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 10px;
+  animation: fadeIn 0.15s ease;
+}
+
+.tx-header-search-bar .tx-search-input-icon {
+  position: absolute;
+  left: 26px;
   width: 16px;
   height: 16px;
   color: var(--text-muted);
   pointer-events: none;
 }
 
-.tx-search-input {
+.tx-search-header-input {
+  flex: 1;
+  height: 38px;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-md) !important;
   padding-left: 36px !important;
-  height: 40px;
+  padding-right: 32px !important;
+  font-size: 0.9rem !important;
+  color: var(--text-primary) !important;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.tx-search-header-input:focus {
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.25) !important;
+}
+
+.tx-search-cancel-btn {
+  background: transparent;
+  border: none;
+  color: var(--primary);
   font-size: 0.9rem;
-  border-radius: var(--radius-md);
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  width: 100%;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 4px;
+  white-space: nowrap;
 }
 
-.tx-search-close-btn {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  border-radius: var(--radius-md);
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
+/* Right Search Icon Button in .header-actions */
+.tx-header-search-btn {
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 
-.tx-search-close-btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-card-hover);
+.tx-header-search-btn:hover {
+  color: var(--primary);
 }
 
-/* Time Filter Card (Tháng / Ngày / Tất cả) */
+/* Time Filter Card */
 .tx-time-filter-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
@@ -5677,51 +5651,19 @@ html, body {
   box-shadow: var(--shadow-sm);
 }
 
-.tx-time-top-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-
-.tx-time-mode-switch {
-  display: inline-flex;
-  background: var(--bg-card);
-  padding: 3px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-}
-
-.tx-time-mode-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 0.82rem;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.tx-time-mode-btn.active {
-  background: var(--primary);
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(13, 148, 136, 0.35);
-}
-
 .tx-time-navigator {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .btn-time-nav {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
@@ -5729,7 +5671,8 @@ html, body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .btn-time-nav:hover {
@@ -5739,23 +5682,33 @@ html, body {
 }
 
 .btn-time-display {
+  flex: 1;
+  height: 36px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 8px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 6px 12px;
-  font-size: 0.85rem;
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  font-size: 0.88rem;
   font-weight: 600;
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.15s ease;
+  min-width: 0;
 }
 
 .btn-time-display:hover {
   background: var(--bg-card-hover);
   border-color: var(--border-focus);
+}
+
+.btn-time-display span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tx-time-summary-row {
@@ -5800,9 +5753,104 @@ html, body {
   background: var(--border-color);
 }
 
+/* Type Filter Bar: Ép không tràn viền màn hình và đồng bộ màu với mục Thêm Ghi Chép */
 .tx-type-filter-bar {
-  margin-bottom: 0;
-  padding-bottom: 0;
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 6px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.tx-type-filter-bar .tx-filter-pill {
+  width: 100% !important;
+  height: 34px !important;
+  padding: 0 2px !important;
+  border-radius: var(--radius-md) !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  justify-content: center !important;
+  display: flex !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--bg-card) !important;
+  color: var(--text-secondary) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.tx-type-filter-bar .tx-filter-pill:hover {
+  background: var(--bg-card-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Active states đồng bộ màu */
+.tx-type-filter-bar .tx-filter-pill[data-type="all"].active {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.35) !important;
+}
+
+.tx-type-filter-bar .tx-filter-pill[data-type="expense"].active {
+  background: #f43f5e !important;
+  border-color: #f43f5e !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.35) !important;
+}
+
+.tx-type-filter-bar .tx-filter-pill[data-type="income"].active {
+  background: #10b981 !important;
+  border-color: #10b981 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35) !important;
+}
+
+.tx-type-filter-bar .tx-filter-pill[data-type="transfer"].active {
+  background: #0ea5e9 !important;
+  border-color: #0ea5e9 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.35) !important;
+}
+
+/* UICalendar Filter Modes (Theo Tháng / Theo Ngày / Tất cả) */
+.custom-cal-filter-modes {
+  display: flex;
+  background: var(--bg-card);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  border: 1px solid var(--border-color);
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cal-filter-mode-btn {
+  flex: 1;
+  padding: 8px 4px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.cal-filter-mode-btn.active {
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.35);
 }
 
 /* Transactions Full List: Sát lề tương tự như Tài khoản */
@@ -5859,54 +5907,24 @@ html, body {
     padding: 10px 8px 80px 8px !important; /* Sát lề nhất có thể y như Tài khoản */
   }
 
-  .tx-header-acc-wrapper {
-    max-width: 175px;
-    height: 36px;
-    padding: 0 6px;
+  .tx-header-acc-btn {
+    padding: 4px 10px 4px 6px;
+    gap: 6px;
   }
 
-  .tx-header-acc-select {
-    font-size: 0.84rem;
+  .tx-header-acc-name {
+    font-size: 0.85rem;
+    max-width: 125px;
   }
 
-  .tx-header-search-btn {
-    width: 36px;
-    height: 36px;
+  .tx-type-filter-bar {
+    gap: 4px !important;
   }
 
-  .tx-time-filter-card {
-    padding: 10px 8px;
-    border-radius: var(--radius-md);
-    margin-bottom: 10px;
-  }
-
-  .tx-time-mode-btn {
-    padding: 4px 8px;
-    font-size: 0.76rem;
-  }
-
-  .btn-time-display {
-    padding: 5px 8px;
-    font-size: 0.78rem;
-    gap: 4px;
-  }
-
-  .tx-time-summary-row {
-    padding: 6px 4px;
-  }
-
-  .tx-time-summary-item {
-    font-size: 0.75rem;
-    gap: 3px;
-  }
-
-  #view-transactions .transaction-group {
-    margin-bottom: 12px;
-  }
-
-  #view-transactions .transaction-date-header {
-    padding: 0 2px 4px !important;
-    font-size: 0.78rem !important;
+  .tx-type-filter-bar .tx-filter-pill {
+    height: 32px !important;
+    font-size: 0.74rem !important;
+    border-radius: 8px !important;
   }
 
   #view-transactions .tx-card {

@@ -1667,14 +1667,17 @@ const UIAccounts = {
 
     let html = '';
 
-    // Tùy chọn 0: Không trích tiền / Ngoài ví
+    // Tùy chọn 0: Không trích tiền / Ngoài ví / Tất cả tài khoản
     if (allowNone) {
       const isSelected = selectedId === '';
+      const iconName = options.noneIcon || 'slash';
+      const iconBg = options.noneIcon ? 'rgba(13, 148, 136, 0.15)' : 'rgba(148, 163, 184, 0.15)';
+      const iconColor = options.noneIcon ? 'var(--primary)' : 'var(--text-muted)';
       html += `
         <div class="source-acc-item ${isSelected ? 'active' : ''}" onclick="UIAccounts.selectSourceAccount('')">
           <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
-            <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(148, 163, 184, 0.15); color: var(--text-muted); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              <i data-lucide="slash" style="width: 20px; height: 20px;"></i>
+            <div style="width: 40px; height: 40px; border-radius: 10px; background: ${iconBg}; color: ${iconColor}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i data-lucide="${iconName}" style="width: 20px; height: 20px;"></i>
             </div>
             <div style="min-width: 0;">
               <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(noneLabel)}</div>
