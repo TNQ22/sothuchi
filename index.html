@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.59">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.60">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -105,15 +105,18 @@
           <h2 id="header-page-title" class="page-title-badge">Tổng Quan Tài Chính</h2>
         </div>
 
-        <!-- Header Center cho Lịch Sử Ghi Chép (Listdown Tài Khoản Căn Giữa) -->
+        <!-- Header Center cho Lịch Sử Ghi Chép (Listdown Tài Khoản Căn Giữa Sổ Xuống) -->
         <div id="tx-header-center" class="tx-header-center" style="display: none;">
-          <button type="button" id="tx-header-account-btn" class="tx-header-acc-btn" onclick="UITransactions.openAccountFilterPicker()" title="Bấm để lọc theo tài khoản">
-            <div id="tx-header-acc-icon" class="tx-header-acc-icon-badge">
-              <i data-lucide="wallet" style="width: 15px; height: 15px;"></i>
-            </div>
-            <span id="tx-header-acc-name" class="tx-header-acc-name">Tất cả tài khoản</span>
-            <i data-lucide="chevron-down" class="tx-header-acc-chevron"></i>
-          </button>
+          <div class="tx-type-dropdown-wrapper" id="tx-header-acc-wrapper">
+            <button type="button" id="tx-header-account-btn" class="tx-header-acc-btn" onclick="UITransactions.toggleHeaderAccountDropdown(event)" title="Bấm để lọc theo tài khoản">
+              <div id="tx-header-acc-icon" class="tx-header-acc-icon-badge">
+                <i data-lucide="wallet" style="width: 15px; height: 15px;"></i>
+              </div>
+              <span id="tx-header-acc-name" class="tx-header-acc-name">Tất cả tài khoản</span>
+              <i data-lucide="chevron-down" class="tx-header-acc-chevron"></i>
+            </button>
+            <div id="tx-header-account-dropdown-menu" class="tx-header-account-dropdown-menu" style="display: none;"></div>
+          </div>
         </div>
 
         <!-- Header Search Bar che toàn bộ thanh tiêu đề khi mở tìm kiếm -->
@@ -235,21 +238,16 @@
             </button>
           </div>
 
-          <!-- Tầng 2: Thống kê tổng quan kỳ (Thu - Chi - Dòng tiền) -->
+          <!-- Tầng 2: Thống kê tổng quan kỳ (Tổng thu - Tổng chi) -->
           <div class="tx-time-summary-row" id="tx-time-summary-row">
-            <div class="tx-time-summary-item">
-              <span class="tx-summary-label">Thu:</span>
+            <div class="tx-time-summary-col">
+              <span class="tx-summary-label">Tổng thu</span>
               <span class="tx-summary-val income-text" id="tx-summary-income">+0đ</span>
             </div>
             <div class="tx-time-summary-divider"></div>
-            <div class="tx-time-summary-item">
-              <span class="tx-summary-label">Chi:</span>
+            <div class="tx-time-summary-col">
+              <span class="tx-summary-label">Tổng chi</span>
               <span class="tx-summary-val expense-text" id="tx-summary-expense">-0đ</span>
-            </div>
-            <div class="tx-time-summary-divider"></div>
-            <div class="tx-time-summary-item">
-              <span class="tx-summary-label">Dòng tiền:</span>
-              <span class="tx-summary-val" id="tx-summary-balance">0đ</span>
             </div>
           </div>
 
@@ -3108,18 +3106,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.59"></script>
+  <script src="./js/backup.js?v=1.9.60"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.59"></script>
-  <script src="./js/ui-transactions.js?v=1.9.59"></script>
-  <script src="./js/ui-debts.js?v=1.9.59"></script>
-  <script src="./js/ui-accounts.js?v=1.9.59"></script>
-  <script src="./js/ui-budgets.js?v=1.9.59"></script>
-  <script src="./js/ui-analytics.js?v=1.9.59"></script>
-  <script src="./js/ui-settings.js?v=1.9.59"></script>
+  <script src="./js/ui-calendar.js?v=1.9.60"></script>
+  <script src="./js/ui-transactions.js?v=1.9.60"></script>
+  <script src="./js/ui-debts.js?v=1.9.60"></script>
+  <script src="./js/ui-accounts.js?v=1.9.60"></script>
+  <script src="./js/ui-budgets.js?v=1.9.60"></script>
+  <script src="./js/ui-analytics.js?v=1.9.60"></script>
+  <script src="./js/ui-settings.js?v=1.9.60"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.59"></script>
+  <script src="./js/app.js?v=1.9.60"></script>
 </body>
 </html>

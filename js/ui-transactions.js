@@ -39,20 +39,87 @@ const UITransactions = {
     await this.render();
   },
 
-  /* ==================== HEADER ACCOUNT PICKER ==================== */
-  async openAccountFilterPicker() {
-    if (!window.UIAccounts) return;
-    window.UIAccounts.openSourceAccountPicker({
-      title: 'Lọc Theo Tài Khoản',
-      allowNone: true,
-      noneLabel: 'Tất cả tài khoản',
-      noneDesc: 'Xem toàn bộ giao dịch của mọi tài khoản',
-      noneIcon: 'wallet',
-      selectedId: this.filterAccountId ? String(this.filterAccountId) : '',
-      onSelect: (accId) => {
-        this.filterByAccount(accId);
+  /* ==================== HEADER ACCOUNT DROPDOWN (SỔ XUỐNG) ==================== */
+  async toggleHeaderAccountDropdown(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('tx-header-account-dropdown-menu');
+    if (!menu) return;
+    const isShown = menu.style.display === 'block';
+    if (isShown) {
+      menu.style.display = 'none';
+    } else {
+      await this.renderHeaderAccountDropdownList();
+      menu.style.display = 'block';
+    }
+  },
+
+  closeHeaderAccountDropdown() {
+    const menu = document.getElementById('tx-header-account-dropdown-menu');
+    if (menu) menu.style.display = 'none';
+  },
+
+  openAccountFilterPicker(e) {
+    this.toggleHeaderAccountDropdown(e);
+  },
+
+  async renderHeaderAccountDropdownList() {
+    const menu = document.getElementById('tx-header-account-dropdown-menu');
+    if (!menu) return;
+
+    try {
+      const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+      const active = accounts.filter(a => !a.isArchived);
+      active.sort((a, b) => (a.order || 0) - (b.order || 0) || a.id - b.id);
+
+      const isAllSelected = !this.filterAccountId;
+
+      let html = `
+        <div class="tx-header-acc-option ${isAllSelected ? 'active' : ''}" onclick="UITransactions.selectHeaderAccount('')">
+          <div class="tx-header-acc-option-left">
+            <div class="tx-header-acc-option-icon" style="background: rgba(13, 148, 136, 0.15); color: var(--primary);">
+              <i data-lucide="wallet" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div class="tx-header-acc-option-info">
+              <span class="tx-header-acc-option-name">Tất cả tài khoản</span>
+              <span class="tx-header-acc-option-balance">Xem toàn bộ giao dịch</span>
+            </div>
+          </div>
+          ${isAllSelected ? '<i data-lucide="check" style="width: 16px; height: 16px; color: var(--primary); flex-shrink: 0;"></i>' : ''}
+        </div>
+      `;
+
+      for (const acc of active) {
+        const isSelected = this.filterAccountId === acc.id;
+        const balFormatted = new Intl.NumberFormat('vi-VN').format(acc.balance || 0) + 'đ';
+        const balColor = (acc.balance || 0) >= 0 ? 'var(--income)' : 'var(--expense)';
+        const logoBadge = (window.UIAccounts && typeof window.UIAccounts.renderLogoBadge === 'function')
+          ? window.UIAccounts.renderLogoBadge(acc, 28)
+          : '<div style="width: 28px; height: 28px; border-radius: 7px; background: var(--bg-hover); display: flex; align-items: center; justify-content: center;"><i data-lucide="credit-card" style="width: 16px; height: 16px;"></i></div>';
+
+        html += `
+          <div class="tx-header-acc-option ${isSelected ? 'active' : ''}" onclick="UITransactions.selectHeaderAccount(${acc.id})">
+            <div class="tx-header-acc-option-left">
+              ${logoBadge}
+              <div class="tx-header-acc-option-info">
+                <span class="tx-header-acc-option-name">${escapeHTML(acc.name)}</span>
+                <span class="tx-header-acc-option-balance" style="color: ${balColor};">Số dư: ${balFormatted}</span>
+              </div>
+            </div>
+            ${isSelected ? '<i data-lucide="check" style="width: 16px; height: 16px; color: var(--primary); flex-shrink: 0;"></i>' : ''}
+          </div>
+        `;
       }
-    });
+
+      menu.innerHTML = html;
+      if (window.lucide) lucide.createIcons();
+    } catch (err) {
+      console.error('Error rendering header account dropdown list:', err);
+    }
+  },
+
+  async selectHeaderAccount(accId) {
+    this.closeHeaderAccountDropdown();
+    await this.filterByAccount(accId);
   },
 
   async updateHeaderAccountDisplay() {
@@ -393,6 +460,14 @@ const UITransactions = {
       if (menu && menu.style.display === 'block') {
         if (!menu.contains(e.target) && !btn?.contains(e.target)) {
           menu.style.display = 'none';
+        }
+      }
+      // Close header account filter dropdown when clicking outside
+      const txAccMenu = document.getElementById('tx-header-account-dropdown-menu');
+      const txAccBtn = document.getElementById('tx-header-account-btn');
+      if (txAccMenu && txAccMenu.style.display === 'block') {
+        if (!txAccMenu.contains(e.target) && !txAccBtn?.contains(e.target)) {
+          txAccMenu.style.display = 'none';
         }
       }
       // Close account dropdown when clicking outside
@@ -3002,8 +3077,8 @@ const UITransactions = {
     const sumIncomeEl = document.getElementById('tx-summary-income');
     const sumExpenseEl = document.getElementById('tx-summary-expense');
     const sumBalEl = document.getElementById('tx-summary-balance');
-    if (sumIncomeEl) sumIncomeEl.textContent = `+${new Intl.NumberFormat('vi-VN').format(periodIncome)}đ`;
-    if (sumExpenseEl) sumExpenseEl.textContent = `-${new Intl.NumberFormat('vi-VN').format(periodExpense)}đ`;
+    if (sumIncomeEl) sumIncomeEl.textContent = `${periodIncome > 0 ? '+' : ''}${new Intl.NumberFormat('vi-VN').format(periodIncome)}đ`;
+    if (sumExpenseEl) sumExpenseEl.textContent = `${periodExpense > 0 ? '-' : ''}${new Intl.NumberFormat('vi-VN').format(periodExpense)}đ`;
     if (sumBalEl) {
       const sign = periodBalance > 0 ? '+' : '';
       sumBalEl.textContent = `${sign}${new Intl.NumberFormat('vi-VN').format(periodBalance)}đ`;
