@@ -4301,6 +4301,44 @@ const UIAccounts = {
       const astCount = await db.assets.where('isDeleted').equals(0).count();
       badgeAst.textContent = astCount;
     }
+
+    this.adjustMiniPillFontSizes();
+  },
+
+  adjustMiniPillFontSizes() {
+    const pills = document.querySelectorAll('.networth-mini-pill');
+    if (!pills || pills.length === 0) return;
+
+    pills.forEach(pill => {
+      if (pill.clientWidth === 0) return;
+
+      const valEl = pill.querySelector('.mini-pill-val');
+      if (!valEl) return;
+
+      // 1. Reset inline styles first to calculate natural size
+      valEl.style.fontSize = '';
+      valEl.style.letterSpacing = '';
+
+      if (pill.scrollWidth <= pill.clientWidth) return;
+
+      // 2. Decrement font size until content fits inside pill
+      let currentPx = parseFloat(window.getComputedStyle(valEl).fontSize) || 12;
+      const minPx = 8;
+
+      while (pill.scrollWidth > pill.clientWidth && currentPx > minPx) {
+        currentPx -= 0.4;
+        valEl.style.fontSize = `${currentPx.toFixed(1)}px`;
+      }
+
+      // If still slightly overflowing, tighten letter-spacing
+      if (pill.scrollWidth > pill.clientWidth) {
+        valEl.style.letterSpacing = '-0.025em';
+        while (pill.scrollWidth > pill.clientWidth && currentPx > 7) {
+          currentPx -= 0.3;
+          valEl.style.fontSize = `${currentPx.toFixed(1)}px`;
+        }
+      }
+    });
   },
 
   async renderSavings() {
@@ -4756,7 +4794,28 @@ const UIAccounts = {
     }
 
     if (window.lucide) lucide.createIcons();
+    this.adjustMiniPillFontSizes();
   }
 };
+
+// Auto adjust mini pill font sizes on resize or layout changes
+window.addEventListener('resize', () => {
+  if (window.UIAccounts && typeof window.UIAccounts.adjustMiniPillFontSizes === 'function') {
+    window.UIAccounts.adjustMiniPillFontSizes();
+  }
+});
+
+if (typeof ResizeObserver !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const row = document.querySelector('.networth-breakdown-row');
+    if (row) {
+      new ResizeObserver(() => {
+        if (window.UIAccounts && typeof window.UIAccounts.adjustMiniPillFontSizes === 'function') {
+          window.UIAccounts.adjustMiniPillFontSizes();
+        }
+      }).observe(row);
+    }
+  });
+}
 
 window.UIAccounts = UIAccounts;

@@ -262,6 +262,10 @@ class App {
         el.classList.remove('privacy-masked');
       }
     });
+
+    if (window.UIAccounts && typeof window.UIAccounts.adjustMiniPillFontSizes === 'function') {
+      window.UIAccounts.adjustMiniPillFontSizes();
+    }
   }
 
   togglePrivacyMode() {

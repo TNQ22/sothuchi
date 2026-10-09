@@ -4171,11 +4171,13 @@ body:has(#view-account-provider.active) .app-header {
 }
 
 .networth-breakdown-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 10px;
   padding-top: 12px;
   border-top: 1px dashed rgba(255, 255, 255, 0.12);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 [data-theme="light"] .networth-breakdown-row {
@@ -4183,14 +4185,21 @@ body:has(#view-account-provider.active) .app-header {
 }
 
 .networth-mini-pill {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: flex-start;
+  text-align: left;
   gap: 5px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 20px;
-  padding: 3px 9px;
+  padding: 4px 8px;
   font-size: 0.74rem;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .mini-pill-dot {
@@ -4203,13 +4212,21 @@ body:has(#view-account-provider.active) .app-header {
 .mini-pill-label {
   color: var(--text-muted);
   font-weight: 500;
-  font-size: 0.74rem;
+  font-size: 0.73rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+  text-align: left;
 }
 
 .mini-pill-val {
   font-weight: 600;
   font-size: 0.74rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+  text-align: left;
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 /* 2. Group Sections - Vùng bao quanh rõ ràng cho từng nhóm tài sản */
