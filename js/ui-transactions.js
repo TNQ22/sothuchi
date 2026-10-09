@@ -152,12 +152,17 @@ const UITransactions = {
 
   /* ==================== SEARCH BAR CONTROLS ==================== */
   openSearch() {
+    this.closeHeaderAccountDropdown();
     const searchBar = document.getElementById('tx-header-search-bar');
     const searchInput = document.getElementById('tx-search-input');
     const timeFilterCard = document.getElementById('tx-time-filter-card');
+    const txHeaderCenter = document.getElementById('tx-header-center');
+    const txHeaderSearchBtn = document.getElementById('tx-header-search-btn');
 
     if (searchBar) searchBar.style.display = 'flex';
     if (timeFilterCard) timeFilterCard.style.display = 'none';
+    if (txHeaderCenter) txHeaderCenter.style.display = 'none';
+    if (txHeaderSearchBtn) txHeaderSearchBtn.style.display = 'none';
 
     if (searchInput) {
       searchInput.value = this.searchKeyword || '';
@@ -183,9 +188,13 @@ const UITransactions = {
     const searchBar = document.getElementById('tx-header-search-bar');
     const searchInput = document.getElementById('tx-search-input');
     const timeFilterCard = document.getElementById('tx-time-filter-card');
+    const txHeaderCenter = document.getElementById('tx-header-center');
+    const txHeaderSearchBtn = document.getElementById('tx-header-search-btn');
 
     if (searchBar) searchBar.style.display = 'none';
     if (timeFilterCard) timeFilterCard.style.display = 'block';
+    if (txHeaderCenter) txHeaderCenter.style.display = 'flex';
+    if (txHeaderSearchBtn) txHeaderSearchBtn.style.display = 'inline-flex';
 
     if (searchInput) searchInput.value = '';
     this.searchKeyword = '';

@@ -2990,11 +2990,11 @@ body:has(#view-account-provider.active) .app-header {
 }
 
 .custom-cal-top-item.active {
-  color: #0288d1;
+  color: var(--primary);
 }
 
 [data-theme="dark"] .custom-cal-top-item.active {
-  color: #38bdf8;
+  color: #14b8a6;
 }
 
 .custom-cal-top-divider {
@@ -3067,7 +3067,7 @@ body:has(#view-account-provider.active) .app-header {
 }
 
 .custom-cal-month-pill {
-  background: #0288d1;
+  background: var(--primary);
   color: #ffffff;
   border: none;
   cursor: pointer;
@@ -3078,7 +3078,7 @@ body:has(#view-account-provider.active) .app-header {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  box-shadow: 0 2px 8px rgba(2, 136, 209, 0.35);
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.35);
   transition: opacity 0.15s, transform 0.1s;
 }
 
@@ -3159,10 +3159,10 @@ body:has(#view-account-provider.active) .app-header {
 
 /* Selected Day Circle: Emerald Green Badge */
 .custom-cal-day.selected {
-  background: #16a34a !important;
+  background: var(--primary) !important;
   color: #ffffff !important;
   font-weight: 700 !important;
-  box-shadow: 0 3px 10px rgba(22, 163, 74, 0.42);
+  box-shadow: 0 3px 10px rgba(13, 148, 136, 0.42);
   transform: scale(1.04);
 }
 
@@ -3176,7 +3176,7 @@ body:has(#view-account-provider.active) .app-header {
   bottom: 3px;
   width: 4px;
   height: 4px;
-  background: #16a34a;
+  background: var(--primary);
   border-radius: 50%;
 }
 
@@ -3196,11 +3196,11 @@ body:has(#view-account-provider.active) .app-header {
 .custom-cal-year-title {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #0288d1;
+  color: var(--primary);
 }
 
 [data-theme="dark"] .custom-cal-year-title {
-  color: #38bdf8;
+  color: #14b8a6;
 }
 
 .custom-cal-months-grid {
@@ -3222,14 +3222,14 @@ body:has(#view-account-provider.active) .app-header {
 }
 
 .custom-cal-month-item:hover {
-  border-color: #0288d1;
-  background: rgba(2, 136, 209, 0.08);
+  border-color: var(--primary);
+  background: rgba(13, 148, 136, 0.1);
 }
 
 .custom-cal-month-item.selected {
-  background: #0288d1;
+  background: var(--primary);
   color: #ffffff;
-  border-color: #0288d1;
+  border-color: var(--primary);
 }
 
 /* Time Picker View */
@@ -3253,9 +3253,9 @@ body:has(#view-account-provider.active) .app-header {
   justify-content: center;
   gap: 12px;
   padding: 8px 16px;
-  background: rgba(2, 136, 209, 0.08);
+  background: rgba(13, 148, 136, 0.1);
   border-radius: 14px;
-  border: 1px solid rgba(2, 136, 209, 0.2);
+  border: 1px solid rgba(13, 148, 136, 0.25);
 }
 
 .custom-cal-time-field {
@@ -3267,13 +3267,13 @@ body:has(#view-account-provider.active) .app-header {
 .custom-cal-time-val {
   font-size: 2rem;
   font-weight: 800;
-  color: #0288d1;
+  color: var(--primary);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
 
 [data-theme="dark"] .custom-cal-time-val {
-  color: #38bdf8;
+  color: #14b8a6;
 }
 
 .custom-cal-time-label {
@@ -3286,7 +3286,7 @@ body:has(#view-account-provider.active) .app-header {
 .custom-cal-time-colon {
   font-size: 1.8rem;
   font-weight: 800;
-  color: #0288d1;
+  color: var(--primary);
   margin-top: -6px;
 }
 
@@ -3347,7 +3347,7 @@ body:has(#view-account-provider.active) .app-header {
 }
 
 .custom-cal-time-item.active {
-  background: #0288d1;
+  background: var(--primary);
   color: #ffffff;
 }
 
@@ -3372,8 +3372,8 @@ body:has(#view-account-provider.active) .app-header {
 }
 
 .cal-time-preset-btn:hover {
-  border-color: #0288d1;
-  color: #0288d1;
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 /* Bottom Action Buttons: Hôm nay & Xong */
@@ -3387,8 +3387,8 @@ body:has(#view-account-provider.active) .app-header {
   flex: 1;
   height: 44px;
   background: transparent;
-  border: 1.5px solid #0288d1;
-  color: #0288d1;
+  border: 1.5px solid var(--primary);
+  color: var(--primary);
   border-radius: 12px;
   font-weight: 600;
   font-size: 0.98rem;
@@ -3400,12 +3400,12 @@ body:has(#view-account-provider.active) .app-header {
 }
 
 [data-theme="dark"] .custom-cal-btn-today {
-  border-color: #38bdf8;
-  color: #38bdf8;
+  border-color: #14b8a6;
+  color: #14b8a6;
 }
 
 .custom-cal-btn-today:hover {
-  background: rgba(2, 136, 209, 0.08);
+  background: rgba(13, 148, 136, 0.1);
 }
 
 .custom-cal-btn-today:active {
@@ -3415,14 +3415,14 @@ body:has(#view-account-provider.active) .app-header {
 .custom-cal-btn-done {
   flex: 1;
   height: 44px;
-  background: #0288d1;
+  background: var(--primary);
   border: none;
   color: #ffffff;
   border-radius: 12px;
   font-weight: 600;
   font-size: 0.98rem;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(2, 136, 209, 0.35);
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.35);
   transition: opacity 0.15s, transform 0.1s;
   display: flex;
   align-items: center;
@@ -5659,7 +5659,7 @@ html, body {
   position: absolute;
   inset: 0;
   background: var(--bg-surface);
-  z-index: 50;
+  z-index: 100;
   display: flex;
   align-items: center;
   padding: 0 14px;
