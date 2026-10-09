@@ -5514,3 +5514,427 @@ html, body {
 #asset-unit-input {
   text-align: right !important;
 }
+
+/* ==========================================================================
+   TRANSACTIONS VIEW MODERNIZATION (LỊCH SỬ GHI CHÉP & BỘ LỌC TÀI KHOẢN/THỜI GIAN)
+   ========================================================================== */
+
+/* Header controls: Account Dropdown & Search Icon */
+.tx-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.tx-header-acc-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0 10px;
+  height: 38px;
+  max-width: 240px;
+  min-width: 140px;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.tx-header-acc-wrapper:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-focus);
+}
+
+.tx-header-acc-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--primary);
+  flex-shrink: 0;
+  margin-right: 6px;
+  pointer-events: none;
+}
+
+.tx-header-acc-select {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+  padding-right: 18px;
+  appearance: none;
+  -webkit-appearance: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.tx-header-acc-select option,
+.tx-header-acc-select optgroup {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.tx-header-acc-chevron {
+  position: absolute;
+  right: 8px;
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.tx-header-search-btn {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tx-header-search-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--border-focus);
+}
+
+.tx-header-search-btn.active {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Collapsible Search Bar */
+.tx-search-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  animation: fadeIn 0.2s ease;
+}
+
+.tx-search-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.tx-search-input-icon {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.tx-search-input {
+  padding-left: 36px !important;
+  height: 40px;
+  font-size: 0.9rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  width: 100%;
+}
+
+.tx-search-close-btn {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+}
+
+.tx-search-close-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+}
+
+/* Time Filter Card (Tháng / Ngày / Tất cả) */
+.tx-time-filter-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.tx-time-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.tx-time-mode-switch {
+  display: inline-flex;
+  background: var(--bg-card);
+  padding: 3px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.tx-time-mode-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tx-time-mode-btn.active {
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(13, 148, 136, 0.35);
+}
+
+.tx-time-navigator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-time-nav {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-time-nav:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--border-focus);
+}
+
+.btn-time-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-time-display:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-focus);
+}
+
+.tx-time-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 8px 10px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  margin-bottom: 10px;
+}
+
+.tx-time-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+}
+
+.tx-summary-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.tx-summary-val {
+  font-weight: 700;
+  font-feature-settings: "tnum";
+}
+
+.tx-summary-val.income-text {
+  color: var(--income);
+}
+
+.tx-summary-val.expense-text {
+  color: var(--expense);
+}
+
+.tx-time-summary-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--border-color);
+}
+
+.tx-type-filter-bar {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* Transactions Full List: Sát lề tương tự như Tài khoản */
+#view-transactions.page-view {
+  padding: 16px 16px 40px;
+  max-width: 900px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.transactions-full-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+#view-transactions .transaction-group {
+  margin-bottom: 16px;
+}
+
+#view-transactions .transaction-date-header {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  margin-bottom: 6px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#view-transactions .tx-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all 0.15s ease;
+}
+
+#view-transactions .tx-card:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Mobile Screen Tuning for Transactions View (< 768px): Sát lề như Tài khoản */
+@media (max-width: 768px) {
+  #view-transactions.page-view {
+    padding: 10px 8px 80px 8px !important; /* Sát lề nhất có thể y như Tài khoản */
+  }
+
+  .tx-header-acc-wrapper {
+    max-width: 175px;
+    height: 36px;
+    padding: 0 6px;
+  }
+
+  .tx-header-acc-select {
+    font-size: 0.84rem;
+  }
+
+  .tx-header-search-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .tx-time-filter-card {
+    padding: 10px 8px;
+    border-radius: var(--radius-md);
+    margin-bottom: 10px;
+  }
+
+  .tx-time-mode-btn {
+    padding: 4px 8px;
+    font-size: 0.76rem;
+  }
+
+  .btn-time-display {
+    padding: 5px 8px;
+    font-size: 0.78rem;
+    gap: 4px;
+  }
+
+  .tx-time-summary-row {
+    padding: 6px 4px;
+  }
+
+  .tx-time-summary-item {
+    font-size: 0.75rem;
+    gap: 3px;
+  }
+
+  #view-transactions .transaction-group {
+    margin-bottom: 12px;
+  }
+
+  #view-transactions .transaction-date-header {
+    padding: 0 2px 4px !important;
+    font-size: 0.78rem !important;
+  }
+
+  #view-transactions .tx-card {
+    padding: 10px 8px !important;
+    gap: 8px !important;
+    border-radius: 10px !important;
+  }
+
+  #view-transactions .tx-left {
+    gap: 8px !important;
+    min-width: 0;
+  }
+
+  #view-transactions .tx-icon-box {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 8px !important;
+  }
+
+  #view-transactions .tx-title {
+    font-size: 0.88rem !important;
+  }
+
+  #view-transactions .tx-meta {
+    font-size: 0.72rem !important;
+  }
+
+  #view-transactions .tx-amount {
+    font-size: 0.9rem !important;
+  }
+}

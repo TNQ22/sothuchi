@@ -248,6 +248,10 @@ class App {
 
     // Mask numbers with ****** instead of eye-straining blur (bao gồm số dư các ví/tài khoản chi tiêu)
     document.querySelectorAll('.stat-amount, .tx-amount, .account-balance, .debt-amounts div div:nth-child(2)').forEach(el => {
+      // Vô hiệu hóa ẩn số tiền cho mục lịch sử thu chi:
+      if (el.closest('#view-transactions') || el.closest('#transactions-list-container-full')) {
+        return;
+      }
       if (enabled) {
         if (!el.dataset.rawAmount && el.textContent.trim() !== '******') {
           el.dataset.rawAmount = el.textContent.trim();
@@ -473,7 +477,29 @@ class App {
       'asset-form': 'Quản Lý Tài Sản'
     };
     const titleEl = document.getElementById('header-page-title');
-    if (titleEl) titleEl.textContent = titles[viewId] || 'Sổ Thu Chi';
+    const txHeaderControls = document.getElementById('tx-header-controls');
+    const privacyBtn = document.getElementById('btn-privacy-toggle');
+
+    if (viewId === 'transactions') {
+      if (titleEl) titleEl.style.display = 'none';
+      if (txHeaderControls) txHeaderControls.style.display = 'flex';
+      // Xóa và vô hiệu hóa nút hiển thị/ẩn số tiền cho mục lịch sử thu chi
+      if (privacyBtn) privacyBtn.style.display = 'none';
+      if (window.UITransactions) {
+        window.UITransactions.populateHeaderAccountSelect();
+        window.UITransactions.initTimeFilter();
+      }
+    } else {
+      if (titleEl) {
+        titleEl.style.display = '';
+        titleEl.textContent = titles[viewId] || 'Sổ Thu Chi';
+      }
+      if (txHeaderControls) txHeaderControls.style.display = 'none';
+      if (privacyBtn && !isTxPage) privacyBtn.style.display = '';
+      if (window.UITransactions && typeof window.UITransactions.closeSearch === 'function') {
+        window.UITransactions.closeSearch();
+      }
+    }
 
     // Update browser history:
     // Use replaceState for ALL views so the history stack never grows.
