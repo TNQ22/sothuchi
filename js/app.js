@@ -498,13 +498,18 @@ class App {
         titleEl.style.display = '';
         titleEl.textContent = titles[viewId] || 'Sổ Thu Chi';
       }
+      if (window.UITransactions) {
+        if (typeof window.UITransactions.closeHeaderAccountDropdown === 'function') {
+          window.UITransactions.closeHeaderAccountDropdown();
+        }
+        if (typeof window.UITransactions.closeSearch === 'function') {
+          window.UITransactions.closeSearch();
+        }
+      }
       if (txHeaderCenter) txHeaderCenter.style.display = 'none';
       if (txSearchBtn) txSearchBtn.style.display = 'none';
       if (txSearchBar) txSearchBar.style.display = 'none';
       if (privacyBtn && !isTxPage) privacyBtn.style.display = '';
-      if (window.UITransactions && typeof window.UITransactions.closeSearch === 'function') {
-        window.UITransactions.closeSearch();
-      }
     }
 
     // Update browser history:
@@ -918,9 +923,12 @@ class App {
     const params = new URLSearchParams(window.location.search);
     const action = params.get('action');
     const tab = params.get('tab');
+    const hash = window.location.hash ? window.location.hash.replace('#', '') : null;
 
     if (tab) {
       this.switchView(tab);
+    } else if (hash && ['dashboard', 'transactions', 'debts', 'accounts', 'budgets', 'analytics', 'settings'].includes(hash)) {
+      this.switchView(hash);
     } else {
       this.switchView('new-transaction');
     }

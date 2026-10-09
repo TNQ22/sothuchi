@@ -46,12 +46,12 @@ const UITransactions = {
     if (e) e.stopPropagation();
     const menu = document.getElementById('tx-header-account-dropdown-menu');
     if (!menu) return;
-    const isShown = menu.style.display === 'block';
+    const isShown = menu.style.display === 'block' || menu.style.display === 'flex';
     if (isShown) {
-      menu.style.display = 'none';
+      this.closeHeaderAccountDropdown();
     } else {
       await this.renderHeaderAccountDropdownList();
-      menu.style.display = 'block';
+      menu.style.display = 'flex';
     }
   },
 
@@ -193,8 +193,10 @@ const UITransactions = {
 
     if (searchBar) searchBar.style.display = 'none';
     if (timeFilterCard) timeFilterCard.style.display = 'block';
-    if (txHeaderCenter) txHeaderCenter.style.display = 'flex';
-    if (txHeaderSearchBtn) txHeaderSearchBtn.style.display = 'inline-flex';
+
+    const isTxView = window.app && window.app.currentView === 'transactions';
+    if (txHeaderCenter) txHeaderCenter.style.display = isTxView ? 'flex' : 'none';
+    if (txHeaderSearchBtn) txHeaderSearchBtn.style.display = isTxView ? 'inline-flex' : 'none';
 
     if (searchInput) searchInput.value = '';
     this.searchKeyword = '';
@@ -535,9 +537,9 @@ const UITransactions = {
       // Close header account filter dropdown when clicking outside
       const txAccMenu = document.getElementById('tx-header-account-dropdown-menu');
       const txAccBtn = document.getElementById('tx-header-account-btn');
-      if (txAccMenu && txAccMenu.style.display === 'block') {
+      if (txAccMenu && txAccMenu.style.display !== 'none') {
         if (!txAccMenu.contains(e.target) && !txAccBtn?.contains(e.target)) {
-          txAccMenu.style.display = 'none';
+          this.closeHeaderAccountDropdown();
         }
       }
       // Close account dropdown when clicking outside
