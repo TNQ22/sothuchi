@@ -428,11 +428,17 @@ class App {
       }
     }
 
-    // 2. Lưu previousView trước khi chuyển vào các trang con (ghi chép, danh mục, ...)
-    const txSubViews = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form'];
-    if (txSubViews.includes(viewId) && !txSubViews.includes(this.currentView)) {
-      if (this.currentView && this.currentView !== viewId) {
+    // 2. Lưu previousView trước khi chuyển vào các trang con (danh mục, biểu mẫu tài khoản, ...)
+    const formSubViews = ['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form'];
+    if (formSubViews.includes(viewId) && !formSubViews.includes(this.currentView)) {
+      this.previousView = this.currentView;
+    } else if (viewId === 'new-transaction') {
+      // Tab Ghi Chép (new-transaction) là màn hình thêm giao dịch CỐ ĐỊNH, KHÔNG BAO GIỜ tự gán previousView
+      // CHỈ lưu previousView khi được mở từ menu 3 chấm của tài khoản (Chuyển khoản / Điều chỉnh số dư)
+      if (this.openedFromAccountMenu) {
         this.previousView = this.currentView;
+      } else {
+        this.previousView = null;
       }
     }
 
@@ -538,7 +544,7 @@ class App {
     if (viewId === 'new-transaction') {
       const backBtn = document.getElementById('tx-header-back-btn');
       const txId = document.getElementById('tx-id-input')?.value;
-      const canBack = !!(txId || (this.previousView && this.previousView !== 'new-transaction'));
+      const canBack = !!(txId || (this.openedFromAccountMenu && this.previousView));
       if (backBtn) backBtn.style.display = canBack ? 'inline-flex' : 'none';
     }
 
@@ -647,12 +653,13 @@ class App {
       return;
     }
 
-    // new-transaction → trở về trang trước đó nếu có previousView hoặc txId
+    // new-transaction → CHỈ trở về khi đang sửa giao dịch HOẶC khi mở từ menu 3 chấm của tài khoản
     if (this.currentView === 'new-transaction') {
       const txId = document.getElementById('tx-id-input')?.value;
-      const target = this.previousView || (txId ? (this.activePrimaryView || 'dashboard') : null);
+      const openedFromMenu = this.openedFromAccountMenu;
+      const target = this.previousView || (txId ? (this.activePrimaryView || 'transactions') : null);
 
-      if (this.openedFromAccountMenu || txId || (this.previousView && this.previousView !== 'new-transaction')) {
+      if (openedFromMenu || txId) {
         // DỌN DẸP & RESET TOÀN BỘ FORM VỀ MẶC ĐỊNH
         if (window.UITransactions) {
           window.UITransactions.setEditMode(false);
@@ -670,6 +677,7 @@ class App {
           return;
         }
       }
+      // Ở chế độ thêm mới thông thường: trang nhập liệu CỐ ĐỊNH, không bao giờ thoát về tài khoản hay tổng quan!
       return;
     }
   }
@@ -732,10 +740,10 @@ class App {
         }
 
         // Trang Ghi Chép (new-transaction):
-        // Cho phép vuốt trở về khi đang SỬA giao dịch HOẶC khi có previousView khác new-transaction
+        // CHỈ cho phép vuốt trở về khi đang SỬA giao dịch HOẶC khi được mở từ menu 3 chấm của tài khoản
         if (page.id === 'view-new-transaction') {
           const isEditing = !!document.getElementById('tx-id-input')?.value;
-          const canBack = isEditing || (this.openedFromAccountMenu && !!this.previousView) || (!!this.previousView && this.previousView !== 'new-transaction');
+          const canBack = isEditing || (this.openedFromAccountMenu && !!this.previousView);
           if (!canBack) {
             canSwipe = false;
             return;

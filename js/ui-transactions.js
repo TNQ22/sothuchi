@@ -2466,7 +2466,7 @@ const UITransactions = {
     const headerTitle = document.getElementById('header-page-title');
     const backBtn = document.getElementById('tx-header-back-btn');
 
-    const canBack = isEditing || (window.app && window.app.previousView && window.app.previousView !== 'new-transaction');
+    const canBack = isEditing || (window.app && window.app.openedFromAccountMenu && !!window.app.previousView);
 
     if (isEditing) {
       // Chế độ Sửa: hiện nút trở về trên header
@@ -2479,7 +2479,7 @@ const UITransactions = {
       if (submitLabel) submitLabel.textContent = 'Lưu Sửa';
       if (headerTitle) headerTitle.textContent = 'Chỉnh Sửa Ghi Chép';
     } else {
-      // Chế độ Thêm mới: nếu có previousView thì vẫn hiện nút trở về
+      // Chế độ Thêm mới: trang độc lập/cố định - ẩn nút trở về trên header (chỉ hiện khi mở từ menu 3 chấm tài khoản)
       if (backBtn) backBtn.style.display = canBack ? 'inline-flex' : 'none';
       // Ẩn nút Xóa (nút Lưu Lại chiếm toàn bộ hàng)
       if (deleteBtn) {
