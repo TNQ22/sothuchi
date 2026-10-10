@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.64">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.65">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -101,7 +101,10 @@
       <!-- Top Sticky Header -->
       <header class="app-header" style="display: none;">
         <div class="header-left">
-          <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo">
+          <button type="button" id="tx-history-back-btn" class="btn-icon tx-header-btn" onclick="window.app.goBack()" title="Trở về" style="display: none; margin-right: 2px;">
+            <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+          </button>
+          <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo" id="header-brand-logo">
           <h2 id="header-page-title" class="page-title-badge">Tổng Quan Tài Chính</h2>
         </div>
 
@@ -3129,18 +3132,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.64"></script>
+  <script src="./js/backup.js?v=1.9.65"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.64"></script>
-  <script src="./js/ui-transactions.js?v=1.9.64"></script>
-  <script src="./js/ui-debts.js?v=1.9.64"></script>
-  <script src="./js/ui-accounts.js?v=1.9.64"></script>
-  <script src="./js/ui-budgets.js?v=1.9.64"></script>
-  <script src="./js/ui-analytics.js?v=1.9.64"></script>
-  <script src="./js/ui-settings.js?v=1.9.64"></script>
+  <script src="./js/ui-calendar.js?v=1.9.65"></script>
+  <script src="./js/ui-transactions.js?v=1.9.65"></script>
+  <script src="./js/ui-debts.js?v=1.9.65"></script>
+  <script src="./js/ui-accounts.js?v=1.9.65"></script>
+  <script src="./js/ui-budgets.js?v=1.9.65"></script>
+  <script src="./js/ui-analytics.js?v=1.9.65"></script>
+  <script src="./js/ui-settings.js?v=1.9.65"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.64"></script>
+  <script src="./js/app.js?v=1.9.65"></script>
 </body>
 </html>

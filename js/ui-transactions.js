@@ -2434,6 +2434,13 @@ const UITransactions = {
   openHistoryView() {
     this.closeModal();
     if (window.app) {
+      window.app.txHistorySource = 'new-transaction';
+      window.app.previousView = 'new-transaction';
+    }
+    // Tách biệt hoàn toàn với tab tài khoản: Luôn hiển thị Tất cả tài khoản
+    this.filterAccountId = null;
+    this.updateHeaderAccountDisplay();
+    if (window.app) {
       window.app.switchView('transactions');
     }
   },
@@ -2459,6 +2466,8 @@ const UITransactions = {
     const headerTitle = document.getElementById('header-page-title');
     const backBtn = document.getElementById('tx-header-back-btn');
 
+    const canBack = isEditing || (window.app && window.app.previousView && window.app.previousView !== 'new-transaction');
+
     if (isEditing) {
       // Chế độ Sửa: hiện nút trở về trên header
       if (backBtn) backBtn.style.display = 'inline-flex';
@@ -2470,8 +2479,8 @@ const UITransactions = {
       if (submitLabel) submitLabel.textContent = 'Lưu Sửa';
       if (headerTitle) headerTitle.textContent = 'Chỉnh Sửa Ghi Chép';
     } else {
-      // Chế độ Thêm mới: trang độc lập/cố định - ẩn nút trở về trên header
-      if (backBtn) backBtn.style.display = 'none';
+      // Chế độ Thêm mới: nếu có previousView thì vẫn hiện nút trở về
+      if (backBtn) backBtn.style.display = canBack ? 'inline-flex' : 'none';
       // Ẩn nút Xóa (nút Lưu Lại chiếm toàn bộ hàng)
       if (deleteBtn) {
         deleteBtn.dataset.txId = '';

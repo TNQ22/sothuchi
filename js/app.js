@@ -285,6 +285,14 @@ class App {
         e.preventDefault();
         const view = link.dataset.view;
         if (view) {
+          if (view === 'transactions') {
+            this.txHistorySource = null;
+            this.previousView = null;
+            if (window.UITransactions) {
+              window.UITransactions.filterAccountId = null;
+              window.UITransactions.updateHeaderAccountDisplay();
+            }
+          }
           this.activePrimaryView = view; // Track which primary tab is active
           this.switchView(view);
         }
@@ -297,6 +305,14 @@ class App {
         e.preventDefault();
         const view = link.dataset.view;
         if (view) {
+          if (view === 'transactions') {
+            this.txHistorySource = null;
+            this.previousView = null;
+            if (window.UITransactions) {
+              window.UITransactions.filterAccountId = null;
+              window.UITransactions.updateHeaderAccountDisplay();
+            }
+          }
           this.activePrimaryView = view; // Track which primary tab is active
           this.switchView(view);
         }
@@ -415,10 +431,8 @@ class App {
     // 2. Lưu previousView trước khi chuyển vào các trang con (ghi chép, danh mục, ...)
     const txSubViews = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form'];
     if (txSubViews.includes(viewId) && !txSubViews.includes(this.currentView)) {
-      if (this.openedFromAccountMenu) {
+      if (this.currentView && this.currentView !== viewId) {
         this.previousView = this.currentView;
-      } else {
-        this.previousView = null; // Trang ghi chép mặc định là cố định
       }
     }
 
@@ -447,7 +461,7 @@ class App {
     document.querySelectorAll('.page-view').forEach(page => {
       const isActive = page.id === `view-${viewId}`;
       page.classList.toggle('active', isActive);
-      if (page.classList.contains('tx-page-view')) {
+      if (page.classList.contains('tx-page-view') || page.id === 'view-transactions') {
         page.style.transform = '';
         page.style.opacity = '';
         page.style.transition = '';
@@ -481,6 +495,8 @@ class App {
     const txSearchBtn = document.getElementById('tx-header-search-btn');
     const txSearchBar = document.getElementById('tx-header-search-bar');
     const privacyBtn = document.getElementById('btn-privacy-toggle');
+    const txHistoryBackBtn = document.getElementById('tx-history-back-btn');
+    const brandLogo = document.getElementById('header-brand-logo');
 
     if (viewId === 'transactions') {
       if (titleEl) titleEl.style.display = 'none';
@@ -489,6 +505,11 @@ class App {
       if (txSearchBar) txSearchBar.style.display = 'none';
       // Xóa và vô hiệu hóa nút hiển thị/ẩn số tiền cho mục lịch sử thu chi
       if (privacyBtn) privacyBtn.style.display = 'none';
+
+      const hasBack = !!(this.txHistorySource || (this.previousView && this.previousView !== 'transactions'));
+      if (txHistoryBackBtn) txHistoryBackBtn.style.display = hasBack ? 'inline-flex' : 'none';
+      if (brandLogo) brandLogo.style.display = hasBack ? 'none' : '';
+
       if (window.UITransactions) {
         window.UITransactions.updateHeaderAccountDisplay();
         window.UITransactions.initTimeFilter();
@@ -498,6 +519,8 @@ class App {
         titleEl.style.display = '';
         titleEl.textContent = titles[viewId] || 'Sổ Thu Chi';
       }
+      if (txHistoryBackBtn) txHistoryBackBtn.style.display = 'none';
+      if (brandLogo) brandLogo.style.display = '';
       if (window.UITransactions) {
         if (typeof window.UITransactions.closeHeaderAccountDropdown === 'function') {
           window.UITransactions.closeHeaderAccountDropdown();
@@ -510,6 +533,13 @@ class App {
       if (txSearchBtn) txSearchBtn.style.display = 'none';
       if (txSearchBar) txSearchBar.style.display = 'none';
       if (privacyBtn && !isTxPage) privacyBtn.style.display = '';
+    }
+
+    if (viewId === 'new-transaction') {
+      const backBtn = document.getElementById('tx-header-back-btn');
+      const txId = document.getElementById('tx-id-input')?.value;
+      const canBack = !!(txId || (this.previousView && this.previousView !== 'new-transaction'));
+      if (backBtn) backBtn.style.display = canBack ? 'inline-flex' : 'none';
     }
 
     // Update browser history:
@@ -601,15 +631,29 @@ class App {
       return;
     }
 
-    // new-transaction → CHỈ trở về khi đang sửa giao dịch HOẶC khi mở từ menu 3 chấm của tài khoản
+    // transactions (Lịch sử ghi chép) -> quay lại view đã mở nó (new-transaction hoặc accounts)
+    if (this.currentView === 'transactions') {
+      const target = this.txHistorySource || (this.previousView && this.previousView !== 'transactions' ? this.previousView : 'dashboard');
+      this.txHistorySource = null;
+      this.previousView = null;
+
+      // Khi thoát khỏi lịch sử ghi chép, reset bộ lọc tài khoản về mặc định (Tất cả tài khoản)
+      if (window.UITransactions) {
+        window.UITransactions.filterAccountId = null;
+        window.UITransactions.updateHeaderAccountDisplay();
+      }
+
+      this.switchView(target, true);
+      return;
+    }
+
+    // new-transaction → trở về trang trước đó nếu có previousView hoặc txId
     if (this.currentView === 'new-transaction') {
       const txId = document.getElementById('tx-id-input')?.value;
-      const openedFromMenu = this.openedFromAccountMenu;
-      const target = this.previousView || (txId ? (this.activePrimaryView || 'transactions') : null);
+      const target = this.previousView || (txId ? (this.activePrimaryView || 'dashboard') : null);
 
-      if (openedFromMenu || txId) {
+      if (this.openedFromAccountMenu || txId || (this.previousView && this.previousView !== 'new-transaction')) {
         // DỌN DẸP & RESET TOÀN BỘ FORM VỀ MẶC ĐỊNH
-        // Người dùng đã trượt trở về / bấm quay lại -> HỦY BỎ phiên sửa hoặc chuyển khoản, xóa sạch dữ liệu cũ
         if (window.UITransactions) {
           window.UITransactions.setEditMode(false);
           const idInput = document.getElementById('tx-id-input');
@@ -626,7 +670,6 @@ class App {
           return;
         }
       }
-      // Ở chế độ thêm mới thông thường: trang nhập liệu CỐ ĐỊNH, không thoát về tổng quan!
       return;
     }
   }
@@ -659,9 +702,8 @@ class App {
   }
 
   setupSwipeToBack() {
-    // new-transaction, category-picker, borrow-select: support swipe-to-back.
-    // NOTE: new-transaction ONLY allows swipe when editing an existing transaction.
-    const pages = document.querySelectorAll('#view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form, #view-account-provider, #view-savings-form, #view-accumulation-form, #view-asset-form, #view-loan-form');
+    // view-transactions, new-transaction, category-picker, etc.: support swipe-to-back
+    const pages = document.querySelectorAll('#view-transactions, #view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form, #view-account-provider, #view-savings-form, #view-accumulation-form, #view-asset-form, #view-loan-form');
     if (!pages.length) return;
 
     pages.forEach(page => {
@@ -679,11 +721,21 @@ class App {
         // ONLY allow swipe on the currently ACTIVE page
         if (!page.classList.contains('active')) return;
 
+        // Trang Lịch sử ghi chép (transactions):
+        // CHỈ cho phép vuốt trở về khi được mở từ view khác (new-transaction hoặc accounts)
+        if (page.id === 'view-transactions') {
+          const canBack = !!(this.txHistorySource || (this.previousView && this.previousView !== 'transactions'));
+          if (!canBack) {
+            canSwipe = false;
+            return;
+          }
+        }
+
         // Trang Ghi Chép (new-transaction):
-        // CHỈ cho phép vuốt trở về khi đang SỬA giao dịch HOẶC khi được mở từ menu 3 chấm của tài khoản
+        // Cho phép vuốt trở về khi đang SỬA giao dịch HOẶC khi có previousView khác new-transaction
         if (page.id === 'view-new-transaction') {
           const isEditing = !!document.getElementById('tx-id-input')?.value;
-          const canBack = isEditing || (this.openedFromAccountMenu && !!this.previousView);
+          const canBack = isEditing || (this.openedFromAccountMenu && !!this.previousView) || (!!this.previousView && this.previousView !== 'new-transaction');
           if (!canBack) {
             canSwipe = false;
             return;

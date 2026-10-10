@@ -481,6 +481,10 @@ const UIAccounts = {
 
   /* ==================== XEM LỊCH SỬ THU CHI TÀI KHOẢN ==================== */
   async viewAccountHistory(accId) {
+    if (window.app) {
+      window.app.txHistorySource = 'accounts';
+      window.app.previousView = 'accounts';
+    }
     if (window.UITransactions && typeof window.UITransactions.filterByAccount === 'function') {
       await window.UITransactions.filterByAccount(accId);
     } else {
