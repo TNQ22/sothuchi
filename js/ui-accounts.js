@@ -485,8 +485,13 @@ const UIAccounts = {
       window.app.txHistorySource = 'accounts';
       window.app.previousView = 'accounts';
     }
-    if (window.UITransactions && typeof window.UITransactions.filterByAccount === 'function') {
-      await window.UITransactions.filterByAccount(accId);
+    if (window.UITransactions) {
+      if (typeof window.UITransactions.resetAllFilters === 'function') {
+        window.UITransactions.resetAllFilters(false);
+      }
+      if (typeof window.UITransactions.filterByAccount === 'function') {
+        await window.UITransactions.filterByAccount(accId);
+      }
     } else {
       if (window.app) window.app.switchView('transactions');
     }

@@ -288,9 +288,8 @@ class App {
           if (view === 'transactions') {
             this.txHistorySource = null;
             this.previousView = null;
-            if (window.UITransactions) {
-              window.UITransactions.filterAccountId = null;
-              window.UITransactions.updateHeaderAccountDisplay();
+            if (window.UITransactions && typeof window.UITransactions.resetAllFilters === 'function') {
+              window.UITransactions.resetAllFilters(false);
             }
           }
           this.activePrimaryView = view; // Track which primary tab is active
@@ -308,9 +307,8 @@ class App {
           if (view === 'transactions') {
             this.txHistorySource = null;
             this.previousView = null;
-            if (window.UITransactions) {
-              window.UITransactions.filterAccountId = null;
-              window.UITransactions.updateHeaderAccountDisplay();
+            if (window.UITransactions && typeof window.UITransactions.resetAllFilters === 'function') {
+              window.UITransactions.resetAllFilters(false);
             }
           }
           this.activePrimaryView = view; // Track which primary tab is active
@@ -444,6 +442,13 @@ class App {
 
     const previousViewId = this.currentView;
     this.currentView = viewId;
+
+    // Khi rời khỏi trang lịch sử ghi chép -> reset toàn bộ bộ lọc về mặc định
+    if (previousViewId === 'transactions' && viewId !== 'transactions') {
+      if (window.UITransactions && typeof window.UITransactions.resetAllFilters === 'function') {
+        window.UITransactions.resetAllFilters(false);
+      }
+    }
 
     // Toggle body class for view-specific styles
     document.body.classList.toggle('view-new-transaction', isTxPage);
@@ -643,10 +648,9 @@ class App {
       this.txHistorySource = null;
       this.previousView = null;
 
-      // Khi thoát khỏi lịch sử ghi chép, reset bộ lọc tài khoản về mặc định (Tất cả tài khoản)
-      if (window.UITransactions) {
-        window.UITransactions.filterAccountId = null;
-        window.UITransactions.updateHeaderAccountDisplay();
+      // Khi thoát khỏi lịch sử ghi chép, reset toàn bộ bộ lọc về mặc định (Tất cả, Không tài khoản, Không từ khóa, Tháng này)
+      if (window.UITransactions && typeof window.UITransactions.resetAllFilters === 'function') {
+        window.UITransactions.resetAllFilters(false);
       }
 
       this.switchView(target, true);

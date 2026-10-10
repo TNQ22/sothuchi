@@ -26,6 +26,65 @@ const UITransactions = {
     await this.renderQuickCategories();
   },
 
+  /* ==================== RESET ALL FILTERS ==================== */
+  resetAllFilters(autoRender = false) {
+    // 1. Reset bộ lọc loại giao dịch về "Tất cả"
+    this.currentFilterType = 'all';
+    document.querySelectorAll('.tx-filter-pill').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.type === 'all');
+    });
+
+    // 2. Reset bộ lọc tài khoản về "Tất cả tài khoản"
+    this.filterAccountId = null;
+    if (typeof this.closeHeaderAccountDropdown === 'function') {
+      this.closeHeaderAccountDropdown();
+    }
+    this.updateHeaderAccountDisplay();
+
+    // 3. Reset tìm kiếm
+    const searchBar = document.getElementById('tx-header-search-bar');
+    const searchInput = document.getElementById('tx-search-input');
+    const timeFilterCard = document.getElementById('tx-time-filter-card');
+    const txHeaderCenter = document.getElementById('tx-header-center');
+    const txHeaderSearchBtn = document.getElementById('tx-header-search-btn');
+
+    if (searchBar) searchBar.style.display = 'none';
+    if (timeFilterCard) timeFilterCard.style.display = 'block';
+
+    const isTxView = window.app && window.app.currentView === 'transactions';
+    if (txHeaderCenter) txHeaderCenter.style.display = isTxView ? 'flex' : 'none';
+    if (txHeaderSearchBtn) txHeaderSearchBtn.style.display = isTxView ? 'inline-flex' : 'none';
+
+    if (searchInput) searchInput.value = '';
+    this.searchKeyword = '';
+
+    // 4. Reset bộ lọc thời gian về Tháng hiện tại
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    this.timeFilterMode = 'month';
+    this.filterMonth = `${y}-${m}`;
+    this.filterDate = `${y}-${m}-${d}`;
+    this.filterCustomStart = `${y}-${m}-01`;
+    this.filterCustomEnd = `${y}-${m}-${d}`;
+
+    const navBox = document.getElementById('tx-time-navigator');
+    if (navBox) {
+      navBox.style.display = 'flex';
+    }
+
+    document.querySelectorAll('.tx-time-mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === 'month');
+    });
+
+    this.updateTimeDisplay();
+
+    if (autoRender) {
+      this.render();
+    }
+  },
+
   async filterByAccount(accId) {
     this.filterAccountId = (accId && accId !== 'all') ? Number(accId) : null;
     if (window.app && window.app.currentView !== 'transactions') {
@@ -2437,9 +2496,8 @@ const UITransactions = {
       window.app.txHistorySource = 'new-transaction';
       window.app.previousView = 'new-transaction';
     }
-    // Tách biệt hoàn toàn với tab tài khoản: Luôn hiển thị Tất cả tài khoản
-    this.filterAccountId = null;
-    this.updateHeaderAccountDisplay();
+    // Tách biệt hoàn toàn với tab tài khoản: Luôn hiển thị Tất cả tài khoản & reset toàn bộ filter
+    this.resetAllFilters(false);
     if (window.app) {
       window.app.switchView('transactions');
     }
@@ -3187,14 +3245,22 @@ const UITransactions = {
     txs.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
 
     if (txs.length === 0) {
+      const isFiltered = this.currentFilterType !== 'all' || !!this.filterAccountId || !!this.searchKeyword;
       const emptyMsg = this.searchKeyword 
         ? 'Không tìm thấy giao dịch nào phù hợp với từ khóa' 
-        : 'Chưa có ghi chép nào trong khoảng thời gian này';
+        : (isFiltered ? 'Không có giao dịch nào phù hợp với bộ lọc hiện tại' : 'Chưa có ghi chép nào trong khoảng thời gian này');
+      const resetBtnHtml = isFiltered ? `
+        <button type="button" class="btn-secondary" onclick="UITransactions.resetAllFilters(true)" style="margin: 14px auto 0; display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; font-size: 0.85rem; border-radius: 20px; cursor: pointer;">
+          <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
+          Đặt lại bộ lọc
+        </button>
+      ` : '';
       const emptyHtml = `
         <div style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
           <i data-lucide="receipt" style="width: 48px; height: 48px; stroke-width: 1.5; margin-bottom: 12px; opacity: 0.5;"></i>
           <p style="font-size: 1rem; font-weight: 500;">Chưa có giao dịch nào</p>
           <p style="font-size: 0.85rem; margin-top: 4px;">${escapeHTML(emptyMsg)}</p>
+          ${resetBtnHtml}
         </div>
       `;
       if (fullContainer) fullContainer.innerHTML = emptyHtml;
