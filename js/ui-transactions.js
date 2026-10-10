@@ -299,20 +299,21 @@ const UITransactions = {
     if (this.timeFilterMode === 'month') {
       const [y, m] = this.filterMonth.split('-');
       labelEl.textContent = `Tháng ${parseInt(m, 10)}/${y}`;
-      if (prevBtn) prevBtn.style.opacity = '1';
-      if (nextBtn) nextBtn.style.opacity = '1';
+      if (prevBtn) prevBtn.style.display = 'inline-flex';
+      if (nextBtn) nextBtn.style.display = 'inline-flex';
     } else if (this.timeFilterMode === 'day') {
       labelEl.textContent = this.formatDateLabel(this.filterDate);
-      if (prevBtn) prevBtn.style.opacity = '1';
-      if (nextBtn) nextBtn.style.opacity = '1';
+      if (prevBtn) prevBtn.style.display = 'inline-flex';
+      if (nextBtn) nextBtn.style.display = 'inline-flex';
     } else if (this.timeFilterMode === 'custom') {
       labelEl.textContent = this.formatCustomRangeLabel(this.filterCustomStart, this.filterCustomEnd);
-      if (prevBtn) prevBtn.style.opacity = '1';
-      if (nextBtn) nextBtn.style.opacity = '1';
+      // Ở chế độ ngày tùy chỉnh: Ẩn 2 nút mũi tên < và > để tránh bấm nhầm nhảy mốc ngày lộn xộn
+      if (prevBtn) prevBtn.style.display = 'none';
+      if (nextBtn) nextBtn.style.display = 'none';
     } else {
       labelEl.textContent = 'Toàn bộ thời gian';
-      if (prevBtn) prevBtn.style.opacity = '0.3';
-      if (nextBtn) nextBtn.style.opacity = '0.3';
+      if (prevBtn) prevBtn.style.display = 'none';
+      if (nextBtn) nextBtn.style.display = 'none';
     }
     if (window.lucide) lucide.createIcons();
   },
@@ -344,17 +345,8 @@ const UITransactions = {
       const [y, m, d] = this.filterDate.split('-').map(Number);
       const dt = new Date(y, m - 1, d - 1);
       this.filterDate = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-    } else if (this.timeFilterMode === 'custom') {
-      const [y1, m1, d1] = this.filterCustomStart.split('-').map(Number);
-      const [y2, m2, d2] = this.filterCustomEnd.split('-').map(Number);
-      const s = new Date(y1, m1 - 1, d1);
-      const e = new Date(y2, m2 - 1, d2);
-      const diff = Math.round((e - s) / 86400000) + 1;
-      s.setDate(s.getDate() - diff);
-      e.setDate(e.getDate() - diff);
-      const toStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      this.filterCustomStart = toStr(s);
-      this.filterCustomEnd = toStr(e);
+    } else {
+      return;
     }
     this.updateTimeDisplay();
     this.render();
@@ -369,17 +361,8 @@ const UITransactions = {
       const [y, m, d] = this.filterDate.split('-').map(Number);
       const dt = new Date(y, m - 1, d + 1);
       this.filterDate = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-    } else if (this.timeFilterMode === 'custom') {
-      const [y1, m1, d1] = this.filterCustomStart.split('-').map(Number);
-      const [y2, m2, d2] = this.filterCustomEnd.split('-').map(Number);
-      const s = new Date(y1, m1 - 1, d1);
-      const e = new Date(y2, m2 - 1, d2);
-      const diff = Math.round((e - s) / 86400000) + 1;
-      s.setDate(s.getDate() + diff);
-      e.setDate(e.getDate() + diff);
-      const toStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      this.filterCustomStart = toStr(s);
-      this.filterCustomEnd = toStr(e);
+    } else {
+      return;
     }
     this.updateTimeDisplay();
     this.render();

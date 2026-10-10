@@ -15,7 +15,8 @@ const UICalendar = {
   filterMode: 'month', // 'month' | 'day' | 'custom' | 'all'
   customStartDate: null, // Date object
   customEndDate: null,   // Date object
-  customPickingTarget: 'start', // 'start' | 'end'
+  customPickingTarget: null, // 'start' | 'end' | null
+  customSelectionPhase: 'idle', // 'idle' | 'selecting_end' | 'manual_start' | 'manual_end'
   selectedDate: null, // Date object (year, month, day)
   selectedTime: '12:00', // 'HH:mm'
   viewYear: 2026,
@@ -268,7 +269,7 @@ const UICalendar = {
    */
   parseDateHelper(val) {
     if (!val) return new Date();
-    if (val instanceof Date) return val;
+    if (val instanceof Date) return new Date(val.getFullYear(), val.getMonth(), val.getDate());
     const str = String(val).trim();
     if (str.includes('/')) {
       const parts = str.split('/').map(Number);
@@ -283,6 +284,13 @@ const UICalendar = {
 
   setCustomPickingTarget(target) {
     this.customPickingTarget = target;
+    if (target === 'start') {
+      this.customSelectionPhase = 'manual_start';
+    } else if (target === 'end') {
+      this.customSelectionPhase = 'manual_end';
+    } else {
+      this.customSelectionPhase = 'idle';
+    }
     const startField = document.getElementById('cal-range-start-field');
     const endField = document.getElementById('cal-range-end-field');
     if (startField) startField.classList.toggle('active', target === 'start');
@@ -304,7 +312,10 @@ const UICalendar = {
       const yyyy = this.customEndDate.getFullYear();
       endText.textContent = `${dd}/${mm}/${yyyy}`;
     }
-    this.setCustomPickingTarget(this.customPickingTarget);
+    const startField = document.getElementById('cal-range-start-field');
+    const endField = document.getElementById('cal-range-end-field');
+    if (startField) startField.classList.toggle('active', this.customPickingTarget === 'start');
+    if (endField) endField.classList.toggle('active', this.customPickingTarget === 'end');
     if (window.lucide) lucide.createIcons();
   },
 
@@ -376,7 +387,8 @@ const UICalendar = {
       const now = new Date();
       this.customEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     }
-    this.customPickingTarget = 'start';
+    this.customSelectionPhase = 'idle';
+    this.customPickingTarget = null;
 
     const filterModesEl = document.getElementById('cal-filter-modes');
     const rangeBarEl = document.getElementById('cal-custom-range-bar');
@@ -602,24 +614,59 @@ const UICalendar = {
   },
 
   selectDay(day, month, year) {
-    const clicked = new Date(year, month, day);
+    const clicked = new Date(year, month, day, 0, 0, 0, 0);
 
     if (this.showFilterModes && this.filterMode === 'custom') {
-      if (this.customPickingTarget === 'start') {
-        this.customStartDate = clicked;
-        if (this.customEndDate && this.customStartDate.getTime() > this.customEndDate.getTime()) {
-          this.customEndDate = new Date(clicked);
-        }
-        this.customPickingTarget = 'end';
-      } else {
-        if (clicked.getTime() < this.customStartDate.getTime()) {
-          this.customEndDate = new Date(this.customStartDate);
+      const clickedTime = clicked.getTime();
+
+      // Trường hợp 1: Người dùng chủ động bấm vào ô [Từ ngày] trên thanh range bar
+      if (this.customSelectionPhase === 'manual_start') {
+        const endTime = this.customEndDate ? new Date(this.customEndDate.getFullYear(), this.customEndDate.getMonth(), this.customEndDate.getDate()).getTime() : clickedTime;
+        if (clickedTime <= endTime) {
           this.customStartDate = clicked;
         } else {
-          this.customEndDate = clicked;
+          this.customStartDate = clicked;
+          this.customEndDate = new Date(clicked);
         }
-        this.customPickingTarget = 'start';
+        this.customSelectionPhase = 'idle';
+        this.customPickingTarget = null;
       }
+      // Trường hợp 2: Người dùng chủ động bấm vào ô [Đến ngày] trên thanh range bar
+      else if (this.customSelectionPhase === 'manual_end') {
+        const startTime = this.customStartDate ? new Date(this.customStartDate.getFullYear(), this.customStartDate.getMonth(), this.customStartDate.getDate()).getTime() : clickedTime;
+        if (clickedTime >= startTime) {
+          this.customEndDate = clicked;
+        } else {
+          this.customStartDate = clicked;
+          this.customEndDate = new Date(clicked);
+        }
+        this.customSelectionPhase = 'idle';
+        this.customPickingTarget = null;
+      }
+      // Trường hợp 3: Đang trong chu kỳ 2 chạm - chờ chạm ngày kết thúc
+      else if (this.customSelectionPhase === 'selecting_end') {
+        const startTime = new Date(this.customStartDate.getFullYear(), this.customStartDate.getMonth(), this.customStartDate.getDate()).getTime();
+        if (clickedTime >= startTime) {
+          // Hoàn tất dải chọn: từ Start -> Đến End
+          this.customEndDate = clicked;
+          this.customSelectionPhase = 'idle';
+          this.customPickingTarget = null;
+        } else {
+          // Bấm ngày trước ngày bắt đầu: Tự động đổi ngày này thành Ngày bắt đầu mới!
+          this.customStartDate = clicked;
+          this.customEndDate = new Date(clicked);
+          this.customSelectionPhase = 'selecting_end';
+          this.customPickingTarget = 'end';
+        }
+      }
+      // Trường hợp 4: Bắt đầu chu kỳ chọn dải mới (Chạm lần 1)
+      else {
+        this.customStartDate = clicked;
+        this.customEndDate = new Date(clicked);
+        this.customSelectionPhase = 'selecting_end';
+        this.customPickingTarget = 'end';
+      }
+
       this.updateCustomRangeDisplay();
       this.renderCalendar();
       return;
@@ -828,6 +875,8 @@ const UICalendar = {
       }
       if (btnDone) btnDone.textContent = 'Áp dụng';
       this.closeMonthSelector();
+      this.customSelectionPhase = 'idle';
+      this.customPickingTarget = null;
       this.updateCustomRangeDisplay();
       this.renderCalendar();
     }
@@ -851,6 +900,8 @@ const UICalendar = {
         this.customEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         this.viewYear = now.getFullYear();
         this.viewMonth = now.getMonth();
+        this.customSelectionPhase = 'idle';
+        this.customPickingTarget = null;
         this.updateCustomRangeDisplay();
         this.renderCalendar();
         return;
