@@ -139,6 +139,7 @@ class App {
     this.activePrimaryView = 'dashboard'; // ONLY updated when user taps a primary nav tab
     this.previousView = null; // Trang nhập liệu là mặc định cố định, không vuốt lùi về dashboard
     this.openedFromAccountMenu = false; // Bật true khi mở Chuyển khoản / Điều chỉnh từ menu 3 chấm của Ví
+    this.editSourceView = null; // Lưu view đã mở form sửa giao dịch (ví dụ: 'transactions', 'dashboard')
     this.scrollPositions = {}; // Lưu tọa độ cuộn theo từng view
     this.isPrivacyMode = false;
     this.isBackTransitioning = false;
@@ -431,12 +432,18 @@ class App {
     if (formSubViews.includes(viewId) && !formSubViews.includes(this.currentView)) {
       this.previousView = this.currentView;
     } else if (viewId === 'new-transaction') {
-      // Tab Ghi Chép (new-transaction) là màn hình thêm giao dịch CỐ ĐỊNH, KHÔNG BAO GIỜ tự gán previousView
-      // CHỈ lưu previousView khi được mở từ menu 3 chấm của tài khoản (Chuyển khoản / Điều chỉnh số dư)
+      // Tab Ghi Chép (new-transaction):
+      // - Nếu mở từ menu 3 chấm của tài khoản (openedFromAccountMenu): previousView = currentView
+      // - Nếu đang ở chế độ SỬA giao dịch (txId hoặc editSourceView): previousView = editSourceView || currentView || 'transactions'
+      // - Nếu là thêm mới bình thường: previousView = null (màn hình cố định)
+      const txId = document.getElementById('tx-id-input')?.value;
       if (this.openedFromAccountMenu) {
         this.previousView = this.currentView;
+      } else if (txId || this.editSourceView) {
+        this.previousView = this.editSourceView || (this.currentView !== 'new-transaction' ? this.currentView : 'transactions');
       } else {
         this.previousView = null;
+        this.editSourceView = null;
       }
     }
 
@@ -661,7 +668,10 @@ class App {
     if (this.currentView === 'new-transaction') {
       const txId = document.getElementById('tx-id-input')?.value;
       const openedFromMenu = this.openedFromAccountMenu;
-      const target = this.previousView || (txId ? (this.activePrimaryView || 'transactions') : null);
+      // Nếu đang sửa giao dịch, đích quay về là view nguồn (editSourceView / previousView hoặc mặc định 'transactions')
+      const target = this.openedFromAccountMenu 
+        ? (this.previousView || 'accounts') 
+        : (txId ? (this.editSourceView || this.previousView || 'transactions') : null);
 
       if (openedFromMenu || txId) {
         // DỌN DẸP & RESET TOÀN BỘ FORM VỀ MẶC ĐỊNH
@@ -675,6 +685,7 @@ class App {
 
         this.openedFromAccountMenu = false;
         this.previousView = null;
+        this.editSourceView = null;
 
         if (target && target !== 'new-transaction') {
           this.switchView(target, true);

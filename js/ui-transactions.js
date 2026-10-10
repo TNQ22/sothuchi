@@ -3451,7 +3451,8 @@ const UITransactions = {
     this.setEditMode(true, tx.id);
 
     if (window.app) {
-      window.app.previousView = window.app.currentView;
+      window.app.editSourceView = window.app.currentView || 'transactions';
+      window.app.previousView = window.app.currentView || 'transactions';
       window.app.switchView('new-transaction');
     }
     if (window.lucide) lucide.createIcons();
