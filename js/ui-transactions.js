@@ -1210,7 +1210,25 @@ const UITransactions = {
     }
     if (nameBox) nameBox.textContent = cat.name;
     const catSubtext = 'Chọn danh mục';
-    if (subBox) subBox.textContent = catSubtext;
+    if (subBox) {
+      if (cat.type === 'expense' && window.UIBudgets && typeof window.UIBudgets.getCategoryBudgetInfo === 'function') {
+        window.UIBudgets.getCategoryBudgetInfo(cat.id).then(info => {
+          if (info && info.text) {
+            subBox.textContent = info.text;
+            subBox.style.color = info.isOver ? 'var(--expense)' : 'var(--income)';
+          } else {
+            subBox.textContent = 'Chọn danh mục';
+            subBox.style.color = 'var(--text-muted)';
+          }
+        }).catch(() => {
+          subBox.textContent = 'Chọn danh mục';
+          subBox.style.color = 'var(--text-muted)';
+        });
+      } else {
+        subBox.textContent = catSubtext;
+        subBox.style.color = 'var(--text-muted)';
+      }
+    }
     try {
       localStorage.setItem('stc_default_cat_cache', JSON.stringify({
         name: cat.name,

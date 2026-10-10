@@ -573,6 +573,9 @@ class App {
       this.refreshNetWorth();
       window.UITransactions.render();
       window.UIAnalytics.render();
+      if (window.UIBudgets) window.UIBudgets.render();
+    } else if (viewId === 'new-transaction') {
+      if (window.UIBudgets) window.UIBudgets.render();
     } else if (viewId === 'transactions') {
       window.UITransactions.render();
     } else if (viewId === 'debts') {

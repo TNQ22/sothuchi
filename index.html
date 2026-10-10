@@ -190,6 +190,8 @@
         </div>
 
         <!-- Charts Grid -->
+        <!-- Non-intrusive Dashboard Budget Alert -->
+        <div id="dashboard-budget-alert" class="budget-alert-banner" style="display: none; margin-bottom: 16px;"></div>
         <div class="dashboard-grid">
           <div class="card-panel">
             <div class="panel-header">
@@ -503,20 +505,53 @@
         </div>
       </section>
 
-      <!-- View: Budgets (Ngân sách chi tiêu) -->
+      <!-- View: Budgets (Quản lý Ngân sách đa chế độ) -->
       <section id="view-budgets" class="page-view">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <label class="form-label" style="margin: 0;">Tháng:</label>
-            <input type="text" id="budget-month-select" class="form-control" style="width: 140px; cursor: pointer; text-align: center; font-weight: 600;" readonly onclick="UIBudgets.openFilterMonthPicker()">
+        <!-- Top Toolbar: Month Navigator & Quick Actions -->
+        <div class="budget-toolbar">
+          <div class="budget-month-nav">
+            <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(-1)" title="Tháng trước">
+              <i data-lucide="chevron-left" style="width: 18px; height: 18px;"></i>
+            </button>
+            <button type="button" class="budget-month-btn" onclick="UIBudgets.openFilterMonthPicker()" title="Chọn tháng">
+              <i data-lucide="calendar" style="width: 15px; height: 15px; color: var(--primary);"></i>
+              <span id="budget-month-display-label">Tháng --/----</span>
+              <i data-lucide="chevron-down" style="width: 13px; height: 13px; opacity: 0.7;"></i>
+            </button>
+            <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(1)" title="Tháng sau">
+              <i data-lucide="chevron-right" style="width: 18px; height: 18px;"></i>
+            </button>
           </div>
-          <button class="btn-primary" onclick="UIBudgets.openAddModal()">
-            <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
-            Thiết Lập Ngân Sách
+
+          <div class="budget-top-actions">
+            <button type="button" class="btn-secondary budget-action-pill" onclick="UIBudgets.openCopyModal()" title="Sao chép ngân sách từ tháng trước">
+              <i data-lucide="copy" style="width: 15px; height: 15px; color: var(--primary);"></i>
+              <span>Sao Chép</span>
+            </button>
+            <button type="button" class="btn-primary budget-action-pill" id="budget-main-add-btn" onclick="UIBudgets.handlePrimaryAddAction()">
+              <i data-lucide="plus" style="width: 15px; height: 15px;"></i>
+              <span id="budget-main-add-label">Thiết Lập</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mode Switcher Tabs (2 cách tạo ngân sách) -->
+        <div class="budget-mode-switcher">
+          <button type="button" class="budget-mode-btn active" id="btn-budget-mode-simple" onclick="UIBudgets.switchMode('simple')">
+            <i data-lucide="target" style="width: 16px; height: 16px;"></i>
+            <span>1. Ngân Sách Tổng & Khóa Mục</span>
+          </button>
+          <button type="button" class="budget-mode-btn" id="btn-budget-mode-detailed" onclick="UIBudgets.switchMode('detailed')">
+            <i data-lucide="layers" style="width: 16px; height: 16px;"></i>
+            <span>2. Chi Tiết Actual Budget</span>
           </button>
         </div>
 
-        <div id="budgets-list-container"></div>
+        <!-- Mode 1 Container: Ngân sách Tổng & Khóa mục chi -->
+        <div id="budget-simple-container" class="budget-mode-pane active"></div>
+
+        <!-- Mode 2 Container: Chi tiết Actual Budget -->
+        <div id="budget-detailed-container" class="budget-mode-pane" style="display: none;"></div>
       </section>
 
       <!-- View: Analytics (Báo cáo & Phân tích) -->
@@ -709,6 +744,8 @@
             <input type="hidden" id="tx-time-input" required>
 
             <div class="tx-page-body">
+              <!-- Non-intrusive Dismissible Budget Warning Banner -->
+              <div id="tx-budget-alert-banner" class="budget-alert-banner" style="display: none;"></div>
               <!-- Ô 1: SỐ TIỀN Ở GIỮA -->
               <div class="tx-section-card tx-amount-card" onclick="UITransactions.openKeypad('amount')">
                 <div class="tx-amount-centered-display">
@@ -2527,40 +2564,218 @@
 
 
 
-  <!-- Modal: Budget Form -->
-  <div id="modal-budget" class="modal-overlay">
+  <!-- ==================== BUDGET MODALS ==================== -->
+  <!-- Modal 1: Đặt Ngân Sách Tổng Cho Tháng -->
+  <div id="modal-budget-overall" class="modal-overlay">
     <div class="modal-dialog">
       <div class="modal-header">
-        <h3 class="modal-title">Thiết Lập Ngân Sách</h3>
-        <button class="btn-icon" onclick="UIBudgets.closeModal()"><i data-lucide="x"></i></button>
+        <h3 class="modal-title"><i data-lucide="target" style="color: var(--primary);"></i> Ngân Sách Tổng Của Tháng</h3>
+        <button type="button" class="btn-icon" onclick="UIBudgets.closeOverallModal()"><i data-lucide="x"></i></button>
       </div>
-      <form id="budget-form">
+      <form id="budget-overall-form">
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Tháng Áp Dụng</label>
-            <input type="text" id="budget-month-input" class="form-control" placeholder="Chọn tháng" readonly onclick="UIBudgets.openAddMonthPicker()" required style="cursor: pointer;">
+            <input type="text" id="budget-overall-month" class="form-control" readonly style="background: rgba(255,255,255,0.03); font-weight: 600; text-align: center;">
           </div>
 
           <div class="form-group">
-            <label class="form-label">Danh Mục Chi Tiêu</label>
-            <select id="budget-category-select" class="form-control"></select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Hạn Mức Tối Đa (VNĐ)</label>
-            <input type="number" id="budget-amount-input" class="form-control" placeholder="Ví dụ: 3000000" min="1" step="any" required>
+            <label class="form-label">Hạn Mức Ngân Sách Tổng (VNĐ)</label>
+            <input type="text" id="budget-overall-amount" class="form-control" placeholder="Ví dụ: 20.000.000" inputmode="numeric" required style="font-size: 1.15rem; font-weight: 700;">
+            <div class="budget-presets-row">
+              <span class="budget-preset-chip" onclick="UIBudgets.setOverallPreset(5000000)">5 Triệu</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.setOverallPreset(10000000)">10 Triệu</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.setOverallPreset(15000000)">15 Triệu</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.setOverallPreset(20000000)">20 Triệu</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.setOverallPreset(30000000)">30 Triệu</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.setOverallPreset(50000000)">50 Triệu</span>
+            </div>
+            <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 8px;">
+              💡 Toàn bộ chi tiêu trong tháng sẽ được đối soát theo trần này. Bạn có thể khóa trần riêng cho các mục quan trọng sau đó.
+            </div>
           </div>
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn-secondary" onclick="UIBudgets.closeModal()">Hủy</button>
+          <button type="button" class="btn-danger-subtle" id="budget-overall-delete-btn" style="display: none;" onclick="UIBudgets.deleteOverallBudget()">Xóa Ngân Sách</button>
+          <button type="button" class="btn-secondary" onclick="UIBudgets.closeOverallModal()">Hủy</button>
           <button type="submit" class="btn-primary">Lưu Ngân Sách</button>
         </div>
       </form>
     </div>
   </div>
 
-  
+  <!-- Modal 2: Khóa Mục Chi Theo Ngân Sách Tổng -->
+  <div id="modal-budget-lock" class="modal-overlay">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title"><i data-lucide="lock" style="color: #f59e0b;"></i> Khóa Mục Chi Theo Ngân Sách</h3>
+        <button type="button" class="btn-icon" onclick="UIBudgets.closeLockModal()"><i data-lucide="x"></i></button>
+      </div>
+      <form id="budget-lock-form">
+        <input type="hidden" id="budget-lock-cat-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Danh Mục Chi Tiêu</label>
+            <select id="budget-lock-category-select" class="form-control" required></select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Hạn Mức Khóa Riêng (VNĐ)</label>
+            <input type="text" id="budget-lock-amount" class="form-control" placeholder="Ví dụ: 5.000.000" inputmode="numeric" required style="font-size: 1.15rem; font-weight: 700;">
+            <div class="budget-presets-row">
+              <span class="budget-preset-chip" onclick="UIBudgets.setLockPreset(1000000)">1 Triệu</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.setLockPreset(2000000)">2 Triệu</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.setLockPreset(3000000)">3 Triệu</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.setLockPreset(5000000)">5 Triệu</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.setLockPreset(10000000)">10 Triệu</span>
+            </div>
+            <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 8px;">
+              🔒 Hạn mức của mục này sẽ được giữ riêng biệt. Phần còn lại của ngân sách tổng sẽ tự động tính vào Hạn mức chi tiêu linh hoạt.
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-danger-subtle" id="budget-lock-delete-btn" style="display: none;" onclick="UIBudgets.unlockCurrentCategory()">Bỏ Khóa Mục</button>
+          <button type="button" class="btn-secondary" onclick="UIBudgets.closeLockModal()">Hủy</button>
+          <button type="submit" class="btn-primary">Lưu Khóa Mục</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Đặt Hạn Mức Chi Tiết Cho Danh Mục (Actual Budget) -->
+  <div id="modal-budget-category" class="modal-overlay">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title"><i data-lucide="layers" style="color: var(--primary);"></i> Hạn Mức Danh Mục Chi</h3>
+        <button type="button" class="btn-icon" onclick="UIBudgets.closeCategoryModal()"><i data-lucide="x"></i></button>
+      </div>
+      <form id="budget-category-form">
+        <input type="hidden" id="budget-cat-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Danh Mục</label>
+            <select id="budget-cat-select" class="form-control" required></select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Ngân Sách Phân Bổ (VNĐ)</label>
+            <input type="text" id="budget-cat-amount" class="form-control" placeholder="Ví dụ: 3.000.000" inputmode="numeric" required style="font-size: 1.15rem; font-weight: 700;">
+            <div class="budget-presets-row">
+              <span class="budget-preset-chip" onclick="UIBudgets.setCatPreset(500000)">500k</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.setCatPreset(1000000)">1 Triệu</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.setCatPreset(2000000)">2 Triệu</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.setCatPreset(3000000)">3 Triệu</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.setCatPreset(5000000)">5 Triệu</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-danger-subtle" id="budget-cat-delete-btn" style="display: none;" onclick="UIBudgets.deleteCurrentCategoryBudget()">Xóa Hạn Mức</button>
+          <button type="button" class="btn-secondary" onclick="UIBudgets.closeCategoryModal()">Hủy</button>
+          <button type="submit" class="btn-primary">Lưu Phân Bổ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Sao Chép Ngân Sách Từ Tháng Trước -->
+  <div id="modal-budget-copy" class="modal-overlay">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title"><i data-lucide="copy" style="color: var(--primary);"></i> Sao Chép Ngân Sách</h3>
+        <button type="button" class="btn-icon" onclick="UIBudgets.closeCopyModal()"><i data-lucide="x"></i></button>
+      </div>
+      <form id="budget-copy-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Sao Chép Từ Tháng</label>
+            <select id="budget-copy-source-select" class="form-control" style="font-weight: 600;"></select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Tháng Nhận Ngân Sách</label>
+            <input type="text" id="budget-copy-target-display" class="form-control" readonly style="font-weight: 700; background: rgba(255,255,255,0.03); text-align: center;">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Phương Thức Sao Chép</label>
+            
+            <label class="budget-copy-option active" id="opt-copy-exact">
+              <input type="radio" name="budget-copy-mode" value="exact" checked onclick="UIBudgets.selectCopyOption('exact')">
+              <div>
+                <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary);">Sao chép nguyên bản hạn mức</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Giữ nguyên chính xác ngân sách tổng và hạn mức các danh mục của tháng trước.</div>
+              </div>
+            </label>
+
+            <label class="budget-copy-option" id="opt-copy-empty">
+              <input type="radio" name="budget-copy-mode" value="fill_empty" onclick="UIBudgets.selectCopyOption('fill_empty')">
+              <div>
+                <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary);">Chỉ điền các mục còn trống</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Không ghi đè những mục bạn đã tự chỉnh sửa trong tháng này.</div>
+              </div>
+            </label>
+
+            <label class="budget-copy-option" id="opt-copy-spent">
+              <input type="radio" name="budget-copy-mode" value="actual_spent" onclick="UIBudgets.selectCopyOption('actual_spent')">
+              <div>
+                <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary);">Theo thực tế chi tiêu tháng trước</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Tự động lấy số tiền thực tế đã chi của tháng trước làm hạn mức cho tháng này.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="UIBudgets.closeCopyModal()">Hủy</button>
+          <button type="submit" class="btn-primary">Bắt Đầu Sao Chép</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5: Quick Inline Keypad for Actual Budget Matrix -->
+  <div id="modal-budget-quick-edit" class="modal-overlay">
+    <div class="modal-dialog" style="max-width: 380px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="budget-quick-edit-title">Sửa Ngân Sách</h3>
+        <button type="button" class="btn-icon" onclick="UIBudgets.closeQuickEditModal()"><i data-lucide="x"></i></button>
+      </div>
+      <form id="budget-quick-edit-form">
+        <input type="hidden" id="budget-quick-cat-id">
+        <div class="modal-body">
+          <div style="text-align: center; margin-bottom: 14px;">
+            <div id="budget-quick-cat-bubble" style="width: 48px; height: 48px; border-radius: 12px; margin: 0 auto 8px auto; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;"></div>
+            <div id="budget-quick-cat-name" style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary);"></div>
+            <div id="budget-quick-cat-spent" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" style="text-align: center;">Ngân Sách Mới (VNĐ)</label>
+            <input type="text" id="budget-quick-amount-input" class="form-control" inputmode="numeric" required style="font-size: 1.4rem; font-weight: 800; text-align: center; color: var(--primary);">
+            
+            <div class="budget-presets-row" style="justify-content: center; margin-top: 10px;">
+              <span class="budget-preset-chip" onclick="UIBudgets.adjustQuickAmount(100000)">+100k</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.adjustQuickAmount(500000)">+500k</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.adjustQuickAmount(1000000)">+1Tr</span>
+              <span class="budget-preset-chip" onclick="UIBudgets.setQuickToSpent()">= Đã chi</span>
+              <span class="budget-preset-chip" style="color: var(--expense);" onclick="UIBudgets.setQuickZero()">Xóa (0đ)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="justify-content: center; gap: 10px;">
+          <button type="button" class="btn-secondary" style="flex: 1;" onclick="UIBudgets.closeQuickEditModal()">Hủy</button>
+          <button type="submit" class="btn-primary" style="flex: 1;">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Bottom Sheet: Tạo mới tài khoản (4 lựa chọn) -->
   <div id="modal-account-create-type" class="modal-overlay">
     <div class="modal-dialog action-sheet-dialog">
