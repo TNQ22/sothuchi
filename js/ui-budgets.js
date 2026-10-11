@@ -1102,7 +1102,14 @@ const UIBudgets = {
       trigger.style.cursor = disabled ? 'not-allowed' : 'pointer';
     }
 
-    const categories = await db.categories.where('type').equals('expense').and(c => c.isDeleted === 0).toArray();
+    const existingBudgets = await db.budgets
+      .where('month').equals(this.currentMonth)
+      .filter(b => b.categoryId !== 'TOTAL' && b.categoryId !== 0 && !b.isOverall && (b.limitAmount || 0) > 0)
+      .toArray();
+    const existingCatIds = new Set(existingBudgets.map(b => Number(b.categoryId)));
+
+    const categories = (await db.categories.where('type').equals('expense').and(c => c.isDeleted === 0).toArray())
+      .filter(c => (selectedCatId && Number(c.id) === Number(selectedCatId)) || !existingCatIds.has(Number(c.id)));
 
     let targetCat = null;
     if (selectedCatId) {
@@ -1175,6 +1182,22 @@ const UIBudgets = {
     const deleteBtn = document.getElementById('budget-cat-form-delete-btn');
     const titleEl = document.getElementById('budget-cat-page-title');
 
+    // Nếu thêm mới, kiểm tra xem tất cả danh mục chi tiêu đã có hạn mức chưa
+    if (!catId) {
+      const existingBudgets = await db.budgets
+        .where('month').equals(this.currentMonth)
+        .filter(b => b.categoryId !== 'TOTAL' && b.categoryId !== 0 && !b.isOverall && (b.limitAmount || 0) > 0)
+        .toArray();
+      const existingCatIds = new Set(existingBudgets.map(b => Number(b.categoryId)));
+      const allExpenseCategories = await db.categories.where('type').equals('expense').and(c => c.isDeleted === 0).toArray();
+      const availableCategories = allExpenseCategories.filter(c => !existingCatIds.has(Number(c.id)));
+
+      if (allExpenseCategories.length > 0 && availableCategories.length === 0) {
+        showToast('Tất cả danh mục chi tiêu đã được thiết lập hạn mức trong tháng này', 'info');
+        return;
+      }
+    }
+
     await this.initCatPageDropdown(catId);
 
     if (catId) {
@@ -1227,7 +1250,31 @@ const UIBudgets = {
     if (!listEl) return;
 
     const currentSelectedId = document.getElementById('budget-cat-page-id')?.value;
-    const categories = await db.categories.where('type').equals('expense').and(c => c.isDeleted === 0).toArray();
+    const allExpenseCategories = await db.categories.where('type').equals('expense').and(c => c.isDeleted === 0).toArray();
+
+    // Lấy các danh mục đã có hạn mức trong tháng này
+    const existingBudgets = await db.budgets
+      .where('month').equals(this.currentMonth)
+      .filter(b => b.categoryId !== 'TOTAL' && b.categoryId !== 0 && !b.isOverall && (b.limitAmount || 0) > 0)
+      .toArray();
+    const existingCatIds = new Set(existingBudgets.map(b => Number(b.categoryId)));
+
+    // Loại bỏ các danh mục đã có hạn mức (chỉ giữ lại danh mục đang sửa nếu có)
+    const categories = allExpenseCategories.filter(cat => 
+      (currentSelectedId && Number(cat.id) === Number(currentSelectedId)) || !existingCatIds.has(Number(cat.id))
+    );
+
+    if (categories.length === 0) {
+      listEl.innerHTML = `
+        <div style="text-align: center; padding: 36px 16px; color: var(--text-muted); font-size: 0.9rem;">
+          <i data-lucide="check-circle" style="width: 38px; height: 38px; margin-bottom: 8px; color: var(--primary);"></i>
+          <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Đã thiết lập đầy đủ</div>
+          <div>Tất cả danh mục chi tiêu đều đã có hạn mức trong tháng này.</div>
+        </div>
+      `;
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
 
     let itemsHtml = '';
     categories.forEach(cat => {
@@ -1255,11 +1302,23 @@ const UIBudgets = {
     const triggerLabel = document.getElementById('budget-cat-page-label');
     const hiddenId = document.getElementById('budget-cat-page-id');
 
-    const categories = await db.categories.where('type').equals('expense').and(c => c.isDeleted === 0).toArray();
+    const allExpenseCategories = await db.categories.where('type').equals('expense').and(c => c.isDeleted === 0).toArray();
+
+    // Lấy các danh mục đã có hạn mức trong tháng này
+    const existingBudgets = await db.budgets
+      .where('month').equals(this.currentMonth)
+      .filter(b => b.categoryId !== 'TOTAL' && b.categoryId !== 0 && !b.isOverall && (b.limitAmount || 0) > 0)
+      .toArray();
+    const existingCatIds = new Set(existingBudgets.map(b => Number(b.categoryId)));
+
+    // Loại bỏ các mục đã có hạn mức, giữ lại danh mục đang sửa nếu có
+    const categories = allExpenseCategories.filter(cat => 
+      (selectedId && Number(cat.id) === Number(selectedId)) || !existingCatIds.has(Number(cat.id))
+    );
 
     let foundCat = null;
     if (selectedId) {
-      foundCat = categories.find(c => Number(c.id) === Number(selectedId));
+      foundCat = allExpenseCategories.find(c => Number(c.id) === Number(selectedId));
     } else if (categories.length > 0) {
       foundCat = categories[0];
     }
