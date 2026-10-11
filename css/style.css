@@ -7109,6 +7109,23 @@ html, body {
   color: var(--primary) !important;
 }
 
+
+/* Dynamic typography scaling for long numbers in tables and cards */
+.font-len-md {
+  font-size: 0.67rem !important;
+  letter-spacing: -0.025em !important;
+}
+
+.font-len-sm {
+  font-size: 0.59rem !important;
+  letter-spacing: -0.035em !important;
+}
+
+.font-len-xs {
+  font-size: 0.51rem !important;
+  letter-spacing: -0.045em !important;
+}
+
 .actual-spent-cell {
   font-weight: 600;
   font-size: 0.73rem;

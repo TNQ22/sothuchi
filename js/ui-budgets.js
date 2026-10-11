@@ -586,15 +586,15 @@ const UIBudgets = {
         <div class="actual-to-budget-meta">
           <div class="actual-to-budget-meta-item">
             <span class="actual-to-budget-meta-label">Thu Nhập Tháng</span>
-            <span class="actual-to-budget-meta-val" style="color: var(--income);">+${this.formatMoney(totalIncome)}</span>
+            <span class="actual-to-budget-meta-val ${this.getAmountFontClass('+' + this.formatMoney(totalIncome))}" style="color: var(--income);">+${this.formatMoney(totalIncome)}</span>
           </div>
           <div class="actual-to-budget-meta-item">
             <span class="actual-to-budget-meta-label">Đã Phân Bổ</span>
-            <span class="actual-to-budget-meta-val" style="color: var(--primary);">-${this.formatMoney(totalBudgeted)}</span>
+            <span class="actual-to-budget-meta-val ${this.getAmountFontClass('-' + this.formatMoney(totalBudgeted))}" style="color: var(--primary);">-${this.formatMoney(totalBudgeted)}</span>
           </div>
           <div class="actual-to-budget-meta-item">
             <span class="actual-to-budget-meta-label">Đã Chi Tiêu</span>
-            <span class="actual-to-budget-meta-val" style="color: var(--expense);">${totalSpent > 0 ? `-${this.formatMoney(totalSpent)}` : '0đ'}</span>
+            <span class="actual-to-budget-meta-val ${this.getAmountFontClass(totalSpent > 0 ? '-' + this.formatMoney(totalSpent) : '0đ')}" style="color: var(--expense);">${totalSpent > 0 ? `-${this.formatMoney(totalSpent)}` : '0đ'}</span>
           </div>
         </div>
       </div>
@@ -621,6 +621,14 @@ const UIBudgets = {
         availText = `-${this.formatMoney(Math.abs(available))}`;
       }
 
+      const budgetedText = budgeted > 0 ? this.formatMoney(budgeted) : '0đ';
+      const budgetedFontClass = this.getAmountFontClass(budgetedText);
+
+      const spentText = spent > 0 ? `-${this.formatMoney(spent)}` : '0đ';
+      const spentFontClass = this.getAmountFontClass(spentText);
+
+      const availFontClass = this.getAmountFontClass(availText);
+
       tableRows += `
         <tr class="actual-budget-row" data-cat-name="${escapeHTML(cat.name)}">
           <td>
@@ -633,17 +641,17 @@ const UIBudgets = {
           </td>
 
           <td style="text-align: right; cursor: pointer;" onclick="UIBudgets.openQuickEditModal(${cat.id})" title="Nhấp để sửa phân bổ">
-            <div class="actual-budget-cell ${budgeted > 0 ? 'has-budget' : 'is-zero'}" role="button" tabindex="0">
-              <span>${budgeted > 0 ? this.formatMoney(budgeted) : '0đ'}</span>
+            <div class="actual-budget-cell ${budgeted > 0 ? 'has-budget' : 'is-zero'} ${budgetedFontClass}" role="button" tabindex="0">
+              <span>${budgetedText}</span>
             </div>
           </td>
 
           <td style="text-align: right;">
-            <span class="actual-spent-cell">${spent > 0 ? `-${this.formatMoney(spent)}` : '0đ'}</span>
+            <span class="actual-spent-cell ${spentFontClass}">${spentText}</span>
           </td>
 
           <td style="text-align: right;">
-            <span class="actual-avail-badge ${badgeClass}">${availText}</span>
+            <span class="actual-avail-badge ${badgeClass} ${availFontClass}">${availText}</span>
           </td>
         </tr>
       `;
@@ -676,10 +684,10 @@ const UIBudgets = {
           <tfoot>
             <tr>
               <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Tổng (${expenseCategories.length})</td>
-              <td style="text-align: right; color: var(--primary); font-weight: 700;">${this.formatMoney(totalBudgeted)}</td>
-              <td style="text-align: right; color: var(--text-secondary); font-weight: 700;">${totalSpent > 0 ? `-${this.formatMoney(totalSpent)}` : '0đ'}</td>
+              <td class="${this.getAmountFontClass(this.formatMoney(totalBudgeted))}" style="text-align: right; color: var(--primary); font-weight: 700;">${this.formatMoney(totalBudgeted)}</td>
+              <td class="${this.getAmountFontClass(totalSpent > 0 ? '-' + this.formatMoney(totalSpent) : '0đ')}" style="text-align: right; color: var(--text-secondary); font-weight: 700;">${totalSpent > 0 ? `-${this.formatMoney(totalSpent)}` : '0đ'}</td>
               <td style="text-align: right;">
-                <span class="actual-avail-badge ${totalAvailClass}">${totalAvailText}</span>
+                <span class="actual-avail-badge ${totalAvailClass} ${this.getAmountFontClass(totalAvailText)}">${totalAvailText}</span>
               </td>
             </tr>
           </tfoot>
@@ -1912,6 +1920,15 @@ const UIBudgets = {
   },
 
   /* ==================== FORMATTER UTILITY ==================== */
+  getAmountFontClass(amountStr) {
+    const raw = (amountStr || '').toString().replace(/<[^>]*>/g, '').trim();
+    const len = raw.length;
+    if (len >= 13) return 'font-len-xs';
+    if (len >= 10) return 'font-len-sm';
+    if (len >= 8) return 'font-len-md';
+    return '';
+  },
+
   formatMoney(num) {
     return new Intl.NumberFormat('vi-VN').format(Math.round(num || 0)) + '₫';
   }
