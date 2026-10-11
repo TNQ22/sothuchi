@@ -430,7 +430,8 @@ class App {
 
     // 1. Lưu vị trí cuộn của view hiện tại trước khi chuyển view
     if (this.currentView) {
-      this.scrollPositions[this.currentView] = window.scrollY || document.documentElement.scrollTop || 0;
+      const curViewEl = document.getElementById(`view-${this.currentView}`);
+      this.scrollPositions[this.currentView] = (curViewEl && curViewEl.scrollTop !== undefined) ? curViewEl.scrollTop : (window.scrollY || document.documentElement.scrollTop || 0);
       // Tự động lưu nháp giao dịch nếu đang rời khỏi trang ghi chép (chỉ khi chuyển tab bình thường, KHÔNG lưu khi trượt trở về / hủy)
       if (!isBack && this.currentView === 'new-transaction' && window.UITransactions) {
         window.UITransactions.saveDraft();
@@ -628,16 +629,18 @@ class App {
     // Khôi phục vị trí cuộn khi trở về (isBack = true)
     if (isBack && this.scrollPositions[viewId] !== undefined) {
       const savedY = this.scrollPositions[viewId] || 0;
-      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-      const targetY = Math.min(savedY, maxScroll);
-      window.scrollTo(0, targetY);
-      requestAnimationFrame(() => {
-        const curMax = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-        window.scrollTo(0, Math.min(savedY, curMax));
-      });
+      if (activeView) {
+        activeView.scrollTop = savedY;
+        requestAnimationFrame(() => {
+          activeView.scrollTop = savedY;
+        });
+      }
+      window.scrollTo(0, 0);
     } else if (!isTxPage) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (activeView) activeView.scrollTop = 0;
+      window.scrollTo(0, 0);
     } else {
+      if (activeView) activeView.scrollTop = 0;
       window.scrollTo(0, 0);
     }
   }
