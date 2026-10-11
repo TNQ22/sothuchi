@@ -37,6 +37,18 @@ const UIBudgets = {
     }
 
     this.bindEvents();
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#budget-lock-cat-dropdown')) {
+        const m = document.getElementById('budget-lock-cat-menu');
+        if (m) m.style.display = 'none';
+      }
+      if (!e.target.closest('#budget-cat-dropdown')) {
+        const m = document.getElementById('budget-cat-menu');
+        if (m) m.style.display = 'none';
+      }
+    });
+
     await this.render();
   },
 
@@ -375,10 +387,6 @@ const UIBudgets = {
               <div class="budget-progress-fill" style="width: ${Math.min(100, percent)}%; background: ${barColor};"></div>
             </div>
 
-            <div class="budget-hero-click-hint">
-              <i data-lucide="edit-3" style="width: 11px; height: 11px;"></i>
-              <span>Nhấp để sửa hạn mức</span>
-            </div>
           </div>
         </div>
       `;
@@ -391,10 +399,6 @@ const UIBudgets = {
             </div>
             <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">Chưa Thiết Lập Ngân Sách Tháng</div>
             <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px;">Nhấp vào đây để đặt hạn mức chi tiêu cho ${this.formatMonthDisplay(this.currentMonth)}</div>
-            <div class="budget-hero-click-hint">
-              <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
-              <span>Thiết lập ngay</span>
-            </div>
           </div>
         </div>
       `;
@@ -405,13 +409,13 @@ const UIBudgets = {
     if (lockedBudgets.length === 0) {
       lockedHtml = `
         <div class="budget-locked-empty">
-          <i data-lucide="lock" style="width: 24px; height: 24px; opacity: 0.5;"></i>
-          <div>Chưa có danh mục nào được khóa trần riêng.</div>
+          <i data-lucide="layers" style="width: 24px; height: 24px; opacity: 0.5;"></i>
+          <div>Chưa có danh mục nào được đặt hạn mức riêng.</div>
           <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
-            Khóa riêng các khoản thiết yếu (Ăn uống, Tiền nhà...) để kiểm soát trần con dưới ngân sách tổng.
+            Đặt hạn mức riêng các khoản thiết yếu (Ăn uống, Tiền nhà...) để theo dõi chi tiêu chi tiết.
           </div>
           <button type="button" class="btn-secondary" style="margin-top: 10px; font-size: 0.8rem;" onclick="UIBudgets.openLockCategoryModal()">
-            <i data-lucide="plus" style="width: 13px; height: 13px;"></i> Khóa Mục Đầu Tiên
+            <i data-lucide="plus" style="width: 13px; height: 13px;"></i> Thêm Mục Đầu Tiên
           </button>
         </div>
       `;
@@ -435,7 +439,7 @@ const UIBudgets = {
         }
 
         rows += `
-          <div class="budget-locked-item" onclick="UIBudgets.openLockCategoryModal(${b.categoryId})" title="Nhấp vào để sửa hạn mức danh mục">
+          <div class="budget-locked-item" onclick="UIBudgets.openLockCategoryModal(${b.categoryId})" title="Nhấp vào để chỉnh sửa hoặc xóa hạn mức">
             <div class="budget-locked-item-header">
               <div class="budget-locked-item-cat">
                 <div class="category-icon-bubble" style="background: ${catColor}22; color: ${catColor}; width: 28px; height: 28px; font-size: 0.8rem;">
@@ -443,31 +447,17 @@ const UIBudgets = {
                 </div>
                 <span class="budget-locked-item-name">${escapeHTML(catName)}</span>
               </div>
-              <div class="budget-locked-item-actions">
-                <button type="button" class="btn-icon" onclick="event.stopPropagation(); UIBudgets.unlockCategory(${b.categoryId})" title="Bỏ khóa mục này">
-                  <i data-lucide="unlock" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
-                </button>
+              <div class="budget-locked-item-remaining" style="color: ${remaining >= 0 ? 'var(--income)' : 'var(--expense)'};">
+                ${remaining >= 0 ? `+${this.formatMoney(remaining)}` : `-${this.formatMoney(Math.abs(remaining))}`}
               </div>
             </div>
 
-            <div class="budget-locked-item-body">
-              <div class="budget-locked-metric">
-                <span class="budget-locked-metric-label">Hạn mức:</span>
-                <span class="budget-locked-metric-val" style="color: var(--primary);">${this.formatMoney(limit)}</span>
-              </div>
-              <div class="budget-locked-metric">
-                <span class="budget-locked-metric-label">Đã chi:</span>
-                <span class="budget-locked-metric-val">${this.formatMoney(spent)} (${percent}%)</span>
-              </div>
-              <div class="budget-locked-metric">
-                <span class="budget-locked-metric-label">Còn lại:</span>
-                <span class="budget-locked-metric-val" style="color: ${remaining >= 0 ? 'var(--income)' : 'var(--expense)'}; font-weight: 700;">
-                  ${remaining >= 0 ? `+${this.formatMoney(remaining)}` : `-${this.formatMoney(Math.abs(remaining))}`}
-                </span>
-              </div>
+            <div class="budget-hero-bar-meta" style="margin-top: 6px;">
+              <span class="budget-bar-spent">${this.formatMoney(spent)} (${percent}%)</span>
+              <span class="budget-bar-limit">${this.formatMoney(limit)}</span>
             </div>
 
-            <div class="budget-progress-track" style="height: 5px; margin-top: 6px;">
+            <div class="budget-progress-track budget-hero-progress" style="height: 6px; margin: 4px 0 0 0; width: 100%; max-width: 100%;">
               <div class="budget-progress-fill" style="width: ${Math.min(100, percent)}%; background: ${barColor};"></div>
             </div>
           </div>
@@ -481,12 +471,12 @@ const UIBudgets = {
       ${heroHtml}
       <div class="budget-section-header">
         <div class="budget-section-title">
-          <i data-lucide="lock" style="width: 16px; height: 16px; color: #f59e0b;"></i>
-          <span>Danh Mục Khóa Trần</span>
+          <i data-lucide="layers" style="width: 16px; height: 16px; color: var(--primary);"></i>
+          <span>Hạn Mức Theo Danh Mục</span>
           <span class="budget-count-pill">${lockedBudgets.length}</span>
         </div>
         <button type="button" class="btn-secondary" style="font-size: 0.8rem; padding: 5px 12px;" onclick="UIBudgets.openLockCategoryModal()">
-          <i data-lucide="plus" style="width: 13px; height: 13px;"></i> Khóa thêm mục
+          <i data-lucide="plus" style="width: 13px; height: 13px;"></i> Thêm hạn mức
         </button>
       </div>
       ${lockedHtml}
@@ -836,8 +826,12 @@ const UIBudgets = {
     }
 
     modal.classList.add('open');
-    setTimeout(() => amountInput?.focus(), 120);
     if (window.lucide) lucide.createIcons();
+    setTimeout(() => {
+      if (window.UITransactions) {
+        window.UITransactions.openKeypad('budget-overall-amount');
+      }
+    }, 120);
   },
 
   closeOverallModal() {
@@ -847,8 +841,13 @@ const UIBudgets = {
 
   setOverallPreset(amount) {
     const input = document.getElementById('budget-overall-amount');
-    if (input) {
-      input.value = new Intl.NumberFormat('vi-VN').format(amount);
+    const formatted = new Intl.NumberFormat('vi-VN').format(amount);
+    if (input) input.value = formatted;
+    const keypadLive = document.getElementById('keypad-live-val');
+    if (keypadLive && window.UITransactions && window.UITransactions.activeKeypadTarget === 'budget-overall-amount') {
+      keypadLive.textContent = formatted;
+      window.UITransactions.keypadAutoSelect = true;
+      keypadLive.classList.add('is-selected');
     }
   },
 
@@ -889,6 +888,10 @@ const UIBudgets = {
   },
 
   async deleteOverallBudget() {
+    const monthDisplay = this.formatMonthDisplay(this.currentMonth);
+    if (!confirm(`Bạn có chắc chắn muốn xóa ngân sách tổng của ${monthDisplay}?`)) {
+      return;
+    }
     const existing = await db.budgets.where('month').equals(this.currentMonth).toArray();
     const overall = existing.find(b => b.categoryId === 'TOTAL' || b.categoryId === 0 || b.isOverall);
     if (overall) {
@@ -899,64 +902,141 @@ const UIBudgets = {
     }
   },
 
+  /* ==================== CATEGORY DROPDOWN PICKER ==================== */
+  async initCatDropdown(type, selectedCatId = null, disabled = false) {
+    const trigger = document.getElementById(type === 'lock' ? 'budget-lock-cat-trigger' : 'budget-cat-trigger');
+    const iconEl = document.getElementById(type === 'lock' ? 'budget-lock-cat-icon' : 'budget-cat-icon');
+    const labelEl = document.getElementById(type === 'lock' ? 'budget-lock-cat-label' : 'budget-cat-label');
+    const menu = document.getElementById(type === 'lock' ? 'budget-lock-cat-menu' : 'budget-cat-menu');
+    const hidden = document.getElementById(type === 'lock' ? 'budget-lock-cat-id' : 'budget-cat-id');
+
+    if (!menu) return;
+
+    if (trigger) {
+      trigger.disabled = !!disabled;
+      trigger.style.opacity = disabled ? '0.75' : '1';
+      trigger.style.cursor = disabled ? 'not-allowed' : 'pointer';
+    }
+
+    const categories = await db.categories.where('type').equals('expense').and(c => c.isDeleted === 0).toArray();
+
+    let targetCat = null;
+    if (selectedCatId) {
+      targetCat = categories.find(c => Number(c.id) === Number(selectedCatId));
+    }
+    if (!targetCat && categories.length > 0) {
+      targetCat = categories[0];
+    }
+
+    if (targetCat) {
+      if (hidden) hidden.value = targetCat.id;
+      if (labelEl) labelEl.textContent = targetCat.name;
+      if (iconEl) {
+        iconEl.style.background = `${targetCat.color || '#0d9488'}22`;
+        iconEl.style.color = targetCat.color || '#0d9488';
+        iconEl.innerHTML = `<i data-lucide="${targetCat.icon || 'tag'}"></i>`;
+      }
+    }
+
+    menu.innerHTML = categories.map(c => `
+      <div class="budget-cat-option ${targetCat && targetCat.id === c.id ? 'selected' : ''}" onclick="UIBudgets.selectCatOption('${type}', ${c.id})">
+        <div class="category-icon-bubble" style="background: ${c.color || '#0d9488'}22; color: ${c.color || '#0d9488'}; width: 28px; height: 28px; font-size: 0.85rem;">
+          <i data-lucide="${c.icon || 'tag'}"></i>
+        </div>
+        <span style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">${escapeHTML(c.name)}</span>
+      </div>
+    `).join('');
+
+    menu.style.display = 'none';
+    if (window.lucide) lucide.createIcons();
+  },
+
+  toggleCatDropdown(type) {
+    const trigger = document.getElementById(type === 'lock' ? 'budget-lock-cat-trigger' : 'budget-cat-trigger');
+    if (trigger && trigger.disabled) return;
+    const menu = document.getElementById(type === 'lock' ? 'budget-lock-cat-menu' : 'budget-cat-menu');
+    if (!menu) return;
+    const isShowing = menu.style.display === 'flex';
+    menu.style.display = isShowing ? 'none' : 'flex';
+  },
+
+  async selectCatOption(type, catId) {
+    const cat = await db.categories.get(Number(catId));
+    if (!cat) return;
+
+    const iconEl = document.getElementById(type === 'lock' ? 'budget-lock-cat-icon' : 'budget-cat-icon');
+    const labelEl = document.getElementById(type === 'lock' ? 'budget-lock-cat-label' : 'budget-cat-label');
+    const menu = document.getElementById(type === 'lock' ? 'budget-lock-cat-menu' : 'budget-cat-menu');
+    const hidden = document.getElementById(type === 'lock' ? 'budget-lock-cat-id' : 'budget-cat-id');
+
+    if (hidden) hidden.value = cat.id;
+    if (labelEl) labelEl.textContent = cat.name;
+    if (iconEl) {
+      iconEl.style.background = `${cat.color || '#0d9488'}22`;
+      iconEl.style.color = cat.color || '#0d9488';
+      iconEl.innerHTML = `<i data-lucide="${cat.icon || 'tag'}"></i>`;
+    }
+
+    if (menu) {
+      menu.querySelectorAll('.budget-cat-option').forEach(el => el.classList.remove('selected'));
+      menu.style.display = 'none';
+    }
+
+    if (window.lucide) lucide.createIcons();
+  },
+
   /* ==================== MODAL 2: LOCK CATEGORY ==================== */
   async openLockCategoryModal(catId = null) {
     const modal = document.getElementById('modal-budget-lock');
     if (!modal) return;
 
-    const select = document.getElementById('budget-lock-category-select');
     const amountInput = document.getElementById('budget-lock-amount');
-    const catIdHidden = document.getElementById('budget-lock-cat-id');
     const deleteBtn = document.getElementById('budget-lock-delete-btn');
 
-    const categories = await db.categories.where('type').equals('expense').and(c => c.isDeleted === 0).toArray();
-    if (select) {
-      select.innerHTML = categories.map(c => `<option value="${c.id}">${escapeHTML(c.name)}</option>`).join('');
-    }
+    await this.initCatDropdown('lock', catId, !!catId);
 
     if (catId) {
-      if (select) {
-        select.value = catId;
-        select.disabled = true;
-      }
-      if (catIdHidden) catIdHidden.value = catId;
-
       const existing = await db.budgets.where({ categoryId: Number(catId), month: this.currentMonth }).first();
       if (existing && amountInput) {
         amountInput.value = new Intl.NumberFormat('vi-VN').format(existing.limitAmount);
       }
       if (deleteBtn) deleteBtn.style.display = 'inline-block';
     } else {
-      if (select) {
-        select.disabled = false;
-        select.selectedIndex = 0;
-      }
-      if (catIdHidden) catIdHidden.value = '';
       if (amountInput) amountInput.value = '';
       if (deleteBtn) deleteBtn.style.display = 'none';
     }
 
     modal.classList.add('open');
-    setTimeout(() => amountInput?.focus(), 120);
     if (window.lucide) lucide.createIcons();
+    setTimeout(() => {
+      if (window.UITransactions) {
+        window.UITransactions.openKeypad('budget-lock-amount');
+      }
+    }, 120);
   },
 
   closeLockModal() {
     const modal = document.getElementById('modal-budget-lock');
     if (modal) modal.classList.remove('open');
+    const menu = document.getElementById('budget-lock-cat-menu');
+    if (menu) menu.style.display = 'none';
   },
 
   setLockPreset(amount) {
     const input = document.getElementById('budget-lock-amount');
-    if (input) {
-      input.value = new Intl.NumberFormat('vi-VN').format(amount);
+    const formatted = new Intl.NumberFormat('vi-VN').format(amount);
+    if (input) input.value = formatted;
+    const keypadLive = document.getElementById('keypad-live-val');
+    if (keypadLive && window.UITransactions && window.UITransactions.activeKeypadTarget === 'budget-lock-amount') {
+      keypadLive.textContent = formatted;
+      window.UITransactions.keypadAutoSelect = true;
+      keypadLive.classList.add('is-selected');
     }
   },
 
   async handleLockCategorySubmit() {
-    const select = document.getElementById('budget-lock-category-select');
     const catIdHidden = document.getElementById('budget-lock-cat-id');
-    const categoryId = Number(catIdHidden?.value || select?.value);
+    const categoryId = Number(catIdHidden?.value);
     const amountStr = document.getElementById('budget-lock-amount')?.value || '';
     const limitAmount = Number(amountStr.replace(/\D/g, ''));
 
@@ -974,7 +1054,7 @@ const UIBudgets = {
         isLocked: 1,
         updatedAt: now
       });
-      showToast('Đã cập nhật hạn mức khóa cho danh mục', 'success');
+      showToast('Đã cập nhật hạn mức cho danh mục', 'success');
     } else {
       await db.budgets.add({
         categoryId,
@@ -983,7 +1063,7 @@ const UIBudgets = {
         isLocked: 1,
         updatedAt: now
       });
-      showToast('Đã khóa trần danh mục theo ngân sách', 'success');
+      showToast('Đã thiết lập hạn mức danh mục', 'success');
     }
 
     this.closeLockModal();
@@ -992,19 +1072,24 @@ const UIBudgets = {
 
   async unlockCurrentCategory() {
     const catIdHidden = document.getElementById('budget-lock-cat-id');
-    const select = document.getElementById('budget-lock-category-select');
-    const categoryId = Number(catIdHidden?.value || select?.value);
+    const categoryId = Number(catIdHidden?.value);
     if (categoryId) {
-      await this.unlockCategory(categoryId);
+      if (!confirm('Bạn có chắc chắn muốn xóa hạn mức cho danh mục này?')) {
+        return;
+      }
+      await this.unlockCategory(categoryId, true);
       this.closeLockModal();
     }
   },
 
-  async unlockCategory(catId) {
+  async unlockCategory(catId, skipConfirm = false) {
+    if (!skipConfirm && !confirm('Bạn có chắc chắn muốn xóa hạn mức cho danh mục này?')) {
+      return;
+    }
     const existing = await db.budgets.where({ categoryId: Number(catId), month: this.currentMonth }).first();
     if (existing) {
-      await db.budgets.update(existing.id, { isLocked: 0, updatedAt: Date.now() });
-      showToast('Đã bỏ khóa mục chi', 'info');
+      await db.budgets.delete(existing.id);
+      showToast('Đã xóa hạn mức danh mục', 'info');
       window.app.refreshAll();
     }
   },
@@ -1014,51 +1099,53 @@ const UIBudgets = {
     const modal = document.getElementById('modal-budget-category');
     if (!modal) return;
 
-    const select = document.getElementById('budget-cat-select');
     const amountInput = document.getElementById('budget-cat-amount');
-    const catIdHidden = document.getElementById('budget-cat-id');
     const deleteBtn = document.getElementById('budget-cat-delete-btn');
 
-    const categories = await db.categories.where('type').equals('expense').and(c => c.isDeleted === 0).toArray();
-    if (select) {
-      select.innerHTML = categories.map(c => `<option value="${c.id}">${escapeHTML(c.name)}</option>`).join('');
-    }
+    await this.initCatDropdown('actual', catId, false);
 
     if (catId) {
-      if (select) select.value = catId;
-      if (catIdHidden) catIdHidden.value = catId;
       const existing = await db.budgets.where({ categoryId: Number(catId), month: this.currentMonth }).first();
       if (existing && amountInput) {
         amountInput.value = new Intl.NumberFormat('vi-VN').format(existing.limitAmount);
       }
       if (deleteBtn) deleteBtn.style.display = 'inline-block';
     } else {
-      if (catIdHidden) catIdHidden.value = '';
       if (amountInput) amountInput.value = '';
       if (deleteBtn) deleteBtn.style.display = 'none';
     }
 
     modal.classList.add('open');
-    setTimeout(() => amountInput?.focus(), 120);
     if (window.lucide) lucide.createIcons();
+    setTimeout(() => {
+      if (window.UITransactions) {
+        window.UITransactions.openKeypad('budget-cat-amount');
+      }
+    }, 120);
   },
 
   closeCategoryModal() {
     const modal = document.getElementById('modal-budget-category');
     if (modal) modal.classList.remove('open');
+    const menu = document.getElementById('budget-cat-menu');
+    if (menu) menu.style.display = 'none';
   },
 
   setCatPreset(amount) {
     const input = document.getElementById('budget-cat-amount');
-    if (input) {
-      input.value = new Intl.NumberFormat('vi-VN').format(amount);
+    const formatted = new Intl.NumberFormat('vi-VN').format(amount);
+    if (input) input.value = formatted;
+    const keypadLive = document.getElementById('keypad-live-val');
+    if (keypadLive && window.UITransactions && window.UITransactions.activeKeypadTarget === 'budget-cat-amount') {
+      keypadLive.textContent = formatted;
+      window.UITransactions.keypadAutoSelect = true;
+      keypadLive.classList.add('is-selected');
     }
   },
 
   async handleCategoryBudgetSubmit() {
-    const select = document.getElementById('budget-cat-select');
     const catIdHidden = document.getElementById('budget-cat-id');
-    const categoryId = Number(catIdHidden?.value || select?.value);
+    const categoryId = Number(catIdHidden?.value);
     const amountStr = document.getElementById('budget-cat-amount')?.value || '';
     const limitAmount = Number(amountStr.replace(/\D/g, ''));
 
@@ -1084,9 +1171,11 @@ const UIBudgets = {
 
   async deleteCurrentCategoryBudget() {
     const catIdHidden = document.getElementById('budget-cat-id');
-    const select = document.getElementById('budget-cat-select');
-    const categoryId = Number(catIdHidden?.value || select?.value);
+    const categoryId = Number(catIdHidden?.value);
     if (categoryId) {
+      if (!confirm('Bạn có chắc chắn muốn xóa hạn mức phân bổ cho danh mục này?')) {
+        return;
+      }
       const existing = await db.budgets.where({ categoryId, month: this.currentMonth }).first();
       if (existing) {
         await db.budgets.delete(existing.id);
@@ -1143,11 +1232,12 @@ const UIBudgets = {
     }
 
     modal.classList.add('open');
-    setTimeout(() => {
-      input?.focus();
-      input?.select();
-    }, 120);
     if (window.lucide) lucide.createIcons();
+    setTimeout(() => {
+      if (window.UITransactions) {
+        window.UITransactions.openKeypad('budget-quick-amount');
+      }
+    }, 120);
   },
 
   closeQuickEditModal() {
@@ -1161,20 +1251,40 @@ const UIBudgets = {
     if (!input) return;
     const current = Number((input.value || '').replace(/\D/g, '')) || 0;
     const next = Math.max(0, current + delta);
-    input.value = new Intl.NumberFormat('vi-VN').format(next);
+    const formatted = new Intl.NumberFormat('vi-VN').format(next);
+    input.value = formatted;
+    const keypadLive = document.getElementById('keypad-live-val');
+    if (keypadLive && window.UITransactions && window.UITransactions.activeKeypadTarget === 'budget-quick-amount') {
+      keypadLive.textContent = formatted;
+      window.UITransactions.keypadAutoSelect = true;
+      keypadLive.classList.add('is-selected');
+    }
   },
 
   setQuickToSpent() {
     if (!this.quickEditTarget) return;
     const input = document.getElementById('budget-quick-amount-input');
+    const formatted = new Intl.NumberFormat('vi-VN').format(this.quickEditTarget.spent);
     if (input) {
-      input.value = new Intl.NumberFormat('vi-VN').format(this.quickEditTarget.spent);
+      input.value = formatted;
+    }
+    const keypadLive = document.getElementById('keypad-live-val');
+    if (keypadLive && window.UITransactions && window.UITransactions.activeKeypadTarget === 'budget-quick-amount') {
+      keypadLive.textContent = formatted;
+      window.UITransactions.keypadAutoSelect = true;
+      keypadLive.classList.add('is-selected');
     }
   },
 
   setQuickZero() {
     const input = document.getElementById('budget-quick-amount-input');
     if (input) input.value = '0';
+    const keypadLive = document.getElementById('keypad-live-val');
+    if (keypadLive && window.UITransactions && window.UITransactions.activeKeypadTarget === 'budget-quick-amount') {
+      keypadLive.textContent = '0';
+      window.UITransactions.keypadAutoSelect = true;
+      keypadLive.classList.add('is-selected');
+    }
   },
 
   async handleQuickEditSubmit() {
@@ -1204,7 +1314,7 @@ const UIBudgets = {
     window.app.refreshAll();
   },
 
-  /* ==================== MODAL 4: COPY BUDGET ==================== */
+    /* ==================== MODAL 4: COPY BUDGET ==================== */
   openCopyModal() {
     const modal = document.getElementById('modal-budget-copy');
     if (!modal) return;

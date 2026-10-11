@@ -179,51 +179,8 @@ const UICalendar = {
       backdrop.addEventListener('click', () => this.close());
     }
 
-    // Top Bar Tabs
-    const tabDate = document.getElementById('cal-top-date');
-    const tabTime = document.getElementById('cal-top-time');
-    if (tabDate) {
-      tabDate.addEventListener('click', () => this.switchTab('date'));
-    }
-    if (tabTime) {
-      tabTime.addEventListener('click', () => this.switchTab('time'));
-    }
-
-    // Prev / Next Month
-    const btnPrev = document.getElementById('cal-prev-month');
-    const btnNext = document.getElementById('cal-next-month');
-    if (btnPrev) {
-      btnPrev.addEventListener('click', () => this.changeMonth(-1));
-    }
-    if (btnNext) {
-      btnNext.addEventListener('click', () => this.changeMonth(1));
-    }
-
-    // Month pill click -> toggle quick month-year selector
-    const pill = document.getElementById('cal-month-pill');
-    if (pill) {
-      pill.addEventListener('click', () => this.toggleMonthSelector());
-    }
-
-    // Year Prev / Next
-    const btnPrevYear = document.getElementById('cal-prev-year');
-    const btnNextYear = document.getElementById('cal-next-year');
-    if (btnPrevYear) {
-      btnPrevYear.addEventListener('click', () => this.changeYear(-1));
-    }
-    if (btnNextYear) {
-      btnNextYear.addEventListener('click', () => this.changeYear(1));
-    }
-
-    // Action buttons
-    const btnToday = document.getElementById('cal-btn-today');
-    const btnDone = document.getElementById('cal-btn-done');
-    if (btnToday) {
-      btnToday.addEventListener('click', () => this.selectToday());
-    }
-    if (btnDone) {
-      btnDone.addEventListener('click', () => this.confirmSelection());
-    }
+    // Note: Cal nav buttons and tabs already have inline onclick handlers in index.html.
+    // We avoid adding duplicate addEventListener handlers here to prevent 2x double triggers.
 
     // Populate Hour & Minute lists
     this.populateTimeLists();
@@ -884,30 +841,29 @@ const UICalendar = {
 
   /* ==================== ACTIONS ==================== */
   selectToday() {
-    if (this.showFilterModes) {
-      if (this.filterMode === 'month') {
-        const now = new Date();
-        this.viewYear = now.getFullYear();
-        this.viewMonth = now.getMonth();
-        this.selectedDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        this.renderMonthSelector();
-        this.confirmSelection();
-        return;
-      }
-      if (this.filterMode === 'custom') {
-        const now = new Date();
-        this.customStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        this.customEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        this.viewYear = now.getFullYear();
-        this.viewMonth = now.getMonth();
-        this.customSelectionPhase = 'idle';
-        this.customPickingTarget = null;
-        this.updateCustomRangeDisplay();
-        this.renderCalendar();
-        return;
-      }
-    }
     const now = new Date();
+    if (this.mode === 'month') {
+      this.viewYear = now.getFullYear();
+      this.viewMonth = now.getMonth();
+      this.selectedDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      this.updateTopBarDisplays();
+      this.renderMonthSelector();
+      if (this.showFilterModes) {
+        this.confirmSelection();
+      }
+      return;
+    }
+    if (this.showFilterModes && this.filterMode === 'custom') {
+      this.customStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      this.customEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      this.viewYear = now.getFullYear();
+      this.viewMonth = now.getMonth();
+      this.customSelectionPhase = 'idle';
+      this.customPickingTarget = null;
+      this.updateCustomRangeDisplay();
+      this.renderCalendar();
+      return;
+    }
     this.selectedDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     this.viewYear = now.getFullYear();
     this.viewMonth = now.getMonth();

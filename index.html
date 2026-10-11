@@ -124,18 +124,23 @@
 
         <!-- Header Center cho Ngân Sách: [ < Tháng mm/yyyy > ] và chú thích bên dưới -->
         <div id="budget-header-center" class="budget-header-center" style="display: none;">
-          <div class="budget-month-nav budget-header-month-nav">
-            <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(-1)" title="Tháng trước">
-              <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i>
+          <div class="budget-header-nav-wrap">
+            <button type="button" class="budget-header-copy-btn" onclick="UIBudgets.openCopyModal()" title="Sao chép ngân sách">
+              <i data-lucide="copy" style="width: 15px; height: 15px;"></i>
             </button>
-            <button type="button" class="budget-month-btn" onclick="UIBudgets.openFilterMonthPicker()" title="Chọn tháng">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: var(--primary);"></i>
-              <span id="budget-month-display-label">Tháng --/----</span>
-              <i data-lucide="chevron-down" style="width: 12px; height: 12px; opacity: 0.7;"></i>
-            </button>
-            <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(1)" title="Tháng sau">
-              <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
-            </button>
+            <div class="budget-month-nav budget-header-month-nav">
+              <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(-1)" title="Tháng trước">
+                <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i>
+              </button>
+              <button type="button" class="budget-month-btn" onclick="UIBudgets.openFilterMonthPicker()" title="Chọn tháng">
+                <i data-lucide="calendar" style="width: 14px; height: 14px; color: var(--primary);"></i>
+                <span id="budget-month-display-label">Tháng --/----</span>
+                <i data-lucide="chevron-down" style="width: 12px; height: 12px; opacity: 0.7;"></i>
+              </button>
+              <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(1)" title="Tháng sau">
+                <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+              </button>
+            </div>
           </div>
           <div id="budget-header-subtitle" class="budget-header-subtitle" onclick="UIBudgets.openSettingsModal()" title="Bấm để đổi chế độ ngân sách">Ngân sách tổng</div>
         </div>
@@ -2642,16 +2647,16 @@
                 <div id="budget-overall-month-text" style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">Tháng --/----</div>
                 <input type="hidden" id="budget-overall-month">
               </div>
-              <button type="button" class="btn-secondary" onclick="UIBudgets.copyFromPreviousMonthOverall()" style="font-size: 0.8rem; padding: 6px 11px; display: inline-flex; align-items: center; gap: 5px; border-radius: var(--radius-md);" title="Sao chép hạn mức từ tháng trước">
+              <button type="button" class="btn-secondary" onclick="UIBudgets.openCopyModal()" style="font-size: 0.8rem; padding: 6px 11px; display: inline-flex; align-items: center; gap: 5px; border-radius: var(--radius-md);" title="Sao chép hạn mức">
                 <i data-lucide="copy" style="width: 14px; height: 14px; color: var(--primary);"></i>
-                <span>Sao chép tháng trước</span>
+                <span>Sao chép ngân sách</span>
               </button>
             </div>
           </div>
 
           <div class="form-group">
             <label class="form-label">Hạn Mức Ngân Sách Tổng (VNĐ)</label>
-            <input type="text" id="budget-overall-amount" class="form-control" placeholder="Ví dụ: 20.000.000" inputmode="numeric" required style="font-size: 1.15rem; font-weight: 700;">
+            <input type="text" id="budget-overall-amount" class="form-control" placeholder="0" readonly onclick="UITransactions.openKeypad('budget-overall-amount')" required style="font-size: 1.25rem; font-weight: 700; text-align: center; cursor: pointer;">
             <div class="budget-presets-row">
               <span class="budget-preset-chip" onclick="UIBudgets.setOverallPreset(5000000)">5 Triệu</span>
               <span class="budget-preset-chip" onclick="UIBudgets.setOverallPreset(10000000)">10 Triệu</span>
@@ -2687,12 +2692,23 @@
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Danh Mục Chi Tiêu</label>
-            <select id="budget-lock-category-select" class="form-control" required></select>
+            <div class="budget-cat-dropdown" id="budget-lock-cat-dropdown">
+              <button type="button" class="budget-cat-trigger" id="budget-lock-cat-trigger" onclick="UIBudgets.toggleCatDropdown('lock')">
+                <div class="budget-cat-trigger-content">
+                  <div class="category-icon-bubble" id="budget-lock-cat-icon" style="width: 28px; height: 28px; font-size: 0.85rem;">
+                    <i data-lucide="tag"></i>
+                  </div>
+                  <span class="budget-cat-trigger-text" id="budget-lock-cat-label">Chọn danh mục chi tiêu</span>
+                </div>
+                <i data-lucide="chevron-down" class="budget-cat-trigger-arrow"></i>
+              </button>
+              <div class="budget-cat-menu" id="budget-lock-cat-menu" style="display: none;"></div>
+            </div>
           </div>
 
           <div class="form-group">
             <label class="form-label">Hạn Mức Khóa Riêng (VNĐ)</label>
-            <input type="text" id="budget-lock-amount" class="form-control" placeholder="Ví dụ: 5.000.000" inputmode="numeric" required style="font-size: 1.15rem; font-weight: 700;">
+            <input type="text" id="budget-lock-amount" class="form-control" placeholder="0" readonly onclick="UITransactions.openKeypad('budget-lock-amount')" required style="font-size: 1.25rem; font-weight: 700; text-align: center; cursor: pointer;">
             <div class="budget-presets-row">
               <span class="budget-preset-chip" onclick="UIBudgets.setLockPreset(1000000)">1 Triệu</span>
               <span class="budget-preset-chip" onclick="UIBudgets.setLockPreset(2000000)">2 Triệu</span>
@@ -2726,13 +2742,24 @@
         <input type="hidden" id="budget-cat-id">
         <div class="modal-body">
           <div class="form-group">
-            <label class="form-label">Danh Mục</label>
-            <select id="budget-cat-select" class="form-control" required></select>
+            <label class="form-label">Danh Mục Chi Tiêu</label>
+            <div class="budget-cat-dropdown" id="budget-cat-dropdown">
+              <button type="button" class="budget-cat-trigger" id="budget-cat-trigger" onclick="UIBudgets.toggleCatDropdown('actual')">
+                <div class="budget-cat-trigger-content">
+                  <div class="category-icon-bubble" id="budget-cat-icon" style="width: 28px; height: 28px; font-size: 0.85rem;">
+                    <i data-lucide="tag"></i>
+                  </div>
+                  <span class="budget-cat-trigger-text" id="budget-cat-label">Chọn danh mục</span>
+                </div>
+                <i data-lucide="chevron-down" class="budget-cat-trigger-arrow"></i>
+              </button>
+              <div class="budget-cat-menu" id="budget-cat-menu" style="display: none;"></div>
+            </div>
           </div>
 
           <div class="form-group">
             <label class="form-label">Ngân Sách Phân Bổ (VNĐ)</label>
-            <input type="text" id="budget-cat-amount" class="form-control" placeholder="Ví dụ: 3.000.000" inputmode="numeric" required style="font-size: 1.15rem; font-weight: 700;">
+            <input type="text" id="budget-cat-amount" class="form-control" placeholder="0" readonly onclick="UITransactions.openKeypad('budget-cat-amount')" required style="font-size: 1.25rem; font-weight: 700; text-align: center; cursor: pointer;">
             <div class="budget-presets-row">
               <span class="budget-preset-chip" onclick="UIBudgets.setCatPreset(500000)">500k</span>
               <span class="budget-preset-chip" onclick="UIBudgets.setCatPreset(1000000)">1 Triệu</span>
@@ -2826,7 +2853,7 @@
 
           <div class="form-group">
             <label class="form-label" style="text-align: center;">Ngân Sách Mới (VNĐ)</label>
-            <input type="text" id="budget-quick-amount-input" class="form-control" inputmode="numeric" required style="font-size: 1.4rem; font-weight: 800; text-align: center; color: var(--primary);">
+            <input type="text" id="budget-quick-amount-input" class="form-control" readonly onclick="UITransactions.openKeypad('budget-quick-amount')" required style="font-size: 1.4rem; font-weight: 800; text-align: center; color: var(--primary); cursor: pointer;">
             
             <div class="budget-presets-row" style="justify-content: center; margin-top: 10px;">
               <span class="budget-preset-chip" onclick="UIBudgets.adjustQuickAmount(100000)">+100k</span>
@@ -3424,11 +3451,11 @@
   <script src="./js/ui-transactions.js?v=1.9.69"></script>
   <script src="./js/ui-debts.js?v=1.9.69"></script>
   <script src="./js/ui-accounts.js?v=1.9.69"></script>
-  <script src="./js/ui-budgets.js?v=1.9.72"></script>
+  <script src="./js/ui-budgets.js?v=1.9.73"></script>
   <script src="./js/ui-analytics.js?v=1.9.69"></script>
   <script src="./js/ui-settings.js?v=1.9.69"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.72"></script>
+  <script src="./js/app.js?v=1.9.73"></script>
 </body>
 </html>

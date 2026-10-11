@@ -715,6 +715,22 @@ const UITransactions = {
       const text = document.getElementById('liquidate-asset-price-text');
       cur = text?.textContent?.trim() || input?.value?.trim() || '0';
       if (curSymbolEl) curSymbolEl.textContent = 'đ';
+    } else if (target === 'budget-overall-amount') {
+      const input = document.getElementById('budget-overall-amount');
+      cur = input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = '₫';
+    } else if (target === 'budget-lock-amount') {
+      const input = document.getElementById('budget-lock-amount');
+      cur = input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = '₫';
+    } else if (target === 'budget-cat-amount') {
+      const input = document.getElementById('budget-cat-amount');
+      cur = input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = '₫';
+    } else if (target === 'budget-quick-amount') {
+      const input = document.getElementById('budget-quick-amount-input');
+      cur = input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = '₫';
     } else {
       const input = document.getElementById('tx-amount-input');
       const amountText = document.getElementById('tx-amount-text');
@@ -897,6 +913,18 @@ const UITransactions = {
       const rawNum = finalFormatted.replace(/\./g, '');
       if (input) input.value = rawNum;
       if (text) text.textContent = finalFormatted;
+    } else if (this.activeKeypadTarget === 'budget-overall-amount') {
+      const input = document.getElementById('budget-overall-amount');
+      if (input) input.value = finalFormatted;
+    } else if (this.activeKeypadTarget === 'budget-lock-amount') {
+      const input = document.getElementById('budget-lock-amount');
+      if (input) input.value = finalFormatted;
+    } else if (this.activeKeypadTarget === 'budget-cat-amount') {
+      const input = document.getElementById('budget-cat-amount');
+      if (input) input.value = finalFormatted;
+    } else if (this.activeKeypadTarget === 'budget-quick-amount') {
+      const input = document.getElementById('budget-quick-amount-input');
+      if (input) input.value = finalFormatted;
     } else {
       const input = document.getElementById('tx-amount-input');
       const amountText = document.getElementById('tx-amount-text');
@@ -909,7 +937,7 @@ const UITransactions = {
       'account-balance', 'saving-amount', 'loan-amount', 'pay-loan-amount', 'acc-target-amount', 'asset-price', 'asset-quantity',
       'acc-current-amount', 'acc-recurring-amount',
       'asset-buyprice', 'asset-currentprice', 'asset-extracosts',
-      'settle-saving-amount', 'deposit-acc-amount', 'liquidate-asset-price'
+      'settle-saving-amount', 'deposit-acc-amount', 'liquidate-asset-price', 'budget-overall-amount', 'budget-lock-amount', 'budget-cat-amount', 'budget-quick-amount'
     ];
     if (!nonTxTargets.includes(this.activeKeypadTarget)) {
       this.saveDraft();
