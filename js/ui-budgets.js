@@ -858,7 +858,7 @@ const UIBudgets = {
 
     if (overall && overall.limitAmount) {
       if (amountInput) amountInput.value = new Intl.NumberFormat('vi-VN').format(overall.limitAmount);
-      if (deleteBtn) deleteBtn.style.display = 'block';
+      if (deleteBtn) deleteBtn.style.display = 'inline-flex';
     } else {
       if (amountInput) amountInput.value = '';
       if (deleteBtn) deleteBtn.style.display = 'none';
@@ -1859,8 +1859,14 @@ const UIBudgets = {
       localStorage.setItem('budget_manual_set_' + targetMonth, '1');
     } catch (_) {}
     this.closeCopyModal();
+    if (window.UITransactions && typeof window.UITransactions.closeKeypad === 'function') {
+      window.UITransactions.closeKeypad();
+    }
+    this.closeBudgetForm();
     showToast(`Đã sao chép thành công ${copiedCount} mục ngân sách từ ${this.formatMonthDisplay(sourceMonth)}`, 'success');
-    window.app.refreshAll();
+    if (window.app) {
+      await window.app.refreshAll();
+    }
   },
 
   /* ==================== FORMATTER UTILITY ==================== */

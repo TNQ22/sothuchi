@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.78">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.81">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -564,9 +564,9 @@
                 <div style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Tháng áp dụng</div>
                 <div id="budget-form-month-text" style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-top: 2px;">Tháng --/----</div>
               </div>
-              <button type="button" class="btn-secondary" onclick="UIBudgets.openCopyModal()" style="font-size: 0.82rem; padding: 7px 12px; display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius-md);">
-                <i data-lucide="copy" style="width: 14px; height: 14px; color: var(--primary);"></i>
-                <span>Sao chép tháng khác</span>
+              <button type="button" class="btn-primary" onclick="UIBudgets.openCopyModal()" style="font-size: 0.82rem; font-weight: 600; padding: 7px 14px; display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius-md); background: var(--primary); color: #ffffff; border: none; box-shadow: 0 2px 8px rgba(13, 148, 136, 0.35);">
+                <i data-lucide="copy" style="width: 14px; height: 14px; color: #ffffff;"></i>
+                <span>Sao chép từ</span>
               </button>
             </div>
 
@@ -601,8 +601,9 @@
               <button type="button" class="btn-primary" onclick="UIBudgets.handleFormBudgetSubmit()" style="width: 100%; padding: 13px; font-size: 1rem; font-weight: 700; justify-content: center; border-radius: var(--radius-md);">
                 Lưu Ngân Sách
               </button>
-              <button type="button" id="budget-form-delete-btn" class="btn-danger-outline" onclick="UIBudgets.deleteFormBudget()" style="width: 100%; padding: 11px; font-size: 0.9rem; justify-content: center; border-radius: var(--radius-md); display: none;">
-                Xóa Ngân Sách Tháng Này
+              <button type="button" id="budget-form-delete-btn" class="btn-danger-outline" onclick="UIBudgets.deleteFormBudget()" style="width: 100%; height: 46px; font-size: 0.95rem; font-weight: 600; justify-content: center; border-radius: var(--radius-md); display: none;">
+                <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
+                <span>Xóa Ngân Sách Tháng Này</span>
               </button>
             </div>
           </div>
@@ -667,8 +668,9 @@
               <button type="button" class="btn-primary" onclick="UIBudgets.handleCatFormBudgetSubmit()" style="width: 100%; padding: 13px; font-size: 1rem; font-weight: 700; justify-content: center; border-radius: var(--radius-md);">
                 Lưu Hạn Mức Danh Mục
               </button>
-              <button type="button" id="budget-cat-form-delete-btn" class="btn-danger-outline" onclick="UIBudgets.deleteCatFormBudget()" style="width: 100%; padding: 11px; font-size: 0.9rem; justify-content: center; border-radius: var(--radius-md); display: none;">
-                Xóa Hạn Mức Danh Mục Này
+              <button type="button" id="budget-cat-form-delete-btn" class="btn-danger-outline" onclick="UIBudgets.deleteCatFormBudget()" style="width: 100%; height: 46px; font-size: 0.95rem; font-weight: 600; justify-content: center; border-radius: var(--radius-md); display: none;">
+                <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
+                <span>Xóa Hạn Mức Danh Mục Này</span>
               </button>
             </div>
           </div>
@@ -3593,18 +3595,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.78"></script>
+  <script src="./js/backup.js?v=1.9.81"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.78"></script>
-  <script src="./js/ui-transactions.js?v=1.9.78"></script>
-  <script src="./js/ui-debts.js?v=1.9.78"></script>
-  <script src="./js/ui-accounts.js?v=1.9.78"></script>
-  <script src="./js/ui-budgets.js?v=1.9.78"></script>
-  <script src="./js/ui-analytics.js?v=1.9.78"></script>
-  <script src="./js/ui-settings.js?v=1.9.78"></script>
+  <script src="./js/ui-calendar.js?v=1.9.81"></script>
+  <script src="./js/ui-transactions.js?v=1.9.81"></script>
+  <script src="./js/ui-debts.js?v=1.9.81"></script>
+  <script src="./js/ui-accounts.js?v=1.9.81"></script>
+  <script src="./js/ui-budgets.js?v=1.9.81"></script>
+  <script src="./js/ui-analytics.js?v=1.9.81"></script>
+  <script src="./js/ui-settings.js?v=1.9.81"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.78"></script>
+  <script src="./js/app.js?v=1.9.81"></script>
 </body>
 </html>
