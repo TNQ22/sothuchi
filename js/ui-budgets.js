@@ -577,8 +577,13 @@ const UIBudgets = {
     const topBannerHtml = `
       <div class="actual-budget-top-card">
         <div class="actual-to-budget-center">
-          <div class="actual-to-budget-amount" style="color: ${toBudget < 0 ? 'var(--expense)' : (toBudget === 0 ? 'var(--primary)' : 'var(--income)')};">
-            ${this.formatMoney(toBudget)}
+          <div class="actual-to-budget-amount-wrapper">
+            <div class="actual-to-budget-amount" style="color: ${toBudget < 0 ? 'var(--expense)' : (toBudget === 0 ? 'var(--primary)' : 'var(--income)')};">
+              ${this.formatMoney(toBudget)}
+            </div>
+            <button type="button" class="actual-budget-copy-btn" onclick="UIBudgets.openCopyModal()" title="Sao chép ngân sách từ tháng khác" aria-label="Sao chép ngân sách">
+              <i data-lucide="copy"></i>
+            </button>
           </div>
           <div class="actual-to-budget-caption">${captionText}</div>
         </div>
@@ -699,6 +704,7 @@ const UIBudgets = {
       ${topBannerHtml}
       ${tableHtml}
     `;
+    if (window.lucide) lucide.createIcons();
   },
 
   /* Real-time category table filter */

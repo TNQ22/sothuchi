@@ -6896,6 +6896,11 @@ html, body {
   width: 100%;
 }
 
+.actual-to-budget-amount-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
 .actual-to-budget-amount {
   font-size: 1.85rem;
   font-weight: 800;
@@ -6903,6 +6908,41 @@ html, body {
   line-height: 1.15;
   text-align: center;
   letter-spacing: -0.02em;
+}
+
+.actual-budget-copy-btn {
+  position: absolute;
+  top: 50%;
+  right: -34px;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: rgba(45, 212, 191, 0.12);
+  color: #2dd4bf;
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: rgba(45, 212, 191, 0.2);
+}
+
+.actual-budget-copy-btn:hover,
+.actual-budget-copy-btn:active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+  transform: translateY(-50%) scale(1.06);
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.35);
+}
+
+.actual-budget-copy-btn i,
+.actual-budget-copy-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 .actual-to-budget-caption {
