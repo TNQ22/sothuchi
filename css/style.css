@@ -7071,26 +7071,42 @@ html, body {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 2px 4px;
+  padding: 2px 5px;
   border-radius: var(--radius-sm);
-  border: none !important;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
   cursor: pointer;
   font-weight: 700;
-  font-size: 0.74rem;
+  font-size: 0.73rem;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: all 0.15s ease;
   min-width: 0;
   max-width: 100%;
   white-space: nowrap;
-  overflow: hidden;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: rgba(45, 212, 191, 0.2);
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.actual-budget-cell.has-budget {
+  border-color: rgba(45, 212, 191, 0.45);
+  background: rgba(45, 212, 191, 0.08);
   color: #2dd4bf;
+}
+
+.actual-budget-cell.is-zero {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 500;
 }
 
 .actual-budget-cell:hover,
 .actual-budget-cell:active {
-  background: rgba(45, 212, 191, 0.15);
-  color: #2dd4bf;
+  border-color: var(--primary) !important;
+  background: rgba(13, 148, 136, 0.22) !important;
+  color: var(--primary) !important;
 }
 
 .actual-spent-cell {

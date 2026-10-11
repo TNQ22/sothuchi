@@ -632,9 +632,9 @@ const UIBudgets = {
             </div>
           </td>
 
-          <td style="text-align: right;">
-            <div class="actual-budget-cell" onclick="UIBudgets.openQuickEditModal(${cat.id})" title="Nhấp để sửa phân bổ">
-              <span>${budgeted > 0 ? this.formatMoney(budgeted) : '<span style="color: var(--text-muted); opacity: 0.5; font-weight: 500;">0đ</span>'}</span>
+          <td style="text-align: right; cursor: pointer;" onclick="UIBudgets.openQuickEditModal(${cat.id})" title="Nhấp để sửa phân bổ">
+            <div class="actual-budget-cell ${budgeted > 0 ? 'has-budget' : 'is-zero'}" role="button" tabindex="0">
+              <span>${budgeted > 0 ? this.formatMoney(budgeted) : '0đ'}</span>
             </div>
           </td>
 
@@ -664,7 +664,7 @@ const UIBudgets = {
         <table class="actual-budget-table">
           <thead>
             <tr>
-              <th style="width: 32%; text-align: left;">Hạn Mục</th>
+              <th style="width: 32%; text-align: left;">Hạng mục</th>
               <th style="width: 23%; text-align: right;">Phân bổ</th>
               <th style="width: 22%; text-align: right;">Đã chi</th>
               <th style="width: 23%; text-align: right;">Còn lại</th>
