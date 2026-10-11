@@ -627,11 +627,13 @@ class App {
 
     // Khôi phục vị trí cuộn khi trở về (isBack = true)
     if (isBack && this.scrollPositions[viewId] !== undefined) {
-      const savedY = this.scrollPositions[viewId];
-      // Khôi phục ngay lập tức và một lần nữa sau khi DOM render ổn định
-      window.scrollTo(0, savedY);
+      const savedY = this.scrollPositions[viewId] || 0;
+      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const targetY = Math.min(savedY, maxScroll);
+      window.scrollTo(0, targetY);
       requestAnimationFrame(() => {
-        window.scrollTo(0, savedY);
+        const curMax = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        window.scrollTo(0, Math.min(savedY, curMax));
       });
     } else if (!isTxPage) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
