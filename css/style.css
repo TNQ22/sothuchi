@@ -7376,6 +7376,35 @@ html, body {
   background: rgba(13, 148, 136, 0.1);
 }
 
+
+.budget-avg-btn {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.budget-avg-btn:hover {
+  background: rgba(13, 148, 136, 0.12);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.budget-avg-btn.active {
+  background: rgba(13, 148, 136, 0.22);
+  border-color: var(--primary);
+  color: #2dd4bf;
+  font-weight: 700;
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
 .budget-copy-option input[type="radio"] {
   accent-color: var(--primary);
   margin-top: 3px;

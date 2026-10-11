@@ -1775,14 +1775,20 @@ const UIBudgets = {
     window.app.refreshAll();
   },
 
-    /* ==================== MODAL 4: COPY BUDGET ==================== */
+    /* ==================== MODAL 4: COPY / AUTO SETUP BUDGET ==================== */
+  setupType: 'prev_month',
+  averageMonths: 3,
+
   openCopyModal() {
     const modal = document.getElementById('modal-budget-copy');
     if (!modal) return;
 
+    this.setupType = 'prev_month';
+    this.averageMonths = 3;
+
     const targetDisplay = document.getElementById('budget-copy-target-display');
     if (targetDisplay) {
-      targetDisplay.value = this.formatMonthDisplay(this.currentMonth);
+      targetDisplay.textContent = this.formatMonthDisplay(this.currentMonth);
     }
 
     const select = document.getElementById('budget-copy-source-select');
@@ -1799,7 +1805,9 @@ const UIBudgets = {
       select.innerHTML = options.join('');
     }
 
-    this.selectCopyOption('exact');
+    this.selectSetupType('prev_month');
+    this.setAverageMonths(3);
+
     modal.classList.add('open');
     if (window.lucide) lucide.createIcons();
   },
@@ -1809,20 +1817,161 @@ const UIBudgets = {
     if (modal) modal.classList.remove('open');
   },
 
+  selectSetupType(type) {
+    this.setupType = type;
+    const optPrev = document.getElementById('opt-setup-prev');
+    const optAvg = document.getElementById('opt-setup-avg');
+    const radioPrev = document.getElementById('radio-setup-prev');
+    const radioAvg = document.getElementById('radio-setup-avg');
+    const subPrev = document.getElementById('setup-prev-suboptions');
+    const subAvg = document.getElementById('setup-avg-suboptions');
+
+    if (type === 'average') {
+      if (optPrev) optPrev.classList.remove('active');
+      if (optAvg) optAvg.classList.add('active');
+      if (radioPrev) radioPrev.checked = false;
+      if (radioAvg) radioAvg.checked = true;
+      if (subPrev) subPrev.style.display = 'none';
+      if (subAvg) subAvg.style.display = 'block';
+      this.updateAverageHint();
+    } else {
+      if (optPrev) optPrev.classList.add('active');
+      if (optAvg) optAvg.classList.remove('active');
+      if (radioPrev) radioPrev.checked = true;
+      if (radioAvg) radioAvg.checked = false;
+      if (subPrev) subPrev.style.display = 'flex';
+      if (subAvg) subAvg.style.display = 'none';
+    }
+  },
+
+  setAverageMonths(n) {
+    this.averageMonths = n;
+    [3, 6, 12].forEach(m => {
+      const btn = document.getElementById(`btn-avg-${m}`);
+      if (btn) {
+        if (m === n) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      }
+    });
+    this.updateAverageHint();
+  },
+
+  updateAverageHint() {
+    const hint = document.getElementById('setup-avg-range-hint');
+    if (!hint) return;
+    const n = this.averageMonths || 3;
+    const [curY, curM] = this.currentMonth.split('-').map(Number);
+    const startD = new Date(curY, curM - 1 - n, 1);
+    const startYM = `${startD.getFullYear()}-${String(startD.getMonth() + 1).padStart(2, '0')}`;
+    const endD = new Date(curY, curM - 1, 0);
+    const endYM = `${endD.getFullYear()}-${String(endD.getMonth() + 1).padStart(2, '0')}`;
+    hint.innerHTML = `<i data-lucide="calendar" style="width: 12px; height: 12px; vertical-align: -1px; margin-right: 4px;"></i>Phân tích chi tiêu từ <strong>${this.formatMonthDisplay(startYM)}</strong> đến <strong>${this.formatMonthDisplay(endYM)}</strong> (${n} tháng)`;
+    if (window.lucide) lucide.createIcons();
+  },
+
   selectCopyOption(mode) {
-    document.querySelectorAll('.budget-copy-option').forEach(el => el.classList.remove('active'));
-    const activeLabel = document.getElementById(`opt-copy-${mode === 'fill_empty' ? 'empty' : (mode === 'actual_spent' ? 'spent' : 'exact')}`);
-    if (activeLabel) {
-      activeLabel.classList.add('active');
-      const radio = activeLabel.querySelector('input[type="radio"]');
+    if (mode === 'actual_spent') {
+      this.selectSetupType('prev_month');
+      const radio = document.querySelector('input[name="budget-prev-source-type"][value="spent"]');
       if (radio) radio.checked = true;
+    } else if (mode === 'average') {
+      this.selectSetupType('average');
+    } else {
+      this.selectSetupType('prev_month');
     }
   },
 
   async handleCopySubmit() {
-    const sourceMonth = document.getElementById('budget-copy-source-select')?.value;
     const targetMonth = this.currentMonth;
-    const copyMode = document.querySelector('input[name="budget-copy-mode"]:checked')?.value || 'exact';
+    const now = Date.now();
+    const categories = await db.categories.where('type').equals('expense').toArray();
+
+    // 1. THIẾT LẬP THEO TRUNG BÌNH 3, 6, 12 THÁNG
+    if (this.setupType === 'average') {
+      const n = this.averageMonths || 3;
+      const [curY, curM] = targetMonth.split('-').map(Number);
+
+      const startD = new Date(curY, curM - 1 - n, 1);
+      const startYM = `${startD.getFullYear()}-${String(startD.getMonth() + 1).padStart(2, '0')}`;
+      const startDate = `${startYM}-01`;
+
+      const endD = new Date(curY, curM - 1, 0);
+      const endY = endD.getFullYear();
+      const endM = String(endD.getMonth() + 1).padStart(2, '0');
+      const endDay = String(endD.getDate()).padStart(2, '0');
+      const endDate = `${endY}-${endM}-${endDay}`;
+
+      const txs = await db.transactions
+        .where('date')
+        .between(startDate, endDate, true, true)
+        .and(t => t.type === 'expense' && t.isDeleted === 0)
+        .toArray();
+
+      if (txs.length === 0) {
+        showToast(`Không có dữ liệu chi tiêu trong ${n} tháng gần nhất để tính trung bình`, 'warning');
+        return;
+      }
+
+      const spentByCat = {};
+      let totalSpent = 0;
+      for (const t of txs) {
+        const amt = t.amount || 0;
+        totalSpent += amt;
+        if (t.categoryId) {
+          spentByCat[t.categoryId] = (spentByCat[t.categoryId] || 0) + amt;
+        }
+      }
+
+      const targetBudgets = await db.budgets.where('month').equals(targetMonth).toArray();
+      const targetMap = new Map(targetBudgets.map(b => [String(b.categoryId), b]));
+
+      let appliedCount = 0;
+      for (const cat of categories) {
+        const catSpentTotal = spentByCat[cat.id] || 0;
+        const avgSpent = Math.round((catSpentTotal / n) / 1000) * 1000;
+        if (avgSpent > 0) {
+          const existing = targetMap.get(String(cat.id));
+          if (existing) {
+            await db.budgets.update(existing.id, { limitAmount: avgSpent, updatedAt: now });
+          } else {
+            await db.budgets.add({ categoryId: cat.id, month: targetMonth, limitAmount: avgSpent, updatedAt: now });
+          }
+          appliedCount++;
+        }
+      }
+
+      const avgTotal = Math.round((totalSpent / n) / 1000) * 1000;
+      if (avgTotal > 0) {
+        const existingOverall = targetBudgets.find(b => b.categoryId === 'TOTAL' || b.categoryId === 0 || b.isOverall);
+        if (existingOverall) {
+          await db.budgets.update(existingOverall.id, { limitAmount: avgTotal, updatedAt: now });
+        } else {
+          await db.budgets.add({ categoryId: 'TOTAL', month: targetMonth, limitAmount: avgTotal, isOverall: true, updatedAt: now });
+        }
+      }
+
+      try {
+        localStorage.setItem('budget_manual_set_' + targetMonth, '1');
+      } catch (_) {}
+
+      this.closeCopyModal();
+      if (window.UITransactions && typeof window.UITransactions.closeKeypad === 'function') {
+        window.UITransactions.closeKeypad();
+      }
+      this.closeBudgetForm();
+      showToast(`Đã thiết lập ngân sách theo trung bình ${n} tháng (${appliedCount} hạng mục)`, 'success');
+      if (window.app) {
+        await window.app.refreshAll();
+      }
+      return;
+    }
+
+    // 2. SAO CHÉP TỪ THÁNG TRƯỚC (HOẶC THÁNG ĐƯỢC CHỌN)
+    const sourceMonth = document.getElementById('budget-copy-source-select')?.value;
+    const prevSourceType = document.querySelector('input[name="budget-prev-source-type"]:checked')?.value || 'budget';
 
     if (!sourceMonth || !targetMonth || sourceMonth === targetMonth) {
       showToast('Vui lòng chọn tháng nguồn hợp lệ', 'error');
@@ -1834,9 +1983,8 @@ const UIBudgets = {
     const targetMap = new Map(targetBudgets.map(b => [String(b.categoryId), b]));
 
     let copiedCount = 0;
-    const now = Date.now();
 
-    if (copyMode === 'actual_spent') {
+    if (prevSourceType === 'spent') {
       const startOfMonth = `${sourceMonth}-01`;
       const endOfMonth = `${sourceMonth}-31`;
       const sourceTxs = await db.transactions
@@ -1844,6 +1992,11 @@ const UIBudgets = {
         .between(startOfMonth, endOfMonth, true, true)
         .and(t => t.type === 'expense' && t.isDeleted === 0)
         .toArray();
+
+      if (sourceTxs.length === 0) {
+        showToast(`Tháng ${this.formatMonthDisplay(sourceMonth)} không có chi tiêu thực tế`, 'warning');
+        return;
+      }
 
       const spentByCat = {};
       let totalExpense = 0;
@@ -1862,7 +2015,6 @@ const UIBudgets = {
         } else {
           await db.budgets.add({ categoryId: 'TOTAL', month: targetMonth, limitAmount: roundedTotal, isOverall: true, updatedAt: now });
         }
-        copiedCount++;
       }
 
       for (const [catIdStr, spent] of Object.entries(spentByCat)) {
@@ -1879,6 +2031,7 @@ const UIBudgets = {
         copiedCount++;
       }
     } else {
+      // Theo hạn mức đã đặt
       if (sourceBudgets.length === 0) {
         showToast(`Tháng ${this.formatMonthDisplay(sourceMonth)} chưa có thiết lập ngân sách nào`, 'warning');
         return;
@@ -1886,10 +2039,6 @@ const UIBudgets = {
 
       for (const b of sourceBudgets) {
         const existing = targetMap.get(String(b.categoryId));
-        if (copyMode === 'fill_empty' && existing && existing.limitAmount > 0) {
-          continue;
-        }
-
         if (existing) {
           await db.budgets.update(existing.id, {
             limitAmount: b.limitAmount,

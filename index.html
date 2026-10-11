@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.93">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.94">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -805,7 +805,7 @@
         </div>
 
         <div style="text-align: center; padding: 24px 0 12px; color: var(--text-muted); font-size: 0.82rem;">
-          Sổ Thu Chi PWA &bull; Phiên bản <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; background: rgba(13, 148, 136, 0.2); color: #2dd4bf; font-weight: 600; font-size: 0.8rem;">v1.9.93</span>
+          Sổ Thu Chi PWA &bull; Phiên bản <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; background: rgba(13, 148, 136, 0.2); color: #2dd4bf; font-weight: 600; font-size: 0.8rem;">v1.9.94</span>
         </div>
       </section>
 
@@ -2934,57 +2934,79 @@
     </div>
   </div>
 
-  <!-- Modal 4: Sao Chép Ngân Sách Từ Tháng Trước -->
+  <!-- Modal 4: Sao Chép / Thiết Lập Ngân Sách -->
   <div id="modal-budget-copy" class="modal-overlay">
     <div class="modal-dialog">
       <div class="modal-header">
-        <h3 class="modal-title"><i data-lucide="copy" style="color: var(--primary);"></i> Sao Chép Ngân Sách</h3>
+        <h3 class="modal-title"><i data-lucide="sparkles" style="color: var(--primary);"></i> Thiết Lập / Sao Chép Ngân Sách</h3>
         <button type="button" class="btn-icon" onclick="UIBudgets.closeCopyModal()"><i data-lucide="x"></i></button>
       </div>
       <form id="budget-copy-form">
         <div class="modal-body">
-          <div class="form-group">
-            <label class="form-label">Sao Chép Từ Tháng</label>
-            <select id="budget-copy-source-select" class="form-control" style="font-weight: 600;"></select>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <div style="font-size: 0.82rem; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between;">
+              <span>Áp dụng cho tháng:</span>
+              <strong id="budget-copy-target-display" style="color: #2dd4bf; font-size: 0.95rem;"></strong>
+            </div>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Tháng Nhận Ngân Sách</label>
-            <input type="text" id="budget-copy-target-display" class="form-control" readonly style="font-weight: 700; background: rgba(255,255,255,0.03); text-align: center;">
-          </div>
+            <label class="form-label" style="font-weight: 700; margin-bottom: 8px;">Phương Thức Thiết Lập</label>
 
-          <div class="form-group">
-            <label class="form-label">Phương Thức Sao Chép</label>
-            
-            <label class="budget-copy-option active" id="opt-copy-exact">
-              <input type="radio" name="budget-copy-mode" value="exact" checked onclick="UIBudgets.selectCopyOption('exact')">
-              <div>
-                <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary);">Sao chép nguyên bản hạn mức</div>
-                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Giữ nguyên chính xác ngân sách tổng và hạn mức các danh mục của tháng trước.</div>
-              </div>
-            </label>
+            <!-- Lựa chọn 1: Sao chép từ tháng trước -->
+            <div class="budget-copy-option active" id="opt-setup-prev" onclick="UIBudgets.selectSetupType('prev_month')">
+              <div style="display: flex; align-items: flex-start; gap: 10px; width: 100%;">
+                <input type="radio" name="budget-setup-type" id="radio-setup-prev" value="prev_month" checked>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary);">Sao chép từ tháng trước</div>
+                  <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">Lấy lại hạn mức hoặc thực tế chi tiêu từ tháng liền kề trước</div>
 
-            <label class="budget-copy-option" id="opt-copy-empty">
-              <input type="radio" name="budget-copy-mode" value="fill_empty" onclick="UIBudgets.selectCopyOption('fill_empty')">
-              <div>
-                <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary);">Chỉ điền các mục còn trống</div>
-                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Không ghi đè những mục bạn đã tự chỉnh sửa trong tháng này.</div>
+                  <div id="setup-prev-suboptions" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 0.76rem; color: var(--text-secondary); white-space: nowrap;">Tháng nguồn:</span>
+                      <select id="budget-copy-source-select" class="form-control" style="font-size: 0.8rem; font-weight: 600; padding: 5px 8px;"></select>
+                    </div>
+                    <div style="display: flex; gap: 14px; margin-top: 2px;">
+                      <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; cursor: pointer; color: var(--text-primary);">
+                        <input type="radio" name="budget-prev-source-type" value="budget" checked style="accent-color: var(--primary);"> Theo hạn mức đã đặt
+                      </label>
+                      <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; cursor: pointer; color: var(--text-primary);">
+                        <input type="radio" name="budget-prev-source-type" value="spent" style="accent-color: var(--primary);"> Theo thực tế đã chi
+                      </label>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </label>
+            </div>
 
-            <label class="budget-copy-option" id="opt-copy-spent">
-              <input type="radio" name="budget-copy-mode" value="actual_spent" onclick="UIBudgets.selectCopyOption('actual_spent')">
-              <div>
-                <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary);">Theo thực tế chi tiêu tháng trước</div>
-                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Tự động lấy số tiền thực tế đã chi của tháng trước làm hạn mức cho tháng này.</div>
+            <!-- Lựa chọn 2: Thiết lập theo trung bình 3, 6, 12 tháng -->
+            <div class="budget-copy-option" id="opt-setup-avg" onclick="UIBudgets.selectSetupType('average')">
+              <div style="display: flex; align-items: flex-start; gap: 10px; width: 100%;">
+                <input type="radio" name="budget-setup-type" id="radio-setup-avg" value="average">
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary);">Thiết lập theo trung bình 3, 6, 12 tháng</div>
+                  <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">Tự động tính bình quân chi tiêu thực tế mỗi tháng của từng hạng mục</div>
+
+                  <div id="setup-avg-suboptions" style="margin-top: 10px; display: none;">
+                    <div style="display: flex; gap: 8px;">
+                      <button type="button" class="budget-avg-btn active" id="btn-avg-3" onclick="event.stopPropagation(); UIBudgets.setAverageMonths(3)">3 tháng</button>
+                      <button type="button" class="budget-avg-btn" id="btn-avg-6" onclick="event.stopPropagation(); UIBudgets.setAverageMonths(6)">6 tháng</button>
+                      <button type="button" class="budget-avg-btn" id="btn-avg-12" onclick="event.stopPropagation(); UIBudgets.setAverageMonths(12)">12 tháng</button>
+                    </div>
+                    <div id="setup-avg-range-hint" style="font-size: 0.74rem; color: var(--text-muted); margin-top: 6px;"></div>
+                  </div>
+                </div>
               </div>
-            </label>
+            </div>
+
           </div>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn-secondary" onclick="UIBudgets.closeCopyModal()">Hủy</button>
-          <button type="submit" class="btn-primary">Bắt Đầu Sao Chép</button>
+          <button type="submit" class="btn-primary" id="btn-budget-copy-submit">
+            <i data-lucide="check" style="width: 14px; height: 14px;"></i> Áp Dụng Thiết Lập
+          </button>
         </div>
       </form>
     </div>
@@ -3598,18 +3620,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.93"></script>
+  <script src="./js/backup.js?v=1.9.94"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.93"></script>
-  <script src="./js/ui-transactions.js?v=1.9.93"></script>
-  <script src="./js/ui-debts.js?v=1.9.93"></script>
-  <script src="./js/ui-accounts.js?v=1.9.93"></script>
-  <script src="./js/ui-budgets.js?v=1.9.93"></script>
-  <script src="./js/ui-analytics.js?v=1.9.93"></script>
-  <script src="./js/ui-settings.js?v=1.9.93"></script>
+  <script src="./js/ui-calendar.js?v=1.9.94"></script>
+  <script src="./js/ui-transactions.js?v=1.9.94"></script>
+  <script src="./js/ui-debts.js?v=1.9.94"></script>
+  <script src="./js/ui-accounts.js?v=1.9.94"></script>
+  <script src="./js/ui-budgets.js?v=1.9.94"></script>
+  <script src="./js/ui-analytics.js?v=1.9.94"></script>
+  <script src="./js/ui-settings.js?v=1.9.94"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.93"></script>
+  <script src="./js/app.js?v=1.9.94"></script>
 </body>
 </html>
