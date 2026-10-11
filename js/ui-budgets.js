@@ -1197,50 +1197,72 @@ const UIBudgets = {
   },
 
   closeBudgetCategoryForm() {
-    this.toggleCatPageDropdown(false);
+    this.closeCatPickerModal();
     if (window.app) window.app.switchView('budgets', true);
   },
 
-  async initCatPageDropdown(selectedId = null) {
-    const menu = document.getElementById('budget-cat-page-menu');
-    const triggerIcon = document.getElementById('budget-cat-page-icon');
-    const triggerLabel = document.getElementById('budget-cat-page-label');
-    const hiddenId = document.getElementById('budget-cat-page-id');
-    if (!menu) return;
+  openCatPickerModal() {
+    const modal = document.getElementById('modal-budget-cat-picker');
+    if (!modal) return;
+    this.renderCatPickerModalList();
+    modal.classList.add('open');
+    if (window.lucide) lucide.createIcons();
+  },
 
+  closeCatPickerModal() {
+    const modal = document.getElementById('modal-budget-cat-picker');
+    if (modal) modal.classList.remove('open');
+  },
+
+  toggleCatPageDropdown(force = null) {
+    if (force === false) {
+      this.closeCatPickerModal();
+    } else {
+      this.openCatPickerModal();
+    }
+  },
+
+  async renderCatPickerModalList() {
+    const listEl = document.getElementById('modal-budget-cat-list');
+    if (!listEl) return;
+
+    const currentSelectedId = document.getElementById('budget-cat-page-id')?.value;
     const categories = await db.categories.where('type').equals('expense').and(c => c.isDeleted === 0).toArray();
 
     let itemsHtml = '';
-    let foundCat = null;
-
     categories.forEach(cat => {
-      const isSelected = selectedId && Number(selectedId) === Number(cat.id);
-      if (isSelected) foundCat = cat;
+      const isSelected = currentSelectedId && Number(currentSelectedId) === Number(cat.id);
       const color = cat.color || '#0d9488';
       const icon = cat.icon || 'tag';
 
       itemsHtml += `
-        <div class="budget-cat-item ${isSelected ? 'selected' : ''}" onclick="UIBudgets.selectCatPageOption(${cat.id})" style="display: flex; flex-direction: row; align-items: center; gap: 12px; padding: 10px 12px; min-height: 48px; cursor: pointer;">
-          <div class="category-icon-bubble" style="background: ${color}22; color: ${color}; width: 32px; height: 32px; font-size: 0.9rem; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+        <div class="budget-cat-item ${isSelected ? 'selected' : ''}" onclick="UIBudgets.selectCatPageOption(${cat.id})">
+          <div class="category-icon-bubble" style="background: ${color}22; color: ${color}; width: 34px; height: 34px; font-size: 0.95rem; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
             <i data-lucide="${icon}"></i>
           </div>
-          <span class="budget-cat-item-name" style="flex: 1; font-size: 0.95rem; font-weight: 600; color: var(--text-primary); text-align: left;">${escapeHTML(cat.name)}</span>
-          ${isSelected ? '<i data-lucide="check" class="budget-cat-check" style="width: 18px; height: 18px; color: var(--primary); flex-shrink: 0; margin-left: auto;"></i>' : ''}
+          <span class="budget-cat-item-name">${escapeHTML(cat.name)}</span>
+          ${isSelected ? '<i data-lucide="check" class="budget-cat-check"></i>' : ''}
         </div>
       `;
     });
 
-    menu.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 12px 6px; border-bottom: 1px solid var(--border-color); margin-bottom: 8px;">
-        <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">Chọn Danh Mục Chi Tiêu</span>
-        <button type="button" class="btn-icon" onclick="UIBudgets.toggleCatPageDropdown(false)" style="width: 28px; height: 28px; border-radius: var(--radius-full); background: rgba(255,255,255,0.06);">
-          <i data-lucide="x" style="width: 15px; height: 15px;"></i>
-        </button>
-      </div>
-      <div style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 4px; max-height: calc(75vh - 70px);">
-        ${itemsHtml}
-      </div>
-    `;
+    listEl.innerHTML = itemsHtml;
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async initCatPageDropdown(selectedId = null) {
+    const triggerIcon = document.getElementById('budget-cat-page-icon');
+    const triggerLabel = document.getElementById('budget-cat-page-label');
+    const hiddenId = document.getElementById('budget-cat-page-id');
+
+    const categories = await db.categories.where('type').equals('expense').and(c => c.isDeleted === 0).toArray();
+
+    let foundCat = null;
+    if (selectedId) {
+      foundCat = categories.find(c => Number(c.id) === Number(selectedId));
+    } else if (categories.length > 0) {
+      foundCat = categories[0];
+    }
 
     if (foundCat) {
       const color = foundCat.color || '#0d9488';
@@ -1252,17 +1274,6 @@ const UIBudgets = {
       }
       if (triggerLabel) triggerLabel.textContent = foundCat.name;
       if (hiddenId) hiddenId.value = foundCat.id;
-    } else if (categories.length > 0 && !selectedId) {
-      const first = categories[0];
-      const color = first.color || '#0d9488';
-      const icon = first.icon || 'tag';
-      if (triggerIcon) {
-        triggerIcon.style.background = `${color}22`;
-        triggerIcon.style.color = color;
-        triggerIcon.innerHTML = `<i data-lucide="${icon}"></i>`;
-      }
-      if (triggerLabel) triggerLabel.textContent = first.name;
-      if (hiddenId) hiddenId.value = first.id;
     } else {
       if (triggerIcon) {
         triggerIcon.style.background = 'rgba(13, 148, 136, 0.15)';
@@ -1273,20 +1284,8 @@ const UIBudgets = {
       if (hiddenId) hiddenId.value = '';
     }
 
+    await this.renderCatPickerModalList();
     if (window.lucide) lucide.createIcons();
-  },
-
-  toggleCatPageDropdown(force = null) {
-    const menu = document.getElementById('budget-cat-page-menu');
-    const backdrop = document.getElementById('budget-cat-page-backdrop');
-    if (!menu) return;
-    const isShown = force !== null ? !force : (menu.style.display === 'flex' || menu.style.display === 'block');
-    const nextState = !isShown;
-    menu.style.display = nextState ? 'flex' : 'none';
-    if (backdrop) backdrop.style.display = nextState ? 'block' : 'none';
-    if (nextState && window.lucide) {
-      lucide.createIcons();
-    }
   },
 
   async selectCatPageOption(catId) {
@@ -1296,7 +1295,6 @@ const UIBudgets = {
     const triggerIcon = document.getElementById('budget-cat-page-icon');
     const triggerLabel = document.getElementById('budget-cat-page-label');
     const hiddenId = document.getElementById('budget-cat-page-id');
-    const menu = document.getElementById('budget-cat-page-menu');
 
     const color = cat.color || '#0d9488';
     const icon = cat.icon || 'tag';
@@ -1309,14 +1307,7 @@ const UIBudgets = {
     if (triggerLabel) triggerLabel.textContent = cat.name;
     if (hiddenId) hiddenId.value = cat.id;
 
-    this.toggleCatPageDropdown(false);
-    if (menu) {
-      menu.querySelectorAll('.budget-cat-item').forEach(item => {
-        item.classList.remove('selected');
-        const check = item.querySelector('.budget-cat-check');
-        if (check) check.remove();
-      });
-    }
+    this.closeCatPickerModal();
 
     const existing = await db.budgets.where({ categoryId: Number(cat.id), month: this.currentMonth }).first();
     const amountInput = document.getElementById('budget-cat-form-amount');

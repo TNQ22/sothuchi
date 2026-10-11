@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.77">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.78">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -627,13 +627,13 @@
           </div>
 
           <div class="tx-page-body" style="padding: 16px 14px; display: flex; flex-direction: column; gap: 16px;">
-            <!-- Card 1: Chọn danh mục chi tiêu với Dropdown có icon và màu -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 16px; position: relative; z-index: 50;">
+            <!-- Card 1: Chọn danh mục chi tiêu -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 16px;">
               <label class="form-label" style="margin-bottom: 8px;">Danh Mục Chi Tiêu</label>
               <input type="hidden" id="budget-cat-page-id" value="">
               
               <div class="budget-cat-dropdown" id="budget-cat-page-dropdown">
-                <button type="button" class="budget-cat-trigger" id="budget-cat-page-trigger" onclick="UIBudgets.toggleCatPageDropdown()">
+                <button type="button" class="budget-cat-trigger" id="budget-cat-page-trigger" onclick="UIBudgets.openCatPickerModal()">
                   <div class="budget-cat-trigger-content">
                     <div id="budget-cat-page-icon" class="category-icon-bubble" style="width: 32px; height: 32px; font-size: 0.95rem; background: rgba(13, 148, 136, 0.15); color: var(--primary); flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
                       <i data-lucide="tag"></i>
@@ -642,8 +642,6 @@
                   </div>
                   <i data-lucide="chevron-down" class="budget-cat-trigger-arrow"></i>
                 </button>
-                <div class="budget-cat-backdrop" id="budget-cat-page-backdrop" style="display: none;" onclick="UIBudgets.toggleCatPageDropdown(false)"></div>
-                <div class="budget-cat-menu" id="budget-cat-page-menu" style="display: none;"></div>
               </div>
             </div>
 
@@ -2912,6 +2910,24 @@
     </div>
   </div>
 
+  <!-- Modal: Chọn Danh Mục Cho Hạn Mức Ngân Sách -->
+  <div id="modal-budget-cat-picker" class="modal-overlay" onclick="if(event.target === this) UIBudgets.closeCatPickerModal()">
+    <div class="modal-dialog" style="max-width: 500px; max-height: 85vh;">
+      <div class="modal-header" style="padding: 16px 18px;">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px; font-size: 1.05rem;">
+          <i data-lucide="tag" style="color: var(--primary); width: 20px; height: 20px;"></i>
+          <span>Chọn Danh Mục Chi Tiêu</span>
+        </h3>
+        <button type="button" class="btn-icon" onclick="UIBudgets.closeCatPickerModal()" title="Đóng">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-budget-cat-list" style="padding: 12px 14px; overflow-y: auto; max-height: 65vh; display: flex; flex-direction: column; gap: 4px;">
+        <!-- Categories dynamically inserted here -->
+      </div>
+    </div>
+  </div>
+
   <!-- Modal 4: Sao Chép Ngân Sách Từ Tháng Trước -->
   <div id="modal-budget-copy" class="modal-overlay">
     <div class="modal-dialog">
@@ -3577,18 +3593,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.77"></script>
+  <script src="./js/backup.js?v=1.9.78"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.77"></script>
-  <script src="./js/ui-transactions.js?v=1.9.77"></script>
-  <script src="./js/ui-debts.js?v=1.9.77"></script>
-  <script src="./js/ui-accounts.js?v=1.9.77"></script>
-  <script src="./js/ui-budgets.js?v=1.9.77"></script>
-  <script src="./js/ui-analytics.js?v=1.9.77"></script>
-  <script src="./js/ui-settings.js?v=1.9.77"></script>
+  <script src="./js/ui-calendar.js?v=1.9.78"></script>
+  <script src="./js/ui-transactions.js?v=1.9.78"></script>
+  <script src="./js/ui-debts.js?v=1.9.78"></script>
+  <script src="./js/ui-accounts.js?v=1.9.78"></script>
+  <script src="./js/ui-budgets.js?v=1.9.78"></script>
+  <script src="./js/ui-analytics.js?v=1.9.78"></script>
+  <script src="./js/ui-settings.js?v=1.9.78"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.77"></script>
+  <script src="./js/app.js?v=1.9.78"></script>
 </body>
 </html>

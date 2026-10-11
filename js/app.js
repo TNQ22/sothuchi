@@ -418,6 +418,16 @@ class App {
       }
     }
 
+    const mobileBottomNav = document.querySelector('.mobile-bottom-nav');
+    if (mobileBottomNav) {
+      const hideNavViews = ['budget-form', 'budget-category-form', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form'];
+      if (hideNavViews.includes(viewId)) {
+        mobileBottomNav.style.display = 'none';
+      } else {
+        mobileBottomNav.style.display = '';
+      }
+    }
+
     // 1. Lưu vị trí cuộn của view hiện tại trước khi chuyển view
     if (this.currentView) {
       this.scrollPositions[this.currentView] = window.scrollY || document.documentElement.scrollTop || 0;
