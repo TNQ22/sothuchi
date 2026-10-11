@@ -171,39 +171,7 @@ const UIBudgets = {
     const modal = document.getElementById('modal-budget-settings');
     if (!modal) return;
 
-    // Set active mode radio & style
     this.selectSettingMode(this.currentMode);
-
-    // Populate accounts list
-    const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
-    const walletListEl = document.getElementById('budget-settings-wallet-list');
-
-    const hasAnyDisabled = accounts.some(a => a.includeInBudget === 0 || a.includeInBudget === false);
-    const isCustom = hasAnyDisabled || (Array.isArray(this.applicableWallets) && this.applicableWallets.length > 0);
-    this.selectWalletScope(isCustom ? 'custom' : 'all');
-
-    if (walletListEl) {
-      walletListEl.innerHTML = accounts.map(acc => {
-        const checked = acc.includeInBudget !== undefined 
-          ? (acc.includeInBudget === 1 || acc.includeInBudget === true)
-          : !acc.excludeFromReport;
-        return `
-          <label class="budget-wallet-check-item">
-            <input type="checkbox" name="budget-wallet-item" value="${acc.id}" ${checked ? 'checked' : ''}>
-            <div class="category-icon-bubble" style="background: ${acc.color || '#0d9488'}22; color: ${acc.color || '#0d9488'}; width: 28px; height: 28px; font-size: 0.8rem;">
-              <i data-lucide="${acc.icon || 'wallet'}"></i>
-            </div>
-            <div style="flex: 1; min-width: 0;">
-              <div style="font-weight: 600; font-size: 0.86rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                ${escapeHTML(acc.name)}
-              </div>
-              <div style="font-size: 0.72rem; color: var(--text-muted);">${this.formatMoney(acc.balance || 0)}</div>
-            </div>
-          </label>
-        `;
-      }).join('');
-    }
-
     modal.classList.add('open');
     if (window.lucide) lucide.createIcons();
   },
@@ -228,75 +196,13 @@ const UIBudgets = {
     }
   },
 
-  selectWalletScope(scope) {
-    const cardAll = document.getElementById('scope-all-card');
-    const cardCustom = document.getElementById('scope-custom-card');
-    const walletList = document.getElementById('budget-settings-wallet-list');
-    const quickActions = document.getElementById('budget-wallet-quick-actions');
-
-    if (cardAll) {
-      cardAll.classList.toggle('active', scope === 'all');
-      const radio = cardAll.querySelector('input[type="radio"]');
-      if (radio) radio.checked = (scope === 'all');
-    }
-    if (cardCustom) {
-      cardCustom.classList.toggle('active', scope === 'custom');
-      const radio = cardCustom.querySelector('input[type="radio"]');
-      if (radio) radio.checked = (scope === 'custom');
-    }
-    if (walletList) {
-      walletList.style.display = scope === 'custom' ? 'flex' : 'none';
-    }
-    if (quickActions) {
-      quickActions.style.display = scope === 'custom' ? 'inline-flex' : 'none';
-    }
-  },
-
-  toggleAllWallets(selectAll) {
-    const checkboxes = document.querySelectorAll('input[name="budget-wallet-item"]');
-    checkboxes.forEach(cb => { cb.checked = selectAll; });
-  },
-
   async handleSettingsSubmit() {
     const selectedMode = document.querySelector('input[name="budget-setting-mode"]:checked')?.value || 'simple';
-    const selectedScope = document.querySelector('input[name="budget-wallet-scope"]:checked')?.value || 'all';
-
-    let applicableWallets = 'ALL';
-    if (selectedScope === 'custom') {
-      const checkedBoxes = Array.from(document.querySelectorAll('input[name="budget-wallet-item"]:checked'));
-      const ids = checkedBoxes.map(cb => Number(cb.value)).filter(Boolean);
-      if (ids.length === 0) {
-        showToast('Vui lòng chọn ít nhất một ví để áp dụng ngân sách', 'warning');
-        return;
-      }
-      applicableWallets = ids;
-    }
-
     this.currentMode = selectedMode;
-    this.applicableWallets = applicableWallets;
 
     try {
       await db.settings.put({ key: 'budget_mode', value: selectedMode });
-      await db.settings.put({ key: 'budget_applicable_accounts', value: applicableWallets });
-
-      const activeAccs = await db.accounts.where('isDeleted').equals(0).toArray();
-      if (selectedScope === 'all') {
-        for (const acc of activeAccs) {
-          if (acc.includeInBudget !== 1) {
-            await db.accounts.update(acc.id, { includeInBudget: 1, updatedAt: Date.now() });
-          }
-        }
-      } else {
-        const idSet = new Set(applicableWallets);
-        for (const acc of activeAccs) {
-          const newVal = idSet.has(acc.id) ? 1 : 0;
-          if (acc.includeInBudget !== newVal) {
-            await db.accounts.update(acc.id, { includeInBudget: newVal, updatedAt: Date.now() });
-          }
-        }
-      }
-
-      showToast('Đã lưu cài đặt ngân sách', 'success');
+      showToast('Đã lưu chế độ ngân sách', 'success');
     } catch (e) {
       console.warn('Error saving budget settings:', e);
     }
@@ -305,7 +211,7 @@ const UIBudgets = {
     await this.render();
   },
 
-  handlePrimaryAddAction() {
+    handlePrimaryAddAction() {
     if (this.currentMode === 'simple') {
       this.openOverallBudgetModal();
     } else {
@@ -460,18 +366,17 @@ const UIBudgets = {
               ${remaining >= 0 ? `+${this.formatMoney(remaining)}` : `-${this.formatMoney(Math.abs(remaining))}`}
             </div>
 
+            <div class="budget-hero-bar-meta">
+              <span class="budget-bar-spent">${this.formatMoney(totalSpent)} (${percent}%)</span>
+              <span class="budget-bar-limit">${this.formatMoney(overallLimit)}</span>
+            </div>
+
             <div class="budget-progress-track budget-hero-progress">
               <div class="budget-progress-fill" style="width: ${Math.min(100, percent)}%; background: ${barColor};"></div>
             </div>
 
-            <div class="budget-hero-limit-info">
-              <span>Hạn mức: <b>${this.formatMoney(overallLimit)}</b></span>
-              <span class="budget-meta-dot">•</span>
-              <span>Đã chi: <b>${this.formatMoney(totalSpent)}</b> (${percent}%)</span>
-            </div>
-
             <div class="budget-hero-click-hint">
-              <i data-lucide="edit-3" style="width: 12px; height: 12px;"></i>
+              <i data-lucide="edit-3" style="width: 11px; height: 11px;"></i>
               <span>Nhấp để sửa hạn mức</span>
             </div>
           </div>
@@ -482,12 +387,12 @@ const UIBudgets = {
         <div class="budget-hero-card budget-hero-clickable" onclick="UIBudgets.openOverallBudgetModal()" title="Nhấp vào để thiết lập hạn mức ngân sách">
           <div class="budget-hero-center-box">
             <div class="budget-hero-empty-icon">
-              <i data-lucide="target" style="width: 28px; height: 28px;"></i>
+              <i data-lucide="target" style="width: 24px; height: 24px;"></i>
             </div>
-            <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">Chưa Thiết Lập Ngân Sách Tháng</div>
-            <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 8px;">Nhấp vào đây để đặt hạn mức chi tiêu cho ${this.formatMonthDisplay(this.currentMonth)}</div>
+            <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">Chưa Thiết Lập Ngân Sách Tháng</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px;">Nhấp vào đây để đặt hạn mức chi tiêu cho ${this.formatMonthDisplay(this.currentMonth)}</div>
             <div class="budget-hero-click-hint">
-              <i data-lucide="plus" style="width: 13px; height: 13px;"></i>
+              <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
               <span>Thiết lập ngay</span>
             </div>
           </div>
@@ -495,7 +400,7 @@ const UIBudgets = {
       `;
     }
 
-    // Locked categories section
+        // Locked categories section
     let lockedHtml = '';
     if (lockedBudgets.length === 0) {
       lockedHtml = `

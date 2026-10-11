@@ -2579,16 +2579,16 @@
   <!-- ==================== BUDGET MODALS ==================== -->
     <!-- Modal 0: Cài Đặt Ngân Sách (Chế độ & Ví áp dụng) -->
   <div id="modal-budget-settings" class="modal-overlay">
-    <div class="modal-dialog">
+    <div class="modal-dialog" style="max-width: 460px;">
       <div class="modal-header">
-        <h3 class="modal-title"><i data-lucide="settings" style="color: var(--primary);"></i> Cài Đặt Ngân Sách</h3>
+        <h3 class="modal-title"><i data-lucide="settings" style="color: var(--primary);"></i> Chế Độ Ngân Sách</h3>
         <button type="button" class="btn-icon" onclick="UIBudgets.closeSettingsModal()"><i data-lucide="x"></i></button>
       </div>
-      <form id="budget-settings-form">
-        <div class="modal-body">
-          <!-- 1. Chế độ ngân sách -->
-          <div class="form-group">
-            <label class="form-label" style="font-weight: 700; margin-bottom: 8px;">Chế Độ Quản Lý Ngân Sách</label>
+      <form id="budget-settings-form" onsubmit="event.preventDefault(); UIBudgets.handleSettingsSubmit();">
+        <div class="modal-body" style="padding: 16px 20px;">
+          <!-- Chế độ ngân sách -->
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-weight: 700; margin-bottom: 10px;">Chế Độ Quản Lý Ngân Sách</label>
             
             <label class="budget-setting-mode-card" id="setting-mode-simple-card" onclick="UIBudgets.selectSettingMode('simple')">
               <input type="radio" name="budget-setting-mode" value="simple" checked>
@@ -2616,42 +2616,11 @@
               </div>
             </label>
           </div>
-
-          <!-- 2. Ví áp dụng ngân sách -->
-          <div class="form-group" style="margin-top: 18px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <label class="form-label" style="font-weight: 700; margin-bottom: 0;">Áp Dụng Cho Ví / Tài Khoản Nào</label>
-              <div id="budget-wallet-quick-actions" style="display: none; gap: 8px; font-size: 0.78rem;">
-                <button type="button" style="color: var(--primary); text-decoration: underline; background: none; border: none; padding: 0; cursor: pointer;" onclick="UIBudgets.toggleAllWallets(true)">Chọn tất cả</button>
-                <span style="color: var(--border-color);">|</span>
-                <button type="button" style="color: var(--text-muted); text-decoration: underline; background: none; border: none; padding: 0; cursor: pointer;" onclick="UIBudgets.toggleAllWallets(false)">Bỏ chọn</button>
-              </div>
-            </div>
-            
-            <label class="budget-wallet-scope-card" id="scope-all-card" onclick="UIBudgets.selectWalletScope('all')">
-              <input type="radio" name="budget-wallet-scope" value="all" checked>
-              <div>
-                <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">Tất cả ví & tài khoản</div>
-                <div style="font-size: 0.76rem; color: var(--text-muted);">Tính toán ngân sách trên toàn bộ chi tiêu từ mọi tài khoản (mặc định)</div>
-              </div>
-            </label>
-
-            <label class="budget-wallet-scope-card" id="scope-custom-card" onclick="UIBudgets.selectWalletScope('custom')" style="margin-top: 8px;">
-              <input type="radio" name="budget-wallet-scope" value="custom">
-              <div>
-                <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">Tùy chọn ví áp dụng</div>
-                <div style="font-size: 0.76rem; color: var(--text-muted);">Chỉ tính toán ngân sách trên các ví được đánh dấu bên dưới</div>
-              </div>
-            </label>
-
-            <!-- Danh sách checkbox từng ví -->
-            <div id="budget-settings-wallet-list" class="budget-settings-wallet-list" style="display: none; margin-top: 10px;"></div>
-          </div>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn-secondary" onclick="UIBudgets.closeSettingsModal()">Hủy</button>
-          <button type="submit" class="btn-primary">Lưu Cài Đặt</button>
+          <button type="submit" class="btn-primary">Lưu Chế Độ</button>
         </div>
       </form>
     </div>
@@ -3455,11 +3424,11 @@
   <script src="./js/ui-transactions.js?v=1.9.69"></script>
   <script src="./js/ui-debts.js?v=1.9.69"></script>
   <script src="./js/ui-accounts.js?v=1.9.69"></script>
-  <script src="./js/ui-budgets.js?v=1.9.71"></script>
+  <script src="./js/ui-budgets.js?v=1.9.72"></script>
   <script src="./js/ui-analytics.js?v=1.9.69"></script>
   <script src="./js/ui-settings.js?v=1.9.69"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.71"></script>
+  <script src="./js/app.js?v=1.9.72"></script>
 </body>
 </html>

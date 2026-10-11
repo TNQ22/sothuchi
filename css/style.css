@@ -6360,9 +6360,9 @@ html, body {
 .budget-hero-card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 18px 20px;
-  margin-bottom: 20px;
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 12px;
   box-shadow: var(--shadow-sm);
   position: relative;
   overflow: hidden;
@@ -7212,6 +7212,18 @@ html, body {
 }
 
 /* Minimalist Centered Hero Card */
+#view-budgets.page-view {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 12px 14px 40px;
+}
+
+@media (max-width: 768px) {
+  #view-budgets.page-view {
+    padding: 8px 8px 80px 8px !important;
+  }
+}
+
 .budget-hero-clickable {
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
@@ -7219,7 +7231,7 @@ html, body {
 
 .budget-hero-clickable:hover {
   border-color: rgba(13, 148, 136, 0.45);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
 }
 
 .budget-hero-center-box {
@@ -7228,32 +7240,54 @@ html, body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 14px 16px;
+  padding: 2px 0;
   width: 100%;
 }
 
 .budget-hero-center-box .budget-hero-rem-label {
-  font-size: 0.74rem;
+  font-size: 0.68rem;
   font-weight: 700;
   color: var(--text-muted);
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .budget-hero-center-box .budget-hero-rem-val {
-  font-size: 2.3rem;
+  font-size: 1.65rem;
   font-weight: 800;
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
+}
+
+.budget-hero-bar-meta {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+  padding: 0 2px;
+}
+
+.budget-bar-spent {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.budget-bar-limit {
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .budget-hero-progress {
   width: 100%;
   max-width: 440px;
-  margin: 0 auto 10px auto;
-  height: 8px;
+  margin: 0 auto 4px auto;
+  height: 6px;
   border-radius: var(--radius-full);
 }
 
@@ -7276,28 +7310,29 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--primary);
   opacity: 0.85;
-  margin-top: 10px;
+  margin-top: 4px;
   font-weight: 600;
 }
 
 .budget-hero-empty-icon {
-  width: 52px;
-  height: 52px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: var(--primary-light);
   color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 12px auto;
+  margin: 0 auto 8px auto;
 }
 
 .budget-locked-item {
   cursor: pointer;
   transition: transform 0.15s ease, border-color 0.15s ease;
+  padding: 10px 12px;
 }
 
 .budget-locked-item:hover {
@@ -7305,6 +7340,19 @@ html, body {
 }
 
 /* Account budget badge & switch */
+.account-budget-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid rgba(13, 148, 136, 0.3);
+  padding: 2px 5px;
+  border-radius: var(--radius-full);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 .account-badge.budget {
   display: inline-flex;
   align-items: center;
