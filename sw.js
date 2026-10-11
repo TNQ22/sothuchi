@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v1.9.84';
+const CACHE_NAME = 'sothuchi-pwa-v1.9.85';
 
 const PRECACHE_ASSETS = [
   './',
@@ -131,36 +131,28 @@ self.addEventListener('fetch', (event) => {
   // Handle asset requests (CSS, JS, images, icons, vendor scripts)
   event.respondWith(
     (async () => {
-      // 1. Try Cache First (WITH ignoreSearch: true so style.css?v=... matches style.css!)
-      const cachedResponse = await caches.match(event.request, { ignoreSearch: true });
-
-      if (cachedResponse) {
-        // Revalidate in background when online (Stale-While-Revalidate)
-        if (navigator.onLine) {
-          fetch(event.request).then(async (networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              const cache = await caches.open(CACHE_NAME);
-              cache.put(event.request, networkResponse);
-            }
-          }).catch(() => {/* Offline, perfectly fine */});
-        }
-        return cachedResponse;
+      // 1. Try exact cache match first (matches exact ?v=... if present)
+      const exactMatch = await caches.match(event.request);
+      if (exactMatch) {
+        return exactMatch;
       }
 
-      // 2. Not in cache: fetch from network
-      try {
-        const networkResponse = await fetch(event.request);
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type !== 'opaque') {
-          const cache = await caches.open(CACHE_NAME);
-          cache.put(event.request, networkResponse.clone());
-        }
-        return networkResponse;
-      } catch (err) {
-        // 3. Fallback when offline
-        const fallback = await caches.match(event.request, { ignoreSearch: true });
-        if (fallback) return fallback;
-        throw err;
+      // 2. If online and no exact match (new version requested), fetch fresh from network!
+      if (navigator.onLine) {
+        try {
+          const networkResponse = await fetch(event.request);
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type !== 'opaque') {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(event.request, networkResponse.clone());
+          }
+          return networkResponse;
+        } catch (err) {}
       }
+
+      // 3. Fallback when offline or network failed: match ignoring search params
+      const fallback = await caches.match(event.request, { ignoreSearch: true });
+      if (fallback) return fallback;
+      return Response.error();
     })()
   );
 });
