@@ -670,10 +670,10 @@ const UIBudgets = {
         <table class="actual-budget-table">
           <thead>
             <tr>
-              <th style="width: 38%;">HẠNG MỤC CHI</th>
-              <th style="width: 24%; text-align: right;">PHÂN BỔ (BUDGETED)</th>
-              <th style="width: 18%; text-align: right;">ĐÃ CHI (SPENT)</th>
-              <th style="width: 20%; text-align: right;">CÒN LẠI (AVAILABLE)</th>
+              <th style="width: 31%; text-align: left;">Hạn Mục</th>
+              <th style="width: 23%; text-align: right;">Phân bổ</th>
+              <th style="width: 23%; text-align: right;">Đã chi</th>
+              <th style="width: 23%; text-align: right;">Còn lại</th>
             </tr>
           </thead>
           <tbody id="actual-table-body">
@@ -681,7 +681,7 @@ const UIBudgets = {
           </tbody>
           <tfoot>
             <tr>
-              <td>Tổng cộng (${expenseCategories.length} mục)</td>
+              <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Tổng (${expenseCategories.length})</td>
               <td style="text-align: right; color: var(--primary); font-weight: 700;">${this.formatMoney(totalBudgeted)}</td>
               <td style="text-align: right; color: var(--text-secondary); font-weight: 700;">${totalSpent > 0 ? `-${this.formatMoney(totalSpent)}` : '0đ'}</td>
               <td style="text-align: right;">
@@ -695,17 +695,6 @@ const UIBudgets = {
 
     container.innerHTML = `
       ${topBannerHtml}
-      <div class="actual-table-toolbar">
-        <div class="actual-table-search-box">
-          <i data-lucide="search" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
-          <input type="text" id="actual-cat-search" placeholder="Tìm danh mục chi tiêu..." oninput="UIBudgets.filterDetailedTable(this.value)">
-        </div>
-        <div class="actual-table-meta-hint">
-          <span>Hiển thị <b id="actual-visible-count">${expenseCategories.length}</b> danh mục</span>
-          <span style="opacity: 0.4;">•</span>
-          <span>💡 Nhấp vào ô "Phân bổ" để sửa nhanh</span>
-        </div>
-      </div>
       ${tableHtml}
     `;
   },
