@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.96">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.97">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -3019,35 +3019,37 @@
 
   <!-- Modal 5: Quick Inline Keypad for Actual Budget Matrix -->
   <div id="modal-budget-quick-edit" class="modal-overlay">
-    <div class="modal-dialog" style="max-width: 380px;">
-      <div class="modal-header">
+    <div class="modal-dialog budget-quick-dialog">
+      <div class="modal-header budget-quick-header">
         <h3 class="modal-title" id="budget-quick-edit-title">Sửa Ngân Sách</h3>
         <button type="button" class="btn-icon" onclick="UIBudgets.closeQuickEditModal()"><i data-lucide="x"></i></button>
       </div>
       <form id="budget-quick-edit-form">
         <input type="hidden" id="budget-quick-cat-id">
-        <div class="modal-body">
-          <div style="text-align: center; margin-bottom: 14px;">
-            <div id="budget-quick-cat-bubble" style="width: 48px; height: 48px; border-radius: 12px; margin: 0 auto 8px auto; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;"></div>
-            <div id="budget-quick-cat-name" style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary);"></div>
-            <div id="budget-quick-cat-spent" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;"></div>
+        <div class="modal-body budget-quick-body">
+          <div class="budget-quick-summary-compact">
+            <div id="budget-quick-cat-bubble" class="budget-quick-bubble"></div>
+            <div class="budget-quick-info">
+              <div id="budget-quick-cat-name" class="budget-quick-cat-name"></div>
+              <div id="budget-quick-cat-spent" class="budget-quick-cat-spent"></div>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label" style="text-align: center;">Ngân Sách Mới (VNĐ)</label>
-            <input type="text" id="budget-quick-amount-input" class="form-control" readonly onclick="UITransactions.openKeypad('budget-quick-amount')" required style="font-size: 1.4rem; font-weight: 800; text-align: center; color: var(--primary); cursor: pointer;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <input type="text" id="budget-quick-amount-input" class="form-control budget-quick-amount-input" readonly onclick="UITransactions.openKeypad('budget-quick-amount')" required>
             
-            <div class="budget-presets-row" style="justify-content: center; margin-top: 10px;">
-              <span class="budget-preset-chip" onclick="UIBudgets.adjustQuickAmount(100000)">+100k</span>
-              <span class="budget-preset-chip" onclick="UIBudgets.adjustQuickAmount(500000)">+500k</span>
-              <span class="budget-preset-chip" onclick="UIBudgets.adjustQuickAmount(1000000)">+1Tr</span>
-              <span class="budget-preset-chip" onclick="UIBudgets.setQuickToSpent()">= Đã chi</span>
-              <span class="budget-preset-chip" style="color: var(--expense);" onclick="UIBudgets.setQuickZero()">Xóa (0đ)</span>
+            <div class="budget-presets-row budget-quick-presets">
+              <button type="button" class="budget-preset-chip budget-preset-match" onclick="UIBudgets.setQuickToSpent()">
+                <i data-lucide="equal" style="width: 13px; height: 13px;"></i> = Đã chi
+              </button>
+              <button type="button" class="budget-preset-chip budget-preset-clear" onclick="UIBudgets.setQuickZero()">
+                <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i> Xóa (0đ)
+              </button>
             </div>
           </div>
         </div>
 
-        <div class="modal-footer" style="justify-content: center; gap: 10px;">
+        <div class="modal-footer budget-quick-footer">
           <button type="button" class="btn-secondary" style="flex: 1;" onclick="UIBudgets.closeQuickEditModal()">Hủy</button>
           <button type="submit" class="btn-primary" style="flex: 1;">Lưu</button>
         </div>

@@ -8030,3 +8030,174 @@ html, body {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+
+/* ==========================================================================
+   QUICK BUDGET EDIT MODAL (DOCKED ABOVE KEYPAD)
+   ========================================================================== */
+#modal-budget-quick-edit.open {
+  z-index: 100001 !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding: env(safe-area-inset-top, 10px) 14px 10px 14px !important;
+}
+
+#modal-budget-quick-edit .modal-dialog.budget-quick-dialog {
+  max-width: 360px !important;
+  width: 100% !important;
+  margin: 8px auto 0 auto !important;
+  border-radius: var(--radius-lg) !important;
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65) !important;
+  animation: none !important;
+  transform: none !important;
+}
+
+@media (max-width: 768px) {
+  #modal-budget-quick-edit.open {
+    align-items: flex-start !important;
+    padding-top: max(8px, env(safe-area-inset-top, 8px)) !important;
+  }
+  #modal-budget-quick-edit .modal-dialog.budget-quick-dialog {
+    border-radius: 16px !important;
+    margin-top: 4px !important;
+    max-height: calc(100dvh - 360px) !important;
+    overflow-y: auto !important;
+    padding-bottom: 8px !important;
+  }
+}
+
+.budget-quick-header {
+  padding: 10px 14px 8px 14px !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.budget-quick-header .modal-title {
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+}
+
+.budget-quick-body {
+  padding: 10px 14px !important;
+}
+
+.budget-quick-summary-compact {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin-bottom: 10px !important;
+  padding: 8px 10px !important;
+  background: var(--bg-card, rgba(255, 255, 255, 0.03)) !important;
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.budget-quick-bubble {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1.15rem !important;
+  flex-shrink: 0 !important;
+}
+
+.budget-quick-info {
+  flex: 1 !important;
+  min-width: 0 !important;
+  text-align: left !important;
+}
+
+.budget-quick-cat-name {
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  color: var(--text-primary) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.budget-quick-cat-spent {
+  font-size: 0.74rem !important;
+  color: var(--text-muted) !important;
+  margin-top: 1px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.budget-quick-amount-input {
+  font-size: 1.35rem !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  color: var(--primary) !important;
+  cursor: pointer !important;
+  padding: 7px 10px !important;
+  height: auto !important;
+  border-radius: var(--radius-md) !important;
+  letter-spacing: 0.01em !important;
+}
+
+.budget-quick-presets {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin-top: 8px !important;
+}
+
+.budget-quick-presets .budget-preset-chip {
+  flex: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  padding: 7px 10px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  border-radius: var(--radius-sm) !important;
+  cursor: pointer !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--bg-surface) !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+}
+
+.budget-quick-presets .budget-preset-match {
+  color: var(--primary) !important;
+  border-color: rgba(13, 148, 136, 0.35) !important;
+  background: var(--primary-light, rgba(13, 148, 136, 0.1)) !important;
+}
+
+.budget-quick-presets .budget-preset-match:hover,
+.budget-quick-presets .budget-preset-match:active {
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+
+.budget-quick-presets .budget-preset-clear {
+  color: var(--expense) !important;
+  border-color: rgba(244, 63, 94, 0.35) !important;
+  background: rgba(244, 63, 94, 0.08) !important;
+}
+
+.budget-quick-presets .budget-preset-clear:hover,
+.budget-quick-presets .budget-preset-clear:active {
+  background: var(--expense) !important;
+  color: #fff !important;
+}
+
+.budget-quick-footer {
+  padding: 8px 14px 12px 14px !important;
+  border-top: 1px solid var(--border-color) !important;
+  display: flex !important;
+  gap: 10px !important;
+}
+
+.budget-quick-footer button {
+  padding: 8px 12px !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+}

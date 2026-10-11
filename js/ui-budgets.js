@@ -1702,12 +1702,22 @@ const UIBudgets = {
 
     modal.classList.add('open');
     if (window.lucide) lucide.createIcons();
+
+    // Auto open numeric keypad for quick budget edit
+    if (window.UITransactions && typeof window.UITransactions.openKeypad === 'function') {
+      setTimeout(() => {
+        window.UITransactions.openKeypad('budget-quick-amount');
+      }, 50);
+    }
   },
 
   closeQuickEditModal() {
     const modal = document.getElementById('modal-budget-quick-edit');
     if (modal) modal.classList.remove('open');
     this.quickEditTarget = null;
+    if (window.UITransactions && typeof window.UITransactions.closeKeypad === 'function') {
+      window.UITransactions.closeKeypad();
+    }
   },
 
   adjustQuickAmount(delta) {
