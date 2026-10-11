@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.74">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.75">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -603,6 +603,73 @@
               </button>
               <button type="button" id="budget-form-delete-btn" class="btn-danger-outline" onclick="UIBudgets.deleteFormBudget()" style="width: 100%; padding: 11px; font-size: 0.9rem; justify-content: center; border-radius: var(--radius-md); display: none;">
                 Xóa Ngân Sách Tháng Này
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- View: Budget Category Form (Thiết lập hạn mức danh mục trang mới) -->
+      <section id="view-budget-category-form" class="page-view tx-page-view">
+        <div class="tx-page-card-wrapper">
+          <div class="tx-page-header">
+            <div class="tx-header-left">
+              <button type="button" class="btn-icon tx-header-btn" onclick="UIBudgets.closeBudgetCategoryForm()" title="Trở lại">
+                <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+            <div class="tx-header-center">
+              <span id="budget-cat-page-title" style="font-weight: 700; font-size: 1.05rem; color: var(--text-primary);">Hạn Mức Danh Mục</span>
+            </div>
+            <div class="tx-header-right">
+              <div style="width: 36px; height: 36px;"></div>
+            </div>
+          </div>
+
+          <div class="tx-page-body" style="padding: 16px 14px; display: flex; flex-direction: column; gap: 16px;">
+            <!-- Card 1: Chọn danh mục chi tiêu với Dropdown có icon và màu -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 16px;">
+              <label class="form-label" style="margin-bottom: 8px;">Danh Mục Chi Tiêu</label>
+              <input type="hidden" id="budget-cat-page-id" value="">
+              
+              <div class="budget-cat-dropdown" id="budget-cat-page-dropdown">
+                <button type="button" class="budget-cat-trigger" id="budget-cat-page-trigger" onclick="UIBudgets.toggleCatPageDropdown()">
+                  <div class="budget-cat-trigger-content">
+                    <div id="budget-cat-page-icon" class="category-icon-bubble" style="width: 32px; height: 32px; font-size: 0.95rem; background: rgba(13, 148, 136, 0.15); color: var(--primary);">
+                      <i data-lucide="tag"></i>
+                    </div>
+                    <span id="budget-cat-page-label" class="budget-cat-trigger-text">Chọn danh mục</span>
+                  </div>
+                  <i data-lucide="chevron-down" class="budget-cat-trigger-arrow"></i>
+                </button>
+                <div class="budget-cat-menu" id="budget-cat-page-menu" style="display: none;"></div>
+              </div>
+            </div>
+
+            <!-- Card 2: Nhập số tiền hạn mức -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 16px;">
+              <label class="form-label" style="text-align: center; margin-bottom: 8px;">Hạn Mức Chi Tiêu Tháng (VNĐ)</label>
+              <div style="position: relative;">
+                <input type="text" id="budget-cat-form-amount" class="form-control" placeholder="0" readonly onclick="UITransactions.openKeypad('budget-cat-form-amount')" style="font-size: 1.6rem; font-weight: 800; text-align: center; color: var(--primary); cursor: pointer; padding: 12px 16px; border-radius: var(--radius-md); background: var(--bg-surface);">
+              </div>
+
+              <div class="budget-presets-row" style="justify-content: center; margin-top: 12px; gap: 8px; flex-wrap: wrap;">
+                <span class="budget-preset-chip" onclick="UIBudgets.setCatFormPreset(500000)">500 Nghìn</span>
+                <span class="budget-preset-chip" onclick="UIBudgets.setCatFormPreset(1000000)">1 Triệu</span>
+                <span class="budget-preset-chip" onclick="UIBudgets.setCatFormPreset(2000000)">2 Triệu</span>
+                <span class="budget-preset-chip" onclick="UIBudgets.setCatFormPreset(3000000)">3 Triệu</span>
+                <span class="budget-preset-chip" onclick="UIBudgets.setCatFormPreset(5000000)">5 Triệu</span>
+                <span class="budget-preset-chip" onclick="UIBudgets.setCatFormPreset(10000000)">10 Triệu</span>
+              </div>
+            </div>
+
+            <!-- Card 3: Action buttons -->
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
+              <button type="button" class="btn-primary" onclick="UIBudgets.handleCatFormBudgetSubmit()" style="width: 100%; padding: 13px; font-size: 1rem; font-weight: 700; justify-content: center; border-radius: var(--radius-md);">
+                Lưu Hạn Mức Danh Mục
+              </button>
+              <button type="button" id="budget-cat-form-delete-btn" class="btn-danger-outline" onclick="UIBudgets.deleteCatFormBudget()" style="width: 100%; padding: 11px; font-size: 0.9rem; justify-content: center; border-radius: var(--radius-md); display: none;">
+                Xóa Hạn Mức Danh Mục Này
               </button>
             </div>
           </div>
@@ -3509,18 +3576,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.74"></script>
+  <script src="./js/backup.js?v=1.9.75"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.74"></script>
-  <script src="./js/ui-transactions.js?v=1.9.74"></script>
-  <script src="./js/ui-debts.js?v=1.9.74"></script>
-  <script src="./js/ui-accounts.js?v=1.9.74"></script>
-  <script src="./js/ui-budgets.js?v=1.9.74"></script>
-  <script src="./js/ui-analytics.js?v=1.9.74"></script>
-  <script src="./js/ui-settings.js?v=1.9.74"></script>
+  <script src="./js/ui-calendar.js?v=1.9.75"></script>
+  <script src="./js/ui-transactions.js?v=1.9.75"></script>
+  <script src="./js/ui-debts.js?v=1.9.75"></script>
+  <script src="./js/ui-accounts.js?v=1.9.75"></script>
+  <script src="./js/ui-budgets.js?v=1.9.75"></script>
+  <script src="./js/ui-analytics.js?v=1.9.75"></script>
+  <script src="./js/ui-settings.js?v=1.9.75"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.74"></script>
+  <script src="./js/app.js?v=1.9.75"></script>
 </body>
 </html>

@@ -400,7 +400,7 @@ class App {
     this.lastAddTabClickTime = 0;
     const primaryViews = ['dashboard', 'accounts', 'budgets', 'settings', 'transactions', 'debts', 'analytics'];
     const isPrimary = primaryViews.includes(viewId);
-    const isTxPage = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form'].includes(viewId);
+    const isTxPage = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form'].includes(viewId);
 
     // Instantly hide/show the header in JS FIRST — before any class/DOM changes.
     // CSS :has() and body-class selectors update asynchronously (next paint frame),
@@ -428,7 +428,7 @@ class App {
     }
 
     // 2. Lưu previousView trước khi chuyển vào các trang con (danh mục, biểu mẫu tài khoản, ...)
-    const formSubViews = ['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form'];
+    const formSubViews = ['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form'];
     if (formSubViews.includes(viewId) && !formSubViews.includes(this.currentView)) {
       this.previousView = this.currentView;
     } else if (viewId === 'new-transaction') {
@@ -507,7 +507,8 @@ class App {
       'loan-form': 'Sổ Vay Ngân Hàng',
       'accumulation-form': 'Sổ Tích Lũy',
       'asset-form': 'Quản Lý Tài Sản',
-      'budget-form': 'Thiết Lập Ngân Sách'
+      'budget-form': 'Thiết Lập Ngân Sách',
+      'budget-category-form': 'Hạn Mức Danh Mục'
     };
     const titleEl = document.getElementById('header-page-title');
     const txHeaderCenter = document.getElementById('tx-header-center');
@@ -559,7 +560,7 @@ class App {
     const budgetSettingsBtn = document.getElementById('btn-budget-settings');
     if (viewId === 'budgets') {
       if (titleEl) titleEl.style.display = 'none';
-      if (brandLogo) brandLogo.style.display = 'none';
+      if (brandLogo) brandLogo.style.display = '';
       if (budgetHeaderCenter) budgetHeaderCenter.style.display = 'flex';
       if (privacyBtn) privacyBtn.style.display = 'none';
       if (budgetSettingsBtn) budgetSettingsBtn.style.display = 'inline-flex';
@@ -671,7 +672,7 @@ class App {
       return;
     }
 
-    if (this.currentView === 'budget-form') {
+    if (this.currentView === 'budget-form' || this.currentView === 'budget-category-form') {
       this.switchView('budgets', true);
       return;
     }
@@ -734,7 +735,7 @@ class App {
       }
 
       // category-picker & borrow-select always support back to new-transaction
-      if (['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form'].includes(this.currentView)) {
+      if (['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form'].includes(this.currentView)) {
         window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
         this.goBack();
       } else if (this.currentView === 'new-transaction') {
@@ -753,7 +754,7 @@ class App {
 
   setupSwipeToBack() {
     // view-transactions, new-transaction, category-picker, etc.: support swipe-to-back
-    const pages = document.querySelectorAll('#view-transactions, #view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form, #view-account-provider, #view-savings-form, #view-accumulation-form, #view-asset-form, #view-loan-form');
+    const pages = document.querySelectorAll('#view-transactions, #view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form, #view-account-provider, #view-savings-form, #view-accumulation-form, #view-asset-form, #view-loan-form, #view-budget-form, #view-budget-category-form');
     if (!pages.length) return;
 
     pages.forEach(page => {

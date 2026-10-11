@@ -289,7 +289,9 @@ body.view-borrow-select .app-header,
 body.view-account-form .app-header,
 body.view-account-provider .app-header,
 body.view-budget-form .app-header,
+body.view-budget-category-form .app-header,
 body:has(#view-budget-form.active) .app-header,
+body:has(#view-budget-category-form.active) .app-header,
 body:has(#view-new-transaction.active) .app-header,
 body:has(#view-category-picker.active) .app-header,
 body:has(#view-borrow-select.active) .app-header,
@@ -1560,7 +1562,7 @@ body:has(#view-account-provider.active) .app-header {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.1s ease;
+  transition: transform 0.05s ease, background 0.05s ease;
   user-select: none;
   -webkit-user-select: none;
   /* Ngăn delay 300ms và double-tap zoom - cho phép multi-touch hoạt động đúng */
@@ -1699,7 +1701,8 @@ body:has(#view-account-provider.active) .app-header {
   body.view-new-transaction .app-header,
   body.view-category-picker .app-header,
   body.view-borrow-select .app-header,
-  body.view-budget-form .app-header {
+  body.view-budget-form .app-header,
+  body.view-budget-category-form .app-header {
     display: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
@@ -7149,7 +7152,7 @@ html, body {
   z-index: 60;
   pointer-events: auto;
   gap: 2px;
-  max-width: calc(100% - 100px);
+  max-width: calc(100% - 130px);
 }
 
 .budget-header-month-nav {

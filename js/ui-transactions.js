@@ -468,7 +468,7 @@ const UITransactions = {
       });
     }
 
-    // Popup Keypad Button Handlers (Ngăn chặn dội phím / double-trigger trên cả desktop & mobile)
+    // Popup Keypad Button Handlers - Phản hồi tức thì <1ms, gõ nhanh không trễ và không nuốt phím
     const triggerKey = (btn, e) => {
       if (e && e.cancelable) {
         try { e.preventDefault(); } catch (_) {}
@@ -476,49 +476,26 @@ const UITransactions = {
       const key = btn.dataset.key;
       this.handleKeypadKey(key);
       btn.classList.add('pressed');
-      setTimeout(() => btn.classList.remove('pressed'), 120);
+      setTimeout(() => btn.classList.remove('pressed'), 70);
     };
 
     document.querySelectorAll('#modal-keypad .keypad-btn').forEach(btn => {
-      let lastTouchTime = 0;
-      let isDonePressed = false;
-      const isDoneBtn = btn.dataset.key === 'done';
+      let pointerHandled = false;
 
       btn.addEventListener('pointerdown', (e) => {
-        if (e.pointerType === 'touch' || e.pointerType === 'pen') {
-          lastTouchTime = Date.now();
-          if (isDoneBtn) {
-            isDonePressed = true;
-            btn.classList.add('pressed');
-            if (e.cancelable) e.preventDefault();
-            return;
-          }
-          triggerKey(btn, e);
+        pointerHandled = true;
+        if (e.cancelable) {
+          try { e.preventDefault(); } catch (_) {}
         }
-      });
-
-      btn.addEventListener('pointerup', (e) => {
-        btn.classList.remove('pressed');
-        if (isDoneBtn && isDonePressed && (e.pointerType === 'touch' || e.pointerType === 'pen')) {
-          isDonePressed = false;
-          if (e.cancelable) e.preventDefault();
-          triggerKey(btn, e);
-        }
-      });
-
-      btn.addEventListener('pointercancel', () => {
-        btn.classList.remove('pressed');
-        isDonePressed = false;
-      });
+        triggerKey(btn, e);
+      }, { passive: false });
 
       btn.addEventListener('click', (e) => {
-        if (isDoneBtn) {
-          if (e.cancelable) e.preventDefault();
-          triggerKey(btn, e);
-          return;
+        if (e.cancelable) {
+          try { e.preventDefault(); } catch (_) {}
         }
-        if (Date.now() - lastTouchTime < 450) {
-          if (e.cancelable) e.preventDefault();
+        if (pointerHandled) {
+          pointerHandled = false;
           return;
         }
         triggerKey(btn, e);
@@ -533,22 +510,26 @@ const UITransactions = {
       const val = Number(chip.dataset.val);
       this.handleKeypadQuickAdd(val);
       chip.classList.add('pressed');
-      setTimeout(() => chip.classList.remove('pressed'), 150);
+      setTimeout(() => chip.classList.remove('pressed'), 80);
     };
 
     document.querySelectorAll('#modal-keypad .keypad-chip').forEach(chip => {
-      let lastTouchTime = 0;
+      let pointerHandled = false;
+
       chip.addEventListener('pointerdown', (e) => {
-        if (e.pointerType === 'touch' || e.pointerType === 'pen') {
-          lastTouchTime = Date.now();
-          triggerChip(chip, e);
+        pointerHandled = true;
+        if (e.cancelable) {
+          try { e.preventDefault(); } catch (_) {}
         }
-      });
-      chip.addEventListener('pointerup', () => chip.classList.remove('pressed'));
-      chip.addEventListener('pointercancel', () => chip.classList.remove('pressed'));
+        triggerChip(chip, e);
+      }, { passive: false });
+
       chip.addEventListener('click', (e) => {
-        if (Date.now() - lastTouchTime < 450) {
-          if (e.cancelable) e.preventDefault();
+        if (e.cancelable) {
+          try { e.preventDefault(); } catch (_) {}
+        }
+        if (pointerHandled) {
+          pointerHandled = false;
           return;
         }
         triggerChip(chip, e);
@@ -715,7 +696,15 @@ const UITransactions = {
       const text = document.getElementById('liquidate-asset-price-text');
       cur = text?.textContent?.trim() || input?.value?.trim() || '0';
       if (curSymbolEl) curSymbolEl.textContent = 'đ';
-    } else if (target === 'budget-form-amount' || target === 'budget-overall-amount') {
+    } else if (target === 'budget-form-amount') {
+      const input = document.getElementById('budget-form-amount');
+      cur = input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = '₫';
+    } else if (target === 'budget-cat-form-amount') {
+      const input = document.getElementById('budget-cat-form-amount');
+      cur = input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = '₫';
+    } else if (target === 'budget-overall-amount') {
       const input = document.getElementById('budget-overall-amount');
       cur = input?.value?.trim() || '0';
       if (curSymbolEl) curSymbolEl.textContent = '₫';
@@ -913,7 +902,13 @@ const UITransactions = {
       const rawNum = finalFormatted.replace(/\./g, '');
       if (input) input.value = rawNum;
       if (text) text.textContent = finalFormatted;
-    } else if (this.activeKeypadTarget === 'budget-form-amount' || this.activeKeypadTarget === 'budget-overall-amount') {
+    } else if (this.activeKeypadTarget === 'budget-form-amount') {
+      const input = document.getElementById('budget-form-amount');
+      if (input) input.value = finalFormatted;
+    } else if (this.activeKeypadTarget === 'budget-cat-form-amount') {
+      const input = document.getElementById('budget-cat-form-amount');
+      if (input) input.value = finalFormatted;
+    } else if (this.activeKeypadTarget === 'budget-overall-amount') {
       const input = document.getElementById('budget-overall-amount');
       if (input) input.value = finalFormatted;
     } else if (this.activeKeypadTarget === 'budget-lock-amount') {
@@ -982,13 +977,6 @@ const UITransactions = {
   },
 
   handleKeypadKey(key) {
-    const now = Date.now();
-    if (this._lastKeypadKey === key && now - (this._lastKeypadTime || 0) < 60) {
-      return;
-    }
-    this._lastKeypadKey = key;
-    this._lastKeypadTime = now;
-
     const display = document.getElementById('keypad-live-val');
     if (!display) return;
 
@@ -1071,13 +1059,6 @@ const UITransactions = {
   },
 
   handleKeypadQuickAdd(val) {
-    const now = Date.now();
-    if (this._lastQuickAddVal === val && now - (this._lastQuickAddTime || 0) < 350) {
-      return;
-    }
-    this._lastQuickAddVal = val;
-    this._lastQuickAddTime = now;
-
     const display = document.getElementById('keypad-live-val');
     if (!display) return;
 
