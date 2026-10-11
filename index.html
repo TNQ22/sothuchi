@@ -141,6 +141,12 @@
           </button>
 
           <!-- Privacy Toggle Button -->
+          <!-- Budget Settings Button (thay thế con mắt khi ở Tab Ngân Sách) -->
+          <button type="button" id="btn-budget-settings" class="btn-icon" title="Cài đặt ngân sách" onclick="UIBudgets.openSettingsModal()" style="display: none;">
+            <i data-lucide="settings" style="width: 20px; height: 20px;"></i>
+          </button>
+
+          <!-- Privacy Toggle Button -->
           <button id="btn-privacy-toggle" class="btn-icon" title="Ẩn/Hiện số tiền (Phím tắt: P)">
             <i data-lucide="eye" style="width: 20px; height: 20px;"></i>
           </button>
@@ -507,27 +513,42 @@
 
       <!-- View: Budgets (Quản lý Ngân sách đa chế độ) -->
       <section id="view-budgets" class="page-view">
-        <!-- Top Toolbar: Month Navigator & Quick Actions -->
+        <!-- Top Toolbar: [Sao Chép] < Tháng mm/yyyy > [Thiết Lập] -->
         <div class="budget-toolbar">
-          <div class="budget-month-nav">
-            <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(-1)" title="Tháng trước">
-              <i data-lucide="chevron-left" style="width: 18px; height: 18px;"></i>
+          <div class="budget-toolbar-left">
+            <!-- Nút Sao Chép nằm bên TRÁI cụm < tháng > -->
+            <button type="button" class="btn-secondary budget-copy-btn" onclick="UIBudgets.openCopyModal()" title="Sao chép từ tháng trước">
+              <i data-lucide="copy" style="width: 15px; height: 15px;"></i>
+              <span>Sao chép</span>
             </button>
-            <button type="button" class="budget-month-btn" onclick="UIBudgets.openFilterMonthPicker()" title="Chọn tháng">
-              <i data-lucide="calendar" style="width: 15px; height: 15px; color: var(--primary);"></i>
-              <span id="budget-month-display-label">Tháng --/----</span>
-              <i data-lucide="chevron-down" style="width: 13px; height: 13px; opacity: 0.7;"></i>
-            </button>
-            <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(1)" title="Tháng sau">
-              <i data-lucide="chevron-right" style="width: 18px; height: 18px;"></i>
-            </button>
+
+            <!-- Cụm < Tháng mm/yyyy > -->
+            <div class="budget-month-nav">
+              <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(-1)" title="Tháng trước">
+                <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i>
+              </button>
+              <button type="button" class="budget-month-btn" onclick="UIBudgets.openFilterMonthPicker()" title="Chọn tháng">
+                <i data-lucide="calendar" style="width: 15px; height: 15px; color: var(--primary);"></i>
+                <span id="budget-month-display-label">Tháng --/----</span>
+                <i data-lucide="chevron-down" style="width: 13px; height: 13px; opacity: 0.7;"></i>
+              </button>
+              <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(1)" title="Tháng sau">
+                <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+              </button>
+            </div>
           </div>
 
-          <div class="budget-top-actions">
-            <button type="button" class="btn-secondary budget-action-pill" onclick="UIBudgets.openCopyModal()" title="Sao chép ngân sách từ tháng trước">
-              <i data-lucide="copy" style="width: 15px; height: 15px; color: var(--primary);"></i>
-              <span>Sao Chép</span>
+          <div class="budget-toolbar-right">
+            <!-- Nút Cài đặt & chuyển đổi chế độ / ví áp dụng -->
+            <button type="button" class="budget-toolbar-chip" id="budget-mode-badge-btn" onclick="UIBudgets.openSettingsModal()" title="Chuyển đổi Ngân sách tổng / Chi tiết và Ví áp dụng">
+              <i data-lucide="settings" style="width: 13px; height: 13px; color: var(--primary);"></i>
+              <span id="budget-mode-badge-label">Ngân sách Tổng</span>
             </button>
+
+            <!-- Scope Badge (Hiển thị ví đang áp dụng) -->
+            <div id="budget-scope-bar" class="budget-scope-bar" onclick="UIBudgets.openSettingsModal()" title="Bấm để chọn ví áp dụng" style="display: none;"></div>
+
+            <!-- Nút Thao tác chính -->
             <button type="button" class="btn-primary budget-action-pill" id="budget-main-add-btn" onclick="UIBudgets.handlePrimaryAddAction()">
               <i data-lucide="plus" style="width: 15px; height: 15px;"></i>
               <span id="budget-main-add-label">Thiết Lập</span>
@@ -535,22 +556,10 @@
           </div>
         </div>
 
-        <!-- Mode Switcher Tabs (2 cách tạo ngân sách) -->
-        <div class="budget-mode-switcher">
-          <button type="button" class="budget-mode-btn active" id="btn-budget-mode-simple" onclick="UIBudgets.switchMode('simple')">
-            <i data-lucide="target" style="width: 16px; height: 16px;"></i>
-            <span>1. Ngân Sách Tổng & Khóa Mục</span>
-          </button>
-          <button type="button" class="budget-mode-btn" id="btn-budget-mode-detailed" onclick="UIBudgets.switchMode('detailed')">
-            <i data-lucide="layers" style="width: 16px; height: 16px;"></i>
-            <span>2. Chi Tiết Actual Budget</span>
-          </button>
-        </div>
-
         <!-- Mode 1 Container: Ngân sách Tổng & Khóa mục chi -->
         <div id="budget-simple-container" class="budget-mode-pane active"></div>
 
-        <!-- Mode 2 Container: Chi tiết Actual Budget -->
+        <!-- Mode 2 Container: Chi tiết dạng bảng Actual Budget -->
         <div id="budget-detailed-container" class="budget-mode-pane" style="display: none;"></div>
       </section>
 
@@ -2565,6 +2574,86 @@
 
 
   <!-- ==================== BUDGET MODALS ==================== -->
+    <!-- Modal 0: Cài Đặt Ngân Sách (Chế độ & Ví áp dụng) -->
+  <div id="modal-budget-settings" class="modal-overlay">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title"><i data-lucide="settings" style="color: var(--primary);"></i> Cài Đặt Ngân Sách</h3>
+        <button type="button" class="btn-icon" onclick="UIBudgets.closeSettingsModal()"><i data-lucide="x"></i></button>
+      </div>
+      <form id="budget-settings-form">
+        <div class="modal-body">
+          <!-- 1. Chế độ ngân sách -->
+          <div class="form-group">
+            <label class="form-label" style="font-weight: 700; margin-bottom: 8px;">Chế Độ Quản Lý Ngân Sách</label>
+            
+            <label class="budget-setting-mode-card" id="setting-mode-simple-card" onclick="UIBudgets.selectSettingMode('simple')">
+              <input type="radio" name="budget-setting-mode" value="simple" checked>
+              <div class="budget-setting-mode-content">
+                <div class="budget-setting-mode-title">
+                  <i data-lucide="target" style="color: var(--primary); width: 16px; height: 16px;"></i>
+                  <span>1. Ngân sách Tổng & Khóa mục</span>
+                </div>
+                <div class="budget-setting-mode-desc">
+                  Đặt trần chi tiêu tổng của tháng, khóa riêng các khoản quan trọng và kiểm soát số tiền chi tiêu an toàn mỗi ngày.
+                </div>
+              </div>
+            </label>
+
+            <label class="budget-setting-mode-card" id="setting-mode-detailed-card" onclick="UIBudgets.selectSettingMode('detailed')">
+              <input type="radio" name="budget-setting-mode" value="detailed">
+              <div class="budget-setting-mode-content">
+                <div class="budget-setting-mode-title">
+                  <i data-lucide="table" style="color: #0ea5e9; width: 16px; height: 16px;"></i>
+                  <span>2. Ngân sách Chi Tiết (Bảng tính Actual Budget)</span>
+                </div>
+                <div class="budget-setting-mode-desc">
+                  Quản lý dạng bảng phân bổ chi tiết cho từng danh mục theo phương pháp Zero-based Budgeting như ứng dụng Actual.
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <!-- 2. Ví áp dụng ngân sách -->
+          <div class="form-group" style="margin-top: 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <label class="form-label" style="font-weight: 700; margin-bottom: 0;">Áp Dụng Cho Ví / Tài Khoản Nào</label>
+              <div id="budget-wallet-quick-actions" style="display: none; gap: 8px; font-size: 0.78rem;">
+                <button type="button" style="color: var(--primary); text-decoration: underline; background: none; border: none; padding: 0; cursor: pointer;" onclick="UIBudgets.toggleAllWallets(true)">Chọn tất cả</button>
+                <span style="color: var(--border-color);">|</span>
+                <button type="button" style="color: var(--text-muted); text-decoration: underline; background: none; border: none; padding: 0; cursor: pointer;" onclick="UIBudgets.toggleAllWallets(false)">Bỏ chọn</button>
+              </div>
+            </div>
+            
+            <label class="budget-wallet-scope-card" id="scope-all-card" onclick="UIBudgets.selectWalletScope('all')">
+              <input type="radio" name="budget-wallet-scope" value="all" checked>
+              <div>
+                <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">Tất cả ví & tài khoản</div>
+                <div style="font-size: 0.76rem; color: var(--text-muted);">Tính toán ngân sách trên toàn bộ chi tiêu từ mọi tài khoản (mặc định)</div>
+              </div>
+            </label>
+
+            <label class="budget-wallet-scope-card" id="scope-custom-card" onclick="UIBudgets.selectWalletScope('custom')" style="margin-top: 8px;">
+              <input type="radio" name="budget-wallet-scope" value="custom">
+              <div>
+                <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">Tùy chọn ví áp dụng</div>
+                <div style="font-size: 0.76rem; color: var(--text-muted);">Chỉ tính toán ngân sách trên các ví được đánh dấu bên dưới</div>
+              </div>
+            </label>
+
+            <!-- Danh sách checkbox từng ví -->
+            <div id="budget-settings-wallet-list" class="budget-settings-wallet-list" style="display: none; margin-top: 10px;"></div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="UIBudgets.closeSettingsModal()">Hủy</button>
+          <button type="submit" class="btn-primary">Lưu Cài Đặt</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal 1: Đặt Ngân Sách Tổng Cho Tháng -->
   <div id="modal-budget-overall" class="modal-overlay">
     <div class="modal-dialog">
@@ -3354,11 +3443,11 @@
   <script src="./js/ui-transactions.js?v=1.9.69"></script>
   <script src="./js/ui-debts.js?v=1.9.69"></script>
   <script src="./js/ui-accounts.js?v=1.9.69"></script>
-  <script src="./js/ui-budgets.js?v=1.9.69"></script>
+  <script src="./js/ui-budgets.js?v=1.9.70"></script>
   <script src="./js/ui-analytics.js?v=1.9.69"></script>
   <script src="./js/ui-settings.js?v=1.9.69"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.69"></script>
+  <script src="./js/app.js?v=1.9.70"></script>
 </body>
 </html>

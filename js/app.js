@@ -553,6 +553,16 @@ class App {
       if (privacyBtn && !isTxPage) privacyBtn.style.display = '';
     }
 
+    // Toggle header settings button for Budgets (thay thế nút con mắt khi ở Tab Ngân Sách)
+    const budgetSettingsBtn = document.getElementById('btn-budget-settings');
+    if (viewId === 'budgets') {
+      if (privacyBtn) privacyBtn.style.display = 'none';
+      if (budgetSettingsBtn) budgetSettingsBtn.style.display = 'inline-flex';
+    } else {
+      if (budgetSettingsBtn) budgetSettingsBtn.style.display = 'none';
+      if (privacyBtn && !isTxPage) privacyBtn.style.display = '';
+    }
+
     if (viewId === 'new-transaction') {
       const backBtn = document.getElementById('tx-header-back-btn');
       const txId = document.getElementById('tx-id-input')?.value;
