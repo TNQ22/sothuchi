@@ -438,6 +438,18 @@ const UIAccounts = {
       balEl.textContent = `${info.label} • Số dư: ${balStr}${curSym}${excludeText}`;
     }
 
+    // Update Budget setting display
+    const hasBudget = acc.includeInBudget !== undefined ? (acc.includeInBudget === 1 || acc.includeInBudget === true) : (!acc.excludeFromReport);
+    const budgetBadge = document.getElementById('action-sheet-budget-badge');
+    const budgetDesc = document.getElementById('action-sheet-budget-desc');
+    if (budgetBadge) {
+      budgetBadge.textContent = hasBudget ? 'Đang bật' : 'Đang tắt';
+      budgetBadge.className = 'action-sheet-budget-badge ' + (hasBudget ? 'active' : 'inactive');
+    }
+    if (budgetDesc) {
+      budgetDesc.textContent = hasBudget ? 'Đang tính chi tiêu vào ngân sách tháng' : 'Không tính chi tiêu vào ngân sách tháng';
+    }
+
     // Toggle archive button text & icon
     const isArchived = !!acc.isArchived;
     const archTitle = document.getElementById('action-sheet-archive-title');
@@ -452,6 +464,19 @@ const UIAccounts = {
 
     sheet.classList.add('open');
     if (window.lucide) lucide.createIcons();
+  },
+
+  async toggleAccountBudgetAction() {
+    const accId = this.currentActionAccountId;
+    if (!accId) return;
+    const acc = await db.accounts.get(Number(accId));
+    if (!acc) return;
+    const currentBudget = acc.includeInBudget !== undefined ? (acc.includeInBudget === 1 || acc.includeInBudget === true) : (!acc.excludeFromReport);
+    const nextBudget = currentBudget ? 0 : 1;
+    await db.accounts.update(Number(accId), { includeInBudget: nextBudget, updatedAt: Date.now() });
+    this.closeActionSheet();
+    await window.app.refreshAll();
+    showToast((nextBudget ? 'Đã bật' : 'Đã tắt') + ' tính vào ngân sách cho ví "' + acc.name + '"', 'success');
   },
 
   closeActionSheet() {
@@ -1190,6 +1215,9 @@ const UIAccounts = {
     const excludeCheck = document.getElementById('acc-exclude-report-check');
     if (excludeCheck) excludeCheck.checked = false;
 
+    const budgetCheck = document.getElementById('acc-apply-budget-check');
+    if (budgetCheck) budgetCheck.checked = true;
+
     const delBtn = document.getElementById('btn-delete-account');
     if (delBtn) delBtn.style.display = 'none';
 
@@ -1269,6 +1297,9 @@ const UIAccounts = {
     const excludeCheck = document.getElementById('acc-exclude-report-check');
     if (excludeCheck) excludeCheck.checked = !!acc.excludeFromReport;
 
+    const budgetCheck = document.getElementById('acc-apply-budget-check');
+    if (budgetCheck) budgetCheck.checked = acc.includeInBudget !== undefined ? (acc.includeInBudget === 1 || acc.includeInBudget === true) : (!acc.excludeFromReport);
+
     const delBtn = document.getElementById('btn-delete-account');
     if (delBtn) delBtn.style.display = 'flex';
 
@@ -1295,6 +1326,7 @@ const UIAccounts = {
     const balance = cleanBal === '' ? 0 : Number(cleanBal);
     const description = document.getElementById('acc-desc-input')?.value.trim() || '';
     const excludeFromReport = document.getElementById('acc-exclude-report-check')?.checked ? 1 : 0;
+    const includeInBudget = document.getElementById('acc-apply-budget-check')?.checked ? 1 : 0;
     const bankCode = (document.getElementById('acc-bank-code-input')?.value || '').trim();
 
     if (!name) {
@@ -1339,6 +1371,7 @@ const UIAccounts = {
         balance: newCurrentBalance,
         description,
         excludeFromReport,
+        includeInBudget,
         icon,
         bankCode,
         color: accColor,
@@ -1369,6 +1402,7 @@ const UIAccounts = {
         initialBalance: balance,
         description,
         excludeFromReport,
+        includeInBudget,
         icon,
         bankCode,
         color: accColor,
@@ -4713,6 +4747,7 @@ const UIAccounts = {
                 <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
                   <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; flex: 1 1 0%; min-width: 0; max-width: 100%; font-weight: 700;">${escapeHTML(a.name)}</span>
                   ${a.excludeFromReport ? '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn báo cáo</span>' : ''}
+                  ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-badge budget" title="Đang áp dụng ngân sách"><i data-lucide="target" style="width:11px;height:11px;"></i> Ngân sách</span>' : ''}
                 </div>
                 <div class="account-sub-row">
                   <span class="account-type-label">${info.label}</span>
@@ -4769,6 +4804,7 @@ const UIAccounts = {
                   <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                     <span class="account-name" title="${escapeHTML(a.name)}" style="color: var(--text-secondary);">${escapeHTML(a.name)}</span>
                     ${a.excludeFromReport ? '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn báo cáo</span>' : ''}
+                  ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-badge budget" title="Đang áp dụng ngân sách"><i data-lucide="target" style="width:11px;height:11px;"></i> Ngân sách</span>' : ''}
                   </div>
                   <div class="account-sub-row">
                     <span class="account-type-label">${info.label}</span>

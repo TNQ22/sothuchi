@@ -553,12 +553,19 @@ class App {
       if (privacyBtn && !isTxPage) privacyBtn.style.display = '';
     }
 
-    // Toggle header settings button for Budgets (thay thế nút con mắt khi ở Tab Ngân Sách)
+    // Toggle header center & settings button for Budgets (đè tiêu đề Hạn mức ngân sách, căn giữa tháng và chú thích)
+    const budgetHeaderCenter = document.getElementById('budget-header-center');
     const budgetSettingsBtn = document.getElementById('btn-budget-settings');
     if (viewId === 'budgets') {
+      if (titleEl) titleEl.style.display = 'none';
+      if (budgetHeaderCenter) budgetHeaderCenter.style.display = 'flex';
       if (privacyBtn) privacyBtn.style.display = 'none';
       if (budgetSettingsBtn) budgetSettingsBtn.style.display = 'inline-flex';
+      if (window.UIBudgets && typeof window.UIBudgets.updateMonthDisplay === 'function') {
+        window.UIBudgets.updateMonthDisplay();
+      }
     } else {
+      if (budgetHeaderCenter) budgetHeaderCenter.style.display = 'none';
       if (budgetSettingsBtn) budgetSettingsBtn.style.display = 'none';
       if (privacyBtn && !isTxPage) privacyBtn.style.display = '';
     }

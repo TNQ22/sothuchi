@@ -131,6 +131,14 @@ const UIBudgets = {
     if (label) {
       label.textContent = this.formatMonthDisplay(this.currentMonth);
     }
+    const subtitle = document.getElementById('budget-header-subtitle');
+    if (subtitle) {
+      subtitle.textContent = this.currentMode === 'simple' ? 'Ngân sách tổng' : 'Ngân sách chi tiết';
+    }
+  },
+
+  updateMonthDisplay() {
+    this.updateMonthLabels();
   },
 
   changeMonth(delta) {
@@ -170,13 +178,14 @@ const UIBudgets = {
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
     const walletListEl = document.getElementById('budget-settings-wallet-list');
 
-    const isCustom = Array.isArray(this.applicableWallets) && this.applicableWallets.length > 0;
+    const hasAnyDisabled = accounts.some(a => a.includeInBudget === 0 || a.includeInBudget === false);
+    const isCustom = hasAnyDisabled || (Array.isArray(this.applicableWallets) && this.applicableWallets.length > 0);
     this.selectWalletScope(isCustom ? 'custom' : 'all');
 
     if (walletListEl) {
       walletListEl.innerHTML = accounts.map(acc => {
-        const checked = isCustom
-          ? this.applicableWallets.includes(acc.id)
+        const checked = acc.includeInBudget !== undefined 
+          ? (acc.includeInBudget === 1 || acc.includeInBudget === true)
           : !acc.excludeFromReport;
         return `
           <label class="budget-wallet-check-item">
@@ -269,6 +278,24 @@ const UIBudgets = {
     try {
       await db.settings.put({ key: 'budget_mode', value: selectedMode });
       await db.settings.put({ key: 'budget_applicable_accounts', value: applicableWallets });
+
+      const activeAccs = await db.accounts.where('isDeleted').equals(0).toArray();
+      if (selectedScope === 'all') {
+        for (const acc of activeAccs) {
+          if (acc.includeInBudget !== 1) {
+            await db.accounts.update(acc.id, { includeInBudget: 1, updatedAt: Date.now() });
+          }
+        }
+      } else {
+        const idSet = new Set(applicableWallets);
+        for (const acc of activeAccs) {
+          const newVal = idSet.has(acc.id) ? 1 : 0;
+          if (acc.includeInBudget !== newVal) {
+            await db.accounts.update(acc.id, { includeInBudget: newVal, updatedAt: Date.now() });
+          }
+        }
+      }
+
       showToast('Đã lưu cài đặt ngân sách', 'success');
     } catch (e) {
       console.warn('Error saving budget settings:', e);
@@ -301,28 +328,30 @@ const UIBudgets = {
       mainAddLabel.textContent = this.currentMode === 'simple' ? 'Đặt Ngân Sách' : 'Thêm Mục';
     }
 
-    // 2. Fetch all accounts & check custom wallet scope
+    // 2. Fetch all accounts & resolve wallet scope
     const allAccounts = await db.accounts.where('isDeleted').equals(0).toArray();
     const accountMap = new Map(allAccounts.map(a => [a.id, a]));
 
-    const scopeBar = document.getElementById('budget-scope-bar');
-    let allowedAccountIds = null;
-
-    if (Array.isArray(this.applicableWallets) && this.applicableWallets.length > 0) {
-      allowedAccountIds = new Set(this.applicableWallets);
-      if (scopeBar) {
-        const names = this.applicableWallets.map(id => accountMap.get(id)?.name || 'Ví').slice(0, 2).join(', ');
-        const extra = this.applicableWallets.length > 2 ? ` (+${this.applicableWallets.length - 2})` : '';
-        scopeBar.innerHTML = `<i data-lucide="wallet" style="width: 12px; height: 12px;"></i> <span>Ví: <b>${escapeHTML(names + extra)}</b></span> <i data-lucide="chevron-down" style="width: 11px; height: 11px; opacity: 0.7;"></i>`;
-        scopeBar.style.display = 'inline-flex';
+    let allowedAccountIds = new Set();
+    allAccounts.forEach(a => {
+      const isBudgetEnabled = a.includeInBudget !== undefined
+        ? (a.includeInBudget === 1 || a.includeInBudget === true)
+        : !a.excludeFromReport;
+      if (isBudgetEnabled && !a.isArchived) {
+        allowedAccountIds.add(a.id);
       }
-    } else {
-      // Default: exclude accounts with excludeFromReport
-      const excludedAccounts = allAccounts.filter(a => !!a.excludeFromReport);
-      const excludedAccountIds = new Set(excludedAccounts.map(a => a.id));
-      allowedAccountIds = new Set(allAccounts.filter(a => !excludedAccountIds.has(a.id)).map(a => a.id));
-      if (scopeBar) {
-        scopeBar.innerHTML = `<i data-lucide="wallet" style="width: 12px; height: 12px;"></i> <span>Tất cả ví</span> <i data-lucide="chevron-down" style="width: 11px; height: 11px; opacity: 0.7;"></i>`;
+    });
+
+    const scopeBar = document.getElementById('budget-scope-bar');
+    if (scopeBar) {
+      if (allowedAccountIds.size < allAccounts.length) {
+        const enabledAccs = allAccounts.filter(a => allowedAccountIds.has(a.id));
+        const names = enabledAccs.map(a => a.name).slice(0, 2).join(', ');
+        const extra = enabledAccs.length > 2 ? ' (+' + (enabledAccs.length - 2) + ')' : '';
+        scopeBar.innerHTML = '<i data-lucide="wallet" style="width: 12px; height: 12px;"></i> <span>Ví: <b>' + escapeHTML(names + extra) + '</b></span> <i data-lucide="chevron-down" style="width: 11px; height: 11px; opacity: 0.7;"></i>';
+        scopeBar.style.display = 'inline-flex';
+      } else {
+        scopeBar.innerHTML = '<i data-lucide="wallet" style="width: 12px; height: 12px;"></i> <span>Tất cả ví</span> <i data-lucide="chevron-down" style="width: 11px; height: 11px; opacity: 0.7;"></i>';
         scopeBar.style.display = 'inline-flex';
       }
     }
@@ -406,109 +435,61 @@ const UIBudgets = {
     if (!container) return;
 
     const lockedBudgets = categoryBudgets.filter(b => b.isLocked === 1 || b.isLocked === true);
-    const lockedLimitTotal = lockedBudgets.reduce((sum, b) => sum + (b.limitAmount || 0), 0);
-    const lockedSpentTotal = lockedBudgets.reduce((sum, b) => sum + (spentByCat[b.categoryId] || 0), 0);
-
-    const [yearStr, monthStr] = this.currentMonth.split('-');
-    const year = Number(yearStr);
-    const month = Number(monthStr);
-    const totalDays = new Date(year, month, 0).getDate();
-    const now = new Date();
-    const currentYm = now.toISOString().slice(0, 7);
-
-    let daysElapsed = totalDays;
-    let daysRemaining = 0;
-    if (this.currentMonth === currentYm) {
-      daysElapsed = Math.min(totalDays, now.getDate());
-      daysRemaining = Math.max(0, totalDays - daysElapsed);
-    } else if (this.currentMonth > currentYm) {
-      daysElapsed = 0;
-      daysRemaining = totalDays;
-    }
 
     let heroHtml = '';
     if (overallBudget) {
       const overallLimit = overallBudget.limitAmount || 0;
       const remaining = overallLimit - totalSpent;
       const percent = overallLimit > 0 ? Math.round((totalSpent / overallLimit) * 100) : 0;
-      const flexibleLimit = Math.max(0, overallLimit - lockedLimitTotal);
-      const flexibleSpent = Math.max(0, totalSpent - lockedSpentTotal);
-      const flexibleRemaining = flexibleLimit - flexibleSpent;
 
       let barColor = 'linear-gradient(90deg, #10b981, #06b6d4)';
-      let statusBadge = `<span class="budget-status-pill safe"><i data-lucide="check-circle-2" style="width: 12px; height: 12px;"></i> Tiến độ an toàn (${percent}%)</span>`;
+      let statusColor = 'var(--income)';
       if (totalSpent > overallLimit) {
         barColor = 'linear-gradient(90deg, #f43f5e, #e11d48)';
-        statusBadge = `<span class="budget-status-pill danger"><i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i> Đã vượt trần! (${percent}%)</span>`;
+        statusColor = 'var(--expense)';
       } else if (percent >= 80) {
         barColor = 'linear-gradient(90deg, #f59e0b, #d97706)';
-        statusBadge = `<span class="budget-status-pill warning"><i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i> Sắp chạm trần (${percent}%)</span>`;
+        statusColor = '#f59e0b';
       }
 
-      const avgSpentPerDay = daysElapsed > 0 ? Math.round(totalSpent / daysElapsed) : 0;
-      const safeRemainingPerDay = daysRemaining > 0 ? Math.round(Math.max(0, remaining) / daysRemaining) : 0;
-
       heroHtml = `
-        <div class="budget-hero-card">
-          <div class="budget-hero-header">
-            <div class="budget-hero-title-wrap">
-              <span class="budget-hero-badge">Ngân Sách Tổng</span>
-              <span class="budget-hero-month">${this.formatMonthDisplay(this.currentMonth)}</span>
-              ${statusBadge}
-            </div>
-            <button type="button" class="btn-secondary budget-hero-edit-btn" onclick="UIBudgets.openOverallBudgetModal()">
-              <i data-lucide="edit-2" style="width: 13px; height: 13px;"></i> <span>Sửa hạn mức</span>
-            </button>
-          </div>
-
-          <div class="budget-hero-main-stat">
-            <div class="budget-hero-rem-label">${remaining >= 0 ? 'Còn lại cho tháng này' : 'Đã chi vượt ngân sách'}</div>
-            <div class="budget-hero-rem-val" style="color: ${remaining >= 0 ? 'var(--income)' : 'var(--expense)'};">
+        <div class="budget-hero-card budget-hero-clickable" onclick="UIBudgets.openOverallBudgetModal()" title="Nhấp vào để sửa hạn mức ngân sách">
+          <div class="budget-hero-center-box">
+            <div class="budget-hero-rem-label">${remaining >= 0 ? 'CÒN LẠI CHO THÁNG NÀY' : 'ĐÃ CHI VƯỢT HẠN MỨC'}</div>
+            <div class="budget-hero-rem-val" style="color: ${statusColor};">
               ${remaining >= 0 ? `+${this.formatMoney(remaining)}` : `-${this.formatMoney(Math.abs(remaining))}`}
             </div>
-          </div>
 
-          <div class="budget-progress-wrap">
-            <div class="budget-progress-track">
+            <div class="budget-progress-track budget-hero-progress">
               <div class="budget-progress-fill" style="width: ${Math.min(100, percent)}%; background: ${barColor};"></div>
             </div>
-            <div class="budget-progress-header">
-              <span>Đã chi: <b>${this.formatMoney(totalSpent)}</b> (${percent}%)</span>
-              <span>Hạn mức: <b>${this.formatMoney(overallLimit)}</b></span>
-            </div>
-          </div>
 
-          <div class="budget-hero-kpi-grid">
-            <div class="budget-hero-kpi-item">
-              <div class="budget-hero-kpi-label">Hạn Mức Tháng</div>
-              <div class="budget-hero-kpi-val" style="color: var(--primary);">${this.formatMoney(overallLimit)}</div>
+            <div class="budget-hero-limit-info">
+              <span>Hạn mức: <b>${this.formatMoney(overallLimit)}</b></span>
+              <span class="budget-meta-dot">•</span>
+              <span>Đã chi: <b>${this.formatMoney(totalSpent)}</b> (${percent}%)</span>
             </div>
-            <div class="budget-hero-kpi-item">
-              <div class="budget-hero-kpi-label">Thực Tế Đã Chi</div>
-              <div class="budget-hero-kpi-val" style="color: ${totalSpent > overallLimit ? 'var(--expense)' : 'var(--text-primary)'};">${this.formatMoney(totalSpent)}</div>
-            </div>
-            <div class="budget-hero-kpi-item">
-              <div class="budget-hero-kpi-label">Mức Tiêu An Toàn</div>
-              <div class="budget-hero-kpi-val" style="color: ${safeRemainingPerDay > 0 ? 'var(--income)' : 'var(--text-muted)'};">
-                ${daysRemaining > 0 ? `${this.formatMoney(safeRemainingPerDay)}/ngày` : 'Hết tháng'}
-              </div>
-              <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Còn ${daysRemaining} ngày</div>
+
+            <div class="budget-hero-click-hint">
+              <i data-lucide="edit-3" style="width: 12px; height: 12px;"></i>
+              <span>Nhấp để sửa hạn mức</span>
             </div>
           </div>
         </div>
       `;
     } else {
       heroHtml = `
-        <div class="budget-hero-card">
-          <div class="budget-hero-empty">
+        <div class="budget-hero-card budget-hero-clickable" onclick="UIBudgets.openOverallBudgetModal()" title="Nhấp vào để thiết lập hạn mức ngân sách">
+          <div class="budget-hero-center-box">
             <div class="budget-hero-empty-icon">
               <i data-lucide="target" style="width: 28px; height: 28px;"></i>
             </div>
-            <h3>Chưa Thiết Lập Ngân Sách Tổng</h3>
-            <p>Đặt hạn mức chi tiêu chung cho cả tháng để nhận cảnh báo thông minh và kiểm soát dòng tiền an toàn mỗi ngày.</p>
-            <button type="button" class="btn-primary" onclick="UIBudgets.openOverallBudgetModal()">
-              <i data-lucide="plus" style="width: 15px; height: 15px;"></i> Thiết Lập Ngân Sách Tổng
-            </button>
+            <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">Chưa Thiết Lập Ngân Sách Tháng</div>
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 8px;">Nhấp vào đây để đặt hạn mức chi tiêu cho ${this.formatMonthDisplay(this.currentMonth)}</div>
+            <div class="budget-hero-click-hint">
+              <i data-lucide="plus" style="width: 13px; height: 13px;"></i>
+              <span>Thiết lập ngay</span>
+            </div>
           </div>
         </div>
       `;
@@ -549,7 +530,7 @@ const UIBudgets = {
         }
 
         rows += `
-          <div class="budget-locked-item">
+          <div class="budget-locked-item" onclick="UIBudgets.openLockCategoryModal(${b.categoryId})" title="Nhấp vào để sửa hạn mức danh mục">
             <div class="budget-locked-item-header">
               <div class="budget-locked-item-cat">
                 <div class="category-icon-bubble" style="background: ${catColor}22; color: ${catColor}; width: 28px; height: 28px; font-size: 0.8rem;">
@@ -558,11 +539,8 @@ const UIBudgets = {
                 <span class="budget-locked-item-name">${escapeHTML(catName)}</span>
               </div>
               <div class="budget-locked-item-actions">
-                <button type="button" class="btn-icon" onclick="UIBudgets.openLockCategoryModal(${b.categoryId})" title="Sửa hạn mức">
-                  <i data-lucide="edit-2" style="width: 13px; height: 13px;"></i>
-                </button>
-                <button type="button" class="btn-icon" onclick="UIBudgets.unlockCategory(${b.categoryId})" title="Bỏ khóa mục">
-                  <i data-lucide="unlock" style="width: 13px; height: 13px;"></i>
+                <button type="button" class="btn-icon" onclick="event.stopPropagation(); UIBudgets.unlockCategory(${b.categoryId})" title="Bỏ khóa mục này">
+                  <i data-lucide="unlock" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
                 </button>
               </div>
             </div>
@@ -610,7 +588,7 @@ const UIBudgets = {
     `;
   },
 
-  /* ==================== MODE 2: ACTUAL BUDGET SPREADSHEET TABLE ==================== */
+    /* ==================== MODE 2: ACTUAL BUDGET SPREADSHEET TABLE ==================== */
   renderDetailedMode({ categoryBudgets, expenseCategories, catMap, totalIncome, totalSpent, spentByCat }) {
     const container = document.getElementById('budget-detailed-container');
     if (!container) return;
@@ -904,12 +882,39 @@ const UIBudgets = {
   },
 
   /* ==================== MODAL 1: OVERALL BUDGET ==================== */
+  async copyFromPreviousMonthOverall() {
+    try {
+      const allBudgets = await db.budgets.toArray();
+      const pastOverall = allBudgets
+        .filter(b => (b.categoryId === 'TOTAL' || b.categoryId === 0 || b.isOverall) && b.month < this.currentMonth && (b.limitAmount || 0) > 0)
+        .sort((a, b) => b.month.localeCompare(a.month));
+
+      if (pastOverall.length === 0) {
+        showToast('Chưa có dữ liệu ngân sách các tháng trước để sao chép', 'warning');
+        return;
+      }
+
+      const prev = pastOverall[0];
+      const amountInput = document.getElementById('budget-overall-amount');
+      if (amountInput) {
+        amountInput.value = new Intl.NumberFormat('vi-VN').format(prev.limitAmount);
+        amountInput.focus();
+      }
+      showToast(`Đã sao chép hạn mức ${this.formatMoney(prev.limitAmount)} từ ${this.formatMonthDisplay(prev.month)}`, 'success');
+    } catch (e) {
+      console.error('Error copying previous budget:', e);
+      showToast('Có lỗi xảy ra khi sao chép ngân sách', 'error');
+    }
+  },
+
   async openOverallBudgetModal() {
     const modal = document.getElementById('modal-budget-overall');
     if (!modal) return;
 
     const monthDisplay = document.getElementById('budget-overall-month');
-    if (monthDisplay) monthDisplay.value = this.formatMonthDisplay(this.currentMonth);
+    if (monthDisplay) monthDisplay.value = this.currentMonth;
+    const monthText = document.getElementById('budget-overall-month-text');
+    if (monthText) monthText.textContent = this.formatMonthDisplay(this.currentMonth);
 
     const amountInput = document.getElementById('budget-overall-amount');
     const deleteBtn = document.getElementById('budget-overall-delete-btn');

@@ -122,6 +122,24 @@
           </div>
         </div>
 
+        <!-- Header Center cho Ngân Sách: [ < Tháng mm/yyyy > ] và chú thích bên dưới -->
+        <div id="budget-header-center" class="budget-header-center" style="display: none;">
+          <div class="budget-month-nav budget-header-month-nav">
+            <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(-1)" title="Tháng trước">
+              <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i>
+            </button>
+            <button type="button" class="budget-month-btn" onclick="UIBudgets.openFilterMonthPicker()" title="Chọn tháng">
+              <i data-lucide="calendar" style="width: 14px; height: 14px; color: var(--primary);"></i>
+              <span id="budget-month-display-label">Tháng --/----</span>
+              <i data-lucide="chevron-down" style="width: 12px; height: 12px; opacity: 0.7;"></i>
+            </button>
+            <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(1)" title="Tháng sau">
+              <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+            </button>
+          </div>
+          <div id="budget-header-subtitle" class="budget-header-subtitle" onclick="UIBudgets.openSettingsModal()" title="Bấm để đổi chế độ ngân sách">Ngân sách tổng</div>
+        </div>
+
         <!-- Header Search Bar che toàn bộ thanh tiêu đề khi mở tìm kiếm -->
         <div id="tx-header-search-bar" class="tx-header-search-bar" style="display: none;">
           <i data-lucide="search" class="tx-search-input-icon"></i>
@@ -514,48 +532,6 @@
       <!-- View: Budgets (Quản lý Ngân sách đa chế độ) -->
       <section id="view-budgets" class="page-view">
         <!-- Top Toolbar: [Sao Chép] < Tháng mm/yyyy > [Thiết Lập] -->
-        <div class="budget-toolbar">
-          <div class="budget-toolbar-left">
-            <!-- Nút Sao Chép nằm bên TRÁI cụm < tháng > -->
-            <button type="button" class="btn-secondary budget-copy-btn" onclick="UIBudgets.openCopyModal()" title="Sao chép từ tháng trước">
-              <i data-lucide="copy" style="width: 15px; height: 15px;"></i>
-              <span>Sao chép</span>
-            </button>
-
-            <!-- Cụm < Tháng mm/yyyy > -->
-            <div class="budget-month-nav">
-              <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(-1)" title="Tháng trước">
-                <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i>
-              </button>
-              <button type="button" class="budget-month-btn" onclick="UIBudgets.openFilterMonthPicker()" title="Chọn tháng">
-                <i data-lucide="calendar" style="width: 15px; height: 15px; color: var(--primary);"></i>
-                <span id="budget-month-display-label">Tháng --/----</span>
-                <i data-lucide="chevron-down" style="width: 13px; height: 13px; opacity: 0.7;"></i>
-              </button>
-              <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(1)" title="Tháng sau">
-                <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
-              </button>
-            </div>
-          </div>
-
-          <div class="budget-toolbar-right">
-            <!-- Nút Cài đặt & chuyển đổi chế độ / ví áp dụng -->
-            <button type="button" class="budget-toolbar-chip" id="budget-mode-badge-btn" onclick="UIBudgets.openSettingsModal()" title="Chuyển đổi Ngân sách tổng / Chi tiết và Ví áp dụng">
-              <i data-lucide="settings" style="width: 13px; height: 13px; color: var(--primary);"></i>
-              <span id="budget-mode-badge-label">Ngân sách Tổng</span>
-            </button>
-
-            <!-- Scope Badge (Hiển thị ví đang áp dụng) -->
-            <div id="budget-scope-bar" class="budget-scope-bar" onclick="UIBudgets.openSettingsModal()" title="Bấm để chọn ví áp dụng" style="display: none;"></div>
-
-            <!-- Nút Thao tác chính -->
-            <button type="button" class="btn-primary budget-action-pill" id="budget-main-add-btn" onclick="UIBudgets.handlePrimaryAddAction()">
-              <i data-lucide="plus" style="width: 15px; height: 15px;"></i>
-              <span id="budget-main-add-label">Thiết Lập</span>
-            </button>
-          </div>
-        </div>
-
         <!-- Mode 1 Container: Ngân sách Tổng & Khóa mục chi -->
         <div id="budget-simple-container" class="budget-mode-pane active"></div>
 
@@ -1246,6 +1222,22 @@
                   </label>
                 </div>
               </div>
+                <!-- Hàng 6: Áp dụng ngân sách -->
+                <div class="tx-info-row acc-budget-info-row" style="align-items: center; padding: 12px 0;">
+                  <div class="tx-info-icon-bubble" style="background: rgba(13, 148, 136, 0.15); color: var(--primary); flex-shrink: 0;">
+                    <i data-lucide="target"></i>
+                  </div>
+                  <div class="tx-info-content" style="padding-right: 8px;">
+                    <div style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3;">Áp dụng ngân sách</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.35; margin-top: 3px;">
+                      Tính các chi tiêu từ tài khoản này vào hạn mức ngân sách tháng
+                    </div>
+                  </div>
+                  <label class="app-switch" style="flex-shrink: 0;">
+                    <input type="checkbox" id="acc-apply-budget-check" checked>
+                    <span class="app-switch-slider"></span>
+                  </label>
+                </div>
 
               <!-- Ô 3: NÚT HÀNH ĐỘNG CUỐI TRANG (Nút Xóa + Nút Lưu Lại kiểu tx-bottom-action-row) -->
               <div class="tx-bottom-action-row" style="margin-top: 6px; padding: 6px 0 16px 0; display: flex; gap: 12px; align-items: center;">
@@ -2452,7 +2444,18 @@
           <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
         </button>
 
-        <button type="button" class="action-sheet-item" id="action-sheet-archive-btn" onclick="UIAccounts.handleActionSheetSelect('toggle-archive')">
+                <button type="button" class="action-sheet-item" onclick="UIAccounts.toggleAccountBudgetAction()">
+          <div class="action-sheet-item-icon" style="background: rgba(13, 148, 136, 0.12); color: var(--primary);">
+            <i data-lucide="target" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Áp dụng ngân sách</span>
+            <span class="action-sheet-item-desc" id="action-sheet-budget-desc">Đang tính vào ngân sách tháng</span>
+          </div>
+          <span id="action-sheet-budget-badge" class="action-sheet-budget-badge active">Bật</span>
+        </button>
+
+<button type="button" class="action-sheet-item" id="action-sheet-archive-btn" onclick="UIAccounts.handleActionSheetSelect('toggle-archive')">
           <div class="action-sheet-item-icon" style="background: rgba(148, 163, 184, 0.12); color: var(--text-muted);">
             <i data-lucide="power" id="action-sheet-archive-icon" style="width: 18px; height: 18px;"></i>
           </div>
@@ -2663,9 +2666,18 @@
       </div>
       <form id="budget-overall-form">
         <div class="modal-body">
-          <div class="form-group">
-            <label class="form-label">Tháng Áp Dụng</label>
-            <input type="text" id="budget-overall-month" class="form-control" readonly style="background: rgba(255,255,255,0.03); font-weight: 600; text-align: center;">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+              <div>
+                <label class="form-label" style="margin-bottom: 2px;">Tháng Áp Dụng</label>
+                <div id="budget-overall-month-text" style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">Tháng --/----</div>
+                <input type="hidden" id="budget-overall-month">
+              </div>
+              <button type="button" class="btn-secondary" onclick="UIBudgets.copyFromPreviousMonthOverall()" style="font-size: 0.8rem; padding: 6px 11px; display: inline-flex; align-items: center; gap: 5px; border-radius: var(--radius-md);" title="Sao chép hạn mức từ tháng trước">
+                <i data-lucide="copy" style="width: 14px; height: 14px; color: var(--primary);"></i>
+                <span>Sao chép tháng trước</span>
+              </button>
+            </div>
           </div>
 
           <div class="form-group">
@@ -3443,11 +3455,11 @@
   <script src="./js/ui-transactions.js?v=1.9.69"></script>
   <script src="./js/ui-debts.js?v=1.9.69"></script>
   <script src="./js/ui-accounts.js?v=1.9.69"></script>
-  <script src="./js/ui-budgets.js?v=1.9.70"></script>
+  <script src="./js/ui-budgets.js?v=1.9.71"></script>
   <script src="./js/ui-analytics.js?v=1.9.69"></script>
   <script src="./js/ui-settings.js?v=1.9.69"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.70"></script>
+  <script src="./js/app.js?v=1.9.71"></script>
 </body>
 </html>
