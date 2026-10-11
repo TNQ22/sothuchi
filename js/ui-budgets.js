@@ -586,15 +586,15 @@ const UIBudgets = {
         <div class="actual-to-budget-meta">
           <div class="actual-to-budget-meta-item">
             <span class="actual-to-budget-meta-label">Thu Nhập Tháng</span>
-            <span class="actual-to-budget-meta-val ${this.getAmountFontClass('+' + this.formatMoney(totalIncome))}" style="color: var(--income);">+${this.formatMoney(totalIncome)}</span>
+            <span class="actual-to-budget-meta-val" style="color: var(--income);">+${this.formatMoney(totalIncome)}</span>
           </div>
           <div class="actual-to-budget-meta-item">
             <span class="actual-to-budget-meta-label">Đã Phân Bổ</span>
-            <span class="actual-to-budget-meta-val ${this.getAmountFontClass('-' + this.formatMoney(totalBudgeted))}" style="color: var(--primary);">-${this.formatMoney(totalBudgeted)}</span>
+            <span class="actual-to-budget-meta-val" style="color: var(--primary);">-${this.formatMoney(totalBudgeted)}</span>
           </div>
           <div class="actual-to-budget-meta-item">
             <span class="actual-to-budget-meta-label">Đã Chi Tiêu</span>
-            <span class="actual-to-budget-meta-val ${this.getAmountFontClass(totalSpent > 0 ? '-' + this.formatMoney(totalSpent) : '0đ')}" style="color: var(--expense);">${totalSpent > 0 ? `-${this.formatMoney(totalSpent)}` : '0đ'}</span>
+            <span class="actual-to-budget-meta-val" style="color: var(--expense);">${totalSpent > 0 ? `-${this.formatMoney(totalSpent)}` : '0đ'}</span>
           </div>
         </div>
       </div>
@@ -1923,9 +1923,8 @@ const UIBudgets = {
   getAmountFontClass(amountStr) {
     const raw = (amountStr || '').toString().replace(/<[^>]*>/g, '').trim();
     const len = raw.length;
-    if (len >= 13) return 'font-len-xs';
-    if (len >= 10) return 'font-len-sm';
-    if (len >= 8) return 'font-len-md';
+    if (len >= 14) return 'font-len-xs';
+    if (len >= 12) return 'font-len-sm';
     return '';
   },
 

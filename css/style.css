@@ -7076,7 +7076,7 @@ html, body {
   border: 1px dashed rgba(255, 255, 255, 0.22);
   cursor: pointer;
   font-weight: 700;
-  font-size: 0.73rem;
+  font-size: 0.76rem;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   transition: all 0.15s ease;
@@ -7110,25 +7110,20 @@ html, body {
 }
 
 
-/* Dynamic typography scaling for long numbers in tables and cards */
-.font-len-md {
-  font-size: 0.67rem !important;
+/* Dynamic typography scaling for very long numbers in tables (>= 100 triệu) */
+.font-len-sm {
+  font-size: 0.70rem !important;
   letter-spacing: -0.025em !important;
 }
 
-.font-len-sm {
-  font-size: 0.59rem !important;
-  letter-spacing: -0.035em !important;
-}
-
 .font-len-xs {
-  font-size: 0.51rem !important;
-  letter-spacing: -0.045em !important;
+  font-size: 0.64rem !important;
+  letter-spacing: -0.035em !important;
 }
 
 .actual-spent-cell {
   font-weight: 600;
-  font-size: 0.73rem;
+  font-size: 0.76rem;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   color: var(--text-secondary);
@@ -7435,17 +7430,17 @@ html, body {
 
   .actual-budget-table thead th {
     padding: 6px 3px !important;
-    font-size: 0.69rem !important;
+    font-size: 0.71rem !important;
   }
 
   .actual-budget-table tbody td {
-    padding: 4.5px 3px !important;
-    font-size: 0.73rem !important;
+    padding: 5px 3px !important;
+    font-size: 0.75rem !important;
   }
 
   .actual-budget-table tfoot td {
     padding: 6px 3px !important;
-    font-size: 0.73rem !important;
+    font-size: 0.75rem !important;
   }
 
   .actual-cat-icon {
