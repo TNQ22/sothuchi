@@ -576,14 +576,20 @@ const UIBudgets = {
 
     const topBannerHtml = `
       <div class="actual-budget-top-card">
+        <div class="actual-budget-actions-corner">
+          <button type="button" class="actual-budget-corner-btn delete-btn" onclick="UIBudgets.clearBudgetMonth()" title="Xóa ngân sách tháng này" aria-label="Xóa ngân sách">
+            <i data-lucide="trash-2"></i>
+          </button>
+          <button type="button" class="actual-budget-corner-btn copy-btn" onclick="UIBudgets.openCopyModal()" title="Sao chép / Thiết lập ngân sách" aria-label="Sao chép ngân sách">
+            <i data-lucide="copy"></i>
+          </button>
+        </div>
+
         <div class="actual-to-budget-center">
           <div class="actual-to-budget-amount-wrapper">
             <div class="actual-to-budget-amount" style="color: ${toBudget < 0 ? 'var(--expense)' : (toBudget === 0 ? 'var(--primary)' : 'var(--income)')};">
               ${this.formatMoney(toBudget)}
             </div>
-            <button type="button" class="actual-budget-copy-btn" onclick="UIBudgets.openCopyModal()" title="Sao chép ngân sách từ tháng khác" aria-label="Sao chép ngân sách">
-              <i data-lucide="copy"></i>
-            </button>
           </div>
           <div class="actual-to-budget-caption">${captionText}</div>
         </div>
@@ -2069,6 +2075,35 @@ const UIBudgets = {
     }
     this.closeBudgetForm();
     showToast(`Đã sao chép thành công ${copiedCount} mục ngân sách từ ${this.formatMonthDisplay(sourceMonth)}`, 'success');
+    if (window.app) {
+      await window.app.refreshAll();
+    }
+  },
+
+  async clearBudgetMonth(targetMonth = null) {
+    const month = targetMonth || this.currentMonth;
+    const monthDisplay = this.formatMonthDisplay(month);
+
+    const budgets = await db.budgets.where('month').equals(month).toArray();
+    if (budgets.length === 0) {
+      showToast(`${monthDisplay} chưa có ngân sách nào để xóa`, 'info');
+      return;
+    }
+
+    if (!confirm(`Bạn có chắc chắn muốn xóa toàn bộ ngân sách (${budgets.length} mục) của ${monthDisplay}?`)) {
+      return;
+    }
+
+    try {
+      await db.budgets.where('month').equals(month).delete();
+      localStorage.setItem('budget_manual_set_' + month, '1');
+    } catch (err) {
+      console.error('Error clearing budget for month:', err);
+    }
+
+    this.closeCopyModal();
+    this.closeBudgetForm();
+    showToast(`Đã xóa sạch ngân sách của ${monthDisplay}`, 'success');
     if (window.app) {
       await window.app.refreshAll();
     }

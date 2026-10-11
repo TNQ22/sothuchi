@@ -6876,6 +6876,7 @@ html, body {
 
 /* 4. Mode 2: Actual Budget Spreadsheet Table */
 .actual-budget-top-card {
+  position: relative;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -6910,17 +6911,23 @@ html, body {
   letter-spacing: -0.02em;
 }
 
-.actual-budget-copy-btn {
+.actual-budget-actions-corner {
   position: absolute;
-  top: 50%;
-  right: -34px;
-  transform: translateY(-50%);
-  width: 26px;
-  height: 26px;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 5;
+}
+
+.actual-budget-corner-btn {
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius-sm);
-  background: rgba(45, 212, 191, 0.12);
-  color: #2dd4bf;
-  border: 1px solid rgba(45, 212, 191, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -6930,19 +6937,40 @@ html, body {
   -webkit-tap-highlight-color: rgba(45, 212, 191, 0.2);
 }
 
-.actual-budget-copy-btn:hover,
-.actual-budget-copy-btn:active {
+.actual-budget-corner-btn i,
+.actual-budget-corner-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.actual-budget-corner-btn.copy-btn {
+  background: rgba(45, 212, 191, 0.1);
+  color: #2dd4bf;
+  border-color: rgba(45, 212, 191, 0.3);
+}
+
+.actual-budget-corner-btn.copy-btn:hover,
+.actual-budget-corner-btn.copy-btn:active {
   background: var(--primary);
   color: #ffffff;
   border-color: var(--primary);
-  transform: translateY(-50%) scale(1.06);
+  transform: scale(1.06);
   box-shadow: 0 2px 8px rgba(13, 148, 136, 0.35);
 }
 
-.actual-budget-copy-btn i,
-.actual-budget-copy-btn svg {
-  width: 14px;
-  height: 14px;
+.actual-budget-corner-btn.delete-btn {
+  background: rgba(244, 63, 94, 0.08);
+  color: var(--expense);
+  border-color: rgba(244, 63, 94, 0.25);
+}
+
+.actual-budget-corner-btn.delete-btn:hover,
+.actual-budget-corner-btn.delete-btn:active {
+  background: var(--expense);
+  color: #ffffff;
+  border-color: var(--expense);
+  transform: scale(1.06);
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.35);
 }
 
 .actual-to-budget-caption {
