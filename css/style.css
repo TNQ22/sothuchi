@@ -7406,13 +7406,15 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--bg-card);
+  padding: 10px 14px;
+  min-height: 52px;
+  background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.15s ease;
   color: var(--text-primary);
+  box-sizing: border-box;
 }
 
 .budget-cat-trigger:hover, .budget-cat-trigger:focus {
@@ -7421,61 +7423,141 @@ html, body {
 
 .budget-cat-trigger-content {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
+  flex: 1;
 }
 
 .budget-cat-trigger-text {
   font-weight: 600;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: left;
 }
 
 .budget-cat-trigger-arrow {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
 .budget-cat-menu {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   left: 0;
   right: 0;
-  max-height: 240px;
+  max-height: min(480px, 65vh);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
   z-index: 1000;
   padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
+.budget-cat-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 998;
+}
+
+/* Dropdown trên trang form hạn mức danh mục: rộng thoáng và cao thoải mái */
+#budget-cat-page-dropdown .budget-cat-menu {
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-height: min(520px, 65vh);
+  padding: 10px;
+}
+
+@media (max-width: 640px) {
+  #budget-cat-page-dropdown .budget-cat-menu {
+    position: fixed !important;
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    max-height: 75vh !important;
+    border-radius: 22px 22px 0 0 !important;
+    border: 1px solid var(--border-color) !important;
+    border-bottom: none !important;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.65) !important;
+    z-index: 1000 !important;
+    padding: 16px 14px !important;
+    padding-bottom: max(24px, env(safe-area-inset-bottom, 24px)) !important;
+    box-sizing: border-box !important;
+  }
+}
+
+.budget-cat-item,
 .budget-cat-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.12s ease;
+  user-select: none;
+  min-height: 48px;
+  box-sizing: border-box;
 }
 
+.budget-cat-item:hover,
 .budget-cat-option:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-card-hover, rgba(255, 255, 255, 0.08));
 }
 
+.budget-cat-item.selected,
 .budget-cat-option.selected {
-  background: var(--primary-light);
+  background: var(--primary-light, rgba(13, 148, 136, 0.15));
+  border: 1px solid rgba(13, 148, 136, 0.3);
+}
+
+.budget-cat-item .category-icon-bubble,
+.budget-cat-option .category-icon-bubble {
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+}
+
+.budget-cat-item-name,
+.budget-cat-option-name {
+  flex: 1 !important;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.budget-cat-check {
+  width: 18px;
+  height: 18px;
+  color: var(--primary);
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .budget-locked-item-remaining {

@@ -39,9 +39,11 @@ const UIBudgets = {
     this.bindEvents();
 
     document.addEventListener('click', (e) => {
-      if (!e.target.closest('#budget-cat-page-dropdown')) {
+      if (!e.target.closest('#budget-cat-page-dropdown') && !e.target.closest('#budget-cat-page-menu')) {
         const m = document.getElementById('budget-cat-page-menu');
+        const b = document.getElementById('budget-cat-page-backdrop');
         if (m) m.style.display = 'none';
+        if (b) b.style.display = 'none';
       }
       if (!e.target.closest('#budget-lock-cat-dropdown')) {
         const m = document.getElementById('budget-lock-cat-menu');
@@ -242,10 +244,25 @@ const UIBudgets = {
       const skipKey = 'skip_auto_rollover_' + targetMonth;
       if (sessionStorage.getItem(skipKey)) return;
 
+      // 1. Chỉ hoạt động khi thời gian hiện tại trong thế giới thực ĐÃ BƯỚC SANG tháng đó
+      // Tuyệt đối không kích hoạt khi người dùng xem trước tháng sau (targetMonth > actualMonth)
+      const nowD = new Date();
+      const actualCurrentMonth = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, '0')}`;
+      if (targetMonth > actualCurrentMonth) {
+        return; // Đang xem trước tháng tương lai -> không tự động sao chép
+      }
+
+      // 2. Không tự kích hoạt nếu tháng này đã được người dùng thiết lập bằng tay (hoặc chủ động xóa)
+      if (localStorage.getItem('budget_manual_set_' + targetMonth)) {
+        return;
+      }
+
+      // 3. Kiểm tra cài đặt bật/tắt tự động sao chép
       const autoSetting = await db.settings.get('budget_auto_rollover');
       const isAuto = autoSetting ? (autoSetting.value !== false && autoSetting.value !== 0) : true;
       if (!isAuto) return;
 
+      // 4. Nếu tháng này đã có bất kỳ bản ghi ngân sách nào -> không làm gì cả
       const currentMonthBudgets = await db.budgets.where('month').equals(targetMonth).toArray();
       if (currentMonthBudgets.length > 0) return;
 
@@ -922,6 +939,10 @@ const UIBudgets = {
       showToast('Đã thiết lập ngân sách tổng của tháng', 'success');
     }
 
+    try {
+      localStorage.setItem('budget_manual_set_' + this.currentMonth, '1');
+    } catch (_) {}
+
     this.closeBudgetForm();
     window.app.refreshAll();
   },
@@ -935,6 +956,9 @@ const UIBudgets = {
     const overall = existing.find(b => b.categoryId === 'TOTAL' || b.categoryId === 0 || b.isOverall);
     if (overall) {
       await db.budgets.delete(overall.id);
+      try {
+        localStorage.setItem('budget_manual_set_' + this.currentMonth, '1');
+      } catch (_) {}
       showToast('Đã xóa ngân sách tổng của tháng', 'info');
       this.closeBudgetForm();
       window.app.refreshAll();
@@ -1173,6 +1197,7 @@ const UIBudgets = {
   },
 
   closeBudgetCategoryForm() {
+    this.toggleCatPageDropdown(false);
     if (window.app) window.app.switchView('budgets', true);
   },
 
@@ -1195,17 +1220,27 @@ const UIBudgets = {
       const icon = cat.icon || 'tag';
 
       itemsHtml += `
-        <div class="budget-cat-item ${isSelected ? 'selected' : ''}" onclick="UIBudgets.selectCatPageOption(${cat.id})">
-          <div class="category-icon-bubble" style="background: ${color}22; color: ${color}; width: 28px; height: 28px; font-size: 0.85rem;">
+        <div class="budget-cat-item ${isSelected ? 'selected' : ''}" onclick="UIBudgets.selectCatPageOption(${cat.id})" style="display: flex; flex-direction: row; align-items: center; gap: 12px; padding: 10px 12px; min-height: 48px; cursor: pointer;">
+          <div class="category-icon-bubble" style="background: ${color}22; color: ${color}; width: 32px; height: 32px; font-size: 0.9rem; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
             <i data-lucide="${icon}"></i>
           </div>
-          <span class="budget-cat-item-name">${escapeHTML(cat.name)}</span>
-          ${isSelected ? '<i data-lucide="check" class="budget-cat-check"></i>' : ''}
+          <span class="budget-cat-item-name" style="flex: 1; font-size: 0.95rem; font-weight: 600; color: var(--text-primary); text-align: left;">${escapeHTML(cat.name)}</span>
+          ${isSelected ? '<i data-lucide="check" class="budget-cat-check" style="width: 18px; height: 18px; color: var(--primary); flex-shrink: 0; margin-left: auto;"></i>' : ''}
         </div>
       `;
     });
 
-    menu.innerHTML = itemsHtml;
+    menu.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 12px 6px; border-bottom: 1px solid var(--border-color); margin-bottom: 8px;">
+        <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">Chọn Danh Mục Chi Tiêu</span>
+        <button type="button" class="btn-icon" onclick="UIBudgets.toggleCatPageDropdown(false)" style="width: 28px; height: 28px; border-radius: var(--radius-full); background: rgba(255,255,255,0.06);">
+          <i data-lucide="x" style="width: 15px; height: 15px;"></i>
+        </button>
+      </div>
+      <div style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 4px; max-height: calc(75vh - 70px);">
+        ${itemsHtml}
+      </div>
+    `;
 
     if (foundCat) {
       const color = foundCat.color || '#0d9488';
@@ -1241,11 +1276,17 @@ const UIBudgets = {
     if (window.lucide) lucide.createIcons();
   },
 
-  toggleCatPageDropdown() {
+  toggleCatPageDropdown(force = null) {
     const menu = document.getElementById('budget-cat-page-menu');
+    const backdrop = document.getElementById('budget-cat-page-backdrop');
     if (!menu) return;
-    const isShown = menu.style.display === 'block';
-    menu.style.display = isShown ? 'none' : 'block';
+    const isShown = force !== null ? !force : (menu.style.display === 'flex' || menu.style.display === 'block');
+    const nextState = !isShown;
+    menu.style.display = nextState ? 'flex' : 'none';
+    if (backdrop) backdrop.style.display = nextState ? 'block' : 'none';
+    if (nextState && window.lucide) {
+      lucide.createIcons();
+    }
   },
 
   async selectCatPageOption(catId) {
@@ -1268,8 +1309,8 @@ const UIBudgets = {
     if (triggerLabel) triggerLabel.textContent = cat.name;
     if (hiddenId) hiddenId.value = cat.id;
 
+    this.toggleCatPageDropdown(false);
     if (menu) {
-      menu.style.display = 'none';
       menu.querySelectorAll('.budget-cat-item').forEach(item => {
         item.classList.remove('selected');
         const check = item.querySelector('.budget-cat-check');
@@ -1339,6 +1380,10 @@ const UIBudgets = {
       showToast('Đã thiết lập hạn mức danh mục', 'success');
     }
 
+    try {
+      localStorage.setItem('budget_manual_set_' + this.currentMonth, '1');
+    } catch (_) {}
+
     this.closeBudgetCategoryForm();
     window.app.refreshAll();
   },
@@ -1353,6 +1398,9 @@ const UIBudgets = {
       const existing = await db.budgets.where({ categoryId, month: this.currentMonth }).first();
       if (existing) {
         await db.budgets.delete(existing.id);
+        try {
+          localStorage.setItem('budget_manual_set_' + this.currentMonth, '1');
+        } catch (_) {}
         showToast('Đã xóa hạn mức danh mục', 'info');
       }
       this.closeBudgetCategoryForm();
@@ -1816,6 +1864,9 @@ const UIBudgets = {
       }
     }
 
+    try {
+      localStorage.setItem('budget_manual_set_' + targetMonth, '1');
+    } catch (_) {}
     this.closeCopyModal();
     showToast(`Đã sao chép thành công ${copiedCount} mục ngân sách từ ${this.formatMonthDisplay(sourceMonth)}`, 'success');
     window.app.refreshAll();

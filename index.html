@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.75">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.77">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -628,20 +628,21 @@
 
           <div class="tx-page-body" style="padding: 16px 14px; display: flex; flex-direction: column; gap: 16px;">
             <!-- Card 1: Chọn danh mục chi tiêu với Dropdown có icon và màu -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 16px;">
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 16px; position: relative; z-index: 50;">
               <label class="form-label" style="margin-bottom: 8px;">Danh Mục Chi Tiêu</label>
               <input type="hidden" id="budget-cat-page-id" value="">
               
               <div class="budget-cat-dropdown" id="budget-cat-page-dropdown">
                 <button type="button" class="budget-cat-trigger" id="budget-cat-page-trigger" onclick="UIBudgets.toggleCatPageDropdown()">
                   <div class="budget-cat-trigger-content">
-                    <div id="budget-cat-page-icon" class="category-icon-bubble" style="width: 32px; height: 32px; font-size: 0.95rem; background: rgba(13, 148, 136, 0.15); color: var(--primary);">
+                    <div id="budget-cat-page-icon" class="category-icon-bubble" style="width: 32px; height: 32px; font-size: 0.95rem; background: rgba(13, 148, 136, 0.15); color: var(--primary); flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
                       <i data-lucide="tag"></i>
                     </div>
                     <span id="budget-cat-page-label" class="budget-cat-trigger-text">Chọn danh mục</span>
                   </div>
                   <i data-lucide="chevron-down" class="budget-cat-trigger-arrow"></i>
                 </button>
+                <div class="budget-cat-backdrop" id="budget-cat-page-backdrop" style="display: none;" onclick="UIBudgets.toggleCatPageDropdown(false)"></div>
                 <div class="budget-cat-menu" id="budget-cat-page-menu" style="display: none;"></div>
               </div>
             </div>
@@ -3576,18 +3577,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=1.9.75"></script>
+  <script src="./js/backup.js?v=1.9.77"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=1.9.75"></script>
-  <script src="./js/ui-transactions.js?v=1.9.75"></script>
-  <script src="./js/ui-debts.js?v=1.9.75"></script>
-  <script src="./js/ui-accounts.js?v=1.9.75"></script>
-  <script src="./js/ui-budgets.js?v=1.9.75"></script>
-  <script src="./js/ui-analytics.js?v=1.9.75"></script>
-  <script src="./js/ui-settings.js?v=1.9.75"></script>
+  <script src="./js/ui-calendar.js?v=1.9.77"></script>
+  <script src="./js/ui-transactions.js?v=1.9.77"></script>
+  <script src="./js/ui-debts.js?v=1.9.77"></script>
+  <script src="./js/ui-accounts.js?v=1.9.77"></script>
+  <script src="./js/ui-budgets.js?v=1.9.77"></script>
+  <script src="./js/ui-analytics.js?v=1.9.77"></script>
+  <script src="./js/ui-settings.js?v=1.9.77"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=1.9.75"></script>
+  <script src="./js/app.js?v=1.9.77"></script>
 </body>
 </html>
