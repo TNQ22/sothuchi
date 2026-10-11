@@ -577,9 +577,6 @@ const UIBudgets = {
     const topBannerHtml = `
       <div class="actual-budget-top-card">
         <div class="actual-budget-actions-corner">
-          <button type="button" class="actual-budget-corner-btn delete-btn" onclick="UIBudgets.clearBudgetMonth()" title="Xóa ngân sách tháng này" aria-label="Xóa ngân sách">
-            <i data-lucide="trash-2"></i>
-          </button>
           <button type="button" class="actual-budget-corner-btn copy-btn" onclick="UIBudgets.openCopyModal()" title="Sao chép / Thiết lập ngân sách" aria-label="Sao chép ngân sách">
             <i data-lucide="copy"></i>
           </button>
