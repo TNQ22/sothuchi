@@ -567,7 +567,7 @@ const UIBudgets = {
     if (toBudget === 0) {
       iconClass = 'zero';
       iconName = 'check-circle-2';
-      captionText = '🎯 Zero-based: Đã phân bổ toàn bộ thu nhập';
+      captionText = '🎯 Đã phân bổ toàn bộ thu nhập';
     } else if (toBudget < 0) {
       iconClass = 'negative';
       iconName = 'alert-triangle';
@@ -576,16 +576,11 @@ const UIBudgets = {
 
     const topBannerHtml = `
       <div class="actual-budget-top-card">
-        <div class="actual-to-budget-left">
-          <div class="actual-to-budget-icon ${iconClass}">
-            <i data-lucide="${iconName}" style="width: 22px; height: 22px;"></i>
+        <div class="actual-to-budget-center">
+          <div class="actual-to-budget-amount" style="color: ${toBudget < 0 ? 'var(--expense)' : (toBudget === 0 ? 'var(--primary)' : 'var(--income)')};">
+            ${this.formatMoney(toBudget)}
           </div>
-          <div>
-            <div class="actual-to-budget-amount" style="color: ${toBudget < 0 ? 'var(--expense)' : (toBudget === 0 ? 'var(--primary)' : 'var(--income)')};">
-              ${this.formatMoney(toBudget)}
-            </div>
-            <div class="actual-to-budget-caption">${captionText}</div>
-          </div>
+          <div class="actual-to-budget-caption">${captionText}</div>
         </div>
 
         <div class="actual-to-budget-meta">
@@ -640,7 +635,6 @@ const UIBudgets = {
           <td style="text-align: right;">
             <div class="actual-budget-cell" onclick="UIBudgets.openQuickEditModal(${cat.id})" title="Nhấp để sửa phân bổ">
               <span>${budgeted > 0 ? this.formatMoney(budgeted) : '<span style="opacity: 0.4;">0đ</span>'}</span>
-              <i data-lucide="edit-2" class="actual-edit-pen"></i>
             </div>
           </td>
 
@@ -670,9 +664,9 @@ const UIBudgets = {
         <table class="actual-budget-table">
           <thead>
             <tr>
-              <th style="width: 31%; text-align: left;">Hạn Mục</th>
+              <th style="width: 32%; text-align: left;">Hạn Mục</th>
               <th style="width: 23%; text-align: right;">Phân bổ</th>
-              <th style="width: 23%; text-align: right;">Đã chi</th>
+              <th style="width: 22%; text-align: right;">Đã chi</th>
               <th style="width: 23%; text-align: right;">Còn lại</th>
             </tr>
           </thead>

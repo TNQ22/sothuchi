@@ -6879,84 +6879,78 @@ html, body {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 14px 18px;
-  margin-bottom: 16px;
+  padding: 16px 14px 12px 14px;
+  margin-bottom: 14px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 14px;
 }
 
-.actual-to-budget-left {
+.actual-to-budget-center {
   display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.actual-to-budget-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
-  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-.actual-to-budget-icon.positive {
-  background: rgba(16, 185, 129, 0.15);
-  color: var(--income);
-}
-
-.actual-to-budget-icon.zero {
-  background: rgba(13, 148, 136, 0.15);
-  color: var(--primary);
-}
-
-.actual-to-budget-icon.negative {
-  background: rgba(244, 63, 94, 0.15);
-  color: var(--expense);
+  text-align: center;
+  margin-bottom: 12px;
+  width: 100%;
 }
 
 .actual-to-budget-amount {
-  font-size: 1.45rem;
+  font-size: 1.85rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
+  text-align: center;
+  letter-spacing: -0.02em;
 }
 
 .actual-to-budget-caption {
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 4px;
+  text-align: center;
 }
 
 .actual-to-budget-meta {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  flex-wrap: wrap;
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  width: 100% !important;
+  gap: 4px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding-top: 10px !important;
 }
 
 .actual-to-budget-meta-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  min-width: 0 !important;
 }
 
 .actual-to-budget-meta-label {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  margin-bottom: 2px;
 }
 
 .actual-to-budget-meta-val {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: clamp(0.72rem, 3.2vw, 0.88rem);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 }
 
 .actual-table-toolbar {
@@ -7077,13 +7071,12 @@ html, body {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 2px;
   padding: 2px 3px;
   border-radius: var(--radius-sm);
-  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.35);
   cursor: pointer;
   font-weight: 700;
-  font-size: 0.73rem;
+  font-size: 0.74rem;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   transition: all 0.15s ease;
@@ -7091,24 +7084,13 @@ html, body {
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
-}
-
-.actual-edit-pen {
-  width: 9px;
-  height: 9px;
-  opacity: 0.35;
-  transition: opacity 0.15s ease;
-  flex-shrink: 0;
+  color: #2dd4bf;
 }
 
 .actual-budget-cell:hover {
-  border-color: var(--primary);
-  background: var(--primary-light);
+  border-bottom-color: var(--primary);
+  background: rgba(13, 148, 136, 0.15);
   color: var(--primary);
-}
-
-.actual-budget-cell:hover .actual-edit-pen {
-  opacity: 1;
 }
 
 .actual-spent-cell {
@@ -7363,14 +7345,40 @@ html, body {
     font-size: 0.95rem;
   }
 
-  .actual-to-budget-meta {
-    width: 100%;
-    justify-content: space-between;
-    gap: 8px;
+  /* Tràn viền cho thẻ tổng quan và bảng chi tiết trên màn hình điện thoại */
+  .actual-budget-top-card {
+    margin-left: -10px !important;
+    margin-right: -10px !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    width: calc(100% + 20px) !important;
+    max-width: calc(100% + 20px) !important;
+    box-sizing: border-box !important;
+    padding: 16px 10px 12px 10px !important;
   }
 
-  .actual-to-budget-meta-item {
-    align-items: flex-start;
+  .actual-table-container {
+    margin-left: -10px !important;
+    margin-right: -10px !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    width: calc(100% + 20px) !important;
+    max-width: calc(100% + 20px) !important;
+    box-sizing: border-box !important;
+  }
+
+  .actual-budget-table thead th:first-child,
+  .actual-budget-table tbody td:first-child,
+  .actual-budget-table tfoot td:first-child {
+    padding-left: 8px !important;
+  }
+
+  .actual-budget-table thead th:last-child,
+  .actual-budget-table tbody td:last-child,
+  .actual-budget-table tfoot td:last-child {
+    padding-right: 8px !important;
   }
 
   .actual-table-toolbar {
