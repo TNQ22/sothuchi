@@ -634,7 +634,7 @@ const UIBudgets = {
 
           <td style="text-align: right;">
             <div class="actual-budget-cell" onclick="UIBudgets.openQuickEditModal(${cat.id})" title="Nhấp để sửa phân bổ">
-              <span>${budgeted > 0 ? this.formatMoney(budgeted) : '<span style="opacity: 0.4;">0đ</span>'}</span>
+              <span>${budgeted > 0 ? this.formatMoney(budgeted) : '<span style="color: var(--text-muted); opacity: 0.5; font-weight: 500;">0đ</span>'}</span>
             </div>
           </td>
 

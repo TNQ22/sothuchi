@@ -6996,7 +6996,7 @@ html, body {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   overflow-x: hidden;
-  margin-bottom: 20px;
+  margin-bottom: 0px;
   box-shadow: var(--shadow-sm);
   width: 100%;
   box-sizing: border-box;
@@ -7071,15 +7071,15 @@ html, body {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 2px 3px;
+  padding: 2px 4px;
   border-radius: var(--radius-sm);
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.35);
+  border: none !important;
   cursor: pointer;
   font-weight: 700;
   font-size: 0.74rem;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
   min-width: 0;
   max-width: 100%;
   white-space: nowrap;
@@ -7087,10 +7087,10 @@ html, body {
   color: #2dd4bf;
 }
 
-.actual-budget-cell:hover {
-  border-bottom-color: var(--primary);
-  background: rgba(13, 148, 136, 0.15);
-  color: var(--primary);
+.actual-budget-cell:hover,
+.actual-budget-cell:active {
+  background: rgba(45, 212, 191, 0.15);
+  color: #2dd4bf;
 }
 
 .actual-spent-cell {
@@ -7345,7 +7345,18 @@ html, body {
     font-size: 0.95rem;
   }
 
-  /* Tràn viền cho thẻ tổng quan và bảng chi tiết trên màn hình điện thoại */
+  /* Tràn viền và tối ưu chiều cao cho ngân sách chi tiết trên màn hình điện thoại */
+  #view-budgets.page-view {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  #view-budgets.page-view::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
   .actual-budget-top-card {
     margin-left: -10px !important;
     margin-right: -10px !important;
@@ -7355,7 +7366,26 @@ html, body {
     width: calc(100% + 20px) !important;
     max-width: calc(100% + 20px) !important;
     box-sizing: border-box !important;
-    padding: 16px 10px 12px 10px !important;
+    padding: 10px 10px 8px 10px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .actual-to-budget-center {
+    margin-bottom: 6px !important;
+  }
+
+  .actual-to-budget-amount {
+    font-size: 1.55rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .actual-to-budget-caption {
+    font-size: 0.74rem !important;
+    margin-top: 2px !important;
+  }
+
+  .actual-to-budget-meta {
+    padding-top: 6px !important;
   }
 
   .actual-table-container {
@@ -7367,6 +7397,35 @@ html, body {
     width: calc(100% + 20px) !important;
     max-width: calc(100% + 20px) !important;
     box-sizing: border-box !important;
+    margin-bottom: 0 !important;
+  }
+
+  .actual-budget-table thead th {
+    padding: 6px 3px !important;
+    font-size: 0.69rem !important;
+  }
+
+  .actual-budget-table tbody td {
+    padding: 4.5px 3px !important;
+    font-size: 0.73rem !important;
+  }
+
+  .actual-budget-table tfoot td {
+    padding: 6px 3px !important;
+    font-size: 0.73rem !important;
+  }
+
+  .actual-cat-icon {
+    width: 18px !important;
+    height: 18px !important;
+    border-radius: 4px !important;
+    font-size: 0.68rem !important;
+  }
+
+  .actual-cat-icon i,
+  .actual-cat-icon svg {
+    width: 11px !important;
+    height: 11px !important;
   }
 
   .actual-budget-table thead th:first-child,
