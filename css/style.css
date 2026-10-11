@@ -288,6 +288,8 @@ body.view-category-picker .app-header,
 body.view-borrow-select .app-header,
 body.view-account-form .app-header,
 body.view-account-provider .app-header,
+body.view-budget-form .app-header,
+body:has(#view-budget-form.active) .app-header,
 body:has(#view-new-transaction.active) .app-header,
 body:has(#view-category-picker.active) .app-header,
 body:has(#view-borrow-select.active) .app-header,
@@ -1696,7 +1698,8 @@ body:has(#view-account-provider.active) .app-header {
 
   body.view-new-transaction .app-header,
   body.view-category-picker .app-header,
-  body.view-borrow-select .app-header {
+  body.view-borrow-select .app-header,
+  body.view-budget-form .app-header {
     display: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
@@ -7146,34 +7149,7 @@ html, body {
   z-index: 60;
   pointer-events: auto;
   gap: 2px;
-  max-width: calc(100% - 130px);
-}
-
-.budget-header-nav-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.budget-header-copy-btn {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-full);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  box-shadow: var(--shadow-sm);
-}
-
-.budget-header-copy-btn:hover {
-  background: var(--bg-hover);
-  color: var(--primary);
-  border-color: var(--primary);
+  max-width: calc(100% - 100px);
 }
 
 .budget-header-month-nav {
@@ -7182,8 +7158,8 @@ html, body {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-full);
-  padding: 2px 8px;
-  gap: 12px;
+  padding: 1px 4px;
+  gap: 4px;
   box-shadow: var(--shadow-sm);
 }
 
@@ -7191,14 +7167,16 @@ html, body {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.15s ease;
+  padding: 0;
+  flex-shrink: 0;
 }
 
 .budget-header-month-nav .btn-time-nav:hover {
@@ -7211,12 +7189,13 @@ html, body {
   border: none;
   color: var(--text-primary);
   font-weight: 700;
-  font-size: 0.88rem;
-  padding: 4px 12px;
+  font-size: 0.85rem;
+  padding: 3px 8px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .budget-header-subtitle {

@@ -715,7 +715,7 @@ const UITransactions = {
       const text = document.getElementById('liquidate-asset-price-text');
       cur = text?.textContent?.trim() || input?.value?.trim() || '0';
       if (curSymbolEl) curSymbolEl.textContent = 'đ';
-    } else if (target === 'budget-overall-amount') {
+    } else if (target === 'budget-form-amount' || target === 'budget-overall-amount') {
       const input = document.getElementById('budget-overall-amount');
       cur = input?.value?.trim() || '0';
       if (curSymbolEl) curSymbolEl.textContent = '₫';
@@ -913,7 +913,7 @@ const UITransactions = {
       const rawNum = finalFormatted.replace(/\./g, '');
       if (input) input.value = rawNum;
       if (text) text.textContent = finalFormatted;
-    } else if (this.activeKeypadTarget === 'budget-overall-amount') {
+    } else if (this.activeKeypadTarget === 'budget-form-amount' || this.activeKeypadTarget === 'budget-overall-amount') {
       const input = document.getElementById('budget-overall-amount');
       if (input) input.value = finalFormatted;
     } else if (this.activeKeypadTarget === 'budget-lock-amount') {
@@ -937,7 +937,7 @@ const UITransactions = {
       'account-balance', 'saving-amount', 'loan-amount', 'pay-loan-amount', 'acc-target-amount', 'asset-price', 'asset-quantity',
       'acc-current-amount', 'acc-recurring-amount',
       'asset-buyprice', 'asset-currentprice', 'asset-extracosts',
-      'settle-saving-amount', 'deposit-acc-amount', 'liquidate-asset-price', 'budget-overall-amount', 'budget-lock-amount', 'budget-cat-amount', 'budget-quick-amount'
+      'settle-saving-amount', 'deposit-acc-amount', 'liquidate-asset-price', 'budget-form-amount', 'budget-overall-amount', 'budget-lock-amount', 'budget-cat-amount', 'budget-quick-amount'
     ];
     if (!nonTxTargets.includes(this.activeKeypadTarget)) {
       this.saveDraft();

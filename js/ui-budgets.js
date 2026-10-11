@@ -225,14 +225,61 @@ const UIBudgets = {
 
     handlePrimaryAddAction() {
     if (this.currentMode === 'simple') {
-      this.openOverallBudgetModal();
+      this.openBudgetForm();
     } else {
       this.openCategoryModal();
     }
   },
 
+  /* ==================== AUTO ROLLOVER FOR NEW MONTH ==================== */
+  async checkAndAutoRollover(targetMonth) {
+    if (!targetMonth) return;
+    try {
+      const skipKey = 'skip_auto_rollover_' + targetMonth;
+      if (sessionStorage.getItem(skipKey)) return;
+
+      const autoSetting = await db.settings.get('budget_auto_rollover');
+      const isAuto = autoSetting ? (autoSetting.value !== false && autoSetting.value !== 0) : true;
+      if (!isAuto) return;
+
+      const currentMonthBudgets = await db.budgets.where('month').equals(targetMonth).toArray();
+      if (currentMonthBudgets.length > 0) return;
+
+      const [yStr, mStr] = targetMonth.split('-');
+      let y = parseInt(yStr, 10);
+      let m = parseInt(mStr, 10);
+      m -= 1;
+      if (m < 1) {
+        m = 12;
+        y -= 1;
+      }
+      const prevMonth = `${y}-${String(m).padStart(2, '0')}`;
+
+      const prevBudgets = await db.budgets.where('month').equals(prevMonth).toArray();
+      if (prevBudgets.length === 0) return;
+
+      const now = Date.now();
+      const newItems = prevBudgets.map(b => ({
+        categoryId: b.categoryId,
+        month: targetMonth,
+        limitAmount: b.limitAmount,
+        isLocked: b.isLocked || 0,
+        isOverall: b.isOverall || false,
+        createdAt: now,
+        updatedAt: now
+      }));
+
+      await db.budgets.bulkAdd(newItems);
+      sessionStorage.setItem(skipKey, '1');
+      showToast(`Đã tự động sao chép ngân sách từ ${this.formatMonthDisplay(prevMonth)} sang ${this.formatMonthDisplay(targetMonth)}`, 'info');
+    } catch (e) {
+      console.warn('Auto rollover check failed:', e);
+    }
+  },
+
   /* ==================== DATA QUERIES & RENDER ==================== */
   async render() {
+    await this.checkAndAutoRollover(this.currentMonth);
     this.updateMonthLabels();
 
     // 1. Update toolbar badge labels
@@ -371,7 +418,7 @@ const UIBudgets = {
       }
 
       heroHtml = `
-        <div class="budget-hero-card budget-hero-clickable" onclick="UIBudgets.openOverallBudgetModal()" title="Nhấp vào để sửa hạn mức ngân sách">
+        <div class="budget-hero-card budget-hero-clickable" onclick="UIBudgets.openBudgetForm()" title="Nhấp vào để sửa hạn mức ngân sách">
           <div class="budget-hero-center-box">
             <div class="budget-hero-rem-label">${remaining >= 0 ? 'CÒN LẠI CHO THÁNG NÀY' : 'ĐÃ CHI VƯỢT HẠN MỨC'}</div>
             <div class="budget-hero-rem-val" style="color: ${statusColor};">
@@ -392,7 +439,7 @@ const UIBudgets = {
       `;
     } else {
       heroHtml = `
-        <div class="budget-hero-card budget-hero-clickable" onclick="UIBudgets.openOverallBudgetModal()" title="Nhấp vào để thiết lập hạn mức ngân sách">
+        <div class="budget-hero-card budget-hero-clickable" onclick="UIBudgets.openBudgetForm()" title="Nhấp vào để thiết lập hạn mức ngân sách">
           <div class="budget-hero-center-box">
             <div class="budget-hero-empty-icon">
               <i data-lucide="target" style="width: 24px; height: 24px;"></i>
@@ -776,7 +823,121 @@ const UIBudgets = {
     }
   },
 
-  /* ==================== MODAL 1: OVERALL BUDGET ==================== */
+  /* ==================== FULL PAGE VIEW: BUDGET FORM ==================== */
+  async openBudgetForm() {
+    const monthText = document.getElementById('budget-form-month-text');
+    if (monthText) monthText.textContent = this.formatMonthDisplay(this.currentMonth);
+
+    const amountInput = document.getElementById('budget-form-amount');
+    const deleteBtn = document.getElementById('budget-form-delete-btn');
+    const autoRolloverCheckbox = document.getElementById('budget-form-auto-rollover');
+
+    const existing = await db.budgets.where('month').equals(this.currentMonth).toArray();
+    const overall = existing.find(b => b.categoryId === 'TOTAL' || b.categoryId === 0 || b.isOverall);
+
+    if (overall && overall.limitAmount) {
+      if (amountInput) amountInput.value = new Intl.NumberFormat('vi-VN').format(overall.limitAmount);
+      if (deleteBtn) deleteBtn.style.display = 'block';
+    } else {
+      if (amountInput) amountInput.value = '';
+      if (deleteBtn) deleteBtn.style.display = 'none';
+    }
+
+    if (autoRolloverCheckbox) {
+      try {
+        const autoSetting = await db.settings.get('budget_auto_rollover');
+        autoRolloverCheckbox.checked = autoSetting ? (autoSetting.value !== false && autoSetting.value !== 0) : true;
+      } catch (e) {
+        autoRolloverCheckbox.checked = true;
+      }
+    }
+
+    if (window.app) {
+      window.app.switchView('budget-form');
+    }
+    if (window.lucide) lucide.createIcons();
+    // Do NOT auto open keypad; wait for user tap
+  },
+
+  closeBudgetForm() {
+    if (window.app) {
+      window.app.switchView('budgets', true);
+    }
+  },
+
+  setFormPreset(amount) {
+    const input = document.getElementById('budget-form-amount');
+    const formatted = new Intl.NumberFormat('vi-VN').format(amount);
+    if (input) input.value = formatted;
+    const keypadLive = document.getElementById('keypad-live-val');
+    if (keypadLive && window.UITransactions && window.UITransactions.activeKeypadTarget === 'budget-form-amount') {
+      keypadLive.textContent = formatted;
+      window.UITransactions.keypadAutoSelect = true;
+      keypadLive.classList.add('is-selected');
+    }
+  },
+
+  async handleFormBudgetSubmit() {
+    const amountStr = document.getElementById('budget-form-amount')?.value || '';
+    const limitAmount = Number(amountStr.replace(/\D/g, ''));
+
+    if (!limitAmount || limitAmount <= 0) {
+      showToast('Vui lòng nhập số tiền ngân sách tổng hợp lệ', 'error');
+      return;
+    }
+
+    const autoRolloverCheckbox = document.getElementById('budget-form-auto-rollover');
+    if (autoRolloverCheckbox) {
+      try {
+        await db.settings.put({ key: 'budget_auto_rollover', value: !!autoRolloverCheckbox.checked });
+      } catch (e) {
+        console.warn('Error saving budget_auto_rollover:', e);
+      }
+    }
+
+    const existing = await db.budgets.where('month').equals(this.currentMonth).toArray();
+    const overall = existing.find(b => b.categoryId === 'TOTAL' || b.categoryId === 0 || b.isOverall);
+    const now = Date.now();
+
+    if (overall) {
+      await db.budgets.update(overall.id, {
+        limitAmount,
+        categoryId: 'TOTAL',
+        isOverall: true,
+        updatedAt: now
+      });
+      showToast('Đã cập nhật ngân sách tổng của tháng', 'success');
+    } else {
+      await db.budgets.add({
+        categoryId: 'TOTAL',
+        month: this.currentMonth,
+        limitAmount,
+        isOverall: true,
+        updatedAt: now
+      });
+      showToast('Đã thiết lập ngân sách tổng của tháng', 'success');
+    }
+
+    this.closeBudgetForm();
+    window.app.refreshAll();
+  },
+
+  async deleteFormBudget() {
+    const monthDisplay = this.formatMonthDisplay(this.currentMonth);
+    if (!confirm(`Bạn có chắc chắn muốn xóa ngân sách tổng của ${monthDisplay}?`)) {
+      return;
+    }
+    const existing = await db.budgets.where('month').equals(this.currentMonth).toArray();
+    const overall = existing.find(b => b.categoryId === 'TOTAL' || b.categoryId === 0 || b.isOverall);
+    if (overall) {
+      await db.budgets.delete(overall.id);
+      showToast('Đã xóa ngân sách tổng của tháng', 'info');
+      this.closeBudgetForm();
+      window.app.refreshAll();
+    }
+  },
+
+  /* ==================== MODAL 1: OVERALL BUDGET (LEGACY/BACKUP) ==================== */
   async copyFromPreviousMonthOverall() {
     try {
       const allBudgets = await db.budgets.toArray();
@@ -827,11 +988,6 @@ const UIBudgets = {
 
     modal.classList.add('open');
     if (window.lucide) lucide.createIcons();
-    setTimeout(() => {
-      if (window.UITransactions) {
-        window.UITransactions.openKeypad('budget-overall-amount');
-      }
-    }, 120);
   },
 
   closeOverallModal() {
@@ -1008,11 +1164,6 @@ const UIBudgets = {
 
     modal.classList.add('open');
     if (window.lucide) lucide.createIcons();
-    setTimeout(() => {
-      if (window.UITransactions) {
-        window.UITransactions.openKeypad('budget-lock-amount');
-      }
-    }, 120);
   },
 
   closeLockModal() {
@@ -1117,11 +1268,6 @@ const UIBudgets = {
 
     modal.classList.add('open');
     if (window.lucide) lucide.createIcons();
-    setTimeout(() => {
-      if (window.UITransactions) {
-        window.UITransactions.openKeypad('budget-cat-amount');
-      }
-    }, 120);
   },
 
   closeCategoryModal() {
@@ -1233,11 +1379,6 @@ const UIBudgets = {
 
     modal.classList.add('open');
     if (window.lucide) lucide.createIcons();
-    setTimeout(() => {
-      if (window.UITransactions) {
-        window.UITransactions.openKeypad('budget-quick-amount');
-      }
-    }, 120);
   },
 
   closeQuickEditModal() {

@@ -506,7 +506,8 @@ class App {
       'savings-form': 'Sổ Tiết Kiệm',
       'loan-form': 'Sổ Vay Ngân Hàng',
       'accumulation-form': 'Sổ Tích Lũy',
-      'asset-form': 'Quản Lý Tài Sản'
+      'asset-form': 'Quản Lý Tài Sản',
+      'budget-form': 'Thiết Lập Ngân Sách'
     };
     const titleEl = document.getElementById('header-page-title');
     const txHeaderCenter = document.getElementById('tx-header-center');
@@ -558,6 +559,7 @@ class App {
     const budgetSettingsBtn = document.getElementById('btn-budget-settings');
     if (viewId === 'budgets') {
       if (titleEl) titleEl.style.display = 'none';
+      if (brandLogo) brandLogo.style.display = 'none';
       if (budgetHeaderCenter) budgetHeaderCenter.style.display = 'flex';
       if (privacyBtn) privacyBtn.style.display = 'none';
       if (budgetSettingsBtn) budgetSettingsBtn.style.display = 'inline-flex';
@@ -666,6 +668,11 @@ class App {
     // Các trang con của tab Tài khoản -> quay lại danh sách tài khoản
     if (['savings-form', 'accumulation-form', 'asset-form', 'loan-form'].includes(this.currentView)) {
       this.switchView('accounts', true);
+      return;
+    }
+
+    if (this.currentView === 'budget-form') {
+      this.switchView('budgets', true);
       return;
     }
 
