@@ -422,9 +422,9 @@ class App {
     if (mobileBottomNav) {
       const hideNavViews = ['budget-form', 'budget-category-form', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form'];
       if (hideNavViews.includes(viewId)) {
-        mobileBottomNav.style.display = 'none';
+        mobileBottomNav.style.setProperty('display', 'none', 'important');
       } else {
-        mobileBottomNav.style.display = '';
+        mobileBottomNav.style.removeProperty('display');
       }
     }
 
