@@ -4,6 +4,7 @@
  */
 
 const UITransactions = {
+  userChangedAccount: false,
   currentFilterType: 'all',
   filterAccountId: null,
   formInitialized: false,
@@ -129,8 +130,8 @@ const UITransactions = {
 
     try {
       const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+      accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
       const active = accounts.filter(a => !a.isArchived);
-      active.sort((a, b) => (a.order || 0) - (b.order || 0) || a.id - b.id);
 
       const isAllSelected = !this.filterAccountId;
 
@@ -1998,7 +1999,8 @@ const UITransactions = {
 
     // Default to first active non-archived account if none selected
     const nonArchived = accounts.filter(a => !a.isArchived);
-    const activeFromId = selectedFromId || (nonArchived.length > 0 ? nonArchived[0].id : (accounts.length > 0 ? accounts[0].id : null));
+    const isValidSelectedFrom = selectedFromId && accounts.some(a => String(a.id) === String(selectedFromId));
+    const activeFromId = isValidSelectedFrom ? selectedFromId : (nonArchived.length > 0 ? nonArchived[0].id : (accounts.length > 0 ? accounts[0].id : null));
     let activeToId = selectedToId;
     if (!activeToId && accounts.length > 1) {
       activeToId = (nonArchived.find(a => String(a.id) !== String(activeFromId)) || accounts.find(a => String(a.id) !== String(activeFromId)))?.id || accounts[1].id;
@@ -2087,6 +2089,7 @@ const UITransactions = {
         selectedId: curVal,
         onSelect: async (accId) => {
           if (!accId) return;
+          this.userChangedAccount = true;
           const fromSelect = document.getElementById('tx-account-select');
           if (fromSelect) fromSelect.value = accId;
           await this.updateSelectedAccountDisplay();
@@ -2133,6 +2136,7 @@ const UITransactions = {
   },
 
   async selectAccount(id, name, type) {
+    this.userChangedAccount = true;
     const fromSelect = document.getElementById('tx-account-select');
     if (fromSelect) fromSelect.value = id;
     this.closeAccountDropdown();
@@ -2635,6 +2639,9 @@ const UITransactions = {
       if (!draft) return false;
 
       // 1. Populate accounts
+      if (draft.accountId) {
+        this.userChangedAccount = true;
+      }
       await this.populateAccounts(draft.accountId || null, draft.toAccountId || null);
 
       // 2. Type & Category / Subactions
@@ -2777,6 +2784,7 @@ const UITransactions = {
    * @param {string} defaultType - Loại ghi chép (expense, income, lend, borrow, adjust, transfer)
    */
   async resetForm(defaultType = 'expense') {
+    this.userChangedAccount = false;
     this.clearDraft();
     const form = document.getElementById('transaction-form');
     if (!form) return;
@@ -2912,7 +2920,7 @@ const UITransactions = {
           this.updateDateTimeDisplays(dateStr, timeStr);
         }
 
-        const curAccId = document.getElementById('tx-account-select')?.value;
+        const curAccId = this.userChangedAccount ? document.getElementById('tx-account-select')?.value : null;
         await this.populateAccounts(curAccId || null);
         await this.updateSelectedAccountDisplay();
       }
@@ -3434,6 +3442,7 @@ const UITransactions = {
     const dueRow = document.getElementById('tx-debt-due-row');
     if (dueRow) dueRow.style.display = 'none';
 
+    this.userChangedAccount = true;
     await this.populateAccounts(tx.accountId, tx.toAccountId);
     await this.updateSelectedAccountDisplay();
     await this.updateSelectedToAccountDisplay();

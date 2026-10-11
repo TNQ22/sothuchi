@@ -1452,7 +1452,12 @@ const UIAccounts = {
 
     await this.render();
     if (window.UITransactions && typeof window.UITransactions.populateAccounts === 'function') {
-      await window.UITransactions.populateAccounts();
+      if (!window.UITransactions.userChangedAccount) {
+        await window.UITransactions.populateAccounts();
+      } else {
+        const cur = document.getElementById('tx-account-select')?.value;
+        await window.UITransactions.populateAccounts(cur || null);
+      }
     }
     showToast('Đã cập nhật vị trí tài khoản', 'success');
   },
@@ -1476,7 +1481,12 @@ const UIAccounts = {
 
     await this.render();
     if (window.UITransactions && typeof window.UITransactions.populateAccounts === 'function') {
-      await window.UITransactions.populateAccounts();
+      if (!window.UITransactions.userChangedAccount) {
+        await window.UITransactions.populateAccounts();
+      } else {
+        const cur = document.getElementById('tx-account-select')?.value;
+        await window.UITransactions.populateAccounts(cur || null);
+      }
     }
     showToast('Đã sắp xếp lại thứ tự tài khoản', 'success');
   },
@@ -1706,7 +1716,8 @@ const UIAccounts = {
     if (modal) modal.classList.add('open');
 
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
-    const active = accounts.filter(a => !a.isArchived);
+    accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
+    const active = accounts.filter(a => !a.isArchived || String(a.id) === selectedId);
 
     let html = '';
 
@@ -1956,6 +1967,7 @@ const UIAccounts = {
 
     // Populate target accounts with real logos
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
     const active = accounts.filter(a => !a.isArchived);
     const targetId = (saving.sourceAccountId && active.some(a => a.id === saving.sourceAccountId))
       ? saving.sourceAccountId
@@ -3157,6 +3169,7 @@ const UIAccounts = {
 
     // Populate target accounts with real logos
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
     const active = accounts.filter(a => !a.isArchived);
     const targetId = (asset.sourceAccountId && active.some(a => a.id === asset.sourceAccountId))
       ? asset.sourceAccountId
@@ -4731,7 +4744,6 @@ const UIAccounts = {
       activeAccounts.forEach((a, index) => {
         const info = iconMap[a.type] || { icon: a.icon || 'wallet', color: a.color || '#4f46e5', label: 'Tài khoản' };
         const iconName = a.icon || info.icon;
-        const isDefault = index === 0;
 
         html += `
           <div class="account-list-item" draggable="true" data-id="${a.id}" data-index="${index}">
@@ -4752,7 +4764,6 @@ const UIAccounts = {
                   <span class="account-type-label">${info.label}</span>
                   ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                   ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
-                  ${isDefault ? '<span class="account-default-badge" title="Tài khoản mặc định"><i data-lucide="check-circle-2" style="width:12px;height:12px;"></i></span>' : ''}
                   ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
                 </div>
               </div>

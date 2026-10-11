@@ -82,6 +82,7 @@ const UIDebts = {
 
     // Populate accounts
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
     const select = document.getElementById('debt-account-select');
     if (select) {
       select.innerHTML = accounts.map(a => `
@@ -193,6 +194,7 @@ const UIDebts = {
 
     // Populate accounts to receive or deduct money
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
     const select = document.getElementById('payment-account-select');
     if (select) {
       select.innerHTML = accounts.map(a => `

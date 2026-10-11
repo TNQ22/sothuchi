@@ -65,9 +65,9 @@ const DEFAULT_CATEGORIES = [
 
 // Default Seed Accounts
 const DEFAULT_ACCOUNTS = [
-  { name: 'Tiền mặt', type: 'cash', balance: 0, initialBalance: 0, icon: 'wallet', color: '#10b981' },
-  { name: 'Ngân hàng', type: 'bank', balance: 0, initialBalance: 0, icon: 'landmark', color: '#4f46e5' },
-  { name: 'Ví điện tử', type: 'ewallet', balance: 0, initialBalance: 0, icon: 'smartphone', color: '#ec4899' }
+  { name: 'Tiền mặt', type: 'cash', balance: 0, initialBalance: 0, icon: 'wallet', color: '#10b981', order: 0 },
+  { name: 'Ngân hàng', type: 'bank', balance: 0, initialBalance: 0, icon: 'landmark', color: '#4f46e5', order: 1 },
+  { name: 'Ví điện tử', type: 'ewallet', balance: 0, initialBalance: 0, icon: 'smartphone', color: '#ec4899', order: 2 }
 ];
 
 // Tự động kiểm tra và gộp tài khoản bị trùng lặp tên & loại (khắc phục nhân đôi trên PWA/Sync)
@@ -133,8 +133,24 @@ async function initDatabase() {
   const accountCount = await db.accounts.count();
   if (accountCount === 0) {
     const now = Date.now();
-    await db.accounts.bulkAdd(DEFAULT_ACCOUNTS.map(a => ({ ...a, isDeleted: 0, updatedAt: now })));
+    await db.accounts.bulkAdd(DEFAULT_ACCOUNTS.map((a, index) => ({ ...a, order: a.order ?? index, isDeleted: 0, updatedAt: now })));
   } else {
+    // Tự động kiểm tra và khởi tạo order tuần tự nếu có tài khoản thiếu order
+    try {
+      const allAccs = await db.accounts.where('isDeleted').equals(0).toArray();
+      const needsOrder = allAccs.some(a => a.order === undefined || a.order === null);
+      if (needsOrder) {
+        allAccs.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
+        const now = Date.now();
+        for (let i = 0; i < allAccs.length; i++) {
+          if (allAccs[i].order !== i) {
+            await db.accounts.update(allAccs[i].id, { order: i, updatedAt: now });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Init accounts order error:', e);
+    }
     // Tự động chuyển đổi tên và reset số dư ban đầu mẫu về 0đ cho các tài khoản mặc định
     const defaultAccountsToReset = [
       { oldNames: ['MoMo / ZaloPay', 'Momo / ZaloPay', 'Ví điện tử'], oldInit: 500000, newName: 'Ví điện tử' },
