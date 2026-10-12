@@ -400,21 +400,32 @@ const UIBudgets = {
         const mBudgets = budgetsByMonth[m] || {};
 
         let mTotalBudgeted = 0;
+        let mTotalOverspent = 0;
+
         for (const [catIdStr, amt] of Object.entries(mBudgets)) {
           mTotalBudgeted += amt;
           const prevBal = categoryBalances[catIdStr] || 0;
           const spent = mTx.expenseByCat[catIdStr] || 0;
-          categoryBalances[catIdStr] = prevBal + amt - spent;
+          const availableBeforeSpent = prevBal + amt;
+          const effectiveAvailable = Math.max(0, availableBeforeSpent);
+          if (spent > effectiveAvailable) {
+            mTotalOverspent += (spent - effectiveAvailable);
+          }
+          categoryBalances[catIdStr] = availableBeforeSpent - spent;
         }
 
         for (const [catIdStr, spent] of Object.entries(mTx.expenseByCat)) {
           if (mBudgets[catIdStr] === undefined) {
             const prevBal = categoryBalances[catIdStr] || 0;
+            const effectiveAvailable = Math.max(0, prevBal);
+            if (spent > effectiveAvailable) {
+              mTotalOverspent += (spent - effectiveAvailable);
+            }
             categoryBalances[catIdStr] = prevBal - spent;
           }
         }
 
-        runningToBudget = runningToBudget + mTx.income - mTotalBudgeted;
+        runningToBudget = runningToBudget + mTx.income - mTotalBudgeted - mTotalOverspent;
       }
 
       return {
