@@ -8036,7 +8036,7 @@ html, body {
    POPUP NUMERIC KEYPAD - BUDGET QUICK EDIT PANEL
    ========================================================================== */
 #keypad-budget-quick-panel {
-  padding: 10px 14px 8px 14px;
+  padding: 10px 14px 6px 14px;
   border-bottom: 1px solid var(--border-color);
   background: var(--bg-card, rgba(255, 255, 255, 0.02));
   display: flex;
@@ -8088,7 +8088,7 @@ html, body {
 .keypad-budget-presets {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .keypad-budget-presets .budget-preset-chip {
@@ -8096,9 +8096,9 @@ html, body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 6px 6px;
-  font-size: 0.78rem;
+  gap: 6px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
   font-weight: 600;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -8132,19 +8132,6 @@ html, body {
   color: #fff;
 }
 
-.keypad-budget-presets .budget-preset-adv-toggle {
-  color: var(--text-secondary);
-  border-color: var(--border-color);
-}
-
-.keypad-budget-presets .budget-preset-adv-toggle:hover,
-.keypad-budget-presets .budget-preset-adv-toggle:active,
-.keypad-budget-presets .budget-preset-adv-toggle.active {
-  color: var(--primary);
-  border-color: var(--primary);
-  background: var(--primary-light, rgba(13, 148, 136, 0.1));
-}
-
 .keypad-budget-presets .budget-preset-save {
   color: #fff;
   border-color: var(--primary);
@@ -8157,10 +8144,41 @@ html, body {
   opacity: 0.9;
 }
 
-@media (max-width: 350px) {
-  .keypad-budget-presets .budget-preset-adv-toggle span {
-    display: none;
-  }
+/* Thanh mũi tên bên dưới chỉ xuống */
+.keypad-budget-expand-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 0;
+  margin-top: -2px;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.keypad-budget-expand-bar:hover,
+.keypad-budget-expand-bar:active {
+  color: var(--primary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.keypad-budget-expand-bar.active {
+  color: var(--primary);
+  background: rgba(13, 148, 136, 0.08);
+}
+
+.keypad-budget-expand-icon {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.keypad-budget-expand-bar.active .keypad-budget-expand-icon {
+  transform: rotate(180deg);
 }
 
 /* Advanced Subpanel */

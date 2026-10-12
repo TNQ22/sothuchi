@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.99">
+  <link rel="stylesheet" href="./css/style.css?v=2.0.0">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -2311,13 +2311,14 @@
           <button type="button" class="budget-preset-chip budget-preset-clear" onclick="UIBudgets.setQuickZero()" title="Xóa ngân sách về 0đ">
             <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i> 0đ
           </button>
-          <button type="button" class="budget-preset-chip budget-preset-adv-toggle" id="btn-budget-quick-adv-toggle" onclick="UIBudgets.toggleQuickAdvanced()" title="Tùy chọn nâng cao (Sao chép tháng trước, trung bình các tháng)">
-            <span>Nâng cao</span>
-            <i data-lucide="chevron-down" id="keypad-budget-adv-chevron" style="width: 14px; height: 14px; transition: transform 0.2s ease;"></i>
-          </button>
           <button type="button" class="budget-preset-chip budget-preset-save" onclick="UIBudgets.handleQuickEditSubmit()" title="Lưu ngân sách">
             <i data-lucide="check" style="width: 14px; height: 14px;"></i> Lưu
           </button>
+        </div>
+
+        <!-- Thanh mũi tên bên dưới mở rộng tùy chọn -->
+        <div class="keypad-budget-expand-bar" id="btn-budget-quick-adv-bar" onclick="UIBudgets.toggleQuickAdvanced()" title="Nhấn để mở rộng tùy chọn sao chép">
+          <i data-lucide="chevron-down" class="keypad-budget-expand-icon"></i>
         </div>
 
         <!-- Advanced Subpanel for Previous Month & Average Months -->

@@ -1695,11 +1695,9 @@ const UIBudgets = {
 
     // Reset advanced panel state
     const advPanel = document.getElementById('keypad-budget-adv-panel');
-    const advChevron = document.getElementById('keypad-budget-adv-chevron');
-    const advToggleBtn = document.getElementById('btn-budget-quick-adv-toggle');
+    const advBar = document.getElementById('btn-budget-quick-adv-bar');
     if (advPanel) advPanel.style.display = 'none';
-    if (advChevron) advChevron.style.transform = 'rotate(0deg)';
-    if (advToggleBtn) advToggleBtn.classList.remove('active');
+    if (advBar) advBar.classList.remove('active');
 
     // Open keypad
     if (window.UITransactions && typeof window.UITransactions.openKeypad === 'function') {
@@ -1713,19 +1711,16 @@ const UIBudgets = {
 
   toggleQuickAdvanced() {
     const advPanel = document.getElementById('keypad-budget-adv-panel');
-    const advChevron = document.getElementById('keypad-budget-adv-chevron');
-    const advToggleBtn = document.getElementById('btn-budget-quick-adv-toggle');
+    const advBar = document.getElementById('btn-budget-quick-adv-bar');
     if (!advPanel) return;
 
     const isHidden = advPanel.style.display === 'none' || !advPanel.style.display;
     if (isHidden) {
       advPanel.style.display = 'flex';
-      if (advChevron) advChevron.style.transform = 'rotate(180deg)';
-      if (advToggleBtn) advToggleBtn.classList.add('active');
+      if (advBar) advBar.classList.add('active');
     } else {
       advPanel.style.display = 'none';
-      if (advChevron) advChevron.style.transform = 'rotate(0deg)';
-      if (advToggleBtn) advToggleBtn.classList.remove('active');
+      if (advBar) advBar.classList.remove('active');
     }
     if (window.lucide) lucide.createIcons();
   },
@@ -1822,11 +1817,9 @@ const UIBudgets = {
   cancelQuickKeypad() {
     this.quickEditTarget = null;
     const advPanel = document.getElementById('keypad-budget-adv-panel');
-    const advChevron = document.getElementById('keypad-budget-adv-chevron');
-    const advToggleBtn = document.getElementById('btn-budget-quick-adv-toggle');
+    const advBar = document.getElementById('btn-budget-quick-adv-bar');
     if (advPanel) advPanel.style.display = 'none';
-    if (advChevron) advChevron.style.transform = 'rotate(0deg)';
-    if (advToggleBtn) advToggleBtn.classList.remove('active');
+    if (advBar) advBar.classList.remove('active');
 
     if (window.UITransactions && typeof window.UITransactions.closeKeypad === 'function') {
       window.UITransactions.closeKeypad(true);
