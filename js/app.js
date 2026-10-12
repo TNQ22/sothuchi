@@ -294,10 +294,21 @@ class App {
               window.UITransactions.resetAllFilters(false);
             }
           }
+          if (view === 'budgets') {
+            this.handleBudgetTabClick();
+          }
           this.activePrimaryView = view; // Track which primary tab is active
           this.switchView(view);
         }
       });
+      if (link.dataset.view === 'budgets') {
+        link.addEventListener('dblclick', (e) => {
+          e.preventDefault();
+          if (window.UIBudgets && typeof window.UIBudgets.goToCurrentMonth === 'function') {
+            window.UIBudgets.goToCurrentMonth();
+          }
+        });
+      }
     });
 
     // Mobile Bottom Nav Items (Chỉ các tab điều hướng, KHÔNG bao gồm nút FAB thêm giao dịch)
@@ -313,10 +324,21 @@ class App {
               window.UITransactions.resetAllFilters(false);
             }
           }
+          if (view === 'budgets') {
+            this.handleBudgetTabClick();
+          }
           this.activePrimaryView = view; // Track which primary tab is active
           this.switchView(view);
         }
       });
+      if (link.dataset.view === 'budgets') {
+        link.addEventListener('dblclick', (e) => {
+          e.preventDefault();
+          if (window.UIBudgets && typeof window.UIBudgets.goToCurrentMonth === 'function') {
+            window.UIBudgets.goToCurrentMonth();
+          }
+        });
+      }
     });
 
     // Global Action Buttons (Nút FAB thêm giao dịch)
@@ -377,8 +399,8 @@ class App {
     const now = Date.now();
     const timeSinceLastClick = now - (this.lastBudgetTabClickTime || 0);
 
-    // Nhấp nhanh 2 lần (< 400ms) vào tab Ngân sách -> về lại tháng hiện tại
-    if (this.lastBudgetTabClickTime > 0 && timeSinceLastClick < 400) {
+    // Nhấp nhanh 2 lần (< 450ms) vào tab Ngân sách -> về lại tháng hiện tại
+    if (this.lastBudgetTabClickTime > 0 && timeSinceLastClick < 450) {
       this.lastBudgetTabClickTime = 0;
       if (window.UIBudgets && typeof window.UIBudgets.goToCurrentMonth === 'function') {
         window.UIBudgets.goToCurrentMonth();
@@ -415,6 +437,9 @@ class App {
     if (!viewId) return;
     // Chuyển trang/tab thì reset đếm lần chạm làm mới
     this.lastAddTabClickTime = 0;
+    if (viewId !== 'budgets') {
+      this.lastBudgetTabClickTime = 0;
+    }
     const primaryViews = ['dashboard', 'accounts', 'budgets', 'settings', 'transactions', 'debts', 'analytics'];
     const isPrimary = primaryViews.includes(viewId);
     const isTxPage = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history'].includes(viewId);

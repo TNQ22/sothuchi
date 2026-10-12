@@ -162,6 +162,12 @@ const UIBudgets = {
 
   /* ==================== MONTH NAVIGATION ==================== */
   goToCurrentMonth() {
+    const nowTime = Date.now();
+    if (this._lastGoToTime && (nowTime - this._lastGoToTime) < 500) {
+      return false;
+    }
+    this._lastGoToTime = nowTime;
+
     const now = new Date();
     const curY = now.getFullYear();
     const curM = String(now.getMonth() + 1).padStart(2, '0');
