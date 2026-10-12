@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1.9.98">
+  <link rel="stylesheet" href="./css/style.css?v=1.9.99">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -2305,11 +2305,41 @@
           </button>
         </div>
         <div class="keypad-budget-presets">
-          <button type="button" class="budget-preset-chip budget-preset-match" onclick="UIBudgets.setQuickToSpent()">= Đã chi</button>
-          <button type="button" class="budget-preset-chip budget-preset-clear" onclick="UIBudgets.setQuickZero()">Xóa (0đ)</button>
-          <button type="button" class="budget-preset-chip budget-preset-save" onclick="UIBudgets.handleQuickEditSubmit()">
+          <button type="button" class="budget-preset-chip budget-preset-match" onclick="UIBudgets.setQuickToSpent()" title="Bằng số tiền đã chi tháng này">
+            <i data-lucide="equal" style="width: 14px; height: 14px;"></i> Đã chi
+          </button>
+          <button type="button" class="budget-preset-chip budget-preset-clear" onclick="UIBudgets.setQuickZero()" title="Xóa ngân sách về 0đ">
+            <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i> 0đ
+          </button>
+          <button type="button" class="budget-preset-chip budget-preset-adv-toggle" id="btn-budget-quick-adv-toggle" onclick="UIBudgets.toggleQuickAdvanced()" title="Tùy chọn nâng cao (Sao chép tháng trước, trung bình các tháng)">
+            <span>Nâng cao</span>
+            <i data-lucide="chevron-down" id="keypad-budget-adv-chevron" style="width: 14px; height: 14px; transition: transform 0.2s ease;"></i>
+          </button>
+          <button type="button" class="budget-preset-chip budget-preset-save" onclick="UIBudgets.handleQuickEditSubmit()" title="Lưu ngân sách">
             <i data-lucide="check" style="width: 14px; height: 14px;"></i> Lưu
           </button>
+        </div>
+
+        <!-- Advanced Subpanel for Previous Month & Average Months -->
+        <div id="keypad-budget-adv-panel" class="keypad-budget-adv-panel" style="display: none;">
+          <div class="keypad-budget-adv-row">
+            <div class="keypad-budget-adv-title">
+              <i data-lucide="calendar" style="width: 13px; height: 13px; color: var(--primary);"></i>
+              <span>Tháng trước (<span id="keypad-budget-prev-name">...</span>):</span>
+            </div>
+            <div class="keypad-budget-adv-chips" id="keypad-budget-prev-chips">
+              <span class="budget-adv-loading">Đang tải...</span>
+            </div>
+          </div>
+          <div class="keypad-budget-adv-row">
+            <div class="keypad-budget-adv-title">
+              <i data-lucide="trending-up" style="width: 13px; height: 13px; color: #3b82f6;"></i>
+              <span>Trung bình các tháng:</span>
+            </div>
+            <div class="keypad-budget-adv-chips" id="keypad-budget-avg-chips">
+              <span class="budget-adv-loading">Đang tải...</span>
+            </div>
+          </div>
         </div>
       </div>
 

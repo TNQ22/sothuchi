@@ -1693,14 +1693,141 @@ const UIBudgets = {
       bubbleEl.innerHTML = `<i data-lucide="${cat.icon || 'tag'}"></i>`;
     }
 
+    // Reset advanced panel state
+    const advPanel = document.getElementById('keypad-budget-adv-panel');
+    const advChevron = document.getElementById('keypad-budget-adv-chevron');
+    const advToggleBtn = document.getElementById('btn-budget-quick-adv-toggle');
+    if (advPanel) advPanel.style.display = 'none';
+    if (advChevron) advChevron.style.transform = 'rotate(0deg)';
+    if (advToggleBtn) advToggleBtn.classList.remove('active');
+
+    // Open keypad
     if (window.UITransactions && typeof window.UITransactions.openKeypad === 'function') {
       window.UITransactions.openKeypad('budget-quick-amount');
     }
     if (window.lucide) lucide.createIcons();
+
+    // Asynchronously calculate advanced stats (previous month & averages)
+    this.loadQuickAdvancedStats(cat.id);
+  },
+
+  toggleQuickAdvanced() {
+    const advPanel = document.getElementById('keypad-budget-adv-panel');
+    const advChevron = document.getElementById('keypad-budget-adv-chevron');
+    const advToggleBtn = document.getElementById('btn-budget-quick-adv-toggle');
+    if (!advPanel) return;
+
+    const isHidden = advPanel.style.display === 'none' || !advPanel.style.display;
+    if (isHidden) {
+      advPanel.style.display = 'flex';
+      if (advChevron) advChevron.style.transform = 'rotate(180deg)';
+      if (advToggleBtn) advToggleBtn.classList.add('active');
+    } else {
+      advPanel.style.display = 'none';
+      if (advChevron) advChevron.style.transform = 'rotate(0deg)';
+      if (advToggleBtn) advToggleBtn.classList.remove('active');
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async loadQuickAdvancedStats(catId) {
+    try {
+      const [curY, curM] = this.currentMonth.split('-').map(Number);
+      const prevDate = new Date(curY, curM - 2, 1);
+      const prevYM = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+      const prevLabel = `T${prevDate.getMonth() + 1}/${prevDate.getFullYear()}`;
+
+      const prevNameEl = document.getElementById('keypad-budget-prev-name');
+      if (prevNameEl) prevNameEl.textContent = prevLabel;
+
+      // 1. Previous month data
+      const prevBudget = await db.budgets.where({ categoryId: Number(catId), month: prevYM }).first();
+      const prevBudgetAmt = prevBudget ? (prevBudget.limitAmount || 0) : 0;
+
+      const pStart = `${prevYM}-01`;
+      const pEnd = `${prevYM}-31`;
+      const pTxs = await db.transactions
+        .where('date')
+        .between(pStart, pEnd, true, true)
+        .and(t => t.type === 'expense' && Number(t.categoryId) === Number(catId) && t.isDeleted === 0)
+        .toArray();
+      const prevSpentAmt = pTxs.reduce((s, t) => s + (t.amount || 0), 0);
+
+      const prevChipsEl = document.getElementById('keypad-budget-prev-chips');
+      if (prevChipsEl) {
+        const chips = [];
+        if (prevBudgetAmt > 0) {
+          chips.push(`<button type="button" class="budget-adv-chip" onclick="UIBudgets.applyQuickAdvAmount(${prevBudgetAmt})" title="Sao chép ngân sách ${prevLabel}"><i data-lucide="copy" style="width: 11px; height: 11px;"></i> NS: ${this.formatMoney(prevBudgetAmt)}</button>`);
+        }
+        if (prevSpentAmt > 0) {
+          chips.push(`<button type="button" class="budget-adv-chip" onclick="UIBudgets.applyQuickAdvAmount(${prevSpentAmt})" title="Sao chép thực chi ${prevLabel}"><i data-lucide="receipt" style="width: 11px; height: 11px;"></i> Chi: ${this.formatMoney(prevSpentAmt)}</button>`);
+        }
+        if (chips.length === 0) {
+          chips.push(`<span class="budget-adv-empty">Chưa có dữ liệu ${prevLabel}</span>`);
+        }
+        prevChipsEl.innerHTML = chips.join('');
+      }
+
+      // 2. Average calculations for 3, 6, 12 months
+      const avgChipsEl = document.getElementById('keypad-budget-avg-chips');
+      if (avgChipsEl) {
+        const avgList = [];
+        for (const n of [3, 6, 12]) {
+          const startD = new Date(curY, curM - 1 - n, 1);
+          const startYM = `${startD.getFullYear()}-${String(startD.getMonth() + 1).padStart(2, '0')}`;
+          const startDate = `${startYM}-01`;
+
+          const endD = new Date(curY, curM - 1, 0);
+          const endY = endD.getFullYear();
+          const endM = String(endD.getMonth() + 1).padStart(2, '0');
+          const endDay = String(endD.getDate()).padStart(2, '0');
+          const endDate = `${endY}-${endM}-${endDay}`;
+
+          const txs = await db.transactions
+            .where('date')
+            .between(startDate, endDate, true, true)
+            .and(t => t.type === 'expense' && Number(t.categoryId) === Number(catId) && t.isDeleted === 0)
+            .toArray();
+          const total = txs.reduce((s, t) => s + (t.amount || 0), 0);
+          const avg = Math.round((total / n) / 1000) * 1000;
+          avgList.push({ n, avg });
+        }
+
+        avgChipsEl.innerHTML = avgList.map(item => {
+          if (item.avg > 0) {
+            return `<button type="button" class="budget-adv-chip" onclick="UIBudgets.applyQuickAdvAmount(${item.avg})" title="Trung bình ${item.n} tháng qua: ${this.formatMoney(item.avg)}">${item.n} tháng: ${this.formatMoney(item.avg)}</button>`;
+          } else {
+            return `<button type="button" class="budget-adv-chip disabled" title="Không có chi tiêu trong ${item.n} tháng">${item.n} tháng: 0 ₫</button>`;
+          }
+        }).join('');
+      }
+
+      if (window.lucide) lucide.createIcons();
+    } catch (err) {
+      console.warn('loadQuickAdvancedStats error:', err);
+    }
+  },
+
+  applyQuickAdvAmount(amt) {
+    const keypadLive = document.getElementById('keypad-live-val');
+    if (keypadLive) {
+      keypadLive.textContent = new Intl.NumberFormat('vi-VN').format(amt);
+      if (window.UITransactions) {
+        window.UITransactions.keypadAutoSelect = true;
+        keypadLive.classList.add('is-selected');
+      }
+    }
   },
 
   cancelQuickKeypad() {
     this.quickEditTarget = null;
+    const advPanel = document.getElementById('keypad-budget-adv-panel');
+    const advChevron = document.getElementById('keypad-budget-adv-chevron');
+    const advToggleBtn = document.getElementById('btn-budget-quick-adv-toggle');
+    if (advPanel) advPanel.style.display = 'none';
+    if (advChevron) advChevron.style.transform = 'rotate(0deg)';
+    if (advToggleBtn) advToggleBtn.classList.remove('active');
+
     if (window.UITransactions && typeof window.UITransactions.closeKeypad === 'function') {
       window.UITransactions.closeKeypad(true);
     }
