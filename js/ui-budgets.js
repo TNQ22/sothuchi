@@ -2159,7 +2159,7 @@ const UIBudgets = {
     if (window.app && typeof window.app.refreshAll === 'function') {
       window.app.refreshAll();
     } else {
-      this.loadMonthBudgets();
+      await this.render();
     }
   },
 
@@ -2759,7 +2759,7 @@ const UIBudgets = {
         showToast(`Đã hoàn tác: Chi vượt của "${catName}" sẽ được tính vào ngân sách tháng sau`, 'info');
       }
 
-      await this.loadMonthBudgets();
+      await this.render();
     } catch (err) {
       console.error('Error in toggleShiftOverspentToNextMonth:', err);
       showToast('Có lỗi xảy ra khi chuyển ngân sách vượt', 'error');
@@ -2966,11 +2966,14 @@ const UIBudgets = {
     this.renderRebalanceStep1();
   },
 
-  rebalanceSelectTarget(targetId) {
+  rebalanceSelectTarget(catId) {
     if (!this.rebalanceDataCache) return;
 
-    this.rebalanceTargetCat = targetId;
+    this.rebalanceTargetCat = Number(catId);
     const { expenseCategories, budgetMap, categoryCarryover, spentByCat, surplusList, toBudget } = this.rebalanceDataCache;
+
+    const cat = expenseCategories.find(c => Number(c.id) === Number(catId));
+    if (!cat) return;
 
     const step1 = document.getElementById('rebalance-step-1');
     const step2 = document.getElementById('rebalance-step-2');
@@ -2982,49 +2985,31 @@ const UIBudgets = {
     if (step1) step1.style.display = 'none';
     if (step2) step2.style.display = 'flex';
 
-    let deficit = 0;
-    let validSurplusCats = [];
+    const prevCarry = categoryCarryover[String(cat.id)] || 0;
+    const budgeted = budgetMap.get(cat.id)?.limitAmount || 0;
+    const spent = spentByCat[cat.id] || 0;
+    const rawAvailable = prevCarry + budgeted - spent;
+    const isShifted = budgetMap.get(cat.id)?.shiftToNextMonth === true;
+    const available = (isShifted && rawAvailable < 0) ? 0 : rawAvailable;
+    const deficit = available < 0 ? Math.abs(available) : 0;
 
-    if (String(targetId) === 'TO_BUDGET') {
-      // Target is monthly total budget (to bring it to 0)
-      deficit = Math.abs(toBudget);
-      if (titleEl) titleEl.textContent = 'Bù cho: Ngân sách tháng';
-      if (subtitleEl) {
-        subtitleEl.textContent = `Cần bù về 0: ${this.formatMoney(deficit)}`;
+    if (titleEl) titleEl.textContent = `Bù cho: ${cat.name}`;
+    if (subtitleEl) {
+      if (deficit > 0) {
+        subtitleEl.textContent = `Chi vượt: ${this.formatMoney(deficit)}`;
         subtitleEl.style.color = 'var(--expense)';
+      } else {
+        subtitleEl.textContent = `Hiện có: ${this.formatMoney(available)}`;
+        subtitleEl.style.color = 'var(--text-muted)';
       }
-      validSurplusCats = [...surplusList];
-    } else {
-      const catId = Number(targetId);
-      const cat = expenseCategories.find(c => Number(c.id) === catId);
-      if (!cat) return;
-
-      const prevCarry = categoryCarryover[String(cat.id)] || 0;
-      const budgeted = budgetMap.get(cat.id)?.limitAmount || 0;
-      const spent = spentByCat[cat.id] || 0;
-      const rawAvailable = prevCarry + budgeted - spent;
-      const isShifted = budgetMap.get(cat.id)?.shiftToNextMonth === true;
-      const available = (isShifted && rawAvailable < 0) ? 0 : rawAvailable;
-      deficit = available < 0 ? Math.abs(available) : 0;
-
-      if (titleEl) titleEl.textContent = `Bù cho: ${cat.name}`;
-      if (subtitleEl) {
-        if (deficit > 0) {
-          subtitleEl.textContent = `Chi vượt: ${this.formatMoney(deficit)}`;
-          subtitleEl.style.color = 'var(--expense)';
-        } else {
-          subtitleEl.textContent = `Hiện có: ${this.formatMoney(available)}`;
-          subtitleEl.style.color = 'var(--text-muted)';
-        }
-      }
-
-      validSurplusCats = surplusList.filter(item => Number(item.cat.id) !== catId);
     }
+
+    const validSurplusCats = surplusList.filter(item => Number(item.cat.id) !== Number(catId));
 
     let sourcesHtml = '';
 
-    // Request 4: Ngân sách tháng bằng số không hoặc âm thì KHÔNG cho lấy nguồn
-    const canUseToBudget = String(targetId) !== 'TO_BUDGET' && toBudget > 0;
+    // Ngân sách tháng bằng số không hoặc âm thì KHÔNG cho lấy nguồn
+    const canUseToBudget = toBudget > 0;
 
     if (canUseToBudget) {
       sourcesHtml += `
@@ -3135,8 +3120,7 @@ const UIBudgets = {
 
   async applyRebalance() {
     try {
-      const isTargetToBudget = String(this.rebalanceTargetCat) === 'TO_BUDGET';
-      const targetCatId = isTargetToBudget ? 'TO_BUDGET' : Number(this.rebalanceTargetCat);
+      const targetCatId = Number(this.rebalanceTargetCat);
       const sourceVal = this.rebalanceSelectedSource;
       const amountInput = document.getElementById('rebalance-amount-input');
       const amount = Number((amountInput?.value || '').replace(/\D/g, ''));
@@ -3162,41 +3146,7 @@ const UIBudgets = {
       const now = Date.now();
       const currentMonthBudgets = await db.budgets.where('month').equals(this.currentMonth).toArray();
 
-      // Case 1: Target is TO_BUDGET (Request 1 - balance monthly budget back to 0)
-      if (isTargetToBudget) {
-        const sourceCatId = Number(sourceVal);
-        const sourceCat = await db.categories.get(sourceCatId);
-        const sourceCatName = sourceCat ? sourceCat.name : 'hạng mục';
-
-        // Check against actual surplus (Request 5)
-        const sourceSurplus = this.rebalanceDataCache?.surplusList?.find(s => Number(s.cat.id) === sourceCatId)?.surplus || 0;
-        if (amount > sourceSurplus) {
-          showToast(`Số tiền vượt quá số dư còn lại (${this.formatMoney(sourceSurplus)}) của "${sourceCatName}"`, 'error');
-          return;
-        }
-
-        const sourceBudget = currentMonthBudgets.find(b => Number(b.categoryId) === sourceCatId);
-        const currentSourceLimit = sourceBudget ? (sourceBudget.limitAmount || 0) : 0;
-        const newSourceLimit = currentSourceLimit - amount;
-
-        if (sourceBudget) {
-          await db.budgets.update(sourceBudget.id, { limitAmount: newSourceLimit, updatedAt: now });
-        } else {
-          await db.budgets.add({
-            categoryId: sourceCatId,
-            month: this.currentMonth,
-            limitAmount: newSourceLimit,
-            updatedAt: now
-          });
-        }
-
-        showToast(`Đã chuyển ${this.formatMoney(amount)} từ "${sourceCatName}" về ngân sách tháng`, 'success');
-        this.closeRebalanceModal();
-        if (window.app) await window.app.refreshAll(); else this.loadMonthBudgets();
-        return;
-      }
-
-      // Case 2: Target is a category
+      // Target is an expense category
       const targetCat = await db.categories.get(targetCatId);
       const targetCatName = targetCat ? targetCat.name : 'hạng mục';
 
@@ -3280,7 +3230,7 @@ const UIBudgets = {
       if (window.app) {
         await window.app.refreshAll();
       } else {
-        this.loadMonthBudgets();
+        await this.render();
       }
     } catch (err) {
       console.error('Error in applyRebalance:', err);
