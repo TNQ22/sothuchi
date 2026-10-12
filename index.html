@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.1.0">
+  <link rel="stylesheet" href="./css/style.css?v=2.1.1">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -3693,6 +3693,50 @@
   </div>
 
 
+  
+  <!-- Modal: Tùy chọn Còn lại (Cân đối / Chuyển sang tháng sau) -->
+  <div id="modal-budget-avail-options" class="modal-overlay" onclick="if(event.target === this) UIBudgets.closeAvailOptionsModal()">
+    <div class="modal-dialog" style="max-width: 440px; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+          <div id="avail-options-icon" class="actual-cat-icon" style="width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;"></div>
+          <div style="min-width: 0;">
+            <h3 id="avail-options-title" class="modal-title" style="margin: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Tùy chọn</h3>
+            <span id="avail-options-subtitle" style="font-size: 0.78rem; font-weight: 600;"></span>
+          </div>
+        </div>
+        <button type="button" class="btn-icon" onclick="UIBudgets.closeAvailOptionsModal()"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="modal-body" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+        <div id="avail-options-rebalance-btn" class="avail-option-card" onclick="UIBudgets.handleAvailOptionRebalance()">
+          <div class="avail-option-icon" style="background: rgba(13, 148, 136, 0.12); color: var(--primary);">
+            <i data-lucide="scale"></i>
+          </div>
+          <div class="avail-option-info">
+            <div class="avail-option-title" id="avail-option-rebalance-title">Cân đối ngân sách</div>
+            <div class="avail-option-desc" id="avail-option-rebalance-desc">Bù đắp từ ngân sách tháng hoặc trích từ danh mục khác</div>
+          </div>
+          <i data-lucide="chevron-right" class="avail-option-arrow"></i>
+        </div>
+
+        <div id="avail-options-shift-btn" class="avail-option-card" onclick="UIBudgets.handleAvailOptionShift()">
+          <div class="avail-option-icon" id="avail-option-shift-icon" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
+            <i data-lucide="arrow-right"></i>
+          </div>
+          <div class="avail-option-info">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="avail-option-title" id="avail-option-shift-title">Chuyển sang tháng sau</span>
+              <span id="avail-option-shift-badge" class="badge-shifted" style="display: none;">Đang bật</span>
+            </div>
+            <div class="avail-option-desc" id="avail-option-shift-desc">Trừ khoản chi vượt vào danh mục tháng sau thay vì tính vào ngân sách tháng</div>
+          </div>
+          <i data-lucide="chevron-right" class="avail-option-arrow"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Cân đối ngân sách (Bù đắp chi âm) - 2 Bước -->
   <div id="modal-budget-rebalance" class="modal-overlay" onclick="if(event.target === this) UIBudgets.closeRebalanceModal()">
     <div class="modal-dialog" style="max-width: 480px; max-height: 85vh; display: flex; flex-direction: column;">
@@ -3775,11 +3819,11 @@
   <script src="./js/ui-transactions.js?v=2.0.9"></script>
   <script src="./js/ui-debts.js?v=2.0.9"></script>
   <script src="./js/ui-accounts.js?v=2.0.9"></script>
-  <script src="./js/ui-budgets.js?v=2.1.0"></script>
+  <script src="./js/ui-budgets.js?v=2.1.1"></script>
   <script src="./js/ui-analytics.js?v=2.0.9"></script>
   <script src="./js/ui-settings.js?v=2.0.9"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.1.0"></script>
+  <script src="./js/app.js?v=2.1.1"></script>
 </body>
 </html>

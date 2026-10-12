@@ -379,7 +379,10 @@ const UIBudgets = {
       const budgetsByMonth = {};
       for (const b of allPastBudgets) {
         if (!budgetsByMonth[b.month]) budgetsByMonth[b.month] = {};
-        budgetsByMonth[b.month][String(b.categoryId)] = (b.limitAmount || 0);
+        budgetsByMonth[b.month][String(b.categoryId)] = {
+          limitAmount: b.limitAmount || 0,
+          shiftToNextMonth: b.shiftToNextMonth === true
+        };
       }
 
       let runningToBudget = 0;
@@ -400,28 +403,44 @@ const UIBudgets = {
         const mBudgets = budgetsByMonth[m] || {};
 
         let mTotalBudgeted = 0;
+        let mUnshiftedOverspent = 0;
 
-        for (const [catIdStr, amt] of Object.entries(mBudgets)) {
-          mTotalBudgeted += amt;
-          const prevBal = categoryBalances[catIdStr] || 0;
+        const allCatKeys = new Set([
+          ...Object.keys(mBudgets),
+          ...Object.keys(mTx.expenseByCat),
+          ...Object.keys(categoryBalances)
+        ]);
+
+        for (const catIdStr of allCatKeys) {
+          const bInfo = mBudgets[catIdStr];
+          const budgeted = bInfo ? (bInfo.limitAmount || 0) : 0;
+          if (bInfo) mTotalBudgeted += budgeted;
+
           const spent = mTx.expenseByCat[catIdStr] || 0;
-          // Giữ số âm chỉ ở danh mục
-          categoryBalances[catIdStr] = prevBal + amt - spent;
-        }
+          const prevBal = categoryBalances[catIdStr] || 0;
+          const avail = prevBal + budgeted - spent;
 
-        for (const [catIdStr, spent] of Object.entries(mTx.expenseByCat)) {
-          if (mBudgets[catIdStr] === undefined) {
-            const prevBal = categoryBalances[catIdStr] || 0;
-            categoryBalances[catIdStr] = prevBal - spent;
+          if (avail < 0) {
+            const isShifted = bInfo && bInfo.shiftToNextMonth === true;
+            if (isShifted) {
+              // Chuyển sang tháng sau: giữ số âm ở danh mục
+              categoryBalances[catIdStr] = avail;
+            } else {
+              // Mặc định: không tự động chuyển sang cho tháng sau, mà tính vào ngân sách tháng
+              categoryBalances[catIdStr] = 0;
+              mUnshiftedOverspent += Math.abs(avail);
+            }
+          } else {
+            categoryBalances[catIdStr] = avail;
           }
         }
 
-        // Số dư ngân sách tổng chỉ giới hạn ở số 0, không âm
-        runningToBudget = Math.max(0, runningToBudget + mTx.income - mTotalBudgeted);
+        // Ngân sách tháng cộng thu nhập, trừ hạn mức đã phân bổ, trừ các khoản chi vượt không chuyển tháng sau (có thể âm)
+        runningToBudget = runningToBudget + mTx.income - mTotalBudgeted - mUnshiftedOverspent;
       }
 
       return {
-        prevToBudget: Math.max(0, runningToBudget),
+        prevToBudget: runningToBudget,
         categoryCarryover: categoryBalances,
         rolloverEnabled: true
       };
@@ -760,7 +779,25 @@ const UIBudgets = {
       </div>
     `;
 
-    // Calculate overspent categories & alert banner
+    // Banner 1: Ngân sách tháng bị âm (toBudget < 0)
+    let toBudgetNegativeBannerHtml = '';
+    if (toBudget < 0) {
+      toBudgetNegativeBannerHtml = `
+        <div class="budget-overspent-banner to-budget-neg" style="background: rgba(239, 68, 68, 0.12); border-left: 3px solid var(--expense); margin-bottom: 8px;">
+          <div class="budget-overspent-left">
+            <div class="budget-overspent-info">
+              <div class="budget-overspent-title">Ngân sách tháng bị âm</div>
+              <div class="budget-overspent-sub">Cần cân đối: ${this.formatMoney(Math.abs(toBudget))}</div>
+            </div>
+          </div>
+          <button type="button" class="budget-rebalance-btn" onclick="UIBudgets.openRebalanceModal('TO_BUDGET')" title="Cân đối ngân sách tháng về 0">
+            Cân đối
+          </button>
+        </div>
+      `;
+    }
+
+    // Calculate overspent categories & alert banner (chỉ các mục chưa chuyển sang tháng sau)
     const overspentCats = [];
     let totalOverspentThisMonth = 0;
 
@@ -769,10 +806,12 @@ const UIBudgets = {
       const budgeted = b ? (b.limitAmount || 0) : 0;
       const spent = spentByCat[cat.id] || 0;
       const prevCarry = categoryCarryover[String(cat.id)] || 0;
-      const available = prevCarry + budgeted - spent;
-      if (available < 0) {
-        const overAmount = Math.abs(available);
-        overspentCats.push({ cat, budgeted, spent, prevCarry, available, overAmount });
+      const rawAvailable = prevCarry + budgeted - spent;
+      const isShifted = b && b.shiftToNextMonth === true;
+
+      if (rawAvailable < 0 && !isShifted) {
+        const overAmount = Math.abs(rawAvailable);
+        overspentCats.push({ cat, budgeted, spent, prevCarry, available: rawAvailable, overAmount });
         totalOverspentThisMonth += overAmount;
       }
     }
@@ -795,6 +834,15 @@ const UIBudgets = {
       `;
     }
 
+    // Save cache for popup options
+    this.currentDetailedDataCache = {
+      expenseCategories,
+      budgetMap,
+      categoryCarryover,
+      spentByCat,
+      toBudget
+    };
+
     // Table rows
     let tableRows = '';
     let totalAvailable = 0;
@@ -807,24 +855,16 @@ const UIBudgets = {
       const rawAvailable = prevCarry + budgeted - spent;
       const isShifted = b && b.shiftToNextMonth === true;
 
-      let available = rawAvailable;
-      if (isShifted && rawAvailable < 0) {
-        available = 0; // Shifted overspending is deferred to next month
-      }
-
-      totalAvailable += available;
+      totalAvailable += rawAvailable;
 
       let badgeClass = 'zero';
       let availText = '0đ';
-      if (available > 0) {
+      if (rawAvailable > 0) {
         badgeClass = 'positive';
-        availText = `+${this.formatMoney(available)}`;
-      } else if (available < 0) {
-        badgeClass = 'negative';
-        availText = `-${this.formatMoney(Math.abs(available))}`;
-      } else if (isShifted && rawAvailable < 0) {
-        badgeClass = 'zero';
-        availText = '0đ';
+        availText = `+${this.formatMoney(rawAvailable)}`;
+      } else if (rawAvailable < 0) {
+        badgeClass = isShifted ? 'negative shifted' : 'negative';
+        availText = `-${this.formatMoney(Math.abs(rawAvailable))}`;
       }
 
       const budgetedText = budgeted > 0 ? this.formatMoney(budgeted) : '0đ';
@@ -834,7 +874,6 @@ const UIBudgets = {
       const spentFontClass = this.getAmountFontClass(spentText);
 
       const availFontClass = this.getAmountFontClass(availText);
-      const isOverspentOrShifted = rawAvailable < 0;
 
       tableRows += `
         <tr class="actual-budget-row" data-cat-name="${escapeHTML(cat.name)}">
@@ -859,13 +898,11 @@ const UIBudgets = {
             <span class="actual-spent-cell ${spentFontClass}" style="cursor: pointer;">${spentText}</span>
           </td>
 
-          <td style="text-align: right; cursor: pointer;" onclick="UIBudgets.openRebalanceModal(${cat.id})" title="${available < 0 ? 'Chi âm - Nhấp để bù ngân sách' : 'Nhấp để cân đối / điều chuyển ngân sách'}">
+          <td style="text-align: right; cursor: pointer;" onclick="UIBudgets.openAvailOptionsModal(${cat.id})" title="Nhấp để chọn Cân đối hoặc Chuyển sang tháng sau">
             <div class="actual-avail-cell-box">
               <span class="actual-avail-badge ${badgeClass} ${availFontClass}">${availText}</span>
-              ${isOverspentOrShifted ? `
-                <div class="avail-shift-arrow-wrap ${isShifted ? 'shifted' : ''}" 
-                     onclick="event.stopPropagation(); UIBudgets.toggleShiftOverspentToNextMonth(${cat.id})" 
-                     title="${isShifted ? 'Đã chuyển chi vượt sang tháng sau (Nhấp để hoàn tác)' : 'Chuyển chi vượt sang tháng sau'}">
+              ${isShifted && rawAvailable < 0 ? `
+                <div class="avail-shift-arrow-wrap shifted" title="Đã chuyển sang tháng sau">
                   <i data-lucide="arrow-right"></i>
                 </div>
               ` : ''}
@@ -915,6 +952,7 @@ const UIBudgets = {
 
     container.innerHTML = `
       ${topBannerHtml}
+      ${toBudgetNegativeBannerHtml}
       ${overspentBannerHtml}
       ${tableHtml}
     `;
@@ -2579,6 +2617,110 @@ const UIBudgets = {
   rebalanceDataCache: null,
 
   
+    /* ==================== AVAIL OPTIONS MODAL (CÂN ĐỐI / CHUYỂN THÁNG SAU) ==================== */
+  currentAvailOptionsCatId: null,
+
+  async openAvailOptionsModal(catId) {
+    this.currentAvailOptionsCatId = Number(catId);
+    const cat = await db.categories.get(Number(catId));
+    if (!cat) return;
+
+    const modal = document.getElementById('modal-budget-avail-options');
+    const titleEl = document.getElementById('avail-options-title');
+    const subtitleEl = document.getElementById('avail-options-subtitle');
+    const iconEl = document.getElementById('avail-options-icon');
+    const rebalanceTitleEl = document.getElementById('avail-option-rebalance-title');
+    const rebalanceDescEl = document.getElementById('avail-option-rebalance-desc');
+    const shiftTitleEl = document.getElementById('avail-option-shift-title');
+    const shiftDescEl = document.getElementById('avail-option-shift-desc');
+    const shiftBadgeEl = document.getElementById('avail-option-shift-badge');
+
+    if (titleEl) titleEl.textContent = cat.name;
+    if (iconEl) {
+      iconEl.style.background = `${cat.color || '#0d9488'}22`;
+      iconEl.style.color = cat.color || '#0d9488';
+      iconEl.innerHTML = `<i data-lucide="${cat.icon || 'tag'}"></i>`;
+    }
+
+    const currentMonthBudgets = await db.budgets.where('month').equals(this.currentMonth).toArray();
+    const b = currentMonthBudgets.find(item => Number(item.categoryId) === Number(catId));
+    const budgeted = b ? (b.limitAmount || 0) : 0;
+    const isShifted = b && b.shiftToNextMonth === true;
+
+    const spentByCat = this.currentDetailedDataCache?.spentByCat || {};
+    const categoryCarryover = this.currentDetailedDataCache?.categoryCarryover || {};
+    const spent = spentByCat[catId] || 0;
+    const prevCarry = categoryCarryover[String(catId)] || 0;
+    const rawAvailable = prevCarry + budgeted - spent;
+
+    if (rawAvailable < 0) {
+      const overAmount = Math.abs(rawAvailable);
+      if (subtitleEl) {
+        subtitleEl.textContent = isShifted
+          ? `Chi vượt: -${this.formatMoney(overAmount)} (Đã chuyển sang tháng sau)`
+          : `Chi vượt: -${this.formatMoney(overAmount)}`;
+        subtitleEl.style.color = isShifted ? '#3b82f6' : 'var(--expense)';
+      }
+      if (rebalanceTitleEl) rebalanceTitleEl.textContent = 'Cân đối ngân sách';
+      if (rebalanceDescEl) rebalanceDescEl.textContent = `Bù đắp khoản chi vượt ${this.formatMoney(overAmount)} từ nguồn khác`;
+
+      if (shiftTitleEl) {
+        shiftTitleEl.textContent = isShifted ? 'Đã chuyển sang tháng sau' : 'Chuyển sang tháng sau';
+      }
+      if (shiftDescEl) {
+        shiftDescEl.textContent = isShifted
+          ? 'Khoản chi vượt này đang trừ vào danh mục tháng sau. Nhấp để hoàn tác (tính vào ngân sách tháng sau).'
+          : 'Trừ khoản chi vượt này vào danh mục tháng sau thay vì tính vào ngân sách tháng sau.';
+      }
+      if (shiftBadgeEl) {
+        shiftBadgeEl.style.display = isShifted ? 'inline-block' : 'none';
+        shiftBadgeEl.textContent = 'Đang bật';
+        shiftBadgeEl.className = 'badge-shifted';
+      }
+    } else {
+      if (subtitleEl) {
+        subtitleEl.textContent = rawAvailable > 0 ? `Còn dư: +${this.formatMoney(rawAvailable)}` : 'Còn lại: 0 ₫';
+        subtitleEl.style.color = rawAvailable > 0 ? 'var(--income)' : 'var(--text-muted)';
+      }
+      if (rebalanceTitleEl) rebalanceTitleEl.textContent = 'Điều chuyển ngân sách';
+      if (rebalanceDescEl) rebalanceDescEl.textContent = rawAvailable > 0
+        ? `Chuyển bớt số dư ${this.formatMoney(rawAvailable)} sang bù cho hạng mục khác`
+        : 'Điều chuyển hoặc nhận thêm ngân sách từ nguồn khác';
+
+      if (shiftTitleEl) shiftTitleEl.textContent = 'Chuyển sang tháng sau';
+      if (shiftDescEl) shiftDescEl.textContent = 'Số dư còn dư sẽ tự động được cộng dồn vào danh mục này ở các tháng sau.';
+      if (shiftBadgeEl) {
+        shiftBadgeEl.style.display = 'inline-block';
+        shiftBadgeEl.textContent = 'Tự động';
+        shiftBadgeEl.className = 'badge-auto';
+      }
+    }
+
+    if (modal) modal.classList.add('open');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeAvailOptionsModal() {
+    const modal = document.getElementById('modal-budget-avail-options');
+    if (modal) modal.classList.remove('open');
+  },
+
+  handleAvailOptionRebalance() {
+    const catId = this.currentAvailOptionsCatId;
+    this.closeAvailOptionsModal();
+    if (catId) {
+      this.openRebalanceModal(catId);
+    }
+  },
+
+  async handleAvailOptionShift() {
+    const catId = this.currentAvailOptionsCatId;
+    this.closeAvailOptionsModal();
+    if (catId) {
+      await this.toggleShiftOverspentToNextMonth(catId);
+    }
+  },
+
   /* ==================== TOGGLE SHIFT OVERSPENT TO NEXT MONTH (Request 6) ==================== */
   async toggleShiftOverspentToNextMonth(catId) {
     try {
@@ -2614,7 +2756,7 @@ const UIBudgets = {
       if (newShiftState) {
         showToast(`Đã chuyển chi vượt của "${catName}" sang tháng ${nextMonthStr}`, 'success');
       } else {
-        showToast(`Đã hoàn tác chuyển chi vượt của "${catName}"`, 'info');
+        showToast(`Đã hoàn tác: Chi vượt của "${catName}" sẽ được tính vào ngân sách tháng sau`, 'info');
       }
 
       await this.loadMonthBudgets();
