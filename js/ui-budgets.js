@@ -1718,6 +1718,9 @@ const UIBudgets = {
     if (isHidden) {
       advPanel.style.display = 'flex';
       if (advBar) advBar.classList.add('active');
+      if (this.quickEditTarget && this.quickEditTarget.categoryId) {
+        this.loadQuickAdvancedStats(this.quickEditTarget.categoryId);
+      }
     } else {
       advPanel.style.display = 'none';
       if (advBar) advBar.classList.remove('active');
@@ -1735,8 +1738,9 @@ const UIBudgets = {
       const prevNameEl = document.getElementById('keypad-budget-prev-name');
       if (prevNameEl) prevNameEl.textContent = prevLabel;
 
-      // 1. Previous month data
-      const prevBudget = await db.budgets.where({ categoryId: Number(catId), month: prevYM }).first();
+      // 1. Previous month data (use string comparison to avoid IndexedDB type mismatch)
+      const prevBudgets = await db.budgets.where('month').equals(prevYM).toArray();
+      const prevBudget = prevBudgets.find(b => String(b.categoryId) === String(catId));
       const prevBudgetAmt = prevBudget ? (prevBudget.limitAmount || 0) : 0;
 
       const pStart = `${prevYM}-01`;
@@ -1744,7 +1748,7 @@ const UIBudgets = {
       const pTxs = await db.transactions
         .where('date')
         .between(pStart, pEnd, true, true)
-        .and(t => t.type === 'expense' && Number(t.categoryId) === Number(catId) && t.isDeleted === 0)
+        .and(t => t.type === 'expense' && String(t.categoryId) === String(catId) && (!t.isDeleted || t.isDeleted === 0))
         .toArray();
       const prevSpentAmt = pTxs.reduce((s, t) => s + (t.amount || 0), 0);
 
@@ -1781,7 +1785,7 @@ const UIBudgets = {
           const txs = await db.transactions
             .where('date')
             .between(startDate, endDate, true, true)
-            .and(t => t.type === 'expense' && Number(t.categoryId) === Number(catId) && t.isDeleted === 0)
+            .and(t => t.type === 'expense' && String(t.categoryId) === String(catId) && (!t.isDeleted || t.isDeleted === 0))
             .toArray();
           const total = txs.reduce((s, t) => s + (t.amount || 0), 0);
           const avg = Math.round((total / n) / 1000) * 1000;
@@ -1800,6 +1804,10 @@ const UIBudgets = {
       if (window.lucide) lucide.createIcons();
     } catch (err) {
       console.warn('loadQuickAdvancedStats error:', err);
+      const prevChipsEl = document.getElementById('keypad-budget-prev-chips');
+      const avgChipsEl = document.getElementById('keypad-budget-avg-chips');
+      if (prevChipsEl) prevChipsEl.innerHTML = `<span class="budget-adv-empty">Chưa có dữ liệu</span>`;
+      if (avgChipsEl) avgChipsEl.innerHTML = `<span class="budget-adv-empty">Chưa có dữ liệu</span>`;
     }
   },
 
