@@ -779,23 +779,7 @@ const UIBudgets = {
       </div>
     `;
 
-    // Banner 1: Ngân sách tháng bị âm (toBudget < 0)
-    let toBudgetNegativeBannerHtml = '';
-    if (toBudget < 0) {
-      toBudgetNegativeBannerHtml = `
-        <div class="budget-overspent-banner to-budget-neg" style="background: rgba(239, 68, 68, 0.12); border-left: 3px solid var(--expense); margin-bottom: 8px;">
-          <div class="budget-overspent-left">
-            <div class="budget-overspent-info">
-              <div class="budget-overspent-title">Ngân sách tháng bị âm</div>
-              <div class="budget-overspent-sub">Cần cân đối: ${this.formatMoney(Math.abs(toBudget))}</div>
-            </div>
-          </div>
-          <button type="button" class="budget-rebalance-btn" onclick="UIBudgets.openRebalanceModal('TO_BUDGET')" title="Cân đối ngân sách tháng về 0">
-            Cân đối
-          </button>
-        </div>
-      `;
-    }
+    
 
     // Calculate overspent categories & alert banner (chỉ các mục chưa chuyển sang tháng sau)
     const overspentCats = [];
@@ -899,12 +883,12 @@ const UIBudgets = {
           </td>
 
           <td style="text-align: right; cursor: pointer;" onclick="UIBudgets.openAvailOptionsModal(${cat.id})" title="Nhấp để chọn Cân đối hoặc Chuyển sang tháng sau">
-            <div class="actual-avail-cell-box">
+            <div class="actual-avail-wrapper">
               <span class="actual-avail-badge ${badgeClass} ${availFontClass}">${availText}</span>
               ${isShifted && rawAvailable < 0 ? `
-                <div class="avail-shift-arrow-wrap shifted" title="Đã chuyển sang tháng sau">
+                <span class="avail-shift-corner-arrow" title="Đã chuyển sang tháng sau">
                   <i data-lucide="arrow-right"></i>
-                </div>
+                </span>
               ` : ''}
             </div>
           </td>
@@ -952,8 +936,7 @@ const UIBudgets = {
 
     container.innerHTML = `
       ${topBannerHtml}
-      ${toBudgetNegativeBannerHtml}
-      ${overspentBannerHtml}
+            ${overspentBannerHtml}
       ${tableHtml}
     `;
     if (window.lucide) lucide.createIcons();
@@ -2886,28 +2869,9 @@ const UIBudgets = {
 
     let itemsHtml = '';
 
-    // If toBudget < 0, show Ngân sách tháng as a target needing rebalance at the very top (Request 1)
-    if (toBudget < 0) {
-      itemsHtml += `
-        <div class="rebalance-cat-item" onclick="UIBudgets.rebalanceSelectTarget('TO_BUDGET')" style="border-left: 3px solid var(--expense);">
-          <div class="rebalance-item-left">
-            <div class="rebalance-item-icon" style="background: rgba(239, 68, 68, 0.15); color: var(--expense);">
-              <i data-lucide="wallet"></i>
-            </div>
-            <div>
-              <div class="rebalance-item-name">Ngân sách tháng (Bị âm)</div>
-              <div style="font-size: 0.74rem; color: var(--text-muted);">Cần bù để đưa về 0 ₫</div>
-            </div>
-          </div>
-          <div class="rebalance-item-right">
-            <span class="rebalance-amount-badge deficit">Chi vượt: ${this.formatMoney(Math.abs(toBudget))}</span>
-            <i data-lucide="chevron-right" style="width: 16px; height: 16px; color: var(--text-muted);"></i>
-          </div>
-        </div>
-      `;
-    }
+    
 
-    if (overspentList.length === 0 && toBudget >= 0) {
+    if (overspentList.length === 0) {
       // If no category is overspent and toBudget >= 0, let user pick any category
       itemsHtml += `
         <div style="font-size: 0.85rem; color: var(--text-muted); padding: 8px 4px; line-height: 1.4;">
