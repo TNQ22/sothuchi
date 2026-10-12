@@ -400,36 +400,28 @@ const UIBudgets = {
         const mBudgets = budgetsByMonth[m] || {};
 
         let mTotalBudgeted = 0;
-        let mTotalOverspent = 0;
 
         for (const [catIdStr, amt] of Object.entries(mBudgets)) {
           mTotalBudgeted += amt;
           const prevBal = categoryBalances[catIdStr] || 0;
           const spent = mTx.expenseByCat[catIdStr] || 0;
-          const availableBeforeSpent = prevBal + amt;
-          const effectiveAvailable = Math.max(0, availableBeforeSpent);
-          if (spent > effectiveAvailable) {
-            mTotalOverspent += (spent - effectiveAvailable);
-          }
-          categoryBalances[catIdStr] = Math.max(0, availableBeforeSpent - spent);
+          // Giữ số âm chỉ ở danh mục
+          categoryBalances[catIdStr] = prevBal + amt - spent;
         }
 
         for (const [catIdStr, spent] of Object.entries(mTx.expenseByCat)) {
           if (mBudgets[catIdStr] === undefined) {
             const prevBal = categoryBalances[catIdStr] || 0;
-            const effectiveAvailable = Math.max(0, prevBal);
-            if (spent > effectiveAvailable) {
-              mTotalOverspent += (spent - effectiveAvailable);
-            }
-            categoryBalances[catIdStr] = Math.max(0, prevBal - spent);
+            categoryBalances[catIdStr] = prevBal - spent;
           }
         }
 
-        runningToBudget = runningToBudget + mTx.income - mTotalBudgeted - mTotalOverspent;
+        // Số dư ngân sách tổng chỉ giới hạn ở số 0, không âm
+        runningToBudget = Math.max(0, runningToBudget + mTx.income - mTotalBudgeted);
       }
 
       return {
-        prevToBudget: runningToBudget,
+        prevToBudget: Math.max(0, runningToBudget),
         categoryCarryover: categoryBalances,
         rolloverEnabled: true
       };
@@ -776,7 +768,7 @@ const UIBudgets = {
       const b = budgetMap.get(cat.id);
       const budgeted = b ? (b.limitAmount || 0) : 0;
       const spent = spentByCat[cat.id] || 0;
-      const prevCarry = Math.max(0, categoryCarryover[String(cat.id)] || 0);
+      const prevCarry = categoryCarryover[String(cat.id)] || 0;
       const available = prevCarry + budgeted - spent;
       if (available < 0) {
         const overAmount = Math.abs(available);
@@ -813,7 +805,7 @@ const UIBudgets = {
       const b = budgetMap.get(cat.id);
       const budgeted = b ? (b.limitAmount || 0) : 0;
       const spent = spentByCat[cat.id] || 0;
-      const prevCarry = Math.max(0, categoryCarryover[String(cat.id)] || 0);
+      const prevCarry = categoryCarryover[String(cat.id)] || 0;
       const available = prevCarry + budgeted - spent;
       totalAvailable += available;
 
@@ -2609,7 +2601,7 @@ const UIBudgets = {
       const b = budgetMap.get(cat.id);
       const budgeted = b ? (b.limitAmount || 0) : 0;
       const spent = spentByCat[cat.id] || 0;
-      const prevCarry = Math.max(0, categoryCarryover[String(cat.id)] || 0);
+      const prevCarry = categoryCarryover[String(cat.id)] || 0;
       const available = prevCarry + budgeted - spent;
 
       if (available < 0) {
