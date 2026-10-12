@@ -2606,10 +2606,10 @@ const UIBudgets = {
   },
 
   closeCatExpenseHistory() {
-    if (window.app && typeof window.app.goBack === 'function') {
-      window.app.goBack();
-    } else if (window.app) {
+    if (window.app && typeof window.app.switchView === 'function') {
       window.app.switchView('budgets', true);
+    } else if (window.app && typeof window.app.goBack === 'function') {
+      window.app.goBack();
     }
   },
 
@@ -2770,119 +2770,7 @@ const UIBudgets = {
 
     /* ==================== CÂN ĐỐI NGÂN SÁCH THÁNG (ĐỘC LẬP) ==================== */
   async openToBudgetRebalanceModal() {
-    try {
-      const allCategories = await db.categories.where('isDeleted').equals(0).toArray();
-      const expenseCategories = allCategories.filter(c => c.type === 'expense');
-
-      const rawBudgets = await db.budgets.where('month').equals(this.currentMonth).toArray();
-      const budgetMap = new Map();
-      let totalBudgeted = 0;
-      rawBudgets.forEach(b => {
-        if (b.categoryId !== 'TOTAL' && b.categoryId !== 0 && !b.isOverall) {
-          budgetMap.set(b.categoryId, b);
-          totalBudgeted += (b.limitAmount || 0);
-        }
-      });
-
-      const spentByCat = this.currentDetailedDataCache?.spentByCat || {};
-      const categoryCarryover = this.currentDetailedDataCache?.categoryCarryover || {};
-      const toBudget = this.currentDetailedDataCache?.toBudget ?? 0;
-
-      const surplusList = [];
-      expenseCategories.forEach(cat => {
-        const b = budgetMap.get(cat.id);
-        const budgeted = b ? (b.limitAmount || 0) : 0;
-        const spent = spentByCat[cat.id] || 0;
-        const prevCarry = categoryCarryover[String(cat.id)] || 0;
-        const rawAvailable = prevCarry + budgeted - spent;
-        const isShifted = b && b.shiftToNextMonth === true;
-        const available = (isShifted && rawAvailable < 0) ? 0 : rawAvailable;
-
-        if (available > 0) {
-          surplusList.push({ cat, available, surplus: available, budgeted });
-        }
-      });
-
-      this.rebalanceDataCache = {
-        expenseCategories,
-        budgetMap,
-        categoryCarryover,
-        spentByCat,
-        surplusList,
-        toBudget,
-        isToBudgetMode: true
-      };
-
-      this.rebalanceTargetCat = 'TO_BUDGET';
-
-      const modal = document.getElementById('modal-budget-rebalance');
-      const step1 = document.getElementById('rebalance-step-1');
-      const step2 = document.getElementById('rebalance-step-2');
-      const backBtn = document.getElementById('rebalance-back-btn');
-      const titleEl = document.getElementById('rebalance-step2-title');
-      const subtitleEl = document.getElementById('rebalance-step2-subtitle');
-      const sourceListEl = document.getElementById('rebalance-step2-source-list');
-      const submitBtn = document.getElementById('rebalance-submit-btn');
-      const amountInput = document.getElementById('rebalance-amount-input');
-      const hintEl = document.getElementById('rebalance-amount-hint');
-
-      if (step1) step1.style.display = 'none';
-      if (step2) step2.style.display = 'flex';
-      if (backBtn) backBtn.style.display = 'none';
-
-      if (titleEl) titleEl.textContent = 'Cân đối ngân sách tháng';
-      const deficit = Math.abs(toBudget);
-      if (subtitleEl) {
-        subtitleEl.textContent = `Cần bù về 0 ₫: ${this.formatMoney(deficit)}`;
-        subtitleEl.style.color = 'var(--expense)';
-      }
-
-      if (amountInput) {
-        amountInput.value = '';
-        amountInput.oninput = (e) => {
-          const raw = Number((e.target.value || '').replace(/\D/g, ''));
-          e.target.value = raw > 0 ? new Intl.NumberFormat('vi-VN').format(raw) : '';
-        };
-      }
-      if (hintEl) hintEl.textContent = 'Chọn hạng mục có dư để trích tiền về ngân sách tháng';
-
-      let sourcesHtml = '';
-      if (surplusList.length === 0) {
-        sourcesHtml = `
-          <div style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 20px 0;">
-            Hiện không có hạng mục nào có số dư để trích về ngân sách tháng.
-          </div>
-        `;
-      } else {
-        sourcesHtml = surplusList.map(item => `
-          <div class="rebalance-source-item" id="rebalance-source-${item.cat.id}" onclick="UIBudgets.rebalanceSelectSource(${item.cat.id}, ${item.surplus})">
-            <div class="rebalance-source-left">
-              <div class="rebalance-source-icon" style="background: ${item.cat.color || '#0d9488'}22; color: ${item.cat.color || '#0d9488'};">
-                <i data-lucide="${item.cat.icon || 'tag'}"></i>
-              </div>
-              <div class="rebalance-source-name">${escapeHTML(item.cat.name)}</div>
-            </div>
-            <div class="rebalance-source-right">
-              <span class="rebalance-amount-badge surplus">+${this.formatMoney(item.surplus)}</span>
-              <div class="rebalance-radio"></div>
-            </div>
-          </div>
-        `).join('');
-      }
-
-      if (sourceListEl) sourceListEl.innerHTML = sourcesHtml;
-      if (submitBtn) submitBtn.textContent = 'Cân đối về ngân sách';
-
-      if (modal) modal.classList.add('open');
-      if (window.lucide) lucide.createIcons();
-
-      // Auto select first source
-      if (surplusList.length > 0) {
-        this.rebalanceSelectSource(surplusList[0].cat.id, surplusList[0].surplus);
-      }
-    } catch (err) {
-      console.error('Error in openToBudgetRebalanceModal:', err);
-    }
+    return this.openRebalanceModal('TO_BUDGET');
   },
 
   async openRebalanceModal(targetCatId = null) {
@@ -3066,14 +2954,12 @@ const UIBudgets = {
     this.renderRebalanceStep1();
   },
 
-  rebalanceSelectTarget(catId) {
+  rebalanceSelectTarget(targetId) {
     if (!this.rebalanceDataCache) return;
 
-    this.rebalanceTargetCat = Number(catId);
+    const isToBudget = String(targetId) === 'TO_BUDGET';
+    this.rebalanceTargetCat = isToBudget ? 'TO_BUDGET' : Number(targetId);
     const { expenseCategories, budgetMap, categoryCarryover, spentByCat, surplusList, toBudget } = this.rebalanceDataCache;
-
-    const cat = expenseCategories.find(c => Number(c.id) === Number(catId));
-    if (!cat) return;
 
     const step1 = document.getElementById('rebalance-step-1');
     const step2 = document.getElementById('rebalance-step-2');
@@ -3085,37 +2971,58 @@ const UIBudgets = {
 
     if (step1) step1.style.display = 'none';
     if (step2) step2.style.display = 'flex';
-    if (backBtn) backBtn.style.display = '';
 
-    const prevCarry = categoryCarryover[String(cat.id)] || 0;
-    const budgeted = budgetMap.get(cat.id)?.limitAmount || 0;
-    const spent = spentByCat[cat.id] || 0;
-    const rawAvailable = prevCarry + budgeted - spent;
-    const isShifted = budgetMap.get(cat.id)?.shiftToNextMonth === true;
-    const available = (isShifted && rawAvailable < 0) ? 0 : rawAvailable;
-    const deficit = available < 0 ? Math.abs(available) : 0;
+    let deficit = 0;
+    let validSurplusCats = [];
 
-    if (titleEl) titleEl.textContent = `Bù cho: ${cat.name}`;
-    if (subtitleEl) {
-      if (deficit > 0) {
-        subtitleEl.textContent = `Chi vượt: ${this.formatMoney(deficit)}`;
+    if (isToBudget) {
+      if (backBtn) backBtn.style.display = 'none';
+      deficit = toBudget < 0 ? Math.abs(toBudget) : 0;
+      if (titleEl) titleEl.textContent = 'Cân đối ngân sách tháng';
+      if (subtitleEl) {
+        subtitleEl.textContent = `Cần bù về 0 ₫: ${this.formatMoney(deficit)}`;
         subtitleEl.style.color = 'var(--expense)';
-      } else {
-        subtitleEl.textContent = `Hiện có: ${this.formatMoney(available)}`;
-        subtitleEl.style.color = 'var(--text-muted)';
       }
-    }
+      validSurplusCats = [...surplusList];
+      if (submitBtn) submitBtn.textContent = 'Cân đối về ngân sách';
+    } else {
+      const catId = Number(targetId);
+      const cat = expenseCategories.find(c => Number(c.id) === catId);
+      if (!cat) return;
 
-    const validSurplusCats = surplusList.filter(item => Number(item.cat.id) !== Number(catId));
+      if (backBtn) backBtn.style.display = '';
+
+      const prevCarry = categoryCarryover[String(cat.id)] || 0;
+      const budgeted = budgetMap.get(cat.id)?.limitAmount || 0;
+      const spent = spentByCat[cat.id] || 0;
+      const rawAvailable = prevCarry + budgeted - spent;
+      const isShifted = budgetMap.get(cat.id)?.shiftToNextMonth === true;
+      const available = (isShifted && rawAvailable < 0) ? 0 : rawAvailable;
+      deficit = available < 0 ? Math.abs(available) : 0;
+
+      if (titleEl) titleEl.textContent = `Bù cho: ${cat.name}`;
+      if (subtitleEl) {
+        if (deficit > 0) {
+          subtitleEl.textContent = `Chi vượt: ${this.formatMoney(deficit)}`;
+          subtitleEl.style.color = 'var(--expense)';
+        } else {
+          subtitleEl.textContent = `Hiện có: ${this.formatMoney(available)}`;
+          subtitleEl.style.color = 'var(--text-muted)';
+        }
+      }
+
+      validSurplusCats = surplusList.filter(item => Number(item.cat.id) !== catId);
+      if (submitBtn) submitBtn.textContent = 'Xác nhận cân đối';
+    }
 
     let sourcesHtml = '';
 
     // Ngân sách tháng bằng số không hoặc âm thì KHÔNG cho lấy nguồn
-    const canUseToBudget = toBudget > 0;
+    const canUseToBudget = !isToBudget && toBudget > 0;
 
     if (canUseToBudget) {
       sourcesHtml += `
-        <div class="rebalance-source-item" id="rebalance-src-TO_BUDGET" onclick="UIBudgets.rebalancePickSource('TO_BUDGET', ${toBudget})">
+        <div class="rebalance-source-item" id="rebalance-src-TO_BUDGET" onclick="UIBudgets.rebalancePickSource('TO_BUDGET', ${toBudget}, ${deficit})">
           <div class="rebalance-item-left">
             <div class="rebalance-item-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--income);">
               <i data-lucide="wallet"></i>
@@ -3132,7 +3039,7 @@ const UIBudgets = {
     // Source 2..N: Danh sách danh mục với số ngân sách còn bên phải
     validSurplusCats.forEach(item => {
       sourcesHtml += `
-        <div class="rebalance-source-item" id="rebalance-src-${item.cat.id}" onclick="UIBudgets.rebalancePickSource(${item.cat.id}, ${item.surplus})">
+        <div class="rebalance-source-item" id="rebalance-src-${item.cat.id}" onclick="UIBudgets.rebalancePickSource(${item.cat.id}, ${item.surplus}, ${deficit})">
           <div class="rebalance-item-left">
             <div class="rebalance-item-icon" style="background: ${item.cat.color || '#0d9488'}22; color: ${item.cat.color || '#0d9488'};">
               <i data-lucide="${item.cat.icon || 'tag'}"></i>

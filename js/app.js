@@ -688,7 +688,7 @@ class App {
       return;
     }
 
-    if (this.currentView === 'budget-form' || this.currentView === 'budget-category-form') {
+    if (this.currentView === 'budget-form' || this.currentView === 'budget-category-form' || this.currentView === 'budget-cat-history') {
       this.switchView('budgets', true);
       return;
     }
@@ -751,7 +751,7 @@ class App {
       }
 
       // category-picker & borrow-select always support back to new-transaction
-      if (['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form'].includes(this.currentView)) {
+      if (['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history'].includes(this.currentView)) {
         window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
         this.goBack();
       } else if (this.currentView === 'new-transaction') {
