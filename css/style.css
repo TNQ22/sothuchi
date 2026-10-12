@@ -8258,3 +8258,22 @@ html, body {
   color: var(--text-muted);
   font-style: italic;
 }
+
+/* Budget Settings Switch */
+.switch input:checked + .slider {
+  background-color: var(--primary) !important;
+}
+.switch .slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .2s;
+  border-radius: 50%;
+}
+.switch input:checked + .slider:before {
+  transform: translateX(20px);
+}

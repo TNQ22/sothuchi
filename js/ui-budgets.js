@@ -190,6 +190,16 @@ const UIBudgets = {
     if (!modal) return;
 
     this.selectSettingMode(this.currentMode);
+
+    const toggle = document.getElementById('budget-setting-rollover-toggle');
+    if (toggle) {
+      try {
+        const saved = await db.settings.get('budget_rollover_enabled');
+        toggle.checked = saved ? (saved.value === true || saved.value === 'true' || saved.value === 1) : true;
+      } catch (e) {
+        toggle.checked = true;
+      }
+    }
     modal.classList.add('open');
     if (window.lucide) lucide.createIcons();
   },
@@ -218,9 +228,13 @@ const UIBudgets = {
     const selectedMode = document.querySelector('input[name="budget-setting-mode"]:checked')?.value || 'simple';
     this.currentMode = selectedMode;
 
+    const toggle = document.getElementById('budget-setting-rollover-toggle');
+    const rolloverVal = toggle ? toggle.checked : true;
+
     try {
       await db.settings.put({ key: 'budget_mode', value: selectedMode });
-      showToast('Đã lưu chế độ ngân sách', 'success');
+      await db.settings.put({ key: 'budget_rollover_enabled', value: rolloverVal });
+      showToast('Đã lưu cài đặt ngân sách', 'success');
     } catch (e) {
       console.warn('Error saving budget settings:', e);
     }
@@ -295,6 +309,126 @@ const UIBudgets = {
       showToast(`Đã tự động sao chép ngân sách từ ${this.formatMonthDisplay(prevMonth)} sang ${this.formatMonthDisplay(targetMonth)}`, 'info');
     } catch (e) {
       console.warn('Auto rollover check failed:', e);
+    }
+  },
+
+  /* ==================== DETAILED MODE ROLLOVER CALCULATION ==================== */
+  async calculateDetailedRollover(currentMonth, allowedAccountIds) {
+    let rolloverEnabled = true;
+    try {
+      const saved = await db.settings.get('budget_rollover_enabled');
+      if (saved && saved.value !== undefined) {
+        rolloverEnabled = saved.value === true || saved.value === 'true' || saved.value === 1;
+      }
+    } catch (e) {}
+
+    if (!rolloverEnabled) {
+      return {
+        prevToBudget: 0,
+        categoryCarryover: {},
+        rolloverEnabled: false
+      };
+    }
+
+    try {
+      const allPastBudgets = await db.budgets
+        .filter(b => b.month < currentMonth && b.categoryId !== 'TOTAL' && b.categoryId !== 0 && !b.isOverall)
+        .toArray();
+
+      if (allPastBudgets.length === 0) {
+        return {
+          prevToBudget: 0,
+          categoryCarryover: {},
+          rolloverEnabled: true
+        };
+      }
+
+      const pastMonths = Array.from(new Set(allPastBudgets.map(b => b.month))).sort();
+      const earliestMonth = pastMonths[0];
+
+      const [curY, curM] = currentMonth.split('-').map(Number);
+      const prevEndDateObj = new Date(curY, curM - 1, 0);
+      const prevEndYear = prevEndDateObj.getFullYear();
+      const prevEndMonth = String(prevEndDateObj.getMonth() + 1).padStart(2, '0');
+      const prevEndDay = String(prevEndDateObj.getDate()).padStart(2, '0');
+      const endDate = `${prevEndYear}-${prevEndMonth}-${prevEndDay}`;
+
+      const pastTxs = await db.transactions
+        .where('date')
+        .between(`${earliestMonth}-01`, endDate, true, true)
+        .and(t => (!t.isDeleted || t.isDeleted === 0))
+        .toArray();
+
+      const allowedTxs = pastTxs.filter(t => allowedAccountIds.has(t.accountId));
+
+      const txByMonth = {};
+      for (const t of allowedTxs) {
+        const m = (t.date || '').slice(0, 7);
+        if (!m) continue;
+        if (!txByMonth[m]) {
+          txByMonth[m] = { income: 0, expenseByCat: {} };
+        }
+        if (t.type === 'income') {
+          txByMonth[m].income += (t.amount || 0);
+        } else if (t.type === 'expense' && t.categoryId) {
+          const catKey = String(t.categoryId);
+          txByMonth[m].expenseByCat[catKey] = (txByMonth[m].expenseByCat[catKey] || 0) + (t.amount || 0);
+        }
+      }
+
+      const budgetsByMonth = {};
+      for (const b of allPastBudgets) {
+        if (!budgetsByMonth[b.month]) budgetsByMonth[b.month] = {};
+        budgetsByMonth[b.month][String(b.categoryId)] = (b.limitAmount || 0);
+      }
+
+      let runningToBudget = 0;
+      const categoryBalances = {};
+
+      const allMonthsRange = [];
+      let iterDate = new Date(Number(earliestMonth.split('-')[0]), Number(earliestMonth.split('-')[1]) - 1, 1);
+      const stopDate = new Date(curY, curM - 1, 1);
+
+      while (iterDate < stopDate) {
+        const ym = `${iterDate.getFullYear()}-${String(iterDate.getMonth() + 1).padStart(2, '0')}`;
+        allMonthsRange.push(ym);
+        iterDate.setMonth(iterDate.getMonth() + 1);
+      }
+
+      for (const m of allMonthsRange) {
+        const mTx = txByMonth[m] || { income: 0, expenseByCat: {} };
+        const mBudgets = budgetsByMonth[m] || {};
+
+        let mTotalBudgeted = 0;
+        for (const [catIdStr, amt] of Object.entries(mBudgets)) {
+          mTotalBudgeted += amt;
+          const prevBal = categoryBalances[catIdStr] || 0;
+          const spent = mTx.expenseByCat[catIdStr] || 0;
+          categoryBalances[catIdStr] = prevBal + amt - spent;
+        }
+
+        for (const [catIdStr, spent] of Object.entries(mTx.expenseByCat)) {
+          if (mBudgets[catIdStr] === undefined) {
+            const prevBal = categoryBalances[catIdStr] || 0;
+            categoryBalances[catIdStr] = prevBal - spent;
+          }
+        }
+
+        runningToBudget = runningToBudget + mTx.income - mTotalBudgeted;
+      }
+
+      return {
+        prevToBudget: runningToBudget,
+        categoryCarryover: categoryBalances,
+        rolloverEnabled: true
+      };
+    } catch (err) {
+      console.warn('calculateDetailedRollover error:', err);
+      return {
+        prevToBudget: 0,
+        categoryCarryover: {},
+        rolloverEnabled: true
+      };
     }
   },
 
@@ -393,13 +527,17 @@ const UIBudgets = {
     } else {
       if (paneSimple) paneSimple.style.display = 'none';
       if (paneDetailed) paneDetailed.style.display = 'block';
+
+      const rolloverData = await this.calculateDetailedRollover(this.currentMonth, allowedAccountIds);
+
       this.renderDetailedMode({
         categoryBudgets,
         expenseCategories,
         catMap,
         totalIncome,
         totalSpent,
-        spentByCat
+        spentByCat,
+        rolloverData
       });
     }
 
@@ -552,13 +690,17 @@ const UIBudgets = {
   },
 
     /* ==================== MODE 2: ACTUAL BUDGET SPREADSHEET TABLE ==================== */
-  renderDetailedMode({ categoryBudgets, expenseCategories, catMap, totalIncome, totalSpent, spentByCat }) {
+  renderDetailedMode({ categoryBudgets, expenseCategories, catMap, totalIncome, totalSpent, spentByCat, rolloverData }) {
     const container = document.getElementById('budget-detailed-container');
     if (!container) return;
 
     const budgetMap = new Map(categoryBudgets.map(b => [Number(b.categoryId), b]));
     const totalBudgeted = categoryBudgets.reduce((sum, b) => sum + (b.limitAmount || 0), 0);
-    const toBudget = totalIncome - totalBudgeted;
+
+    const prevToBudget = (rolloverData && rolloverData.prevToBudget) || 0;
+    const categoryCarryover = (rolloverData && rolloverData.categoryCarryover) || {};
+
+    const toBudget = prevToBudget + totalIncome - totalBudgeted;
 
     let iconClass = 'positive';
     let iconName = 'wallet';
@@ -593,6 +735,12 @@ const UIBudgets = {
 
         <div class="actual-to-budget-meta">
           <div class="actual-to-budget-meta-item">
+            <span class="actual-to-budget-meta-label">Tháng trước</span>
+            <span class="actual-to-budget-meta-val" style="color: ${prevToBudget > 0 ? 'var(--income)' : (prevToBudget < 0 ? 'var(--expense)' : 'var(--text-muted)')};">
+              ${prevToBudget > 0 ? `+${this.formatMoney(prevToBudget)}` : (prevToBudget < 0 ? `-${this.formatMoney(Math.abs(prevToBudget))}` : '0₫')}
+            </span>
+          </div>
+          <div class="actual-to-budget-meta-item">
             <span class="actual-to-budget-meta-label">Thu Nhập Tháng</span>
             <span class="actual-to-budget-meta-val" style="color: var(--income);">+${this.formatMoney(totalIncome)}</span>
           </div>
@@ -602,7 +750,7 @@ const UIBudgets = {
           </div>
           <div class="actual-to-budget-meta-item">
             <span class="actual-to-budget-meta-label">Đã Chi Tiêu</span>
-            <span class="actual-to-budget-meta-val" style="color: var(--expense);">${totalSpent > 0 ? `-${this.formatMoney(totalSpent)}` : '0đ'}</span>
+            <span class="actual-to-budget-meta-val" style="color: var(--expense);">${totalSpent > 0 ? `-${this.formatMoney(totalSpent)}` : '0₫'}</span>
           </div>
         </div>
       </div>
@@ -616,8 +764,14 @@ const UIBudgets = {
       const b = budgetMap.get(cat.id);
       const budgeted = b ? (b.limitAmount || 0) : 0;
       const spent = spentByCat[cat.id] || 0;
-      const available = budgeted - spent;
+      const prevCarry = categoryCarryover[String(cat.id)] || 0;
+      const available = prevCarry + budgeted - spent;
       totalAvailable += available;
+
+      let carryoverSubHtml = '';
+      if (prevCarry !== 0) {
+        carryoverSubHtml = `<span class="actual-cat-sub" style="display: block; font-size: 0.62rem; color: ${prevCarry > 0 ? 'var(--income)' : 'var(--expense)'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Trước: ${prevCarry > 0 ? '+' : ''}${this.formatMoney(prevCarry)}</span>`;
+      }
 
       let badgeClass = 'zero';
       let availText = '0đ';
@@ -644,11 +798,14 @@ const UIBudgets = {
               <div class="actual-cat-icon" style="background: ${cat.color || '#0d9488'}22; color: ${cat.color || '#0d9488'};">
                 <i data-lucide="${cat.icon || 'tag'}"></i>
               </div>
-              <span class="actual-cat-name">${escapeHTML(cat.name)}</span>
+              <div style="min-width: 0; overflow: hidden;">
+                <span class="actual-cat-name">${escapeHTML(cat.name)}</span>
+                ${carryoverSubHtml}
+              </div>
             </div>
           </td>
 
-          <td style="text-align: right; cursor: pointer;" onclick="UIBudgets.openQuickEditModal(${cat.id})" title="Nhấp để sửa phân bổ">
+          <td style="text-align: right; cursor: pointer;" onclick="UIBudgets.openQuickEditModal(${cat.id}, ${prevCarry})" title="Nhấp để sửa phân bổ">
             <div class="actual-budget-cell ${budgeted > 0 ? 'has-budget' : 'is-zero'} ${budgetedFontClass}" role="button" tabindex="0">
               <span>${budgetedText}</span>
             </div>
@@ -1656,7 +1813,7 @@ const UIBudgets = {
   },
 
   /* ==================== QUICK EDIT INLINE KEYPAD BOTTOM SHEET ==================== */
-  async openQuickEditModal(catId) {
+  async openQuickEditModal(catId, prevCarry = 0) {
     const cat = await db.categories.get(Number(catId));
     if (!cat) return;
 
@@ -1676,6 +1833,7 @@ const UIBudgets = {
       categoryId: cat.id,
       name: cat.name,
       spent,
+      prevCarry,
       currentAmount: currentLimit,
       color: cat.color || '#0d9488',
       icon: cat.icon || 'tag'
@@ -1686,7 +1844,9 @@ const UIBudgets = {
     const bubbleEl = document.getElementById('keypad-budget-cat-bubble');
 
     if (nameEl) nameEl.textContent = cat.name;
-    if (spentEl) spentEl.textContent = `Thực tế đã chi: ${this.formatMoney(spent)}`;
+    const spentText = `Thực tế đã chi: ${this.formatMoney(spent)}`;
+    const carryText = prevCarry !== 0 ? ` • Trước: ${prevCarry > 0 ? '+' : ''}${this.formatMoney(prevCarry)}` : '';
+    if (spentEl) spentEl.textContent = `${spentText}${carryText}`;
     if (bubbleEl) {
       bubbleEl.style.background = `${cat.color || '#0d9488'}22`;
       bubbleEl.style.color = cat.color || '#0d9488';

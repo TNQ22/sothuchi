@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.0.1">
+  <link rel="stylesheet" href="./css/style.css?v=2.0.2">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -2533,7 +2533,7 @@
           </div>
         </div>
 
-        <div class="modal-footer">
+          <div class="modal-footer">
           <button type="button" class="btn-secondary" onclick="UIDebts.closeModal()">Hủy</button>
           <button type="submit" class="btn-primary">Lưu Khoản Nợ</button>
         </div>
@@ -2810,11 +2810,30 @@
               </div>
             </label>
           </div>
+
+          <!-- Tùy chọn chuyển tiếp số dư (Rollover) trong Ngân sách chi tiết -->
+          <div class="form-group" id="budget-setting-rollover-group" style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+              <div>
+                <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="refresh-cw" style="width: 15px; height: 15px; color: var(--primary);"></i>
+                  <span>Chuyển tiếp số dư (Rollover)</span>
+                </div>
+                <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 2px;">
+                  Cộng dồn số dư khả dụng và tiền chưa phân bổ từ tháng trước sang tháng sau ở Ngân sách chi tiết.
+                </div>
+              </div>
+              <label class="switch" style="flex-shrink: 0; position: relative; display: inline-block; width: 44px; height: 24px;">
+                <input type="checkbox" id="budget-setting-rollover-toggle" checked style="opacity: 0; width: 0; height: 0;">
+                <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.2); transition: .2s; border-radius: 24px;"></span>
+              </label>
+            </div>
+          </div>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn-secondary" onclick="UIBudgets.closeSettingsModal()">Hủy</button>
-          <button type="submit" class="btn-primary">Lưu Chế Độ</button>
+          <button type="submit" class="btn-primary">Lưu Cài Đặt</button>
         </div>
       </form>
     </div>
@@ -3639,18 +3658,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=2.0.1"></script>
+  <script src="./js/backup.js?v=2.0.2"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=2.0.1"></script>
-  <script src="./js/ui-transactions.js?v=2.0.1"></script>
-  <script src="./js/ui-debts.js?v=2.0.1"></script>
-  <script src="./js/ui-accounts.js?v=2.0.1"></script>
-  <script src="./js/ui-budgets.js?v=2.0.1"></script>
-  <script src="./js/ui-analytics.js?v=2.0.1"></script>
-  <script src="./js/ui-settings.js?v=2.0.1"></script>
+  <script src="./js/ui-calendar.js?v=2.0.2"></script>
+  <script src="./js/ui-transactions.js?v=2.0.2"></script>
+  <script src="./js/ui-debts.js?v=2.0.2"></script>
+  <script src="./js/ui-accounts.js?v=2.0.2"></script>
+  <script src="./js/ui-budgets.js?v=2.0.2"></script>
+  <script src="./js/ui-analytics.js?v=2.0.2"></script>
+  <script src="./js/ui-settings.js?v=2.0.2"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.0.1"></script>
+  <script src="./js/app.js?v=2.0.2"></script>
 </body>
 </html>
