@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.0.8">
+  <link rel="stylesheet" href="./css/style.css?v=2.0.9">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -673,6 +673,53 @@
                 <span>Xóa Hạn Mức Danh Mục Này</span>
               </button>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- View: Lịch sử chi tiêu theo hạng mục trong tháng (Trang mới chuyên dụng) -->
+      <section id="view-budget-cat-history" class="page-view tx-page-view">
+        <div class="tx-page-card-wrapper">
+          <div class="tx-page-header">
+            <div class="tx-header-left">
+              <button type="button" class="btn-icon tx-header-btn" onclick="UIBudgets.closeCatExpenseHistory()" title="Trở lại">
+                <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+            <div class="tx-header-center" style="display: flex; align-items: center; gap: 8px;">
+              <div id="cat-history-bubble" class="actual-cat-icon" style="width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i id="cat-history-icon" data-lucide="tag" style="width: 16px; height: 16px;"></i>
+              </div>
+              <span id="cat-history-title" style="font-weight: 700; font-size: 1.05rem; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Chi Tiết Hạng Mục</span>
+            </div>
+            <div class="tx-header-right">
+              <div style="width: 36px; height: 36px;"></div>
+            </div>
+          </div>
+
+          <div class="tx-page-body" style="padding: 14px; display: flex; flex-direction: column; gap: 12px; height: calc(100vh - 65px); overflow-y: auto;">
+            <!-- Summary card -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span id="cat-history-month-text" style="font-size: 0.85rem; color: var(--text-muted);">Tháng 10/2026</span>
+                <span id="cat-history-budget-text" style="font-size: 0.85rem; color: var(--text-muted);">Hạn mức: 0 ₫</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">Tổng đã chi:</span>
+                <span id="cat-history-total-spent" style="font-size: 1.35rem; font-weight: 800; color: var(--expense);">0 ₫</span>
+              </div>
+            </div>
+
+            <!-- Overspent warning card if any -->
+            <div id="cat-history-overspent-box" style="display: none; padding: 10px 14px; background: rgba(244, 63, 94, 0.1); border-radius: var(--radius-md); align-items: center; justify-content: space-between; gap: 8px;">
+              <span id="cat-history-overspent-text" style="font-size: 0.82rem; color: var(--expense); font-weight: 600;">Chi vượt: 0 ₫</span>
+              <button type="button" class="budget-rebalance-btn" id="cat-history-rebalance-btn">Cân đối</button>
+            </div>
+
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Danh sách giao dịch</div>
+
+            <!-- Transaction list -->
+            <div id="cat-history-list" style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 32px;"></div>
           </div>
         </div>
       </section>
@@ -3646,74 +3693,65 @@
   </div>
 
 
-  <!-- Modal: Cân đối ngân sách (Bù đắp chi âm) -->
+  <!-- Modal: Cân đối ngân sách (Bù đắp chi âm) - 2 Bước -->
   <div id="modal-budget-rebalance" class="modal-overlay" onclick="if(event.target === this) UIBudgets.closeRebalanceModal()">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="arrow-left-right" style="width: 18px; height: 18px;"></i>
-          </div>
+    <div class="modal-dialog" style="max-width: 480px; max-height: 85vh; display: flex; flex-direction: column;">
+      
+      <!-- STEP 1: Danh sách hạng mục cần cân đối -->
+      <div id="rebalance-step-1" class="rebalance-step-view" style="display: flex; flex-direction: column; height: 100%;">
+        <div class="modal-header">
           <div>
             <h3 class="modal-title" style="margin: 0;">Cân Đối Ngân Sách</h3>
-            <span style="font-size: 0.75rem; color: var(--text-muted);">Bù đắp khoản chi vượt hạn mức</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Chọn hạng mục cần bù ngân sách</span>
+          </div>
+          <button type="button" class="btn-icon" onclick="UIBudgets.closeRebalanceModal()"><i data-lucide="x"></i></button>
+        </div>
+
+        <div class="modal-body" style="overflow-y: auto; padding: 14px 16px 20px 16px; display: flex; flex-direction: column; gap: 8px;">
+          <div id="rebalance-step1-list" style="display: flex; flex-direction: column; gap: 8px;">
+            <!-- Danh sách các hạng mục cần cân đối -->
           </div>
         </div>
-        <button type="button" class="btn-icon" onclick="UIBudgets.closeRebalanceModal()"><i data-lucide="x"></i></button>
       </div>
 
-      <div class="modal-body" style="overflow-y: auto; padding: 16px 20px 24px 20px; display: flex; flex-direction: column; gap: 14px;">
-        <div class="form-group" style="margin: 0;">
-          <label class="form-label" style="font-size: 0.85rem; font-weight: 600;">Hạng mục cần bù:</label>
-          <select id="rebalance-target-cat" class="form-control" onchange="UIBudgets.onRebalanceTargetChange()"></select>
-          <div id="rebalance-target-info" style="font-size: 0.78rem; color: var(--expense); margin-top: 4px; font-weight: 600;"></div>
-        </div>
-
-        <div class="form-group" style="margin: 0;">
-          <label class="form-label" style="font-size: 0.85rem; font-weight: 600;">Lấy tiền từ nguồn:</label>
-          <select id="rebalance-source-select" class="form-control"></select>
-        </div>
-
-        <div class="form-group" style="margin: 0;">
-          <label class="form-label" style="font-size: 0.85rem; font-weight: 600;">Số tiền bù đắp (₫):</label>
-          <input type="text" id="rebalance-amount-input" class="form-control money-input-lg" inputmode="numeric" style="font-size: 1.2rem; font-weight: 700;" placeholder="0">
-        </div>
-
-        <div style="display: flex; gap: 10px; margin-top: 6px;">
-          <button type="button" class="btn-secondary" style="flex: 1;" onclick="UIBudgets.closeRebalanceModal()">Hủy</button>
-          <button type="button" class="btn-primary" style="flex: 2;" onclick="UIBudgets.applyRebalance()">
-            <i data-lucide="check" style="width: 16px; height: 16px;"></i>
-            <span>Xác nhận bù ngân sách</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Lịch sử chi tiêu theo hạng mục trong tháng -->
-  <div id="modal-budget-cat-history" class="modal-overlay" onclick="if(event.target === this) UIBudgets.closeCatExpenseHistory()">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
-          <div id="cat-history-bubble" class="actual-cat-icon" style="width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-            <i id="cat-history-icon" data-lucide="tag"></i>
+      <!-- STEP 2: Chọn nguồn ngân sách & xác nhận -->
+      <div id="rebalance-step-2" class="rebalance-step-view" style="display: none; flex-direction: column; height: 100%;">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+            <button type="button" class="btn-icon" onclick="UIBudgets.rebalanceGoToStep1()" title="Quay lại danh sách" style="margin-right: 2px;">
+              <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+            </button>
+            <div style="min-width: 0;">
+              <h3 id="rebalance-step2-title" class="modal-title" style="margin: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Chọn Nguồn Bù</h3>
+              <span id="rebalance-step2-subtitle" style="font-size: 0.75rem; color: var(--expense); font-weight: 600;">Chi vượt: 0 ₫</span>
+            </div>
           </div>
-          <div style="min-width: 0;">
-            <h3 id="cat-history-title" class="modal-title" style="margin: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Ăn uống</h3>
-            <span id="cat-history-subtitle" style="font-size: 0.74rem; color: var(--text-muted); display: block; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Tổng đã chi: 0₫</span>
+          <button type="button" class="btn-icon" onclick="UIBudgets.closeRebalanceModal()"><i data-lucide="x"></i></button>
+        </div>
+
+        <div class="modal-body" style="overflow-y: auto; padding: 14px 16px 20px 16px; display: flex; flex-direction: column; gap: 14px;">
+          <div>
+            <label class="form-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;">Chọn nguồn lấy ngân sách:</label>
+            <div id="rebalance-step2-source-list" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Danh sách nguồn: Ngân sách tháng & Các danh mục còn dư -->
+            </div>
+          </div>
+
+          <div id="rebalance-step2-amount-section" style="display: flex; flex-direction: column; gap: 6px;">
+            <label class="form-label" style="font-size: 0.85rem; font-weight: 600; margin: 0;">Số tiền bù đắp (₫):</label>
+            <input type="text" id="rebalance-amount-input" class="form-control money-input-lg" inputmode="numeric" style="font-size: 1.2rem; font-weight: 700;" placeholder="0">
+            <span id="rebalance-amount-hint" style="font-size: 0.75rem; color: var(--text-muted);"></span>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 4px;">
+            <button type="button" class="btn-secondary" style="flex: 1;" onclick="UIBudgets.rebalanceGoToStep1()">Quay lại</button>
+            <button type="button" class="btn-primary" style="flex: 2;" id="rebalance-submit-btn" onclick="UIBudgets.applyRebalance()">
+              <span>Xác nhận cân đối</span>
+            </button>
           </div>
         </div>
-        <button type="button" class="btn-icon" onclick="UIBudgets.closeCatExpenseHistory()"><i data-lucide="x"></i></button>
       </div>
 
-      <div id="cat-history-overspent-box" style="display: none; padding: 10px 16px; background: rgba(244, 63, 94, 0.12); border-bottom: 1px solid rgba(244, 63, 94, 0.2); align-items: center; justify-content: space-between; gap: 8px;">
-        <span id="cat-history-overspent-text" style="font-size: 0.8rem; color: var(--expense); font-weight: 600;">⚠️ Đã chi vượt 500.000 ₫</span>
-        <button type="button" class="budget-rebalance-btn" id="cat-history-rebalance-btn" style="padding: 4px 10px; font-size: 0.76rem;">Cân đối</button>
-      </div>
-
-      <div id="cat-history-list" class="modal-body" style="overflow-y: auto; padding: 12px 16px 24px 16px; display: flex; flex-direction: column; gap: 8px; max-height: calc(85vh - 70px);">
-        <!-- Danh sách giao dịch -->
-      </div>
     </div>
   </div>
 
@@ -3730,18 +3768,18 @@
   <script src="./js/db.js"></script>
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=2.0.8"></script>
+  <script src="./js/backup.js?v=2.0.9"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=2.0.8"></script>
-  <script src="./js/ui-transactions.js?v=2.0.8"></script>
-  <script src="./js/ui-debts.js?v=2.0.8"></script>
-  <script src="./js/ui-accounts.js?v=2.0.8"></script>
-  <script src="./js/ui-budgets.js?v=2.0.8"></script>
-  <script src="./js/ui-analytics.js?v=2.0.8"></script>
-  <script src="./js/ui-settings.js?v=2.0.8"></script>
+  <script src="./js/ui-calendar.js?v=2.0.9"></script>
+  <script src="./js/ui-transactions.js?v=2.0.9"></script>
+  <script src="./js/ui-debts.js?v=2.0.9"></script>
+  <script src="./js/ui-accounts.js?v=2.0.9"></script>
+  <script src="./js/ui-budgets.js?v=2.0.9"></script>
+  <script src="./js/ui-analytics.js?v=2.0.9"></script>
+  <script src="./js/ui-settings.js?v=2.0.9"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.0.8"></script>
+  <script src="./js/app.js?v=2.0.9"></script>
 </body>
 </html>

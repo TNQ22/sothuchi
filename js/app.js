@@ -400,7 +400,7 @@ class App {
     this.lastAddTabClickTime = 0;
     const primaryViews = ['dashboard', 'accounts', 'budgets', 'settings', 'transactions', 'debts', 'analytics'];
     const isPrimary = primaryViews.includes(viewId);
-    const isTxPage = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form'].includes(viewId);
+    const isTxPage = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history'].includes(viewId);
 
     // Instantly hide/show the header in JS FIRST — before any class/DOM changes.
     // CSS :has() and body-class selectors update asynchronously (next paint frame),
@@ -420,7 +420,7 @@ class App {
 
     const mobileBottomNav = document.querySelector('.mobile-bottom-nav');
     if (mobileBottomNav) {
-      const hideNavViews = ['budget-form', 'budget-category-form', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form'];
+      const hideNavViews = ['budget-form', 'budget-category-form', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-cat-history'];
       if (hideNavViews.includes(viewId)) {
         mobileBottomNav.style.setProperty('display', 'none', 'important');
       } else {
@@ -439,7 +439,7 @@ class App {
     }
 
     // 2. Lưu previousView trước khi chuyển vào các trang con (danh mục, biểu mẫu tài khoản, ...)
-    const formSubViews = ['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form'];
+    const formSubViews = ['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history'];
     if (formSubViews.includes(viewId) && !formSubViews.includes(this.currentView)) {
       this.previousView = this.currentView;
     } else if (viewId === 'new-transaction') {
@@ -519,7 +519,8 @@ class App {
       'accumulation-form': 'Sổ Tích Lũy',
       'asset-form': 'Quản Lý Tài Sản',
       'budget-form': 'Thiết Lập Ngân Sách',
-      'budget-category-form': 'Hạn Mức Danh Mục'
+      'budget-category-form': 'Hạn Mức Danh Mục',
+      'budget-cat-history': 'Lịch Sử Chi Tiêu'
     };
     const titleEl = document.getElementById('header-page-title');
     const txHeaderCenter = document.getElementById('tx-header-center');
@@ -769,7 +770,7 @@ class App {
 
   setupSwipeToBack() {
     // view-transactions, new-transaction, category-picker, etc.: support swipe-to-back
-    const pages = document.querySelectorAll('#view-transactions, #view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form, #view-account-provider, #view-savings-form, #view-accumulation-form, #view-asset-form, #view-loan-form, #view-budget-form, #view-budget-category-form');
+    const pages = document.querySelectorAll('#view-transactions, #view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form, #view-account-provider, #view-savings-form, #view-accumulation-form, #view-asset-form, #view-loan-form, #view-budget-form, #view-budget-category-form, #view-budget-cat-history');
     if (!pages.length) return;
 
     pages.forEach(page => {
