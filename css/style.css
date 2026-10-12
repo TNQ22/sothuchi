@@ -1833,18 +1833,25 @@ body:has(#view-account-provider.active) .app-header {
     z-index: 120;
   }
 
-  /* Modal on mobile becomes a Bottom Sheet by default */
+    /* Modal on mobile - Căn giữa màn hình theo yêu cầu */
   .modal-overlay {
-    align-items: flex-end;
-    padding: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
   }
 
   .modal-dialog {
-    max-width: 100%;
-    border-radius: 20px 20px 0 0;
-    max-height: 90dvh;
-    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
-    animation: slideUpBottom 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    max-width: 480px;
+    width: 100%;
+    border-radius: var(--radius-lg);
+    max-height: 85dvh;
+    padding-bottom: 0;
+    animation: none;
+    transform: scale(0.96);
+  }
+
+  .modal-overlay.open .modal-dialog {
+    transform: scale(1);
   }
 
   /* Dedicated Transaction View styling for Mobile */
@@ -8455,4 +8462,45 @@ html, body {
 }
 .rebalance-amount-badge.zero {
   color: var(--text-muted);
+}
+
+/* Shift overspent to next month arrow button */
+.actual-avail-cell-box {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  position: relative;
+  line-height: 1;
+}
+
+.avail-shift-arrow-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  cursor: pointer;
+  margin-top: 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.avail-shift-arrow-wrap i,
+.avail-shift-arrow-wrap svg {
+  width: 10px;
+  height: 10px;
+  color: var(--expense);
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.avail-shift-arrow-wrap:hover i,
+.avail-shift-arrow-wrap:hover svg {
+  transform: translateX(1.5px);
+}
+
+.avail-shift-arrow-wrap.shifted i,
+.avail-shift-arrow-wrap.shifted svg {
+  color: #3b82f6;
 }

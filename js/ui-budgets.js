@@ -804,7 +804,14 @@ const UIBudgets = {
       const budgeted = b ? (b.limitAmount || 0) : 0;
       const spent = spentByCat[cat.id] || 0;
       const prevCarry = categoryCarryover[String(cat.id)] || 0;
-      const available = prevCarry + budgeted - spent;
+      const rawAvailable = prevCarry + budgeted - spent;
+      const isShifted = b && b.shiftToNextMonth === true;
+
+      let available = rawAvailable;
+      if (isShifted && rawAvailable < 0) {
+        available = 0; // Shifted overspending is deferred to next month
+      }
+
       totalAvailable += available;
 
       let badgeClass = 'zero';
@@ -815,6 +822,9 @@ const UIBudgets = {
       } else if (available < 0) {
         badgeClass = 'negative';
         availText = `-${this.formatMoney(Math.abs(available))}`;
+      } else if (isShifted && rawAvailable < 0) {
+        badgeClass = 'zero';
+        availText = '0đ';
       }
 
       const budgetedText = budgeted > 0 ? this.formatMoney(budgeted) : '0đ';
@@ -824,6 +834,7 @@ const UIBudgets = {
       const spentFontClass = this.getAmountFontClass(spentText);
 
       const availFontClass = this.getAmountFontClass(availText);
+      const isOverspentOrShifted = rawAvailable < 0;
 
       tableRows += `
         <tr class="actual-budget-row" data-cat-name="${escapeHTML(cat.name)}">
@@ -849,7 +860,16 @@ const UIBudgets = {
           </td>
 
           <td style="text-align: right; cursor: pointer;" onclick="UIBudgets.openRebalanceModal(${cat.id})" title="${available < 0 ? 'Chi âm - Nhấp để bù ngân sách' : 'Nhấp để cân đối / điều chuyển ngân sách'}">
-            <span class="actual-avail-badge ${badgeClass} ${availFontClass}" style="cursor: pointer;">${availText}</span>
+            <div class="actual-avail-cell-box">
+              <span class="actual-avail-badge ${badgeClass} ${availFontClass}">${availText}</span>
+              ${isOverspentOrShifted ? `
+                <div class="avail-shift-arrow-wrap ${isShifted ? 'shifted' : ''}" 
+                     onclick="event.stopPropagation(); UIBudgets.toggleShiftOverspentToNextMonth(${cat.id})" 
+                     title="${isShifted ? 'Đã chuyển chi vượt sang tháng sau (Nhấp để hoàn tác)' : 'Chuyển chi vượt sang tháng sau'}">
+                  <i data-lucide="arrow-right"></i>
+                </div>
+              ` : ''}
+            </div>
           </td>
         </tr>
       `;
@@ -2558,6 +2578,52 @@ const UIBudgets = {
   rebalanceSelectedSource: null,
   rebalanceDataCache: null,
 
+  
+  /* ==================== TOGGLE SHIFT OVERSPENT TO NEXT MONTH (Request 6) ==================== */
+  async toggleShiftOverspentToNextMonth(catId) {
+    try {
+      const cat = await db.categories.get(Number(catId));
+      const catName = cat ? cat.name : 'hạng mục';
+
+      const currentMonthBudgets = await db.budgets.where('month').equals(this.currentMonth).toArray();
+      let b = currentMonthBudgets.find(item => Number(item.categoryId) === Number(catId));
+
+      const now = Date.now();
+      const currentShiftState = b ? (b.shiftToNextMonth === true) : false;
+      const newShiftState = !currentShiftState;
+
+      if (b) {
+        await db.budgets.update(b.id, {
+          shiftToNextMonth: newShiftState,
+          updatedAt: now
+        });
+      } else {
+        await db.budgets.add({
+          categoryId: Number(catId),
+          month: this.currentMonth,
+          limitAmount: 0,
+          shiftToNextMonth: newShiftState,
+          updatedAt: now
+        });
+      }
+
+      const [y, m] = this.currentMonth.split('-').map(Number);
+      const nextDate = new Date(y, m, 1);
+      const nextMonthStr = `${String(nextDate.getMonth() + 1).padStart(2, '0')}/${nextDate.getFullYear()}`;
+
+      if (newShiftState) {
+        showToast(`Đã chuyển chi vượt của "${catName}" sang tháng ${nextMonthStr}`, 'success');
+      } else {
+        showToast(`Đã hoàn tác chuyển chi vượt của "${catName}"`, 'info');
+      }
+
+      await this.loadMonthBudgets();
+    } catch (err) {
+      console.error('Error in toggleShiftOverspentToNextMonth:', err);
+      showToast('Có lỗi xảy ra khi chuyển ngân sách vượt', 'error');
+    }
+  },
+
   async openRebalanceModal(targetCatId = null) {
     try {
       const allCategories = await db.categories.where('isDeleted').equals(0).toArray();
@@ -2601,10 +2667,10 @@ const UIBudgets = {
       }
 
       const rolloverData = await this.calculateDetailedRollover(this.currentMonth, allowedAccountIds);
-      const prevToBudget = Math.max(0, (rolloverData && rolloverData.prevToBudget) || 0);
+      const prevToBudget = (rolloverData && rolloverData.prevToBudget) || 0; // can be negative (Request 3)
       const categoryCarryover = (rolloverData && rolloverData.categoryCarryover) || {};
 
-      const toBudget = Math.max(0, prevToBudget + totalIncome - totalBudgeted);
+      const toBudget = prevToBudget + totalIncome - totalBudgeted; // can be negative (Request 3)
 
       // Identify overspent & surplus categories
       const overspentList = [];
@@ -2615,7 +2681,10 @@ const UIBudgets = {
         const budgeted = b ? (b.limitAmount || 0) : 0;
         const spent = spentByCat[cat.id] || 0;
         const prevCarry = categoryCarryover[String(cat.id)] || 0;
-        const available = prevCarry + budgeted - spent;
+        const rawAvailable = prevCarry + budgeted - spent;
+        const isShifted = b && b.shiftToNextMonth === true;
+
+        const available = (isShifted && rawAvailable < 0) ? 0 : rawAvailable;
 
         if (available < 0) {
           overspentList.push({ cat, available, deficit: Math.abs(available), budgeted });
@@ -2647,8 +2716,8 @@ const UIBudgets = {
       }
 
       if (targetCatId) {
-        // Direct jump to Step 2 for chosen category
-        this.rebalanceSelectTarget(Number(targetCatId));
+        // Direct jump to Step 2 for chosen category or 'TO_BUDGET'
+        this.rebalanceSelectTarget(targetCatId);
       } else {
         // Show Step 1: List of categories needing rebalance
         this.renderRebalanceStep1();
@@ -2671,11 +2740,34 @@ const UIBudgets = {
 
     if (!listEl || !this.rebalanceDataCache) return;
 
-    const { overspentList, expenseCategories, categoryCarryover, budgetMap, spentByCat } = this.rebalanceDataCache;
+    const { overspentList, expenseCategories, categoryCarryover, budgetMap, spentByCat, toBudget } = this.rebalanceDataCache;
 
-    if (overspentList.length === 0) {
-      // If no category is overspent, let user pick any category
-      listEl.innerHTML = `
+    let itemsHtml = '';
+
+    // If toBudget < 0, show Ngân sách tháng as a target needing rebalance at the very top (Request 1)
+    if (toBudget < 0) {
+      itemsHtml += `
+        <div class="rebalance-cat-item" onclick="UIBudgets.rebalanceSelectTarget('TO_BUDGET')" style="border-left: 3px solid var(--expense);">
+          <div class="rebalance-item-left">
+            <div class="rebalance-item-icon" style="background: rgba(239, 68, 68, 0.15); color: var(--expense);">
+              <i data-lucide="wallet"></i>
+            </div>
+            <div>
+              <div class="rebalance-item-name">Ngân sách tháng (Bị âm)</div>
+              <div style="font-size: 0.74rem; color: var(--text-muted);">Cần bù để đưa về 0 ₫</div>
+            </div>
+          </div>
+          <div class="rebalance-item-right">
+            <span class="rebalance-amount-badge deficit">Chi vượt: ${this.formatMoney(Math.abs(toBudget))}</span>
+            <i data-lucide="chevron-right" style="width: 16px; height: 16px; color: var(--text-muted);"></i>
+          </div>
+        </div>
+      `;
+    }
+
+    if (overspentList.length === 0 && toBudget >= 0) {
+      // If no category is overspent and toBudget >= 0, let user pick any category
+      itemsHtml += `
         <div style="font-size: 0.85rem; color: var(--text-muted); padding: 8px 4px; line-height: 1.4;">
           Không có hạng mục nào bị chi vượt trong tháng. Bạn có thể chọn bất kỳ hạng mục nào dưới đây để cấp thêm ngân sách:
         </div>
@@ -2701,27 +2793,30 @@ const UIBudgets = {
         }).join('')}
       `;
     } else {
-      listEl.innerHTML = `
-        <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">
-          Hạng mục cần bù ngân sách:
-        </div>
-        ${overspentList.map(item => `
-          <div class="rebalance-cat-item" onclick="UIBudgets.rebalanceSelectTarget(${item.cat.id})">
-            <div class="rebalance-item-left">
-              <div class="rebalance-item-icon" style="background: ${item.cat.color || '#0d9488'}22; color: ${item.cat.color || '#0d9488'};">
-                <i data-lucide="${item.cat.icon || 'tag'}"></i>
-              </div>
-              <div class="rebalance-item-name">${escapeHTML(item.cat.name)}</div>
-            </div>
-            <div class="rebalance-item-right">
-              <span class="rebalance-amount-badge deficit">Chi vượt: ${this.formatMoney(item.deficit)}</span>
-              <i data-lucide="chevron-right" style="width: 16px; height: 16px; color: var(--text-muted);"></i>
-            </div>
+      if (overspentList.length > 0) {
+        itemsHtml += `
+          <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin: 6px 0 2px 0;">
+            Hạng mục cần bù ngân sách:
           </div>
-        `).join('')}
-      `;
+          ${overspentList.map(item => `
+            <div class="rebalance-cat-item" onclick="UIBudgets.rebalanceSelectTarget(${item.cat.id})">
+              <div class="rebalance-item-left">
+                <div class="rebalance-item-icon" style="background: ${item.cat.color || '#0d9488'}22; color: ${item.cat.color || '#0d9488'};">
+                  <i data-lucide="${item.cat.icon || 'tag'}"></i>
+                </div>
+                <div class="rebalance-item-name">${escapeHTML(item.cat.name)}</div>
+              </div>
+              <div class="rebalance-item-right">
+                <span class="rebalance-amount-badge deficit">Chi vượt: ${this.formatMoney(item.deficit)}</span>
+                <i data-lucide="chevron-right" style="width: 16px; height: 16px; color: var(--text-muted);"></i>
+              </div>
+            </div>
+          `).join('')}
+        `;
+      }
     }
 
+    listEl.innerHTML = itemsHtml;
     if (window.lucide) lucide.createIcons();
   },
 
@@ -2729,60 +2824,81 @@ const UIBudgets = {
     this.renderRebalanceStep1();
   },
 
-  rebalanceSelectTarget(catId) {
+  rebalanceSelectTarget(targetId) {
     if (!this.rebalanceDataCache) return;
 
-    this.rebalanceTargetCat = Number(catId);
+    this.rebalanceTargetCat = targetId;
     const { expenseCategories, budgetMap, categoryCarryover, spentByCat, surplusList, toBudget } = this.rebalanceDataCache;
-
-    const cat = expenseCategories.find(c => Number(c.id) === Number(catId));
-    if (!cat) return;
-
-    const prevCarry = categoryCarryover[String(cat.id)] || 0;
-    const budgeted = budgetMap.get(cat.id)?.limitAmount || 0;
-    const spent = spentByCat[cat.id] || 0;
-    const available = prevCarry + budgeted - spent;
-    const deficit = available < 0 ? Math.abs(available) : 0;
 
     const step1 = document.getElementById('rebalance-step-1');
     const step2 = document.getElementById('rebalance-step-2');
     const titleEl = document.getElementById('rebalance-step2-title');
     const subtitleEl = document.getElementById('rebalance-step2-subtitle');
     const sourceListEl = document.getElementById('rebalance-step2-source-list');
+    const submitBtn = document.getElementById('rebalance-submit-btn');
 
     if (step1) step1.style.display = 'none';
     if (step2) step2.style.display = 'flex';
 
-    if (titleEl) titleEl.textContent = `Bù cho: ${cat.name}`;
-    if (subtitleEl) {
-      if (deficit > 0) {
-        subtitleEl.textContent = `Chi vượt: ${this.formatMoney(deficit)}`;
-        subtitleEl.style.color = 'var(--expense)';
-      } else {
-        subtitleEl.textContent = `Hiện có: ${this.formatMoney(available)}`;
-        subtitleEl.style.color = 'var(--text-muted)';
-      }
-    }
+    let deficit = 0;
+    let validSurplusCats = [];
 
-    // Filter surplus categories (excluding target category itself)
-    const validSurplusCats = surplusList.filter(item => Number(item.cat.id) !== Number(catId));
+    if (String(targetId) === 'TO_BUDGET') {
+      // Target is monthly total budget (to bring it to 0)
+      deficit = Math.abs(toBudget);
+      if (titleEl) titleEl.textContent = 'Bù cho: Ngân sách tháng';
+      if (subtitleEl) {
+        subtitleEl.textContent = `Cần bù về 0: ${this.formatMoney(deficit)}`;
+        subtitleEl.style.color = 'var(--expense)';
+      }
+      validSurplusCats = [...surplusList];
+    } else {
+      const catId = Number(targetId);
+      const cat = expenseCategories.find(c => Number(c.id) === catId);
+      if (!cat) return;
+
+      const prevCarry = categoryCarryover[String(cat.id)] || 0;
+      const budgeted = budgetMap.get(cat.id)?.limitAmount || 0;
+      const spent = spentByCat[cat.id] || 0;
+      const rawAvailable = prevCarry + budgeted - spent;
+      const isShifted = budgetMap.get(cat.id)?.shiftToNextMonth === true;
+      const available = (isShifted && rawAvailable < 0) ? 0 : rawAvailable;
+      deficit = available < 0 ? Math.abs(available) : 0;
+
+      if (titleEl) titleEl.textContent = `Bù cho: ${cat.name}`;
+      if (subtitleEl) {
+        if (deficit > 0) {
+          subtitleEl.textContent = `Chi vượt: ${this.formatMoney(deficit)}`;
+          subtitleEl.style.color = 'var(--expense)';
+        } else {
+          subtitleEl.textContent = `Hiện có: ${this.formatMoney(available)}`;
+          subtitleEl.style.color = 'var(--text-muted)';
+        }
+      }
+
+      validSurplusCats = surplusList.filter(item => Number(item.cat.id) !== catId);
+    }
 
     let sourcesHtml = '';
 
-    // Source 1: Ngân sách tháng sẵn sàng (To Budget)
-    sourcesHtml += `
-      <div class="rebalance-source-item" id="rebalance-src-TO_BUDGET" onclick="UIBudgets.rebalancePickSource('TO_BUDGET', ${toBudget})">
-        <div class="rebalance-item-left">
-          <div class="rebalance-item-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--income);">
-            <i data-lucide="wallet"></i>
+    // Request 4: Ngân sách tháng bằng số không hoặc âm thì KHÔNG cho lấy nguồn
+    const canUseToBudget = String(targetId) !== 'TO_BUDGET' && toBudget > 0;
+
+    if (canUseToBudget) {
+      sourcesHtml += `
+        <div class="rebalance-source-item" id="rebalance-src-TO_BUDGET" onclick="UIBudgets.rebalancePickSource('TO_BUDGET', ${toBudget})">
+          <div class="rebalance-item-left">
+            <div class="rebalance-item-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--income);">
+              <i data-lucide="wallet"></i>
+            </div>
+            <div class="rebalance-item-name">Ngân sách tháng sẵn sàng</div>
           </div>
-          <div class="rebalance-item-name">Ngân sách tháng sẵn sàng</div>
+          <div class="rebalance-item-right">
+            <span class="rebalance-amount-badge surplus">+${this.formatMoney(toBudget)}</span>
+          </div>
         </div>
-        <div class="rebalance-item-right">
-          <span class="rebalance-amount-badge ${toBudget > 0 ? 'surplus' : 'zero'}">${this.formatMoney(toBudget)}</span>
-        </div>
-      </div>
-    `;
+      `;
+    }
 
     // Source 2..N: Danh sách danh mục với số ngân sách còn bên phải
     validSurplusCats.forEach(item => {
@@ -2801,15 +2917,26 @@ const UIBudgets = {
       `;
     });
 
+    if (sourcesHtml === '') {
+      sourcesHtml = `
+        <div style="font-size: 0.85rem; color: var(--expense); padding: 16px 12px; text-align: center; background: rgba(244, 63, 94, 0.08); border-radius: var(--radius-md);">
+          Không có nguồn ngân sách nào còn dư để cân đối.
+        </div>
+      `;
+      if (submitBtn) submitBtn.disabled = true;
+    } else {
+      if (submitBtn) submitBtn.disabled = false;
+    }
+
     if (sourceListEl) sourceListEl.innerHTML = sourcesHtml;
 
     // Auto-select initial source
-    if (toBudget > 0) {
+    if (canUseToBudget) {
       this.rebalancePickSource('TO_BUDGET', toBudget, deficit);
     } else if (validSurplusCats.length > 0) {
       this.rebalancePickSource(validSurplusCats[0].cat.id, validSurplusCats[0].surplus, deficit);
     } else {
-      this.rebalancePickSource('TO_BUDGET', 0, deficit);
+      this.rebalancePickSource(null, 0, deficit);
     }
 
     if (window.lucide) lucide.createIcons();
@@ -2820,21 +2947,32 @@ const UIBudgets = {
 
     // Highlight selected source row
     document.querySelectorAll('.rebalance-source-item').forEach(el => el.classList.remove('selected'));
-    const selectedEl = document.getElementById(`rebalance-src-${sourceKey}`);
-    if (selectedEl) selectedEl.classList.add('selected');
+    if (sourceKey) {
+      const selectedEl = document.getElementById(`rebalance-src-${sourceKey}`);
+      if (selectedEl) selectedEl.classList.add('selected');
+    }
 
     const amountInput = document.getElementById('rebalance-amount-input');
     const hintEl = document.getElementById('rebalance-amount-hint');
 
-    const { expenseCategories, budgetMap, categoryCarryover, spentByCat } = this.rebalanceDataCache || {};
-    const cat = (expenseCategories || []).find(c => Number(c.id) === Number(this.rebalanceTargetCat));
+    const { expenseCategories, budgetMap, categoryCarryover, spentByCat, toBudget } = this.rebalanceDataCache || {};
     let deficit = targetDeficit;
-    if (deficit === null && cat) {
-      const prevCarry = categoryCarryover[String(cat.id)] || 0;
-      const budgeted = budgetMap.get(cat.id)?.limitAmount || 0;
-      const spent = spentByCat[cat.id] || 0;
-      const avail = prevCarry + budgeted - spent;
-      deficit = avail < 0 ? Math.abs(avail) : 0;
+
+    if (deficit === null) {
+      if (String(this.rebalanceTargetCat) === 'TO_BUDGET') {
+        deficit = toBudget < 0 ? Math.abs(toBudget) : 0;
+      } else {
+        const cat = (expenseCategories || []).find(c => Number(c.id) === Number(this.rebalanceTargetCat));
+        if (cat) {
+          const prevCarry = categoryCarryover[String(cat.id)] || 0;
+          const budgeted = budgetMap.get(cat.id)?.limitAmount || 0;
+          const spent = spentByCat[cat.id] || 0;
+          const rawAvailable = prevCarry + budgeted - spent;
+          const isShifted = budgetMap.get(cat.id)?.shiftToNextMonth === true;
+          const avail = (isShifted && rawAvailable < 0) ? 0 : rawAvailable;
+          deficit = avail < 0 ? Math.abs(avail) : 0;
+        }
+      }
     }
 
     const suggested = (deficit && deficit > 0) ? (maxAvailable > 0 ? Math.min(deficit, maxAvailable) : deficit) : (maxAvailable > 0 ? maxAvailable : 0);
@@ -2844,7 +2982,7 @@ const UIBudgets = {
     }
 
     if (hintEl) {
-      hintEl.textContent = maxAvailable > 0 ? `Nguồn này có sẵn: ${this.formatMoney(maxAvailable)}` : 'Nguồn này hiện có 0 ₫';
+      hintEl.textContent = maxAvailable > 0 ? `Nguồn này có sẵn: ${this.formatMoney(maxAvailable)}` : 'Chưa chọn nguồn hoặc nguồn có 0 ₫';
     }
   },
 
@@ -2855,7 +2993,8 @@ const UIBudgets = {
 
   async applyRebalance() {
     try {
-      const targetCatId = Number(this.rebalanceTargetCat);
+      const isTargetToBudget = String(this.rebalanceTargetCat) === 'TO_BUDGET';
+      const targetCatId = isTargetToBudget ? 'TO_BUDGET' : Number(this.rebalanceTargetCat);
       const sourceVal = this.rebalanceSelectedSource;
       const amountInput = document.getElementById('rebalance-amount-input');
       const amount = Number((amountInput?.value || '').replace(/\D/g, ''));
@@ -2879,13 +3018,59 @@ const UIBudgets = {
       }
 
       const now = Date.now();
+      const currentMonthBudgets = await db.budgets.where('month').equals(this.currentMonth).toArray();
+
+      // Case 1: Target is TO_BUDGET (Request 1 - balance monthly budget back to 0)
+      if (isTargetToBudget) {
+        const sourceCatId = Number(sourceVal);
+        const sourceCat = await db.categories.get(sourceCatId);
+        const sourceCatName = sourceCat ? sourceCat.name : 'hạng mục';
+
+        // Check against actual surplus (Request 5)
+        const sourceSurplus = this.rebalanceDataCache?.surplusList?.find(s => Number(s.cat.id) === sourceCatId)?.surplus || 0;
+        if (amount > sourceSurplus) {
+          showToast(`Số tiền vượt quá số dư còn lại (${this.formatMoney(sourceSurplus)}) của "${sourceCatName}"`, 'error');
+          return;
+        }
+
+        const sourceBudget = currentMonthBudgets.find(b => Number(b.categoryId) === sourceCatId);
+        const currentSourceLimit = sourceBudget ? (sourceBudget.limitAmount || 0) : 0;
+        const newSourceLimit = currentSourceLimit - amount;
+
+        if (sourceBudget) {
+          await db.budgets.update(sourceBudget.id, { limitAmount: newSourceLimit, updatedAt: now });
+        } else {
+          await db.budgets.add({
+            categoryId: sourceCatId,
+            month: this.currentMonth,
+            limitAmount: newSourceLimit,
+            updatedAt: now
+          });
+        }
+
+        showToast(`Đã chuyển ${this.formatMoney(amount)} từ "${sourceCatName}" về ngân sách tháng`, 'success');
+        this.closeRebalanceModal();
+        if (window.app) await window.app.refreshAll(); else this.loadMonthBudgets();
+        return;
+      }
+
+      // Case 2: Target is a category
       const targetCat = await db.categories.get(targetCatId);
       const targetCatName = targetCat ? targetCat.name : 'hạng mục';
 
-      const currentMonthBudgets = await db.budgets.where('month').equals(this.currentMonth).toArray();
-
-      // 1. If source is TO_BUDGET
+      // Subcase A: Source is TO_BUDGET
       if (sourceVal === 'TO_BUDGET') {
+        const toBudget = this.rebalanceDataCache?.toBudget || 0;
+        // Request 4: Cannot take from TO_BUDGET if toBudget <= 0
+        if (toBudget <= 0) {
+          showToast('Ngân sách tháng bằng 0 hoặc âm, không thể lấy làm nguồn bù', 'error');
+          return;
+        }
+        if (amount > toBudget) {
+          showToast(`Số tiền vượt quá ngân sách tháng sẵn sàng (${this.formatMoney(toBudget)})`, 'error');
+          return;
+        }
+
         const existing = currentMonthBudgets.find(b => Number(b.categoryId) === targetCatId);
         const currentLimit = existing ? (existing.limitAmount || 0) : 0;
         const newLimit = currentLimit + amount;
@@ -2903,28 +3088,38 @@ const UIBudgets = {
 
         showToast(`Đã bù thêm ${this.formatMoney(amount)} cho "${targetCatName}"`, 'success');
       } else {
-        // 2. If source is another category
+        // Subcase B: Source is another category
         const sourceCatId = Number(sourceVal);
         const sourceCat = await db.categories.get(sourceCatId);
         const sourceCatName = sourceCat ? sourceCat.name : 'hạng mục';
 
-        const sourceBudget = currentMonthBudgets.find(b => Number(b.categoryId) === sourceCatId);
-        const targetBudget = currentMonthBudgets.find(b => Number(b.categoryId) === targetCatId);
-
-        const sourceLimit = sourceBudget ? (sourceBudget.limitAmount || 0) : 0;
-        const targetLimit = targetBudget ? (targetBudget.limitAmount || 0) : 0;
-
-        if (amount > sourceLimit) {
-          showToast(`Số tiền vượt quá hạn mức hiện có của "${sourceCatName}"`, 'error');
+        // Check against actual available surplus (Fix for Request 5!)
+        const sourceSurplus = this.rebalanceDataCache?.surplusList?.find(s => Number(s.cat.id) === sourceCatId)?.surplus || 0;
+        if (amount > sourceSurplus) {
+          showToast(`Số tiền vượt quá số dư còn lại (${this.formatMoney(sourceSurplus)}) của "${sourceCatName}"`, 'error');
           return;
         }
 
-        const newSourceLimit = sourceLimit - amount;
-        const newTargetLimit = targetLimit + amount;
+        const sourceBudget = currentMonthBudgets.find(b => Number(b.categoryId) === sourceCatId);
+        const targetBudget = currentMonthBudgets.find(b => Number(b.categoryId) === targetCatId);
+
+        const currentSourceLimit = sourceBudget ? (sourceBudget.limitAmount || 0) : 0;
+        const currentTargetLimit = targetBudget ? (targetBudget.limitAmount || 0) : 0;
+
+        const newSourceLimit = currentSourceLimit - amount;
+        const newTargetLimit = currentTargetLimit + amount;
 
         if (sourceBudget) {
           await db.budgets.update(sourceBudget.id, { limitAmount: newSourceLimit, updatedAt: now });
+        } else {
+          await db.budgets.add({
+            categoryId: sourceCatId,
+            month: this.currentMonth,
+            limitAmount: newSourceLimit,
+            updatedAt: now
+          });
         }
+
         if (targetBudget) {
           await db.budgets.update(targetBudget.id, { limitAmount: newTargetLimit, updatedAt: now });
         } else {
