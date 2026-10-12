@@ -717,10 +717,26 @@ const UITransactions = {
       cur = input?.value?.trim() || '0';
       if (curSymbolEl) curSymbolEl.textContent = '₫';
     } else if (target === 'budget-quick-amount') {
-      const input = document.getElementById('budget-quick-amount-input');
-      cur = input?.value?.trim() || '0';
+      const bPanel = document.getElementById('keypad-budget-quick-panel');
+      const qRow = document.querySelector('#modal-keypad .keypad-quick-row');
+      const hClose = document.querySelector('#modal-keypad .keypad-header-close-btn');
+      if (bPanel) bPanel.style.display = 'flex';
+      if (qRow) qRow.style.display = 'none';
+      if (hClose) hClose.style.display = 'none';
+      if (window.UIBudgets && window.UIBudgets.quickEditTarget) {
+        const curAmt = window.UIBudgets.quickEditTarget.currentAmount || 0;
+        cur = curAmt > 0 ? new Intl.NumberFormat('vi-VN').format(curAmt) : '0';
+      } else {
+        cur = '0';
+      }
       if (curSymbolEl) curSymbolEl.textContent = '₫';
     } else {
+      const bPanel = document.getElementById('keypad-budget-quick-panel');
+      const qRow = document.querySelector('#modal-keypad .keypad-quick-row');
+      const hClose = document.querySelector('#modal-keypad .keypad-header-close-btn');
+      if (bPanel) bPanel.style.display = 'none';
+      if (qRow) qRow.style.display = 'flex';
+      if (hClose) hClose.style.display = 'flex';
       const input = document.getElementById('tx-amount-input');
       const amountText = document.getElementById('tx-amount-text');
       cur = input?.value?.trim() || amountText?.textContent?.trim() || '0';
@@ -743,10 +759,24 @@ const UITransactions = {
     modal.classList.add('open');
   },
 
-  closeKeypad() {
+  closeKeypad(skipSave = false) {
     const modal = document.getElementById('modal-keypad');
     const display = document.getElementById('keypad-live-val');
     if (!modal) return;
+
+    if (!skipSave && this.activeKeypadTarget === 'budget-quick-amount') {
+      if (window.UIBudgets && typeof window.UIBudgets.handleQuickEditSubmit === 'function') {
+        window.UIBudgets.handleQuickEditSubmit();
+        return;
+      }
+    }
+
+    const bPanel = document.getElementById('keypad-budget-quick-panel');
+    const qRow = document.querySelector('#modal-keypad .keypad-quick-row');
+    const hClose = document.querySelector('#modal-keypad .keypad-header-close-btn');
+    if (bPanel) bPanel.style.display = 'none';
+    if (qRow) qRow.style.display = 'flex';
+    if (hClose) hClose.style.display = 'flex';
 
     // Ngăn chặn triệt để ghost click / click xuyên thấu làm nhảy lung tung hoặc kích hoạt nút bên dưới
     const blocker = document.createElement('div');

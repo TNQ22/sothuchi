@@ -1655,7 +1655,7 @@ const UIBudgets = {
     }
   },
 
-  /* ==================== MODAL 5: QUICK EDIT INLINE KEYPAD ==================== */
+  /* ==================== QUICK EDIT INLINE KEYPAD BOTTOM SHEET ==================== */
   async openQuickEditModal(catId) {
     const cat = await db.categories.get(Number(catId));
     if (!cat) return;
@@ -1681,55 +1681,42 @@ const UIBudgets = {
       icon: cat.icon || 'tag'
     };
 
-    const modal = document.getElementById('modal-budget-quick-edit');
-    if (!modal) return;
+    const nameEl = document.getElementById('keypad-budget-cat-name');
+    const spentEl = document.getElementById('keypad-budget-cat-spent');
+    const bubbleEl = document.getElementById('keypad-budget-cat-bubble');
 
-    document.getElementById('budget-quick-cat-id').value = cat.id;
-    document.getElementById('budget-quick-cat-name').textContent = cat.name;
-    document.getElementById('budget-quick-cat-spent').textContent = `Thực tế đã chi tháng này: ${this.formatMoney(spent)}`;
-
-    const bubble = document.getElementById('budget-quick-cat-bubble');
-    if (bubble) {
-      bubble.style.background = `${cat.color || '#0d9488'}22`;
-      bubble.style.color = cat.color || '#0d9488';
-      bubble.innerHTML = `<i data-lucide="${cat.icon || 'tag'}"></i>`;
+    if (nameEl) nameEl.textContent = cat.name;
+    if (spentEl) spentEl.textContent = `Thực tế đã chi: ${this.formatMoney(spent)}`;
+    if (bubbleEl) {
+      bubbleEl.style.background = `${cat.color || '#0d9488'}22`;
+      bubbleEl.style.color = cat.color || '#0d9488';
+      bubbleEl.innerHTML = `<i data-lucide="${cat.icon || 'tag'}"></i>`;
     }
 
-    const input = document.getElementById('budget-quick-amount-input');
-    if (input) {
-      input.value = currentLimit > 0 ? new Intl.NumberFormat('vi-VN').format(currentLimit) : '';
-    }
-
-    modal.classList.add('open');
-    if (window.lucide) lucide.createIcons();
-
-    // Auto open numeric keypad for quick budget edit
     if (window.UITransactions && typeof window.UITransactions.openKeypad === 'function') {
-      setTimeout(() => {
-        window.UITransactions.openKeypad('budget-quick-amount');
-      }, 50);
+      window.UITransactions.openKeypad('budget-quick-amount');
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  cancelQuickKeypad() {
+    this.quickEditTarget = null;
+    if (window.UITransactions && typeof window.UITransactions.closeKeypad === 'function') {
+      window.UITransactions.closeKeypad(true);
     }
   },
 
   closeQuickEditModal() {
-    const modal = document.getElementById('modal-budget-quick-edit');
-    if (modal) modal.classList.remove('open');
-    this.quickEditTarget = null;
-    if (window.UITransactions && typeof window.UITransactions.closeKeypad === 'function') {
-      window.UITransactions.closeKeypad();
-    }
+    this.cancelQuickKeypad();
   },
 
   adjustQuickAmount(delta) {
-    const input = document.getElementById('budget-quick-amount-input');
-    if (!input) return;
-    const current = Number((input.value || '').replace(/\D/g, '')) || 0;
-    const next = Math.max(0, current + delta);
-    const formatted = new Intl.NumberFormat('vi-VN').format(next);
-    input.value = formatted;
     const keypadLive = document.getElementById('keypad-live-val');
-    if (keypadLive && window.UITransactions && window.UITransactions.activeKeypadTarget === 'budget-quick-amount') {
-      keypadLive.textContent = formatted;
+    if (!keypadLive) return;
+    const current = Number((keypadLive.textContent || '').replace(/\D/g, '')) || 0;
+    const next = Math.max(0, current + delta);
+    keypadLive.textContent = new Intl.NumberFormat('vi-VN').format(next);
+    if (window.UITransactions) {
       window.UITransactions.keypadAutoSelect = true;
       keypadLive.classList.add('is-selected');
     }
@@ -1737,35 +1724,36 @@ const UIBudgets = {
 
   setQuickToSpent() {
     if (!this.quickEditTarget) return;
-    const input = document.getElementById('budget-quick-amount-input');
     const formatted = new Intl.NumberFormat('vi-VN').format(this.quickEditTarget.spent);
-    if (input) {
-      input.value = formatted;
-    }
     const keypadLive = document.getElementById('keypad-live-val');
-    if (keypadLive && window.UITransactions && window.UITransactions.activeKeypadTarget === 'budget-quick-amount') {
+    if (keypadLive) {
       keypadLive.textContent = formatted;
-      window.UITransactions.keypadAutoSelect = true;
-      keypadLive.classList.add('is-selected');
+      if (window.UITransactions) {
+        window.UITransactions.keypadAutoSelect = true;
+        keypadLive.classList.add('is-selected');
+      }
     }
   },
 
   setQuickZero() {
-    const input = document.getElementById('budget-quick-amount-input');
-    if (input) input.value = '0';
     const keypadLive = document.getElementById('keypad-live-val');
-    if (keypadLive && window.UITransactions && window.UITransactions.activeKeypadTarget === 'budget-quick-amount') {
+    if (keypadLive) {
       keypadLive.textContent = '0';
-      window.UITransactions.keypadAutoSelect = true;
-      keypadLive.classList.add('is-selected');
+      if (window.UITransactions) {
+        window.UITransactions.keypadAutoSelect = true;
+        keypadLive.classList.add('is-selected');
+      }
     }
   },
 
   async handleQuickEditSubmit() {
     if (!this.quickEditTarget) return;
     const categoryId = this.quickEditTarget.categoryId;
-    const amountStr = document.getElementById('budget-quick-amount-input')?.value || '';
-    const limitAmount = Number(amountStr.replace(/\D/g, '')) || 0;
+    const catName = this.quickEditTarget.name;
+    const keypadLive = document.getElementById('keypad-live-val');
+    const amountStr = keypadLive ? keypadLive.textContent : '0';
+    const evaluated = window.UITransactions ? window.UITransactions.evaluateAmountExpression(amountStr) : null;
+    const limitAmount = evaluated !== null && evaluated >= 0 ? evaluated : (Number((amountStr || '').replace(/\D/g, '')) || 0);
 
     const existing = await db.budgets.where({ categoryId, month: this.currentMonth }).first();
     const now = Date.now();
@@ -1773,7 +1761,7 @@ const UIBudgets = {
     if (limitAmount <= 0) {
       if (existing) {
         await db.budgets.delete(existing.id);
-        showToast(`Đã xóa ngân sách [${this.quickEditTarget.name}]`, 'info');
+        if (typeof showToast === 'function') showToast(`Đã xóa ngân sách [${catName}]`, 'info');
       }
     } else {
       if (existing) {
@@ -1781,11 +1769,18 @@ const UIBudgets = {
       } else {
         await db.budgets.add({ categoryId, month: this.currentMonth, limitAmount, updatedAt: now });
       }
-      showToast(`Đã lưu [${this.quickEditTarget.name}]: ${this.formatMoney(limitAmount)}`, 'success');
+      if (typeof showToast === 'function') showToast(`Đã lưu [${catName}]: ${this.formatMoney(limitAmount)}`, 'success');
     }
 
-    this.closeQuickEditModal();
-    window.app.refreshAll();
+    this.quickEditTarget = null;
+    if (window.UITransactions && typeof window.UITransactions.closeKeypad === 'function') {
+      window.UITransactions.closeKeypad(true);
+    }
+    if (window.app && typeof window.app.refreshAll === 'function') {
+      window.app.refreshAll();
+    } else {
+      this.loadMonthBudgets();
+    }
   },
 
     /* ==================== MODAL 4: COPY / AUTO SETUP BUDGET ==================== */
