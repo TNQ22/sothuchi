@@ -589,6 +589,18 @@ const UIBudgets = {
         totalSpent,
         spentByCat
       });
+
+      // 7. Check non-intrusive alerts (Simple mode)
+      this.checkBudgetAlerts({
+        overallBudget,
+        categoryBudgets,
+        expenseCategories,
+        catMap,
+        totalIncome,
+        totalSpent,
+        spentByCat,
+        rolloverData: null
+      });
     } else {
       if (paneSimple) paneSimple.style.display = 'none';
       if (paneDetailed) paneDetailed.style.display = 'block';
@@ -604,16 +616,19 @@ const UIBudgets = {
         spentByCat,
         rolloverData
       });
-    }
 
-    // 7. Check non-intrusive alerts
-    this.checkBudgetAlerts({
-      overallBudget,
-      categoryBudgets,
-      catMap,
-      totalSpent,
-      spentByCat
-    });
+      // 7. Check non-intrusive alerts (Detailed mode)
+      this.checkBudgetAlerts({
+        overallBudget,
+        categoryBudgets,
+        expenseCategories,
+        catMap,
+        totalIncome,
+        totalSpent,
+        spentByCat,
+        rolloverData
+      });
+    }
 
     if (window.lucide) lucide.createIcons();
   },
@@ -1023,7 +1038,7 @@ const UIBudgets = {
   },
 
   /* ==================== NON-INTRUSIVE DISMISSIBLE ALERTS ==================== */
-  checkBudgetAlerts({ overallBudget, categoryBudgets, catMap, totalSpent, spentByCat }) {
+  checkBudgetAlerts({ overallBudget, categoryBudgets, expenseCategories, catMap, totalIncome, totalSpent, spentByCat, rolloverData }) {
     const banners = [
       document.getElementById('tx-budget-alert-banner'),
       document.getElementById('dashboard-budget-alert')
@@ -1036,34 +1051,86 @@ const UIBudgets = {
     let message = '';
     let alertSignature = '';
 
-    if (overallBudget && overallBudget.limitAmount > 0) {
-      const limit = overallBudget.limitAmount;
-      if (totalSpent > limit) {
-        hasAlert = true;
-        const overAmount = totalSpent - limit;
-        title = 'Cảnh Báo Vượt Ngân Sách Tổng';
-        message = `Bạn đã chi ${this.formatMoney(totalSpent)}, vượt hạn mức tháng ${this.formatMoney(overAmount)}.`;
-        alertSignature = `OVERALL_OVER_${this.currentMonth}_${limit}_${Math.floor(totalSpent / 500000)}`;
-      } else if (totalSpent >= limit * 0.9) {
-        hasAlert = true;
-        title = 'Ngân Sách Tổng Sắp Chạm Trần';
-        message = `Đã chi ${Math.round((totalSpent / limit) * 100)}% hạn mức (${this.formatMoney(totalSpent)} / ${this.formatMoney(limit)}).`;
-        alertSignature = `OVERALL_WARN_${this.currentMonth}_${limit}`;
-      }
-    }
+    if (this.currentMode === 'detailed' && rolloverData) {
+      // Detailed mode alert:
+      const prevToBudget = rolloverData.prevToBudget || 0;
+      let totalBudgeted = 0;
+      const budgetMap = new Map();
+      (categoryBudgets || []).forEach(b => {
+        budgetMap.set(b.categoryId, b);
+        totalBudgeted += (b.limitAmount || 0);
+      });
 
-    if (!hasAlert) {
-      for (const b of categoryBudgets) {
-        const spent = spentByCat[b.categoryId] || 0;
-        const limit = b.limitAmount || 0;
-        if (limit > 0 && spent > limit) {
-          const cat = catMap.get(Number(b.categoryId));
-          const catName = cat ? cat.name : 'Danh mục';
+      const toBudget = prevToBudget + (totalIncome || 0) - totalBudgeted;
+
+      // 1. Check if toBudget is negative
+      if (toBudget < 0) {
+        hasAlert = true;
+        title = 'Ngân Sách Tháng Bị Âm';
+        message = `Cần cân đối: ${this.formatMoney(Math.abs(toBudget))}`;
+        alertSignature = `TO_BUDGET_NEG_${this.currentMonth}_${Math.floor(Math.abs(toBudget) / 100000)}`;
+      } else {
+        // 2. Check if any category is overspent (not shifted)
+        const detailedOverspent = [];
+        const categoryCarryover = rolloverData.categoryCarryover || {};
+
+        (expenseCategories || []).forEach(cat => {
+          const b = budgetMap.get(cat.id);
+          const budgeted = b ? (b.limitAmount || 0) : 0;
+          const spent = spentByCat[cat.id] || 0;
+          const prevCarry = categoryCarryover[String(cat.id)] || 0;
+          const rawAvailable = prevCarry + budgeted - spent;
+          const isShifted = b && b.shiftToNextMonth === true;
+          if (rawAvailable < 0 && !isShifted) {
+            detailedOverspent.push({ cat, deficit: Math.abs(rawAvailable) });
+          }
+        });
+
+        if (detailedOverspent.length === 1) {
           hasAlert = true;
-          title = `Vượt Ngân Sách [${catName}]`;
-          message = `Đã chi ${this.formatMoney(spent)} / Hạn mức ${this.formatMoney(limit)}.`;
-          alertSignature = `CAT_OVER_${b.categoryId}_${this.currentMonth}`;
-          break;
+          const item = detailedOverspent[0];
+          title = `Vượt Ngân Sách [${item.cat.name}]`;
+          message = `Chi vượt: ${this.formatMoney(item.deficit)} - Cần cân đối.`;
+          alertSignature = `DETAILED_OVER_${item.cat.id}_${this.currentMonth}_${Math.floor(item.deficit / 100000)}`;
+        } else if (detailedOverspent.length > 1) {
+          hasAlert = true;
+          const totalDeficit = detailedOverspent.reduce((sum, item) => sum + item.deficit, 0);
+          title = `Vượt Ngân Sách ${detailedOverspent.length} Hạng Mục`;
+          message = `Chi vượt: ${this.formatMoney(totalDeficit)} - Cần cân đối.`;
+          alertSignature = `DETAILED_OVER_MULTI_${this.currentMonth}_${detailedOverspent.length}_${Math.floor(totalDeficit / 100000)}`;
+        }
+      }
+    } else {
+      // Simple mode alert:
+      if (overallBudget && overallBudget.limitAmount > 0) {
+        const limit = overallBudget.limitAmount;
+        if (totalSpent > limit) {
+          hasAlert = true;
+          const overAmount = totalSpent - limit;
+          title = 'Cảnh Báo Vượt Ngân Sách Tổng';
+          message = `Bạn đã chi ${this.formatMoney(totalSpent)}, vượt hạn mức tháng ${this.formatMoney(overAmount)}.`;
+          alertSignature = `OVERALL_OVER_${this.currentMonth}_${limit}_${Math.floor(totalSpent / 500000)}`;
+        } else if (totalSpent >= limit * 0.9) {
+          hasAlert = true;
+          title = 'Ngân Sách Tổng Sắp Chạm Trần';
+          message = `Đã chi ${Math.round((totalSpent / limit) * 100)}% hạn mức (${this.formatMoney(totalSpent)} / ${this.formatMoney(limit)}).`;
+          alertSignature = `OVERALL_WARN_${this.currentMonth}_${limit}`;
+        }
+      }
+
+      if (!hasAlert) {
+        for (const b of (categoryBudgets || [])) {
+          const spent = spentByCat[b.categoryId] || 0;
+          const limit = b.limitAmount || 0;
+          if (limit > 0 && spent > limit) {
+            const cat = catMap ? catMap.get(Number(b.categoryId)) : null;
+            const catName = cat ? cat.name : 'Danh mục';
+            hasAlert = true;
+            title = `Vượt Ngân Sách [${catName}]`;
+            message = `Đã chi ${this.formatMoney(spent)} / Hạn mức ${this.formatMoney(limit)}.`;
+            alertSignature = `CAT_OVER_${b.categoryId}_${this.currentMonth}`;
+            break;
+          }
         }
       }
     }
@@ -1071,17 +1138,32 @@ const UIBudgets = {
     if (hasAlert && !this.dismissedAlertSignatures.has(alertSignature)) {
       this.currentAlertSignature = alertSignature;
       banners.forEach(b => {
-        const titleEl = b.querySelector('.budget-alert-title');
-        const descEl = b.querySelector('.budget-alert-desc');
-        if (titleEl) titleEl.textContent = title;
-        if (descEl) descEl.textContent = message;
+        b.innerHTML = `
+          <div class="budget-alert-icon">
+            <i data-lucide="alert-triangle"></i>
+          </div>
+          <div class="budget-alert-content">
+            <div class="budget-alert-title">${escapeHTML(title)}</div>
+            <div class="budget-alert-desc">${escapeHTML(message)}</div>
+          </div>
+          <div class="budget-alert-actions">
+            <button type="button" class="budget-alert-view-btn" onclick="window.app.switchView('budgets')">Xem chi tiết</button>
+            <button type="button" class="budget-alert-close-btn" onclick="UIBudgets.dismissAlert()" title="Đóng thông báo">
+              <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+            </button>
+          </div>
+        `;
         b.style.display = 'flex';
         b.style.opacity = '1';
-        b.style.maxHeight = '80px';
+        b.style.maxHeight = '90px';
+        b.style.padding = '';
+        b.style.margin = '';
       });
+      if (window.lucide) lucide.createIcons();
     } else {
       banners.forEach(b => {
         b.style.display = 'none';
+        b.innerHTML = '';
       });
     }
   },
@@ -1104,6 +1186,7 @@ const UIBudgets = {
       b.style.marginBottom = '0';
       setTimeout(() => {
         b.style.display = 'none';
+        b.innerHTML = '';
       }, 280);
     });
   },
