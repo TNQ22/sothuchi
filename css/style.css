@@ -1499,6 +1499,9 @@ body:has(#view-account-provider.active) .app-header {
   flex: 1;
   padding: 4px 0;
   transition: color 0.2s;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .mobile-nav-item.active {
@@ -7705,6 +7708,9 @@ html, body {
   gap: 4px;
   cursor: pointer;
   white-space: nowrap;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .budget-header-subtitle {
@@ -7721,6 +7727,9 @@ html, body {
   background: var(--primary-light);
   transition: opacity 0.15s ease;
   line-height: 1.2;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .budget-header-subtitle:hover {

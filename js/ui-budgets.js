@@ -61,26 +61,7 @@ const UIBudgets = {
 
   bindEvents() {
     this.updateMonthLabels();
-    // Double-click / double-tap on budget header center to return to current month
-    const budgetHeaderCenter = document.getElementById('budget-header-center');
-    if (budgetHeaderCenter) {
-      let lastTap = 0;
-      budgetHeaderCenter.addEventListener('touchend', (e) => {
-        if (e.target.closest('.btn-time-nav, .budget-header-subtitle')) return;
-        const now = Date.now();
-        if (lastTap > 0 && (now - lastTap) < 400) {
-          lastTap = 0;
-          e.preventDefault();
-          this.goToCurrentMonth();
-          return;
-        }
-        lastTap = now;
-      });
-      budgetHeaderCenter.addEventListener('dblclick', (e) => {
-        if (e.target.closest('.btn-time-nav, .budget-header-subtitle')) return;
-        this.goToCurrentMonth();
-      });
-    }
+    // Double-click / double-tap on budget header center is handled by handleMonthHeaderClick & handleSubtitleClick
 
 
 
@@ -161,9 +142,90 @@ const UIBudgets = {
   },
 
   /* ==================== MONTH NAVIGATION ==================== */
+  monthHeaderClickTimer: null,
+  lastMonthHeaderClickTime: 0,
+  subtitleClickTimer: null,
+  lastSubtitleClickTime: 0,
+
+  handleMonthHeaderClick(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const now = Date.now();
+    const timeSinceLast = now - (this.lastMonthHeaderClickTime || 0);
+
+    // Chạm nhanh 2 lần (< 350ms): về tháng hiện tại ngay lập tức, hủy mở modal chọn tháng
+    if (this.lastMonthHeaderClickTime > 0 && timeSinceLast < 350) {
+      if (this.monthHeaderClickTimer) {
+        clearTimeout(this.monthHeaderClickTimer);
+        this.monthHeaderClickTimer = null;
+      }
+      this.lastMonthHeaderClickTime = 0;
+      this.goToCurrentMonth();
+      return;
+    }
+
+    this.lastMonthHeaderClickTime = now;
+    if (this.monthHeaderClickTimer) {
+      clearTimeout(this.monthHeaderClickTimer);
+    }
+    this.monthHeaderClickTimer = setTimeout(() => {
+      this.monthHeaderClickTimer = null;
+      this.openFilterMonthPicker();
+    }, 260);
+  },
+
+  handleMonthHeaderDblClick(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (this.monthHeaderClickTimer) {
+      clearTimeout(this.monthHeaderClickTimer);
+      this.monthHeaderClickTimer = null;
+    }
+    if (this.subtitleClickTimer) {
+      clearTimeout(this.subtitleClickTimer);
+      this.subtitleClickTimer = null;
+    }
+    this.lastMonthHeaderClickTime = 0;
+    this.lastSubtitleClickTime = 0;
+    this.goToCurrentMonth();
+  },
+
+  handleSubtitleClick(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const now = Date.now();
+    const timeSinceLast = now - (this.lastSubtitleClickTime || 0);
+
+    // Chạm nhanh 2 lần (< 350ms): về tháng hiện tại ngay lập tức
+    if (this.lastSubtitleClickTime > 0 && timeSinceLast < 350) {
+      if (this.subtitleClickTimer) {
+        clearTimeout(this.subtitleClickTimer);
+        this.subtitleClickTimer = null;
+      }
+      this.lastSubtitleClickTime = 0;
+      this.goToCurrentMonth();
+      return;
+    }
+
+    this.lastSubtitleClickTime = now;
+    if (this.subtitleClickTimer) {
+      clearTimeout(this.subtitleClickTimer);
+    }
+    this.subtitleClickTimer = setTimeout(() => {
+      this.subtitleClickTimer = null;
+      this.openSettingsModal();
+    }, 260);
+  },
+
   goToCurrentMonth() {
     const nowTime = Date.now();
-    if (this._lastGoToTime && (nowTime - this._lastGoToTime) < 500) {
+    if (this._lastGoToTime && (nowTime - this._lastGoToTime) < 400) {
       return false;
     }
     this._lastGoToTime = nowTime;
@@ -173,6 +235,9 @@ const UIBudgets = {
     const curM = String(now.getMonth() + 1).padStart(2, '0');
     const todayMonth = `${curY}-${curM}`;
 
+    const container = document.getElementById('view-budgets');
+    if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+
     if (this.currentMonth !== todayMonth) {
       this.currentMonth = todayMonth;
       this.updateMonthLabels();
@@ -180,8 +245,6 @@ const UIBudgets = {
       showToast(`Đã về tháng hiện tại (${this.formatMonthDisplay(todayMonth)})`, 'info');
       return true;
     } else {
-      const container = document.getElementById('view-budgets');
-      if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
       showToast(`Đang ở tháng hiện tại (${this.formatMonthDisplay(todayMonth)})`, 'info');
       return false;
     }

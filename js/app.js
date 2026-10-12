@@ -287,15 +287,16 @@ class App {
         e.preventDefault();
         const view = link.dataset.view;
         if (view) {
+          if (view === 'budgets') {
+            this.handleBudgetTabClick();
+            return;
+          }
           if (view === 'transactions') {
             this.txHistorySource = null;
             this.previousView = null;
             if (window.UITransactions && typeof window.UITransactions.resetAllFilters === 'function') {
               window.UITransactions.resetAllFilters(false);
             }
-          }
-          if (view === 'budgets') {
-            this.handleBudgetTabClick();
           }
           this.activePrimaryView = view; // Track which primary tab is active
           this.switchView(view);
@@ -304,6 +305,7 @@ class App {
       if (link.dataset.view === 'budgets') {
         link.addEventListener('dblclick', (e) => {
           e.preventDefault();
+          this.lastBudgetTabClickTime = 0;
           if (window.UIBudgets && typeof window.UIBudgets.goToCurrentMonth === 'function') {
             window.UIBudgets.goToCurrentMonth();
           }
@@ -317,15 +319,16 @@ class App {
         e.preventDefault();
         const view = link.dataset.view;
         if (view) {
+          if (view === 'budgets') {
+            this.handleBudgetTabClick();
+            return;
+          }
           if (view === 'transactions') {
             this.txHistorySource = null;
             this.previousView = null;
             if (window.UITransactions && typeof window.UITransactions.resetAllFilters === 'function') {
               window.UITransactions.resetAllFilters(false);
             }
-          }
-          if (view === 'budgets') {
-            this.handleBudgetTabClick();
           }
           this.activePrimaryView = view; // Track which primary tab is active
           this.switchView(view);
@@ -334,6 +337,7 @@ class App {
       if (link.dataset.view === 'budgets') {
         link.addEventListener('dblclick', (e) => {
           e.preventDefault();
+          this.lastBudgetTabClickTime = 0;
           if (window.UIBudgets && typeof window.UIBudgets.goToCurrentMonth === 'function') {
             window.UIBudgets.goToCurrentMonth();
           }
@@ -399,8 +403,8 @@ class App {
     const now = Date.now();
     const timeSinceLastClick = now - (this.lastBudgetTabClickTime || 0);
 
-    // Nhấp nhanh 2 lần (< 450ms) vào tab Ngân sách -> về lại tháng hiện tại
-    if (this.lastBudgetTabClickTime > 0 && timeSinceLastClick < 450) {
+    // Nhấp nhanh 2 lần (< 400ms) vào tab Ngân sách -> về lại tháng hiện tại
+    if (this.lastBudgetTabClickTime > 0 && timeSinceLastClick < 400) {
       this.lastBudgetTabClickTime = 0;
       if (window.UIBudgets && typeof window.UIBudgets.goToCurrentMonth === 'function') {
         window.UIBudgets.goToCurrentMonth();
@@ -409,6 +413,12 @@ class App {
     }
 
     this.lastBudgetTabClickTime = now;
+
+    // Nếu đang ở màn hình khác -> chuyển vào trang Ngân sách
+    if (this.currentView !== 'budgets') {
+      this.activePrimaryView = 'budgets';
+      this.switchView('budgets');
+    }
   }
 
   async handleInputTabClick() {

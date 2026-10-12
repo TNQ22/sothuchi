@@ -128,7 +128,7 @@
             <button type="button" class="btn-time-nav" onclick="UIBudgets.changeMonth(-1)" title="Tháng trước">
               <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i>
             </button>
-            <button type="button" class="budget-month-btn" onclick="UIBudgets.openFilterMonthPicker()" title="Chọn tháng">
+            <button type="button" class="budget-month-btn" id="budget-header-month-btn" onclick="UIBudgets.handleMonthHeaderClick(event)" ondblclick="UIBudgets.handleMonthHeaderDblClick(event)" title="Chọn tháng (chạm nhanh 2 lần về tháng hiện tại)">
               <i data-lucide="calendar" style="width: 14px; height: 14px; color: var(--primary);"></i>
               <span id="budget-month-display-label">Tháng --/----</span>
               <i data-lucide="chevron-down" style="width: 12px; height: 12px; opacity: 0.7;"></i>
@@ -137,7 +137,7 @@
               <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
             </button>
           </div>
-          <div id="budget-header-subtitle" class="budget-header-subtitle" onclick="UIBudgets.openSettingsModal()" title="Bấm để đổi chế độ ngân sách">Ngân sách tổng</div>
+          <div id="budget-header-subtitle" class="budget-header-subtitle" onclick="UIBudgets.handleSubtitleClick(event)" ondblclick="UIBudgets.handleMonthHeaderDblClick(event)" title="Bấm để đổi chế độ (chạm nhanh 2 lần về tháng hiện tại)">Ngân sách tổng</div>
         </div>
 
         <!-- Header Search Bar che toàn bộ thanh tiêu đề khi mở tìm kiếm -->
@@ -3819,11 +3819,11 @@
   <script src="./js/ui-transactions.js?v=2.1.9"></script>
   <script src="./js/ui-debts.js?v=2.0.9"></script>
   <script src="./js/ui-accounts.js?v=2.0.9"></script>
-  <script src="./js/ui-budgets.js?v=2.2.1"></script>
+  <script src="./js/ui-budgets.js?v=2.2.2"></script>
   <script src="./js/ui-analytics.js?v=2.0.9"></script>
   <script src="./js/ui-settings.js?v=2.0.9"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.2.1"></script>
+  <script src="./js/app.js?v=2.2.2"></script>
 </body>
 </html>
