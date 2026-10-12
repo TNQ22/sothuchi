@@ -731,15 +731,17 @@ const UIBudgets = {
             </div>
           </div>
           <div class="actual-to-budget-caption">${captionText}</div>
+          ${prevToBudget !== 0 ? `
+            <div class="actual-to-budget-rollover-sub" style="font-size: 0.74rem; color: var(--text-muted); margin-top: 5px; display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.05); padding: 2px 9px; border-radius: var(--radius-full);">
+              <span>Từ tháng trước:</span>
+              <span style="font-weight: 700; color: ${prevToBudget > 0 ? 'var(--income)' : 'var(--expense)'};">
+                ${prevToBudget > 0 ? `+${this.formatMoney(prevToBudget)}` : `-${this.formatMoney(Math.abs(prevToBudget))}`}
+              </span>
+            </div>
+          ` : ''}
         </div>
 
         <div class="actual-to-budget-meta">
-          <div class="actual-to-budget-meta-item">
-            <span class="actual-to-budget-meta-label">Tháng trước</span>
-            <span class="actual-to-budget-meta-val" style="color: ${prevToBudget > 0 ? 'var(--income)' : (prevToBudget < 0 ? 'var(--expense)' : 'var(--text-muted)')};">
-              ${prevToBudget > 0 ? `+${this.formatMoney(prevToBudget)}` : (prevToBudget < 0 ? `-${this.formatMoney(Math.abs(prevToBudget))}` : '0₫')}
-            </span>
-          </div>
           <div class="actual-to-budget-meta-item">
             <span class="actual-to-budget-meta-label">Thu Nhập Tháng</span>
             <span class="actual-to-budget-meta-val" style="color: var(--income);">+${this.formatMoney(totalIncome)}</span>
@@ -770,7 +772,7 @@ const UIBudgets = {
 
       let carryoverSubHtml = '';
       if (prevCarry !== 0) {
-        carryoverSubHtml = `<span class="actual-cat-sub" style="display: block; font-size: 0.62rem; color: ${prevCarry > 0 ? 'var(--income)' : 'var(--expense)'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Trước: ${prevCarry > 0 ? '+' : ''}${this.formatMoney(prevCarry)}</span>`;
+        carryoverSubHtml = `<span class="actual-cat-sub" style="display: block; font-size: 0.62rem; color: ${prevCarry > 0 ? 'var(--income)' : 'var(--expense)'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Từ tháng trước: ${prevCarry > 0 ? '+' : ''}${this.formatMoney(prevCarry)}</span>`;
       }
 
       let badgeClass = 'zero';
@@ -1845,7 +1847,7 @@ const UIBudgets = {
 
     if (nameEl) nameEl.textContent = cat.name;
     const spentText = `Thực tế đã chi: ${this.formatMoney(spent)}`;
-    const carryText = prevCarry !== 0 ? ` • Trước: ${prevCarry > 0 ? '+' : ''}${this.formatMoney(prevCarry)}` : '';
+    const carryText = prevCarry !== 0 ? ` • Từ tháng trước: ${prevCarry > 0 ? '+' : ''}${this.formatMoney(prevCarry)}` : '';
     if (spentEl) spentEl.textContent = `${spentText}${carryText}`;
     if (bubbleEl) {
       bubbleEl.style.background = `${cat.color || '#0d9488'}22`;
