@@ -481,25 +481,66 @@ const UITransactions = {
 
     document.querySelectorAll('#modal-keypad .keypad-btn').forEach(btn => {
       let pointerHandled = false;
+      const isDone = btn.dataset.key === 'done';
 
-      btn.addEventListener('pointerdown', (e) => {
-        pointerHandled = true;
-        if (e.cancelable) {
-          try { e.preventDefault(); } catch (_) {}
-        }
-        triggerKey(btn, e);
-      }, { passive: false });
+      if (isDone) {
+        let isDonePressed = false;
 
-      btn.addEventListener('click', (e) => {
-        if (e.cancelable) {
-          try { e.preventDefault(); } catch (_) {}
-        }
-        if (pointerHandled) {
-          pointerHandled = false;
-          return;
-        }
-        triggerKey(btn, e);
-      });
+        btn.addEventListener('pointerdown', (e) => {
+          pointerHandled = true;
+          isDonePressed = true;
+          btn.classList.add('pressed');
+          if (e.cancelable) {
+            try { e.preventDefault(); } catch (_) {}
+          }
+        }, { passive: false });
+
+        btn.addEventListener('pointerup', (e) => {
+          btn.classList.remove('pressed');
+          if (isDonePressed) {
+            isDonePressed = false;
+            if (e.cancelable) {
+              try { e.preventDefault(); } catch (_) {}
+            }
+            triggerKey(btn, e);
+          }
+        }, { passive: false });
+
+        btn.addEventListener('pointercancel', () => {
+          isDonePressed = false;
+          btn.classList.remove('pressed');
+        });
+
+        btn.addEventListener('click', (e) => {
+          if (e.cancelable) {
+            try { e.preventDefault(); } catch (_) {}
+          }
+          if (pointerHandled) {
+            pointerHandled = false;
+            return;
+          }
+          triggerKey(btn, e);
+        });
+      } else {
+        btn.addEventListener('pointerdown', (e) => {
+          pointerHandled = true;
+          if (e.cancelable) {
+            try { e.preventDefault(); } catch (_) {}
+          }
+          triggerKey(btn, e);
+        }, { passive: false });
+
+        btn.addEventListener('click', (e) => {
+          if (e.cancelable) {
+            try { e.preventDefault(); } catch (_) {}
+          }
+          if (pointerHandled) {
+            pointerHandled = false;
+            return;
+          }
+          triggerKey(btn, e);
+        });
+      }
     });
 
     // Popup Keypad Quick Chips (+10k, +50k, ...)
@@ -778,14 +819,31 @@ const UITransactions = {
     if (qRow) qRow.style.display = 'flex';
     if (hClose) hClose.style.display = 'flex';
 
+    // Ghi nhận thời điểm đóng bàn phím để chặn form tự động lưu do click xuyên thấu
+    this._keypadClosedTime = Date.now();
+
     // Ngăn chặn triệt để ghost click / click xuyên thấu làm nhảy lung tung hoặc kích hoạt nút bên dưới
-    const blocker = document.createElement('div');
-    blocker.id = 'keypad-touch-guard';
-    blocker.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999999;background:transparent;cursor:default;touch-action:none;';
-    document.body.appendChild(blocker);
+    let blocker = document.getElementById('keypad-touch-guard');
+    if (!blocker) {
+      blocker = document.createElement('div');
+      blocker.id = 'keypad-touch-guard';
+      blocker.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999999;background:transparent;cursor:default;touch-action:none;pointer-events:all;';
+      const swallow = (e) => {
+        try {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+        } catch (_) {}
+      };
+      ['click', 'pointerdown', 'pointerup', 'touchstart', 'touchend', 'mousedown', 'mouseup'].forEach(evt => {
+        blocker.addEventListener(evt, swallow, { capture: true, passive: false });
+      });
+      document.body.appendChild(blocker);
+    }
     setTimeout(() => {
-      if (blocker.parentNode) blocker.remove();
-    }, 400);
+      const b = document.getElementById('keypad-touch-guard');
+      if (b && b.parentNode) b.remove();
+    }, 450);
 
     if (display) {
       display.classList.remove('is-selected');
@@ -2548,6 +2606,10 @@ const UITransactions = {
   },
 
   submitForm() {
+    // Chặn triệt để submit nếu bàn phím vừa được ẩn trong vòng 450ms (ngăn ghost click từ nút Ẩn bàn phím)
+    if (this._keypadClosedTime && (Date.now() - this._keypadClosedTime < 450)) {
+      return;
+    }
     // Trigger form submit event thay vì gọi trực tiếp để tránh ghi 2 lần
     const form = document.getElementById('transaction-form');
     if (form) {
@@ -2987,6 +3049,10 @@ const UITransactions = {
 
   /* ==================== FORM SUBMIT ==================== */
   async handleFormSubmit() {
+    // Chặn submit tự động nếu bàn phím số vừa ẩn trong vòng 450ms
+    if (this._keypadClosedTime && (Date.now() - this._keypadClosedTime < 450)) {
+      return;
+    }
     const id = document.getElementById('tx-id-input').value;
     if (id) {
       const existingTx = await db.transactions.get(Number(id));
