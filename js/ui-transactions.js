@@ -3292,7 +3292,7 @@ const UITransactions = {
       await this.resetForm(type);
       showToast('Đã thêm ghi chép mới', 'success');
     }
-    window.app.refreshAll();
+    await window.app.refreshAll();
   },
 
   /* ==================== LIST RENDERING ==================== */
@@ -3596,7 +3596,7 @@ const UITransactions = {
       if (window.app && window.app.currentView === 'new-transaction') {
         window.app.goBack();
       }
-      window.app.refreshAll();
+      await window.app.refreshAll();
     } catch (err) {
       console.error('Delete transaction error:', err);
       showToast('Lỗi khi xóa giao dịch', 'error');

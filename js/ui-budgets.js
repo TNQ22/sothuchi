@@ -14,6 +14,7 @@ const UIBudgets = {
   applicableWallets: 'ALL', // 'ALL' | [accountId, ...]
   quickEditTarget: null,
   dismissedAlertSignatures: new Set(),
+  currentCatHistoryId: null,
 
   async init() {
     // 1. Load saved mode preference
@@ -630,6 +631,10 @@ const UIBudgets = {
       });
     }
 
+    if (this.currentCatHistoryId) {
+      await this.refreshCatExpenseHistory();
+    }
+
     if (window.lucide) lucide.createIcons();
   },
 
@@ -1089,14 +1094,14 @@ const UIBudgets = {
         if (detailedOverspent.length === 1) {
           hasAlert = true;
           const item = detailedOverspent[0];
-          title = `Vượt Ngân Sách [${item.cat.name}]`;
-          message = `Chi vượt: ${this.formatMoney(item.deficit)} - Cần cân đối.`;
+          title = 'Vượt ngân sách';
+          message = `Chi vượt: ${this.formatMoney(item.deficit)}`;
           alertSignature = `DETAILED_OVER_${item.cat.id}_${this.currentMonth}_${Math.floor(item.deficit / 100000)}`;
         } else if (detailedOverspent.length > 1) {
           hasAlert = true;
           const totalDeficit = detailedOverspent.reduce((sum, item) => sum + item.deficit, 0);
-          title = `Vượt Ngân Sách ${detailedOverspent.length} Hạng Mục`;
-          message = `Chi vượt: ${this.formatMoney(totalDeficit)} - Cần cân đối.`;
+          title = 'Vượt ngân sách';
+          message = `Chi vượt: ${this.formatMoney(totalDeficit)}`;
           alertSignature = `DETAILED_OVER_MULTI_${this.currentMonth}_${detailedOverspent.length}_${Math.floor(totalDeficit / 100000)}`;
         }
       }
@@ -1107,12 +1112,12 @@ const UIBudgets = {
         if (totalSpent > limit) {
           hasAlert = true;
           const overAmount = totalSpent - limit;
-          title = 'Cảnh Báo Vượt Ngân Sách Tổng';
-          message = `Bạn đã chi ${this.formatMoney(totalSpent)}, vượt hạn mức tháng ${this.formatMoney(overAmount)}.`;
+          title = 'Vượt ngân sách';
+          message = `Chi vượt: ${this.formatMoney(overAmount)}`;
           alertSignature = `OVERALL_OVER_${this.currentMonth}_${limit}_${Math.floor(totalSpent / 500000)}`;
         } else if (totalSpent >= limit * 0.9) {
           hasAlert = true;
-          title = 'Ngân Sách Tổng Sắp Chạm Trần';
+          title = 'Ngân sách sắp chạm trần';
           message = `Đã chi ${Math.round((totalSpent / limit) * 100)}% hạn mức (${this.formatMoney(totalSpent)} / ${this.formatMoney(limit)}).`;
           alertSignature = `OVERALL_WARN_${this.currentMonth}_${limit}`;
         }
@@ -1123,11 +1128,9 @@ const UIBudgets = {
           const spent = spentByCat[b.categoryId] || 0;
           const limit = b.limitAmount || 0;
           if (limit > 0 && spent > limit) {
-            const cat = catMap ? catMap.get(Number(b.categoryId)) : null;
-            const catName = cat ? cat.name : 'Danh mục';
             hasAlert = true;
-            title = `Vượt Ngân Sách [${catName}]`;
-            message = `Đã chi ${this.formatMoney(spent)} / Hạn mức ${this.formatMoney(limit)}.`;
+            title = 'Vượt ngân sách';
+            message = `Chi vượt: ${this.formatMoney(spent - limit)}`;
             alertSignature = `CAT_OVER_${b.categoryId}_${this.currentMonth}`;
             break;
           }
@@ -1155,9 +1158,11 @@ const UIBudgets = {
         `;
         b.style.display = 'flex';
         b.style.opacity = '1';
-        b.style.maxHeight = 'none';
-        b.style.padding = '';
-        b.style.margin = '';
+        b.style.maxHeight = '';
+        b.style.paddingTop = '';
+        b.style.paddingBottom = '';
+        b.style.marginTop = '';
+        b.style.marginBottom = '';
       });
       if (window.lucide) lucide.createIcons();
     } else {
@@ -2632,15 +2637,43 @@ const UIBudgets = {
   /* ==================== VIEW: CATEGORY EXPENSE HISTORY (DEDICATED FULL PAGE) ==================== */
   async openCatExpenseHistory(catId) {
     try {
+      this.currentCatHistoryId = Number(catId);
+      await this.refreshCatExpenseHistory();
+      if (window.app && typeof window.app.switchView === 'function') {
+        window.app.switchView('budget-cat-history');
+      }
+      if (window.lucide) lucide.createIcons();
+    } catch (err) {
+      console.error('Error in openCatExpenseHistory:', err);
+    }
+  },
+
+  async refreshCatExpenseHistory() {
+    try {
+      if (!this.currentCatHistoryId) return;
+      const catId = this.currentCatHistoryId;
       const cat = await db.categories.get(Number(catId));
       if (!cat) return;
 
       const startOfMonth = `${this.currentMonth}-01`;
       const endOfMonth = `${this.currentMonth}-31`;
+
+      // 1. Fetch all accounts & resolve wallet scope
+      const allAccounts = await db.accounts.where('isDeleted').equals(0).toArray();
+      let allowedAccountIds = new Set();
+      allAccounts.forEach(a => {
+        const isBudgetEnabled = a.includeInBudget !== undefined
+          ? (a.includeInBudget === 1 || a.includeInBudget === true)
+          : !a.excludeFromReport;
+        if (isBudgetEnabled && !a.isArchived) {
+          allowedAccountIds.add(a.id);
+        }
+      });
+
       const allTxs = await db.transactions
         .where('date')
         .between(startOfMonth, endOfMonth, true, true)
-        .and(t => t.type === 'expense' && Number(t.categoryId) === Number(catId) && (!t.isDeleted || t.isDeleted === 0))
+        .and(t => t.type === 'expense' && Number(t.categoryId) === Number(catId) && (!t.isDeleted || t.isDeleted === 0) && allowedAccountIds.has(t.accountId))
         .toArray();
 
       allTxs.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.id - a.id));
@@ -2654,7 +2687,6 @@ const UIBudgets = {
       const isOverspent = totalSpent > budgeted;
       const overAmount = isOverspent ? (totalSpent - budgeted) : 0;
 
-      const allAccounts = await db.accounts.toArray();
       const accMap = new Map(allAccounts.map(a => [a.id, a]));
 
       const titleEl = document.getElementById('cat-history-title');
@@ -2722,16 +2754,14 @@ const UIBudgets = {
         }
       }
 
-      if (window.app && typeof window.app.switchView === 'function') {
-        window.app.switchView('budget-cat-history');
-      }
       if (window.lucide) lucide.createIcons();
     } catch (err) {
-      console.error('Error in openCatExpenseHistory:', err);
+      console.error('Error in refreshCatExpenseHistory:', err);
     }
   },
 
   closeCatExpenseHistory() {
+    this.currentCatHistoryId = null;
     if (window.app && typeof window.app.switchView === 'function') {
       window.app.switchView('budgets', true);
     } else if (window.app && typeof window.app.goBack === 'function') {

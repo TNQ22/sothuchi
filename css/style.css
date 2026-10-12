@@ -7298,9 +7298,19 @@ html, body {
   gap: 10px;
   box-sizing: border-box;
   width: 100%;
+  flex-shrink: 0 !important;
+  min-height: fit-content;
   overflow: hidden;
   transition: opacity 0.25s ease, max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease;
   box-shadow: 0 4px 12px rgba(244, 63, 94, 0.1);
+}
+
+#dashboard-budget-alert {
+  margin-bottom: 16px;
+}
+
+#tx-budget-alert-banner {
+  margin-bottom: 4px;
 }
 
 .budget-alert-icon {

@@ -475,6 +475,13 @@ class App {
       }
     }
 
+    // Khi rời khỏi trang lịch sử chi tiết hạng mục ngân sách sang view khác (ngoại trừ form ghi chép new-transaction)
+    if (viewId !== 'budget-cat-history' && viewId !== 'new-transaction') {
+      if (window.UIBudgets) {
+        window.UIBudgets.currentCatHistoryId = null;
+      }
+    }
+
     const previousViewId = this.currentView;
     this.currentView = viewId;
 
@@ -706,6 +713,9 @@ class App {
     }
 
     if (this.currentView === 'budget-form' || this.currentView === 'budget-category-form' || this.currentView === 'budget-cat-history') {
+      if (this.currentView === 'budget-cat-history' && window.UIBudgets) {
+        window.UIBudgets.currentCatHistoryId = null;
+      }
       this.switchView('budgets', true);
       return;
     }
