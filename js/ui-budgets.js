@@ -846,7 +846,7 @@ const UIBudgets = {
         <div class="budget-overspent-banner to-budget-neg" style="background: rgba(239, 68, 68, 0.12); border-left: 3px solid var(--expense); margin-bottom: 8px;">
           <div class="budget-overspent-left">
             <div class="budget-overspent-info">
-              <div class="budget-overspent-title">Ngân sách tháng bị âm</div>
+              <div class="budget-overspent-title">Ngân sách bị âm</div>
               <div class="budget-overspent-sub">Cần cân đối: ${this.formatMoney(Math.abs(toBudget))}</div>
             </div>
           </div>
@@ -1066,7 +1066,7 @@ const UIBudgets = {
       // 1. Check if toBudget is negative
       if (toBudget < 0) {
         hasAlert = true;
-        title = 'Ngân Sách Tháng Bị Âm';
+        title = 'Ngân sách bị âm';
         message = `Cần cân đối: ${this.formatMoney(Math.abs(toBudget))}`;
         alertSignature = `TO_BUDGET_NEG_${this.currentMonth}_${Math.floor(Math.abs(toBudget) / 100000)}`;
       } else {
@@ -1147,7 +1147,7 @@ const UIBudgets = {
             <div class="budget-alert-desc">${escapeHTML(message)}</div>
           </div>
           <div class="budget-alert-actions">
-            <button type="button" class="budget-alert-view-btn" onclick="window.app.switchView('budgets')">Xem chi tiết</button>
+            <button type="button" class="budget-alert-view-btn" onclick="window.app.switchView('budgets')">Chi tiết</button>
             <button type="button" class="budget-alert-close-btn" onclick="UIBudgets.dismissAlert()" title="Đóng thông báo">
               <i data-lucide="x" style="width: 16px; height: 16px;"></i>
             </button>
@@ -1155,7 +1155,7 @@ const UIBudgets = {
         `;
         b.style.display = 'flex';
         b.style.opacity = '1';
-        b.style.maxHeight = '90px';
+        b.style.maxHeight = 'none';
         b.style.padding = '';
         b.style.margin = '';
       });
