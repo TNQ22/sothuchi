@@ -6980,6 +6980,19 @@ html, body {
   text-align: center;
 }
 
+.actual-to-budget-rollover-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
 .actual-to-budget-meta {
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;

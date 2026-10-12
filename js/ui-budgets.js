@@ -730,11 +730,10 @@ const UIBudgets = {
               ${this.formatMoney(toBudget)}
             </div>
           </div>
-          <div class="actual-to-budget-caption">${captionText}</div>
           ${prevToBudget !== 0 ? `
-            <div class="actual-to-budget-rollover-sub" style="font-size: 0.74rem; color: var(--text-muted); margin-top: 5px; display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.05); padding: 2px 9px; border-radius: var(--radius-full);">
+            <div class="actual-to-budget-rollover-sub">
               <span>Từ tháng trước:</span>
-              <span style="font-weight: 700; color: ${prevToBudget > 0 ? 'var(--income)' : 'var(--expense)'};">
+              <span style="font-weight: 600; color: ${prevToBudget > 0 ? 'var(--income)' : 'var(--expense)'};">
                 ${prevToBudget > 0 ? `+${this.formatMoney(prevToBudget)}` : `-${this.formatMoney(Math.abs(prevToBudget))}`}
               </span>
             </div>
