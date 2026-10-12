@@ -144,6 +144,7 @@ class App {
     this.isPrivacyMode = false;
     this.isBackTransitioning = false;
     this.lastAddTabClickTime = 0;
+    this.lastBudgetTabClickTime = 0;
   }
 
   async init() {
@@ -370,6 +371,22 @@ class App {
       if (activeView) activeView.scrollTop = 0;
       showToast('Đã mở lại trang ghi chép mặc định', 'success');
     }
+  }
+
+  handleBudgetTabClick() {
+    const now = Date.now();
+    const timeSinceLastClick = now - (this.lastBudgetTabClickTime || 0);
+
+    // Nhấp nhanh 2 lần (< 400ms) vào tab Ngân sách -> về lại tháng hiện tại
+    if (this.lastBudgetTabClickTime > 0 && timeSinceLastClick < 400) {
+      this.lastBudgetTabClickTime = 0;
+      if (window.UIBudgets && typeof window.UIBudgets.goToCurrentMonth === 'function') {
+        window.UIBudgets.goToCurrentMonth();
+      }
+      return;
+    }
+
+    this.lastBudgetTabClickTime = now;
   }
 
   async handleInputTabClick() {

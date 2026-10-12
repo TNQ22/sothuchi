@@ -60,6 +60,28 @@ const UIBudgets = {
 
   bindEvents() {
     this.updateMonthLabels();
+    // Double-click / double-tap on budget header center to return to current month
+    const budgetHeaderCenter = document.getElementById('budget-header-center');
+    if (budgetHeaderCenter) {
+      let lastTap = 0;
+      budgetHeaderCenter.addEventListener('touchend', (e) => {
+        if (e.target.closest('.btn-time-nav, .budget-header-subtitle')) return;
+        const now = Date.now();
+        if (lastTap > 0 && (now - lastTap) < 400) {
+          lastTap = 0;
+          e.preventDefault();
+          this.goToCurrentMonth();
+          return;
+        }
+        lastTap = now;
+      });
+      budgetHeaderCenter.addEventListener('dblclick', (e) => {
+        if (e.target.closest('.btn-time-nav, .budget-header-subtitle')) return;
+        this.goToCurrentMonth();
+      });
+    }
+
+
 
     // Auto format inputs for amounts
     const amountInputIds = [
@@ -138,6 +160,27 @@ const UIBudgets = {
   },
 
   /* ==================== MONTH NAVIGATION ==================== */
+  goToCurrentMonth() {
+    const now = new Date();
+    const curY = now.getFullYear();
+    const curM = String(now.getMonth() + 1).padStart(2, '0');
+    const todayMonth = `${curY}-${curM}`;
+
+    if (this.currentMonth !== todayMonth) {
+      this.currentMonth = todayMonth;
+      this.updateMonthLabels();
+      this.render();
+      showToast(`Đã về tháng hiện tại (${this.formatMonthDisplay(todayMonth)})`, 'info');
+      return true;
+    } else {
+      const container = document.getElementById('view-budgets');
+      if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+      showToast(`Đang ở tháng hiện tại (${this.formatMonthDisplay(todayMonth)})`, 'info');
+      return false;
+    }
+  },
+
+  
   formatMonthDisplay(monthStr) {
     if (!monthStr) return '';
     const [y, m] = monthStr.split('-');
