@@ -230,6 +230,9 @@ class App {
     } else {
       document.documentElement.setAttribute('data-theme', theme);
     }
+    if (window.UIAnalytics && typeof window.UIAnalytics.render === 'function') {
+      window.UIAnalytics.render();
+    }
   }
 
   applyPrivacyMode(enabled) {

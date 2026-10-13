@@ -3295,6 +3295,60 @@ const UITransactions = {
     await window.app.refreshAll();
   },
 
+  renderTxCardHtml(t, catMap, accMap) {
+    const cat = catMap.get(t.categoryId);
+    const fromAcc = accMap.get(t.accountId);
+    const toAcc = accMap.get(t.toAccountId);
+
+    const hasNote = t.note && t.note.trim();
+    let title = hasNote ? t.note : (t.type === 'transfer' ? 'Chuyển khoản' : (cat ? cat.name : 'Giao dịch'));
+    let iconName = 'arrow-right-left';
+    let iconBg = 'var(--transfer-bg)';
+    let iconColor = 'var(--transfer)';
+    let amountPrefix = '';
+    let amountClass = 'transfer';
+
+    if (t.type === 'expense') {
+      iconName = cat ? cat.icon : 'shopping-bag';
+      iconBg = 'var(--expense-bg)';
+      iconColor = 'var(--expense)';
+      amountPrefix = '-';
+      amountClass = 'expense';
+    } else if (t.type === 'income') {
+      iconName = cat ? cat.icon : 'banknote';
+      iconBg = 'var(--income-bg)';
+      iconColor = 'var(--income)';
+      amountPrefix = '+';
+      amountClass = 'income';
+    }
+
+    const timeDisplay = t.time ? `<span style="color: var(--primary); font-weight: 600;">${t.time}</span> • ` : '';
+    const feeDisplay = t.fee ? ` • <span style="color: var(--text-muted);">Phí: ${new Intl.NumberFormat('vi-VN').format(t.fee)}đ</span>` : '';
+    const catMeta = (hasNote && cat) ? ` • <span style="color: var(--text-muted); font-size: 0.75rem;">${escapeHTML(cat.name)}</span>` : '';
+    const accountDisplay = t.type === 'transfer' 
+      ? `${timeDisplay}${fromAcc ? fromAcc.name : 'Tài khoản'} ➔ ${toAcc ? toAcc.name : 'Tài khoản'}${feeDisplay}`
+      : `${timeDisplay}${fromAcc ? fromAcc.name : 'Tài khoản'}${catMeta}${feeDisplay}`;
+
+    return `
+      <div class="tx-card" onclick="UITransactions.openEditModal(${t.id})">
+        <div class="tx-left">
+          <div class="tx-icon-box" style="background: ${iconBg}; color: ${iconColor};">
+            <i data-lucide="${iconName}" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div class="tx-info">
+            <span class="tx-title" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span>${escapeHTML(title)}</span>${(t.loanId || t.loanAction) ? `<span title="Giao dịch liên kết Sổ Vay (Được khóa bảo vệ)" style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; padding: 1px 5px; border-radius: 4px; background: rgba(99, 102, 241, 0.12); color: var(--primary);"><i data-lucide="lock" style="width: 10px; height: 10px;"></i> Sổ vay</span>` : ""}</span>
+            <span class="tx-meta">${accountDisplay}</span>
+          </div>
+        </div>
+        <div class="tx-right">
+          <span class="tx-amount ${amountClass}">
+            ${amountPrefix}${new Intl.NumberFormat('vi-VN').format(t.amount)}đ
+          </span>
+        </div>
+      </div>
+    `;
+  },
+
   /* ==================== LIST RENDERING ==================== */
   async render() {
     this.initTimeFilter();
@@ -3358,129 +3412,107 @@ const UITransactions = {
     // Sort descending by date
     txs.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
 
-    if (txs.length === 0) {
-      const isFiltered = this.currentFilterType !== 'all' || !!this.filterAccountId || !!this.searchKeyword;
-      const emptyMsg = this.searchKeyword 
-        ? 'Không tìm thấy giao dịch nào phù hợp với từ khóa' 
-        : (isFiltered ? 'Không có giao dịch nào phù hợp với bộ lọc hiện tại' : 'Chưa có ghi chép nào trong khoảng thời gian này');
-      const resetBtnHtml = isFiltered ? `
-        <button type="button" class="btn-secondary" onclick="UITransactions.resetAllFilters(true)" style="margin: 14px auto 0; display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; font-size: 0.85rem; border-radius: 20px; cursor: pointer;">
-          <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
-          Đặt lại bộ lọc
-        </button>
-      ` : '';
-      const emptyHtml = `
-        <div style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
-          <i data-lucide="receipt" style="width: 48px; height: 48px; stroke-width: 1.5; margin-bottom: 12px; opacity: 0.5;"></i>
-          <p style="font-size: 1rem; font-weight: 500;">Chưa có giao dịch nào</p>
-          <p style="font-size: 0.85rem; margin-top: 4px;">${escapeHTML(emptyMsg)}</p>
-          ${resetBtnHtml}
-        </div>
-      `;
-      if (fullContainer) fullContainer.innerHTML = emptyHtml;
-      if (dashContainer) dashContainer.innerHTML = emptyHtml;
-      if (window.lucide) lucide.createIcons();
-      return;
-    }
-
     const categories = await db.categories.toArray();
     const accounts = await db.accounts.toArray();
     const catMap = new Map(categories.map(c => [c.id, c]));
     const accMap = new Map(accounts.map(a => [a.id, a]));
 
-    // Group by Date
-    const grouped = {};
-    for (const t of txs) {
-      if (!grouped[t.date]) grouped[t.date] = [];
-      grouped[t.date].push(t);
-    }
+    // 1. Render Dashboard: Giới hạn chỉ hiển thị giao dịch trong ngày hiện tại (Hôm nay)
+    if (dashContainer) {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const todayTxs = allTxs.filter(t => t.date === todayStr);
 
-    let html = '';
-    for (const [dateStr, items] of Object.entries(grouped)) {
-      const dateLabel = this.formatDateLabel(dateStr);
-
-      const dayExpense = items.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0);
-      const dayIncome = items.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0);
-
-      html += `
-        <div class="transaction-group">
-          <div class="transaction-date-header">
-            <span>${dateLabel}</span>
-            <span>
-              ${dayIncome > 0 ? `<span style="color: var(--income); margin-right: 8px;">+${new Intl.NumberFormat('vi-VN').format(dayIncome)}đ</span>` : ''}
-              ${dayExpense > 0 ? `<span style="color: var(--expense);">${new Intl.NumberFormat('vi-VN').format(dayExpense)}đ</span>` : ''}
-            </span>
-          </div>
-          <div class="tx-items-wrapper">
-      `;
-
-      for (const t of items) {
-        const cat = catMap.get(t.categoryId);
-        const fromAcc = accMap.get(t.accountId);
-        const toAcc = accMap.get(t.toAccountId);
-
-        // Tiêu đề: ưu tiên ghi chú, fallback về tên danh mục
-        const hasNote = t.note && t.note.trim();
-        let title = hasNote ? t.note : (t.type === 'transfer' ? 'Chuyển khoản' : (cat ? cat.name : 'Giao dịch'));
-        let iconName = 'arrow-right-left';
-        let iconBg = 'var(--transfer-bg)';
-        let iconColor = 'var(--transfer)';
-        let amountPrefix = '';
-        let amountClass = 'transfer';
-
-        if (t.type === 'expense') {
-          iconName = cat ? cat.icon : 'shopping-bag';
-          iconBg = 'var(--expense-bg)';
-          iconColor = 'var(--expense)';
-          amountPrefix = '-';
-          amountClass = 'expense';
-        } else if (t.type === 'income') {
-          iconName = cat ? cat.icon : 'banknote';
-          iconBg = 'var(--income-bg)';
-          iconColor = 'var(--income)';
-          amountPrefix = '+';
-          amountClass = 'income';
-        }
-
-        const timeDisplay = t.time ? `<span style="color: var(--primary); font-weight: 600;">${t.time}</span> • ` : '';
-        const feeDisplay = t.fee ? ` • <span style="color: var(--text-muted);">Phí: ${new Intl.NumberFormat('vi-VN').format(t.fee)}đ</span>` : '';
-        // Chỉ hiển thị tên danh mục trong meta nếu title KHÔNG phải note (tức là title đang là cat.name)
-        // Tránh trùng lặp: nếu note đã có thì meta chỉ hiển thị tài khoản và danh mục phụ
-        const catMeta = (hasNote && cat) ? ` • <span style="color: var(--text-muted); font-size: 0.75rem;">${escapeHTML(cat.name)}</span>` : '';
-        const accountDisplay = t.type === 'transfer' 
-          ? `${timeDisplay}${fromAcc ? fromAcc.name : 'Tài khoản'} ➔ ${toAcc ? toAcc.name : 'Tài khoản'}${feeDisplay}`
-          : `${timeDisplay}${fromAcc ? fromAcc.name : 'Tài khoản'}${catMeta}${feeDisplay}`;
-
-        html += `
-          <div class="tx-card" onclick="UITransactions.openEditModal(${t.id})">
-            <div class="tx-left">
-              <div class="tx-icon-box" style="background: ${iconBg}; color: ${iconColor};">
-                <i data-lucide="${iconName}" style="width: 20px; height: 20px;"></i>
-              </div>
-              <div class="tx-info">
-                <span class="tx-title" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span>${escapeHTML(title)}</span>${(t.loanId || t.loanAction) ? `<span title="Giao dịch liên kết Sổ Vay (Được khóa bảo vệ)" style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; padding: 1px 5px; border-radius: 4px; background: rgba(99, 102, 241, 0.12); color: var(--primary);"><i data-lucide="lock" style="width: 10px; height: 10px;"></i> Sổ vay</span>` : ""}</span>
-                <span class="tx-meta">${accountDisplay}</span>
-              </div>
-            </div>
-            <div class="tx-right">
-              <span class="tx-amount ${amountClass}">
-                ${amountPrefix}${new Intl.NumberFormat('vi-VN').format(t.amount)}đ
-              </span>
-            </div>
+      if (todayTxs.length === 0) {
+        dashContainer.innerHTML = `
+          <div style="text-align: center; padding: 36px 16px; color: var(--text-muted);">
+            <i data-lucide="calendar-check" style="width: 44px; height: 44px; stroke-width: 1.5; margin-bottom: 10px; opacity: 0.45;"></i>
+            <p style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary); margin: 0;">Hôm nay chưa có giao dịch nào</p>
+            <p style="font-size: 0.8rem; margin-top: 4px; color: var(--text-muted);">Giao dịch phát sinh trong ngày hôm nay sẽ hiển thị tại đây</p>
           </div>
         `;
+      } else {
+        todayTxs.sort((a, b) => (b.time || '').localeCompare(a.time || '') || b.id - a.id);
+        const dateLabel = this.formatDateLabel(todayStr);
+        const dayExpense = todayTxs.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0);
+        const dayIncome = todayTxs.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0);
+
+        let dashHtml = `
+          <div class="transaction-group">
+            <div class="transaction-date-header">
+              <span>${dateLabel}</span>
+              <span>
+                ${dayIncome > 0 ? `<span style="color: var(--income); margin-right: 8px;">+${new Intl.NumberFormat('vi-VN').format(dayIncome)}đ</span>` : ''}
+                ${dayExpense > 0 ? `<span style="color: var(--expense);">${new Intl.NumberFormat('vi-VN').format(dayExpense)}đ</span>` : ''}
+              </span>
+            </div>
+            <div class="tx-items-wrapper">
+        `;
+        for (const t of todayTxs) {
+          dashHtml += this.renderTxCardHtml(t, catMap, accMap);
+        }
+        dashHtml += `</div></div>`;
+        dashContainer.innerHTML = dashHtml;
       }
-
-      html += `</div></div>`;
     }
 
+    // 2. Render Full List (Sổ giao dịch với bộ lọc người dùng chọn)
     if (fullContainer) {
-      fullContainer.innerHTML = html;
+      if (txs.length === 0) {
+        const isFiltered = this.currentFilterType !== 'all' || !!this.filterAccountId || !!this.searchKeyword;
+        const emptyMsg = this.searchKeyword 
+          ? 'Không tìm thấy giao dịch nào phù hợp với từ khóa' 
+          : (isFiltered ? 'Không có giao dịch nào phù hợp với bộ lọc hiện tại' : 'Chưa có ghi chép nào trong khoảng thời gian này');
+        const resetBtnHtml = isFiltered ? `
+          <button type="button" class="btn-secondary" onclick="UITransactions.resetAllFilters(true)" style="margin: 14px auto 0; display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; font-size: 0.85rem; border-radius: 20px; cursor: pointer;">
+            <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
+            Đặt lại bộ lọc
+          </button>
+        ` : '';
+        fullContainer.innerHTML = `
+          <div style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
+            <i data-lucide="receipt" style="width: 48px; height: 48px; stroke-width: 1.5; margin-bottom: 12px; opacity: 0.5;"></i>
+            <p style="font-size: 1rem; font-weight: 500;">Chưa có giao dịch nào</p>
+            <p style="font-size: 0.85rem; margin-top: 4px;">${escapeHTML(emptyMsg)}</p>
+            ${resetBtnHtml}
+          </div>
+        `;
+      } else {
+        // Group by Date
+        const grouped = {};
+        for (const t of txs) {
+          if (!grouped[t.date]) grouped[t.date] = [];
+          grouped[t.date].push(t);
+        }
+
+        let fullHtml = '';
+        for (const [dateStr, items] of Object.entries(grouped)) {
+          const dateLabel = this.formatDateLabel(dateStr);
+          const dayExpense = items.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0);
+          const dayIncome = items.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0);
+
+          fullHtml += `
+            <div class="transaction-group">
+              <div class="transaction-date-header">
+                <span>${dateLabel}</span>
+                <span>
+                  ${dayIncome > 0 ? `<span style="color: var(--income); margin-right: 8px;">+${new Intl.NumberFormat('vi-VN').format(dayIncome)}đ</span>` : ''}
+                  ${dayExpense > 0 ? `<span style="color: var(--expense);">${new Intl.NumberFormat('vi-VN').format(dayExpense)}đ</span>` : ''}
+                </span>
+              </div>
+              <div class="tx-items-wrapper">
+          `;
+
+          for (const t of items) {
+            fullHtml += this.renderTxCardHtml(t, catMap, accMap);
+          }
+
+          fullHtml += `</div></div>`;
+        }
+        fullContainer.innerHTML = fullHtml;
+      }
     }
-    if (dashContainer) {
-      // Đối với Dashboard, chỉ hiển thị danh sách nếu không trống
-      dashContainer.innerHTML = html;
-    }
+
     if (window.lucide) lucide.createIcons();
   },
 

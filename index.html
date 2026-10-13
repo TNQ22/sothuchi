@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.1.9">
+  <link rel="stylesheet" href="./css/style.css?v=2.2.3">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -230,8 +230,11 @@
             <div class="panel-header">
               <h3 class="panel-title"><i data-lucide="pie-chart"></i> Cơ Cấu Chi Tiêu Tháng Này</h3>
             </div>
-            <div class="chart-container">
-              <canvas id="chart-expense-categories"></canvas>
+            <div class="expense-breakdown-wrapper">
+              <div class="expense-breakdown-chart-box">
+                <canvas id="chart-expense-categories"></canvas>
+              </div>
+              <div class="expense-breakdown-legend" id="chart-expense-legend"></div>
             </div>
           </div>
         </div>
@@ -3836,14 +3839,14 @@
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
-  <script src="./js/ui-transactions.js?v=2.1.9"></script>
+  <script src="./js/ui-transactions.js?v=2.2.3"></script>
   <script src="./js/ui-debts.js?v=2.0.9"></script>
   <script src="./js/ui-accounts.js?v=2.0.9"></script>
   <script src="./js/ui-budgets.js?v=2.2.2"></script>
-  <script src="./js/ui-analytics.js?v=2.0.9"></script>
+  <script src="./js/ui-analytics.js?v=2.2.3"></script>
   <script src="./js/ui-settings.js?v=2.0.9"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.2.2"></script>
+  <script src="./js/app.js?v=2.2.3"></script>
 </body>
 </html>

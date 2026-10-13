@@ -8723,3 +8723,102 @@ html, body {
   height: 9px;
   stroke-width: 2.5;
 }
+
+
+/* Dashboard Expense Breakdown (Donut + Side Legend matching reference) */
+.expense-breakdown-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 4px;
+}
+
+.expense-breakdown-chart-box {
+  position: relative;
+  width: 146px;
+  height: 146px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expense-breakdown-chart-box canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.expense-breakdown-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+}
+
+.expense-legend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.expense-legend-row:hover {
+  background-color: var(--bg-hover);
+}
+
+.expense-legend-left {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  flex: 1;
+}
+
+.expense-legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.expense-legend-name {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.expense-legend-pct {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  text-align: right;
+  margin-left: auto;
+}
+
+@media (max-width: 380px) {
+  .expense-breakdown-wrapper {
+    gap: 10px;
+  }
+  .expense-breakdown-chart-box {
+    width: 124px;
+    height: 124px;
+  }
+  .expense-legend-name {
+    font-size: 0.82rem;
+  }
+  .expense-legend-pct {
+    font-size: 0.88rem;
+  }
+}

@@ -27,22 +27,19 @@ const UIAnalytics = {
     if (!window.Chart) return;
 
     const today = new Date();
-    let startDate, endDate;
+    const curYear = today.getFullYear();
+    const curMonth = String(today.getMonth() + 1).padStart(2, '0');
+    const lastDayOfMonth = new Date(curYear, today.getMonth() + 1, 0).getDate();
+    const thisMonthStart = `${curYear}-${curMonth}-01`;
+    const thisMonthEnd = `${curYear}-${curMonth}-${String(lastDayOfMonth).padStart(2, '0')}`;
 
-    if (this.currentRange === 'month') {
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      startDate = `${year}-${month}-01`;
-      endDate = `${year}-${month}-31`;
-    } else {
-      const year = today.getFullYear();
-      startDate = `${year}-01-01`;
-      endDate = `${year}-12-31`;
-    }
+    // Trend chart bao quát năm hiện tại
+    const yearStart = `${curYear}-01-01`;
+    const yearEnd = `${curYear}-12-31`;
 
     const txsAll = await db.transactions
       .where('date')
-      .between(startDate, endDate, true, true)
+      .between(yearStart, yearEnd, true, true)
       .and(t => t.isDeleted === 0)
       .toArray();
 
@@ -57,24 +54,54 @@ const UIAnalytics = {
     const categories = await db.categories.toArray();
     const catMap = new Map(categories.map(c => [c.id, c]));
 
-    // 1. Expense Breakdown by Category
+    // 1. Cơ Cấu Chi Tiêu Tháng Này (Donut Chart + Side Legend theo mẫu IMG_9899)
+    const monthExpenseTxs = txs.filter(t => t.type === 'expense' && t.date >= thisMonthStart && t.date <= thisMonthEnd);
     const expenseByCat = {};
-    const expenseTxs = txs.filter(t => t.type === 'expense');
 
-    for (const t of expenseTxs) {
+    for (const t of monthExpenseTxs) {
       const catName = t.categoryId && catMap.get(t.categoryId) ? catMap.get(t.categoryId).name : 'Khác';
-      expenseByCat[catName] = (expenseByCat[catName] || 0) + t.amount;
+      expenseByCat[catName] = (expenseByCat[catName] || 0) + (t.amount || 0);
     }
 
-    const donutLabels = Object.keys(expenseByCat);
-    const donutData = Object.values(expenseByCat);
-    const donutColors = [
-      '#f43f5e', '#fb7185', '#f59e0b', '#eab308', 
-      '#ec4899', '#8b5cf6', '#10b981', '#06b6d4', 
-      '#3b82f6', '#6366f1', '#64748b'
-    ];
+    // Sắp xếp các danh mục giảm dần theo số tiền chi
+    const sortedCats = Object.entries(expenseByCat)
+      .filter(([_, amt]) => amt > 0)
+      .sort((a, b) => b[1] - a[1]);
 
-    this.renderDonutChart(donutLabels, donutData, donutColors);
+    // Bảng màu sắc tương ứng chuẩn mẫu giao diện (IMG_9899):
+    // 1: Vàng cam (#f59e0b)
+    // 2: Hồng đỏ (#f43f5e)
+    // 3: Xanh ngọc (#10b981)
+    // 4: Tím (#8b5cf6)
+    // 5: Xanh dương (#0ea5e9)
+    // 6: Cam đỏ - Các mục khác (#f97316)
+    const DONUT_COLORS = ['#f59e0b', '#f43f5e', '#10b981', '#8b5cf6', '#0ea5e9', '#f97316'];
+
+    let finalLabels = [];
+    let finalData = [];
+    let finalColors = [];
+
+    if (sortedCats.length <= 5) {
+      finalLabels = sortedCats.map(c => c[0]);
+      finalData = sortedCats.map(c => c[1]);
+      finalColors = sortedCats.map((_, i) => DONUT_COLORS[i % DONUT_COLORS.length]);
+    } else {
+      // Top 5 danh mục đầu tiên
+      const top5 = sortedCats.slice(0, 5);
+      finalLabels = top5.map(c => c[0]);
+      finalData = top5.map(c => c[1]);
+      finalColors = [DONUT_COLORS[0], DONUT_COLORS[1], DONUT_COLORS[2], DONUT_COLORS[3], DONUT_COLORS[4]];
+
+      // Mục thứ 6: "Các mục khác" (gộp tất cả các danh mục còn lại)
+      const otherAmount = sortedCats.slice(5).reduce((sum, c) => sum + c[1], 0);
+      if (otherAmount > 0) {
+        finalLabels.push('Các mục khác');
+        finalData.push(otherAmount);
+        finalColors.push(DONUT_COLORS[5]);
+      }
+    }
+
+    this.renderDonutChart(finalLabels, finalData, finalColors);
 
     // 2. Income vs Expense Trend
     this.renderTrendChart(txs);
@@ -86,13 +113,45 @@ const UIAnalytics = {
 
     if (this.expenseChart) {
       this.expenseChart.destroy();
+      this.expenseChart = null;
     }
 
-    if (labels.length === 0) {
-      labels = ['Chưa có chi tiêu'];
-      data = [1];
-      colors = ['rgba(255, 255, 255, 0.1)'];
+    const legendContainer = document.getElementById('chart-expense-legend');
+    const total = data.reduce((a, b) => a + b, 0);
+
+    if (labels.length === 0 || total === 0) {
+      this.expenseChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: ['Chưa có chi tiêu'],
+          datasets: [{
+            data: [1],
+            backgroundColor: ['rgba(255, 255, 255, 0.08)'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '62%',
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+          }
+        }
+      });
+
+      if (legendContainer) {
+        legendContainer.innerHTML = `
+          <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 24px 8px; font-style: italic;">
+            Chưa có chi tiêu tháng này
+          </div>
+        `;
+      }
+      return;
     }
+
+    const cardBg = getComputedStyle(document.documentElement).getPropertyValue('--bg-card').trim() || '#ffffff';
 
     this.expenseChart = new Chart(canvas, {
       type: 'doughnut',
@@ -101,35 +160,78 @@ const UIAnalytics = {
         datasets: [{
           data: data,
           backgroundColor: colors,
-          borderWidth: 2,
-          borderColor: 'var(--bg-card)'
+          borderWidth: 2.5,
+          borderColor: cardBg,
+          hoverBorderColor: cardBg,
+          hoverOffset: 3
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '68%',
+        cutout: '62%',
+        rotation: -90,
         plugins: {
           legend: {
-            position: 'bottom',
-            labels: {
-              color: 'rgba(255, 255, 255, 0.75)',
-              boxWidth: 12,
-              padding: 14,
-              font: { size: 11 }
-            }
+            display: false // Sử dụng legend tùy chỉnh bên cạnh
           },
           tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.92)',
+            titleColor: '#f8fafc',
+            bodyColor: '#f8fafc',
+            padding: 10,
+            cornerRadius: 8,
+            boxPadding: 4,
             callbacks: {
               label: function(context) {
                 const val = context.raw || 0;
-                return ` ${context.label}: ${new Intl.NumberFormat('vi-VN').format(val)}đ`;
+                const pct = total > 0 ? parseFloat(((val / total) * 100).toFixed(2)).toLocaleString('vi-VN') + '%' : '0%';
+                return ` ${context.label}: ${new Intl.NumberFormat('vi-VN').format(val)}₫ (${pct})`;
               }
             }
           }
         }
       }
     });
+
+    if (legendContainer) {
+      let legendHtml = '';
+      labels.forEach((name, idx) => {
+        const val = data[idx];
+        const color = colors[idx];
+        const pct = total > 0 ? (val / total) * 100 : 0;
+        const pctFormatted = parseFloat(pct.toFixed(2)).toLocaleString('vi-VN') + '%';
+        const formattedMoney = new Intl.NumberFormat('vi-VN').format(val) + '₫';
+
+        legendHtml += `
+          <div class="expense-legend-row" data-index="${idx}" title="${name}: ${formattedMoney} (${pctFormatted})">
+            <div class="expense-legend-left">
+              <span class="expense-legend-dot" style="background-color: ${color};"></span>
+              <span class="expense-legend-name">${name}</span>
+            </div>
+            <span class="expense-legend-pct">${pctFormatted}</span>
+          </div>
+        `;
+      });
+      legendContainer.innerHTML = legendHtml;
+
+      // Tương tác hover qua lại giữa danh sách nhãn và biểu đồ
+      legendContainer.querySelectorAll('.expense-legend-row').forEach(row => {
+        const idx = Number(row.dataset.index);
+        row.addEventListener('mouseenter', () => {
+          if (this.expenseChart) {
+            this.expenseChart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+            this.expenseChart.render();
+          }
+        });
+        row.addEventListener('mouseleave', () => {
+          if (this.expenseChart) {
+            this.expenseChart.setActiveElements([]);
+            this.expenseChart.render();
+          }
+        });
+      });
+    }
   },
 
   renderTrendChart(txs) {
