@@ -3739,11 +3739,11 @@
 
   <!-- Modal: Cân đối ngân sách (Bù đắp chi âm) - 2 Bước -->
   <div id="modal-budget-rebalance" class="modal-overlay" onclick="if(event.target === this) UIBudgets.closeRebalanceModal()">
-    <div class="modal-dialog" style="max-width: 480px; max-height: 85vh; display: flex; flex-direction: column;">
+    <div class="modal-dialog" style="max-width: 480px; max-height: 85dvh; display: flex; flex-direction: column; overflow: hidden;">
       
       <!-- STEP 1: Danh sách hạng mục cần cân đối -->
-      <div id="rebalance-step-1" class="rebalance-step-view" style="display: flex; flex-direction: column; height: 100%;">
-        <div class="modal-header">
+      <div id="rebalance-step-1" class="rebalance-step-view" style="display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden;">
+        <div class="modal-header" style="flex-shrink: 0;">
           <div>
             <h3 class="modal-title" style="margin: 0;">Cân Đối Ngân Sách</h3>
             <span style="font-size: 0.75rem; color: var(--text-muted);">Chọn hạng mục cần bù ngân sách</span>
@@ -3751,16 +3751,20 @@
           <button type="button" class="btn-icon" onclick="UIBudgets.closeRebalanceModal()"><i data-lucide="x"></i></button>
         </div>
 
-        <div class="modal-body" style="overflow-y: auto; padding: 14px 16px 20px 16px; display: flex; flex-direction: column; gap: 8px;">
+        <div class="modal-body" style="overflow-y: auto; padding: 14px 16px 20px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0;">
           <div id="rebalance-step1-list" style="display: flex; flex-direction: column; gap: 8px;">
             <!-- Danh sách các hạng mục cần cân đối -->
           </div>
         </div>
+
+        <div class="modal-footer rebalance-modal-footer">
+          <button type="button" class="btn-secondary" onclick="UIBudgets.closeRebalanceModal()">Huỷ</button>
+        </div>
       </div>
 
       <!-- STEP 2: Chọn nguồn ngân sách & xác nhận -->
-      <div id="rebalance-step-2" class="rebalance-step-view" style="display: none; flex-direction: column; height: 100%;">
-        <div class="modal-header">
+      <div id="rebalance-step-2" class="rebalance-step-view" style="display: none; flex-direction: column; height: 100%; min-height: 0; overflow: hidden;">
+        <div class="modal-header" style="flex-shrink: 0;">
           <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
             <button type="button" id="rebalance-back-btn" class="btn-icon" onclick="UIBudgets.rebalanceGoToStep1()" title="Quay lại danh sách" style="margin-right: 2px;">
               <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
@@ -3773,9 +3777,9 @@
           <button type="button" class="btn-icon" onclick="UIBudgets.closeRebalanceModal()"><i data-lucide="x"></i></button>
         </div>
 
-        <div class="modal-body" style="overflow-y: auto; padding: 14px 16px 20px 16px; display: flex; flex-direction: column; gap: 14px;">
+        <div class="modal-body" style="overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0;">
           <!-- Mode Toggle Tabs (Chuyển đi / Bù vào) -->
-          <div class="rebalance-mode-toggle" id="rebalance-mode-toggle" style="display: none;">
+          <div class="rebalance-mode-toggle" id="rebalance-mode-toggle" style="display: none; flex-shrink: 0;">
             <button type="button" class="rebalance-mode-btn" id="rebalance-tab-transfer" onclick="UIBudgets.switchRebalanceMode('transfer')">
               <i data-lucide="arrow-up-right" style="width: 15px; height: 15px;"></i>
               <span>Chuyển đi</span>
@@ -3786,25 +3790,29 @@
             </button>
           </div>
 
-          <div>
-            <label id="rebalance-step2-list-label" class="form-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;">Chọn nguồn lấy ngân sách:</label>
+          <!-- Amount Input Section -->
+          <div id="rebalance-step2-amount-section" class="rebalance-amount-box">
+            <label id="rebalance-step2-amount-label" class="form-label" style="font-size: 0.85rem; font-weight: 600; margin: 0;">Số tiền chuyển (₫):</label>
+            <input type="text" id="rebalance-amount-input" class="form-control money-input-lg" inputmode="numeric" style="font-size: 1.25rem; font-weight: 700;" placeholder="0">
+            <span id="rebalance-amount-hint" style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.3;"></span>
+          </div>
+
+          <!-- Category destination / source list -->
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label id="rebalance-step2-list-label" class="form-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 2px;">Chọn nơi nhận ngân sách:</label>
             <div id="rebalance-step2-source-list" style="display: flex; flex-direction: column; gap: 8px;">
               <!-- Danh sách nguồn hoặc đích -->
             </div>
           </div>
+        </div>
 
-          <div id="rebalance-step2-amount-section" style="display: flex; flex-direction: column; gap: 6px;">
-            <label id="rebalance-step2-amount-label" class="form-label" style="font-size: 0.85rem; font-weight: 600; margin: 0;">Số tiền bù đắp (₫):</label>
-            <input type="text" id="rebalance-amount-input" class="form-control money-input-lg" inputmode="numeric" style="font-size: 1.2rem; font-weight: 700;" placeholder="0">
-            <span id="rebalance-amount-hint" style="font-size: 0.75rem; color: var(--text-muted);"></span>
-          </div>
-
-          <div style="display: flex; gap: 10px; margin-top: 4px;">
-            <button type="button" class="btn-secondary" id="rebalance-back-cancel-btn" style="flex: 1;" onclick="UIBudgets.rebalanceHandleBackOrCancel()">Quay lại</button>
-            <button type="button" class="btn-primary" style="flex: 2;" id="rebalance-submit-btn" onclick="UIBudgets.applyRebalance()">
-              <span>Xác nhận cân đối</span>
-            </button>
-          </div>
+        <!-- Sticky Footer with balanced buttons -->
+        <div class="modal-footer rebalance-modal-footer" id="rebalance-step2-footer">
+          <button type="button" class="btn-secondary" id="rebalance-back-btn-footer" style="display: none;" onclick="UIBudgets.rebalanceGoToStep1()">Quay lại</button>
+          <button type="button" class="btn-secondary" id="rebalance-cancel-btn" onclick="UIBudgets.closeRebalanceModal()">Huỷ</button>
+          <button type="button" class="btn-primary" id="rebalance-submit-btn" onclick="UIBudgets.applyRebalance()">
+            <span>Xác nhận</span>
+          </button>
         </div>
       </div>
 

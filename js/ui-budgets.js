@@ -3234,7 +3234,8 @@ const UIBudgets = {
     const sourceListEl = document.getElementById('rebalance-step2-source-list');
     const submitBtn = document.getElementById('rebalance-submit-btn');
     const backBtn = document.getElementById('rebalance-back-btn');
-    const backCancelBtn = document.getElementById('rebalance-back-cancel-btn');
+    const backFooterBtn = document.getElementById('rebalance-back-btn-footer');
+    const cancelBtn = document.getElementById('rebalance-cancel-btn');
     const listLabel = document.getElementById('rebalance-step2-list-label');
     const amountLabel = document.getElementById('rebalance-step2-amount-label');
     const modeToggle = document.getElementById('rebalance-mode-toggle');
@@ -3245,7 +3246,8 @@ const UIBudgets = {
     if (step2) step2.style.display = 'flex';
 
     if (backBtn) backBtn.style.display = this.rebalanceOpenedFromStep1 ? '' : 'none';
-    if (backCancelBtn) backCancelBtn.textContent = this.rebalanceOpenedFromStep1 ? 'Quay lại' : 'Đóng';
+    if (backFooterBtn) backFooterBtn.style.display = this.rebalanceOpenedFromStep1 ? 'inline-flex' : 'none';
+    if (cancelBtn) cancelBtn.textContent = 'Huỷ';
 
     // Show and configure tabs
     if (modeToggle) modeToggle.style.display = 'flex';
@@ -3254,7 +3256,7 @@ const UIBudgets = {
 
     if (listLabel) listLabel.textContent = 'Chọn nơi nhận ngân sách:';
     if (amountLabel) amountLabel.textContent = 'Số tiền chuyển (₫):';
-    if (submitBtn) submitBtn.innerHTML = '<span>Xác nhận chuyển</span>';
+    if (submitBtn) submitBtn.innerHTML = '<span>Xác nhận</span>';
 
     const catId = Number(sourceId);
     const cat = expenseCategories.find(c => Number(c.id) === catId);
@@ -3424,7 +3426,8 @@ const UIBudgets = {
     const sourceListEl = document.getElementById('rebalance-step2-source-list');
     const submitBtn = document.getElementById('rebalance-submit-btn');
     const backBtn = document.getElementById('rebalance-back-btn');
-    const backCancelBtn = document.getElementById('rebalance-back-cancel-btn');
+    const backFooterBtn = document.getElementById('rebalance-back-btn-footer');
+    const cancelBtn = document.getElementById('rebalance-cancel-btn');
     const listLabel = document.getElementById('rebalance-step2-list-label');
     const amountLabel = document.getElementById('rebalance-step2-amount-label');
     const modeToggle = document.getElementById('rebalance-mode-toggle');
@@ -3434,8 +3437,9 @@ const UIBudgets = {
     if (step1) step1.style.display = 'none';
     if (step2) step2.style.display = 'flex';
 
-    if (backBtn) backBtn.style.display = this.rebalanceOpenedFromStep1 ? '' : 'none';
-    if (backCancelBtn) backCancelBtn.textContent = this.rebalanceOpenedFromStep1 ? 'Quay lại' : 'Đóng';
+    if (backBtn) backBtn.style.display = (this.rebalanceOpenedFromStep1 && !isToBudget) ? '' : 'none';
+    if (backFooterBtn) backFooterBtn.style.display = (this.rebalanceOpenedFromStep1 && !isToBudget) ? 'inline-flex' : 'none';
+    if (cancelBtn) cancelBtn.textContent = 'Huỷ';
 
     if (listLabel) listLabel.textContent = 'Chọn nguồn bù ngân sách:';
     if (amountLabel) amountLabel.textContent = 'Số tiền bù đắp (₫):';
@@ -3453,7 +3457,7 @@ const UIBudgets = {
       }
       validSurplusCats = [...surplusList];
       if (submitBtn) {
-        submitBtn.innerHTML = '<span>Cân đối về ngân sách</span>';
+        submitBtn.innerHTML = '<span>Xác nhận</span>';
         submitBtn.disabled = false;
       }
     } else {
@@ -3482,7 +3486,7 @@ const UIBudgets = {
 
       validSurplusCats = surplusList.filter(item => Number(item.cat.id) !== catId);
       if (submitBtn) {
-        submitBtn.innerHTML = '<span>Xác nhận cân đối</span>';
+        submitBtn.innerHTML = '<span>Xác nhận</span>';
         submitBtn.disabled = false;
       }
     }
