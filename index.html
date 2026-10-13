@@ -3774,21 +3774,33 @@
         </div>
 
         <div class="modal-body" style="overflow-y: auto; padding: 14px 16px 20px 16px; display: flex; flex-direction: column; gap: 14px;">
+          <!-- Mode Toggle Tabs (Chuyển đi / Bù vào) -->
+          <div class="rebalance-mode-toggle" id="rebalance-mode-toggle" style="display: none;">
+            <button type="button" class="rebalance-mode-btn" id="rebalance-tab-transfer" onclick="UIBudgets.switchRebalanceMode('transfer')">
+              <i data-lucide="arrow-up-right" style="width: 15px; height: 15px;"></i>
+              <span>Chuyển đi</span>
+            </button>
+            <button type="button" class="rebalance-mode-btn" id="rebalance-tab-cover" onclick="UIBudgets.switchRebalanceMode('cover')">
+              <i data-lucide="arrow-down-left" style="width: 15px; height: 15px;"></i>
+              <span>Bù vào</span>
+            </button>
+          </div>
+
           <div>
-            <label class="form-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;">Chọn nguồn lấy ngân sách:</label>
+            <label id="rebalance-step2-list-label" class="form-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;">Chọn nguồn lấy ngân sách:</label>
             <div id="rebalance-step2-source-list" style="display: flex; flex-direction: column; gap: 8px;">
-              <!-- Danh sách nguồn: Ngân sách tháng & Các danh mục còn dư -->
+              <!-- Danh sách nguồn hoặc đích -->
             </div>
           </div>
 
           <div id="rebalance-step2-amount-section" style="display: flex; flex-direction: column; gap: 6px;">
-            <label class="form-label" style="font-size: 0.85rem; font-weight: 600; margin: 0;">Số tiền bù đắp (₫):</label>
+            <label id="rebalance-step2-amount-label" class="form-label" style="font-size: 0.85rem; font-weight: 600; margin: 0;">Số tiền bù đắp (₫):</label>
             <input type="text" id="rebalance-amount-input" class="form-control money-input-lg" inputmode="numeric" style="font-size: 1.2rem; font-weight: 700;" placeholder="0">
             <span id="rebalance-amount-hint" style="font-size: 0.75rem; color: var(--text-muted);"></span>
           </div>
 
           <div style="display: flex; gap: 10px; margin-top: 4px;">
-            <button type="button" class="btn-secondary" style="flex: 1;" onclick="UIBudgets.rebalanceGoToStep1()">Quay lại</button>
+            <button type="button" class="btn-secondary" id="rebalance-back-cancel-btn" style="flex: 1;" onclick="UIBudgets.rebalanceHandleBackOrCancel()">Quay lại</button>
             <button type="button" class="btn-primary" style="flex: 2;" id="rebalance-submit-btn" onclick="UIBudgets.applyRebalance()">
               <span>Xác nhận cân đối</span>
             </button>

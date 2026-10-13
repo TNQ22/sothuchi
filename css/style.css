@@ -8485,6 +8485,43 @@ html, body {
   color: var(--text-muted);
 }
 
+/* Mode toggle buttons (Chuyển đi / Bù vào) */
+.rebalance-mode-toggle {
+  display: flex;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 4px;
+}
+
+.rebalance-mode-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rebalance-mode-btn:hover {
+  color: var(--text-primary);
+}
+
+.rebalance-mode-btn.active {
+  background: var(--bg-card);
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
 /* Shift overspent to next month arrow button */
 .actual-avail-cell-box {
   display: inline-flex;

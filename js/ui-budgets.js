@@ -2998,7 +2998,7 @@ const UIBudgets = {
     return this.openRebalanceModal('TO_BUDGET');
   },
 
-  async openRebalanceModal(targetCatId = null) {
+  async openRebalanceModal(targetCatId = null, preferredMode = null) {
     try {
       const allCategories = await db.categories.where('isDeleted').equals(0).toArray();
       const expenseCategories = allCategories.filter(c => c.type === 'expense');
@@ -3090,10 +3090,24 @@ const UIBudgets = {
       }
 
       if (targetCatId) {
-        // Direct jump to Step 2 for chosen category or 'TO_BUDGET'
-        this.rebalanceSelectTarget(targetCatId);
+        this.rebalanceOpenedFromStep1 = false;
+        if (String(targetCatId) === 'TO_BUDGET') {
+          this.rebalanceActiveCatId = 'TO_BUDGET';
+          this.rebalanceSelectTarget('TO_BUDGET');
+        } else {
+          const catId = Number(targetCatId);
+          this.rebalanceActiveCatId = catId;
+          const avail = this.getCategoryAvailable(catId);
+          const mode = preferredMode || (avail > 0 ? 'transfer' : 'cover');
+          if (mode === 'transfer') {
+            this.renderRebalanceStep2Transfer(catId);
+          } else {
+            this.rebalanceSelectTarget(catId);
+          }
+        }
       } else {
-        // Show Step 1: List of categories needing rebalance
+        this.rebalanceOpenedFromStep1 = true;
+        this.rebalanceActiveCatId = null;
         this.renderRebalanceStep1();
       }
 
@@ -3102,6 +3116,17 @@ const UIBudgets = {
     } catch (err) {
       console.error('Error in openRebalanceModal:', err);
     }
+  },
+
+  getCategoryAvailable(catId) {
+    if (!this.rebalanceDataCache) return 0;
+    const { categoryCarryover, budgetMap, spentByCat } = this.rebalanceDataCache;
+    const prevCarry = categoryCarryover[String(catId)] || 0;
+    const budgeted = budgetMap.get(catId)?.limitAmount || 0;
+    const spent = spentByCat[catId] || 0;
+    const rawAvailable = prevCarry + budgeted - spent;
+    const isShifted = budgetMap.get(catId)?.shiftToNextMonth === true;
+    return (isShifted && rawAvailable < 0) ? 0 : rawAvailable;
   },
 
   renderRebalanceStep1() {
@@ -3114,17 +3139,15 @@ const UIBudgets = {
 
     if (!listEl || !this.rebalanceDataCache) return;
 
-    const { overspentList, expenseCategories, categoryCarryover, budgetMap, spentByCat, toBudget } = this.rebalanceDataCache;
+    const { overspentList, expenseCategories, categoryCarryover, budgetMap, spentByCat } = this.rebalanceDataCache;
 
     let itemsHtml = '';
 
-    
-
     if (overspentList.length === 0) {
-      // If no category is overspent and toBudget >= 0, let user pick any category
+      // If no category is overspent, let user pick any category
       itemsHtml += `
         <div style="font-size: 0.85rem; color: var(--text-muted); padding: 8px 4px; line-height: 1.4;">
-          Không có hạng mục nào bị chi vượt trong tháng. Bạn có thể chọn bất kỳ hạng mục nào dưới đây để cấp thêm ngân sách:
+          Không có hạng mục nào bị chi vượt trong tháng. Bạn có thể chọn bất kỳ hạng mục nào dưới đây để điều chỉnh hoặc cấp thêm ngân sách:
         </div>
         ${expenseCategories.map(cat => {
           const prevCarry = categoryCarryover[String(cat.id)] || 0;
@@ -3148,27 +3171,25 @@ const UIBudgets = {
         }).join('')}
       `;
     } else {
-      if (overspentList.length > 0) {
-        itemsHtml += `
-          <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin: 6px 0 2px 0;">
-            Hạng mục cần bù ngân sách:
-          </div>
-          ${overspentList.map(item => `
-            <div class="rebalance-cat-item" onclick="UIBudgets.rebalanceSelectTarget(${item.cat.id})">
-              <div class="rebalance-item-left">
-                <div class="rebalance-item-icon" style="background: ${item.cat.color || '#0d9488'}22; color: ${item.cat.color || '#0d9488'};">
-                  <i data-lucide="${item.cat.icon || 'tag'}"></i>
-                </div>
-                <div class="rebalance-item-name">${escapeHTML(item.cat.name)}</div>
+      itemsHtml += `
+        <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin: 6px 0 2px 0;">
+          Hạng mục cần bù ngân sách:
+        </div>
+        ${overspentList.map(item => `
+          <div class="rebalance-cat-item" onclick="UIBudgets.rebalanceSelectTarget(${item.cat.id})">
+            <div class="rebalance-item-left">
+              <div class="rebalance-item-icon" style="background: ${item.cat.color || '#0d9488'}22; color: ${item.cat.color || '#0d9488'};">
+                <i data-lucide="${item.cat.icon || 'tag'}"></i>
               </div>
-              <div class="rebalance-item-right">
-                <span class="rebalance-amount-badge deficit">Chi vượt: ${this.formatMoney(item.deficit)}</span>
-                <i data-lucide="chevron-right" style="width: 16px; height: 16px; color: var(--text-muted);"></i>
-              </div>
+              <div class="rebalance-item-name">${escapeHTML(item.cat.name)}</div>
             </div>
-          `).join('')}
-        `;
-      }
+            <div class="rebalance-item-right">
+              <span class="rebalance-amount-badge deficit">Chi vượt: -${this.formatMoney(item.deficit)}</span>
+              <i data-lucide="chevron-right" style="width: 16px; height: 16px; color: var(--text-muted);"></i>
+            </div>
+          </div>
+        `).join('')}
+      `;
     }
 
     listEl.innerHTML = itemsHtml;
@@ -3179,12 +3200,32 @@ const UIBudgets = {
     this.renderRebalanceStep1();
   },
 
-  rebalanceSelectTarget(targetId) {
+  rebalanceHandleBackOrCancel() {
+    if (this.rebalanceOpenedFromStep1) {
+      this.rebalanceGoToStep1();
+    } else {
+      this.closeRebalanceModal();
+    }
+  },
+
+  switchRebalanceMode(newMode) {
+    if (this.rebalanceMode === newMode) return;
+    this.rebalanceMode = newMode;
+    if (newMode === 'transfer') {
+      this.renderRebalanceStep2Transfer(this.rebalanceActiveCatId);
+    } else {
+      this.rebalanceSelectTarget(this.rebalanceActiveCatId);
+    }
+  },
+
+  renderRebalanceStep2Transfer(sourceId) {
     if (!this.rebalanceDataCache) return;
 
-    const isToBudget = String(targetId) === 'TO_BUDGET';
-    this.rebalanceTargetCat = isToBudget ? 'TO_BUDGET' : Number(targetId);
-    const { expenseCategories, budgetMap, categoryCarryover, spentByCat, surplusList, toBudget } = this.rebalanceDataCache;
+    this.rebalanceMode = 'transfer';
+    this.rebalanceActiveCatId = Number(sourceId);
+    this.rebalanceSourceCat = Number(sourceId);
+
+    const { expenseCategories, overspentList, toBudget } = this.rebalanceDataCache;
 
     const step1 = document.getElementById('rebalance-step-1');
     const step2 = document.getElementById('rebalance-step-2');
@@ -3193,15 +3234,217 @@ const UIBudgets = {
     const sourceListEl = document.getElementById('rebalance-step2-source-list');
     const submitBtn = document.getElementById('rebalance-submit-btn');
     const backBtn = document.getElementById('rebalance-back-btn');
+    const backCancelBtn = document.getElementById('rebalance-back-cancel-btn');
+    const listLabel = document.getElementById('rebalance-step2-list-label');
+    const amountLabel = document.getElementById('rebalance-step2-amount-label');
+    const modeToggle = document.getElementById('rebalance-mode-toggle');
+    const tabTransfer = document.getElementById('rebalance-tab-transfer');
+    const tabCover = document.getElementById('rebalance-tab-cover');
 
     if (step1) step1.style.display = 'none';
     if (step2) step2.style.display = 'flex';
+
+    if (backBtn) backBtn.style.display = this.rebalanceOpenedFromStep1 ? '' : 'none';
+    if (backCancelBtn) backCancelBtn.textContent = this.rebalanceOpenedFromStep1 ? 'Quay lại' : 'Đóng';
+
+    // Show and configure tabs
+    if (modeToggle) modeToggle.style.display = 'flex';
+    if (tabTransfer) tabTransfer.classList.add('active');
+    if (tabCover) tabCover.classList.remove('active');
+
+    if (listLabel) listLabel.textContent = 'Chọn nơi nhận ngân sách:';
+    if (amountLabel) amountLabel.textContent = 'Số tiền chuyển (₫):';
+    if (submitBtn) submitBtn.innerHTML = '<span>Xác nhận chuyển</span>';
+
+    const catId = Number(sourceId);
+    const cat = expenseCategories.find(c => Number(c.id) === catId);
+    if (!cat) return;
+
+    const available = this.getCategoryAvailable(catId);
+    const surplus = Math.max(0, available);
+
+    if (titleEl) titleEl.textContent = `Chuyển từ: ${cat.name}`;
+    if (subtitleEl) {
+      subtitleEl.textContent = `Số dư khả dụng: +${this.formatMoney(surplus)}`;
+      subtitleEl.style.color = 'var(--income)';
+    }
+
+    if (surplus <= 0) {
+      if (sourceListEl) {
+        sourceListEl.innerHTML = `
+          <div style="font-size: 0.85rem; color: var(--expense); padding: 16px 12px; text-align: center; background: rgba(244, 63, 94, 0.08); border-radius: var(--radius-md);">
+            Danh mục "${escapeHTML(cat.name)}" hiện không có số dư để chuyển đi (Còn lại: ${this.formatMoney(available)}).
+          </div>
+        `;
+      }
+      if (submitBtn) submitBtn.disabled = true;
+      this.transferPickTarget(null, 0, 0);
+      return;
+    }
+
+    if (submitBtn) submitBtn.disabled = false;
+
+    // Filter potential destinations
+    const overspentOtherCats = overspentList.filter(item => Number(item.cat.id) !== catId);
+    const otherExpenseCats = expenseCategories.filter(c => Number(c.id) !== catId && !overspentOtherCats.some(o => Number(o.cat.id) === Number(c.id)));
+
+    let destsHtml = '';
+
+    // Section 1: Hạng mục chi vượt (ưu tiên bù)
+    if (overspentOtherCats.length > 0) {
+      destsHtml += `
+        <div style="font-size: 0.8rem; font-weight: 700; color: var(--expense); text-transform: uppercase; margin: 4px 0 2px 0; display: flex; align-items: center; gap: 4px;">
+          <i data-lucide="alert-circle" style="width: 14px; height: 14px;"></i>
+          <span>Ưu tiên bù cho hạng mục chi vượt:</span>
+        </div>
+      `;
+      overspentOtherCats.forEach(item => {
+        destsHtml += `
+          <div class="rebalance-source-item" id="rebalance-src-${item.cat.id}" onclick="UIBudgets.transferPickTarget(${item.cat.id}, ${item.deficit}, ${surplus})">
+            <div class="rebalance-item-left">
+              <div class="rebalance-item-icon" style="background: ${item.cat.color || '#0d9488'}22; color: ${item.cat.color || '#0d9488'};">
+                <i data-lucide="${item.cat.icon || 'tag'}"></i>
+              </div>
+              <div class="rebalance-item-name">${escapeHTML(item.cat.name)}</div>
+            </div>
+            <div class="rebalance-item-right">
+              <span class="rebalance-amount-badge deficit">Chi vượt: -${this.formatMoney(item.deficit)}</span>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // Section 2: Ngân sách tháng (Sẵn sàng phân bổ)
+    destsHtml += `
+      <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin: ${overspentOtherCats.length > 0 ? '8px' : '4px'} 0 2px 0;">
+        Hoặc chuyển về ngân sách tháng:
+      </div>
+      <div class="rebalance-source-item" id="rebalance-src-TO_BUDGET" onclick="UIBudgets.transferPickTarget('TO_BUDGET', ${toBudget < 0 ? Math.abs(toBudget) : 0}, ${surplus})">
+        <div class="rebalance-item-left">
+          <div class="rebalance-item-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--income);">
+            <i data-lucide="wallet"></i>
+          </div>
+          <div class="rebalance-item-name">Ngân sách tháng (Sẵn sàng phân bổ)</div>
+        </div>
+        <div class="rebalance-item-right">
+          <span class="rebalance-amount-badge ${toBudget > 0 ? 'surplus' : (toBudget < 0 ? 'deficit' : 'zero')}">
+            ${toBudget > 0 ? '+' : ''}${this.formatMoney(toBudget)}
+          </span>
+        </div>
+      </div>
+    `;
+
+    // Section 3: Các hạng mục chi tiêu khác
+    if (otherExpenseCats.length > 0) {
+      destsHtml += `
+        <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin: 8px 0 2px 0;">
+          Hoặc chuyển sang danh mục khác:
+        </div>
+      `;
+      otherExpenseCats.forEach(c => {
+        const catAvail = this.getCategoryAvailable(c.id);
+        destsHtml += `
+          <div class="rebalance-source-item" id="rebalance-src-${c.id}" onclick="UIBudgets.transferPickTarget(${c.id}, 0, ${surplus})">
+            <div class="rebalance-item-left">
+              <div class="rebalance-item-icon" style="background: ${c.color || '#0d9488'}22; color: ${c.color || '#0d9488'};">
+                <i data-lucide="${c.icon || 'tag'}"></i>
+              </div>
+              <div class="rebalance-item-name">${escapeHTML(c.name)}</div>
+            </div>
+            <div class="rebalance-item-right">
+              <span class="rebalance-amount-badge ${catAvail > 0 ? 'surplus' : 'zero'}">
+                ${catAvail > 0 ? '+' : ''}${this.formatMoney(catAvail)}
+              </span>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    if (sourceListEl) sourceListEl.innerHTML = destsHtml;
+
+    // Auto-select initial destination
+    if (overspentOtherCats.length > 0) {
+      this.transferPickTarget(overspentOtherCats[0].cat.id, overspentOtherCats[0].deficit, surplus);
+    } else if (toBudget < 0) {
+      this.transferPickTarget('TO_BUDGET', Math.abs(toBudget), surplus);
+    } else {
+      this.transferPickTarget('TO_BUDGET', 0, surplus);
+    }
+
+    if (window.lucide) lucide.createIcons();
+  },
+
+  transferPickTarget(targetKey, targetDeficit = 0, sourceSurplus = null) {
+    this.rebalanceSelectedTarget = targetKey;
+
+    // Highlight selected destination row
+    document.querySelectorAll('.rebalance-source-item').forEach(el => el.classList.remove('selected'));
+    if (targetKey) {
+      const selectedEl = document.getElementById(`rebalance-src-${targetKey}`);
+      if (selectedEl) selectedEl.classList.add('selected');
+    }
+
+    const amountInput = document.getElementById('rebalance-amount-input');
+    const hintEl = document.getElementById('rebalance-amount-hint');
+
+    const surplus = sourceSurplus !== null ? sourceSurplus : Math.max(0, this.getCategoryAvailable(this.rebalanceActiveCatId));
+    const deficit = targetDeficit || 0;
+
+    const suggested = (deficit > 0) ? Math.min(surplus, deficit) : surplus;
+
+    if (amountInput) {
+      amountInput.value = suggested > 0 ? new Intl.NumberFormat('vi-VN').format(suggested) : '';
+    }
+
+    if (hintEl) {
+      let hintText = `Số dư khả dụng có thể chuyển: ${this.formatMoney(surplus)}`;
+      if (deficit > 0) {
+        hintText += ` (Hạng mục nhận đang cần bù: ${this.formatMoney(deficit)})`;
+      }
+      hintEl.textContent = hintText;
+    }
+  },
+
+  rebalanceSelectTarget(targetId) {
+    if (!this.rebalanceDataCache) return;
+
+    const isToBudget = String(targetId) === 'TO_BUDGET';
+    this.rebalanceMode = 'cover';
+    this.rebalanceActiveCatId = isToBudget ? 'TO_BUDGET' : Number(targetId);
+    this.rebalanceTargetCat = this.rebalanceActiveCatId;
+
+    const { expenseCategories, surplusList, toBudget } = this.rebalanceDataCache;
+
+    const step1 = document.getElementById('rebalance-step-1');
+    const step2 = document.getElementById('rebalance-step-2');
+    const titleEl = document.getElementById('rebalance-step2-title');
+    const subtitleEl = document.getElementById('rebalance-step2-subtitle');
+    const sourceListEl = document.getElementById('rebalance-step2-source-list');
+    const submitBtn = document.getElementById('rebalance-submit-btn');
+    const backBtn = document.getElementById('rebalance-back-btn');
+    const backCancelBtn = document.getElementById('rebalance-back-cancel-btn');
+    const listLabel = document.getElementById('rebalance-step2-list-label');
+    const amountLabel = document.getElementById('rebalance-step2-amount-label');
+    const modeToggle = document.getElementById('rebalance-mode-toggle');
+    const tabTransfer = document.getElementById('rebalance-tab-transfer');
+    const tabCover = document.getElementById('rebalance-tab-cover');
+
+    if (step1) step1.style.display = 'none';
+    if (step2) step2.style.display = 'flex';
+
+    if (backBtn) backBtn.style.display = this.rebalanceOpenedFromStep1 ? '' : 'none';
+    if (backCancelBtn) backCancelBtn.textContent = this.rebalanceOpenedFromStep1 ? 'Quay lại' : 'Đóng';
+
+    if (listLabel) listLabel.textContent = 'Chọn nguồn bù ngân sách:';
+    if (amountLabel) amountLabel.textContent = 'Số tiền bù đắp (₫):';
 
     let deficit = 0;
     let validSurplusCats = [];
 
     if (isToBudget) {
-      if (backBtn) backBtn.style.display = 'none';
+      if (modeToggle) modeToggle.style.display = 'none';
       deficit = toBudget < 0 ? Math.abs(toBudget) : 0;
       if (titleEl) titleEl.textContent = 'Cân đối ngân sách tháng';
       if (subtitleEl) {
@@ -3209,35 +3452,39 @@ const UIBudgets = {
         subtitleEl.style.color = 'var(--expense)';
       }
       validSurplusCats = [...surplusList];
-      if (submitBtn) submitBtn.textContent = 'Cân đối về ngân sách';
+      if (submitBtn) {
+        submitBtn.innerHTML = '<span>Cân đối về ngân sách</span>';
+        submitBtn.disabled = false;
+      }
     } else {
       const catId = Number(targetId);
       const cat = expenseCategories.find(c => Number(c.id) === catId);
       if (!cat) return;
 
-      if (backBtn) backBtn.style.display = '';
+      // Show mode toggle tabs
+      if (modeToggle) modeToggle.style.display = 'flex';
+      if (tabTransfer) tabTransfer.classList.remove('active');
+      if (tabCover) tabCover.classList.add('active');
 
-      const prevCarry = categoryCarryover[String(cat.id)] || 0;
-      const budgeted = budgetMap.get(cat.id)?.limitAmount || 0;
-      const spent = spentByCat[cat.id] || 0;
-      const rawAvailable = prevCarry + budgeted - spent;
-      const isShifted = budgetMap.get(cat.id)?.shiftToNextMonth === true;
-      const available = (isShifted && rawAvailable < 0) ? 0 : rawAvailable;
+      const available = this.getCategoryAvailable(catId);
       deficit = available < 0 ? Math.abs(available) : 0;
 
-      if (titleEl) titleEl.textContent = `Bù cho: ${cat.name}`;
+      if (titleEl) titleEl.textContent = deficit > 0 ? `Bù cho: ${cat.name}` : `Cấp thêm cho: ${cat.name}`;
       if (subtitleEl) {
         if (deficit > 0) {
-          subtitleEl.textContent = `Chi vượt: ${this.formatMoney(deficit)}`;
+          subtitleEl.textContent = `Chi vượt: -${this.formatMoney(deficit)}`;
           subtitleEl.style.color = 'var(--expense)';
         } else {
-          subtitleEl.textContent = `Hiện có: ${this.formatMoney(available)}`;
+          subtitleEl.textContent = `Hiện có: +${this.formatMoney(available)}`;
           subtitleEl.style.color = 'var(--text-muted)';
         }
       }
 
       validSurplusCats = surplusList.filter(item => Number(item.cat.id) !== catId);
-      if (submitBtn) submitBtn.textContent = 'Xác nhận cân đối';
+      if (submitBtn) {
+        submitBtn.innerHTML = '<span>Xác nhận cân đối</span>';
+        submitBtn.disabled = false;
+      }
     }
 
     let sourcesHtml = '';
@@ -3316,23 +3563,15 @@ const UIBudgets = {
     const amountInput = document.getElementById('rebalance-amount-input');
     const hintEl = document.getElementById('rebalance-amount-hint');
 
-    const { expenseCategories, budgetMap, categoryCarryover, spentByCat, toBudget } = this.rebalanceDataCache || {};
+    const { toBudget } = this.rebalanceDataCache || {};
     let deficit = targetDeficit;
 
     if (deficit === null) {
       if (String(this.rebalanceTargetCat) === 'TO_BUDGET') {
         deficit = toBudget < 0 ? Math.abs(toBudget) : 0;
       } else {
-        const cat = (expenseCategories || []).find(c => Number(c.id) === Number(this.rebalanceTargetCat));
-        if (cat) {
-          const prevCarry = categoryCarryover[String(cat.id)] || 0;
-          const budgeted = budgetMap.get(cat.id)?.limitAmount || 0;
-          const spent = spentByCat[cat.id] || 0;
-          const rawAvailable = prevCarry + budgeted - spent;
-          const isShifted = budgetMap.get(cat.id)?.shiftToNextMonth === true;
-          const avail = (isShifted && rawAvailable < 0) ? 0 : rawAvailable;
-          deficit = avail < 0 ? Math.abs(avail) : 0;
-        }
+        const avail = this.getCategoryAvailable(this.rebalanceTargetCat);
+        deficit = avail < 0 ? Math.abs(avail) : 0;
       }
     }
 
@@ -3354,11 +3593,100 @@ const UIBudgets = {
 
   async applyRebalance() {
     try {
+      const amountInput = document.getElementById('rebalance-amount-input');
+      const amount = Number((amountInput?.value || '').replace(/\D/g, ''));
+
+      // Case 1: Transfer Mode (Chuyển số dư từ danh mục này sang nơi khác)
+      if (this.rebalanceMode === 'transfer') {
+        const sourceCatId = Number(this.rebalanceActiveCatId);
+        const targetVal = this.rebalanceSelectedTarget;
+        const isTargetToBudget = String(targetVal) === 'TO_BUDGET';
+        const targetCatId = isTargetToBudget ? 'TO_BUDGET' : Number(targetVal);
+
+        if (!sourceCatId) {
+          showToast('Không xác định được danh mục chuyển', 'error');
+          return;
+        }
+        if (!targetVal) {
+          showToast('Vui lòng chọn nơi nhận ngân sách', 'error');
+          return;
+        }
+        if (!isTargetToBudget && String(sourceCatId) === String(targetCatId)) {
+          showToast('Nơi nhận không thể trùng với danh mục chuyển', 'error');
+          return;
+        }
+        if (!amount || amount <= 0) {
+          showToast('Vui lòng nhập số tiền chuyển hợp lệ', 'error');
+          return;
+        }
+
+        const sourceCat = await db.categories.get(sourceCatId);
+        const sourceCatName = sourceCat ? sourceCat.name : 'hạng mục';
+
+        // Check against source's available surplus
+        const sourceSurplus = Math.max(0, this.getCategoryAvailable(sourceCatId));
+        if (amount > sourceSurplus) {
+          showToast(`Số tiền chuyển vượt quá số dư khả dụng (${this.formatMoney(sourceSurplus)}) của "${sourceCatName}"`, 'error');
+          return;
+        }
+
+        const now = Date.now();
+        const currentMonthBudgets = await db.budgets.where('month').equals(this.currentMonth).toArray();
+
+        // Deduct from source category
+        const sourceBudget = currentMonthBudgets.find(b => Number(b.categoryId) === sourceCatId);
+        const currentSourceLimit = sourceBudget ? (sourceBudget.limitAmount || 0) : 0;
+        const newSourceLimit = currentSourceLimit - amount;
+
+        if (sourceBudget) {
+          await db.budgets.update(sourceBudget.id, { limitAmount: newSourceLimit, updatedAt: now });
+        } else {
+          await db.budgets.add({
+            categoryId: sourceCatId,
+            month: this.currentMonth,
+            limitAmount: newSourceLimit,
+            updatedAt: now
+          });
+        }
+
+        // Add to target
+        if (isTargetToBudget) {
+          showToast(`Đã chuyển ${this.formatMoney(amount)} từ "${sourceCatName}" về ngân sách tháng`, 'success');
+        } else {
+          const targetCat = await db.categories.get(targetCatId);
+          const targetCatName = targetCat ? targetCat.name : 'hạng mục';
+
+          const targetBudget = currentMonthBudgets.find(b => Number(b.categoryId) === targetCatId);
+          const currentTargetLimit = targetBudget ? (targetBudget.limitAmount || 0) : 0;
+          const newTargetLimit = currentTargetLimit + amount;
+
+          if (targetBudget) {
+            await db.budgets.update(targetBudget.id, { limitAmount: newTargetLimit, updatedAt: now });
+          } else {
+            await db.budgets.add({
+              categoryId: targetCatId,
+              month: this.currentMonth,
+              limitAmount: newTargetLimit,
+              updatedAt: now
+            });
+          }
+
+          showToast(`Đã chuyển ${this.formatMoney(amount)} từ "${sourceCatName}" sang "${targetCatName}"`, 'success');
+        }
+
+        this.closeRebalanceModal();
+        if (window.app && typeof window.app.refreshAll === 'function') {
+          await window.app.refreshAll();
+        } else {
+          await this.render();
+        }
+        return;
+      }
+
+      // Case 2: Cover Mode (Bù đắp ngân sách)
       const isTargetToBudget = String(this.rebalanceTargetCat) === 'TO_BUDGET';
       const targetCatId = isTargetToBudget ? 'TO_BUDGET' : Number(this.rebalanceTargetCat);
       const sourceVal = this.rebalanceSelectedSource;
-      const amountInput = document.getElementById('rebalance-amount-input');
-      const amount = Number((amountInput?.value || '').replace(/\D/g, ''));
 
       if (!targetCatId) {
         showToast('Vui lòng chọn đối tượng cần cân đối', 'error');
@@ -3381,13 +3709,13 @@ const UIBudgets = {
       const now = Date.now();
       const currentMonthBudgets = await db.budgets.where('month').equals(this.currentMonth).toArray();
 
-      // Case 1: Target is TO_BUDGET (Cân đối ngân sách tháng độc lập)
+      // Case 2A: Target is TO_BUDGET (Cân đối ngân sách tháng độc lập)
       if (isTargetToBudget) {
         const sourceCatId = Number(sourceVal);
         const sourceCat = await db.categories.get(sourceCatId);
         const sourceCatName = sourceCat ? sourceCat.name : 'hạng mục';
 
-        const sourceSurplus = this.rebalanceDataCache?.surplusList?.find(s => Number(s.cat.id) === sourceCatId)?.surplus || 0;
+        const sourceSurplus = Math.max(0, this.getCategoryAvailable(sourceCatId));
         if (amount > sourceSurplus) {
           showToast(`Số tiền vượt quá số dư còn lại (${this.formatMoney(sourceSurplus)}) của "${sourceCatName}"`, 'error');
           return;
@@ -3418,14 +3746,13 @@ const UIBudgets = {
         return;
       }
 
-      // Case 2: Target is an expense category
+      // Case 2B: Target is an expense category
       const targetCat = await db.categories.get(targetCatId);
       const targetCatName = targetCat ? targetCat.name : 'hạng mục';
 
-      // Subcase A: Source is TO_BUDGET
+      // Subcase 2B-1: Source is TO_BUDGET
       if (sourceVal === 'TO_BUDGET') {
         const toBudget = this.rebalanceDataCache?.toBudget || 0;
-        // Request 4: Cannot take from TO_BUDGET if toBudget <= 0
         if (toBudget <= 0) {
           showToast('Ngân sách tháng bằng 0 hoặc âm, không thể lấy làm nguồn bù', 'error');
           return;
@@ -3452,13 +3779,12 @@ const UIBudgets = {
 
         showToast(`Đã bù thêm ${this.formatMoney(amount)} cho "${targetCatName}"`, 'success');
       } else {
-        // Subcase B: Source is another category
+        // Subcase 2B-2: Source is another category
         const sourceCatId = Number(sourceVal);
         const sourceCat = await db.categories.get(sourceCatId);
         const sourceCatName = sourceCat ? sourceCat.name : 'hạng mục';
 
-        // Check against actual available surplus (Fix for Request 5!)
-        const sourceSurplus = this.rebalanceDataCache?.surplusList?.find(s => Number(s.cat.id) === sourceCatId)?.surplus || 0;
+        const sourceSurplus = Math.max(0, this.getCategoryAvailable(sourceCatId));
         if (amount > sourceSurplus) {
           showToast(`Số tiền vượt quá số dư còn lại (${this.formatMoney(sourceSurplus)}) của "${sourceCatName}"`, 'error');
           return;
@@ -3499,7 +3825,7 @@ const UIBudgets = {
       }
 
       this.closeRebalanceModal();
-      if (window.app) {
+      if (window.app && typeof window.app.refreshAll === 'function') {
         await window.app.refreshAll();
       } else {
         await this.render();
