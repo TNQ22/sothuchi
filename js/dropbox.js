@@ -16,6 +16,8 @@ class DropboxSync {
     this.autoSync = true;
     this.lastSyncTime = null;
     this.filePath = '/sothuchi_vault.json';
+    this.sharedLink = '';
+    this.role = 'owner'; // 'owner' hoặc 'member'
     this.refreshTimer = null;
   }
 
@@ -41,6 +43,16 @@ class DropboxSync {
       const autoSetting = await db.settings.get('dropboxAutoSync');
       if (autoSetting !== undefined) {
         this.autoSync = !!autoSetting.value;
+      }
+
+      const linkSetting = await db.settings.get('dropboxSharedLink');
+      if (linkSetting && linkSetting.value) {
+        this.sharedLink = linkSetting.value.trim();
+      }
+
+      const roleSetting = await db.settings.get('dropboxRole');
+      if (roleSetting && roleSetting.value) {
+        this.role = roleSetting.value;
       }
 
       // Khôi phục token còn hạn
@@ -313,8 +325,76 @@ class DropboxSync {
     }, 3 * 3600 * 1000);
   }
 
-  // Đọc file sao lưu trên Dropbox
+  // Tạo hoặc lấy Shared Link cho file sao lưu của Chủ sổ
+  async getOrCreateSharedLink() {
+    const token = await this.ensureValidToken();
+    try {
+      // Kiểm tra xem đã có link nào được tạo cho file này chưa
+      const listRes = await fetch('https://api.dropboxapi.com/2/sharing/list_shared_links', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ path: this.filePath, direct_only: true })
+      });
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        if (listData.links && listData.links.length > 0) {
+          const directLink = listData.links[0].url.replace('?dl=0', '?dl=1');
+          this.sharedLink = directLink;
+          await db.settings.put({ key: 'dropboxSharedLink', value: directLink });
+          return directLink;
+        }
+      }
+
+      // Nếu chưa có, tạo shared link mới
+      const createRes = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          path: this.filePath,
+          settings: { requested_visibility: 'public' }
+        })
+      });
+      if (createRes.ok) {
+        const createData = await createRes.json();
+        const directLink = createData.url.replace('?dl=0', '?dl=1');
+        this.sharedLink = directLink;
+        await db.settings.put({ key: 'dropboxSharedLink', value: directLink });
+        return directLink;
+      }
+    } catch (err) {
+      console.warn('Lỗi khi lấy/tạo shared link Dropbox:', err);
+    }
+    return null;
+  }
+
+  // Đọc file sao lưu trên Dropbox (hỗ trợ cả tài khoản Chủ sổ hoặc Thành viên dùng Shared Link)
   async downloadRemoteData() {
+    // Nếu là thành viên tham gia qua link chia sẻ
+    if (this.role === 'member' && this.sharedLink) {
+      try {
+        let fetchUrl = this.sharedLink.trim();
+        if (fetchUrl.includes('dropbox.com')) {
+          fetchUrl = fetchUrl.replace('?dl=0', '?dl=1');
+          if (!fetchUrl.includes('dl=1')) {
+            fetchUrl += (fetchUrl.includes('?') ? '&dl=1' : '?dl=1');
+          }
+        }
+        const res = await fetch(fetchUrl);
+        if (res.ok) {
+          const text = await res.text();
+          return JSON.parse(text);
+        }
+      } catch (err) {
+        console.warn('Lỗi khi tải từ link chia sẻ Dropbox:', err);
+      }
+    }
+
     const token = await this.ensureValidToken();
     const res = await fetch('https://content.dropboxapi.com/2/files/download', {
       method: 'POST',

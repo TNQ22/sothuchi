@@ -49,7 +49,7 @@ const UISettings = {
       }
     }
 
-    // 1.2 Load Dropbox App Key
+    // 1.2 Load Dropbox App Key & Shared Settings
     const dbxKeySetting = await db.settings.get('dropboxAppKey');
     const dbxKeyInput = document.getElementById('settings-dropbox-app-key');
     if (dbxKeyInput) {
@@ -58,6 +58,21 @@ const UISettings = {
       } else if (window.EnvConfig && window.EnvConfig.get('DROPBOX_APP_KEY')) {
         dbxKeyInput.value = window.EnvConfig.get('DROPBOX_APP_KEY');
       }
+    }
+
+    const dbxShareLinkSetting = await db.settings.get('dropboxSharedLink');
+    const dbxShareInput = document.getElementById('settings-dropbox-share-link');
+    if (dbxShareLinkSetting && dbxShareInput) {
+      dbxShareInput.value = dbxShareLinkSetting.value;
+    }
+
+    const dbxRoleSetting = await db.settings.get('dropboxRole');
+    const dbxRoleBadge = document.getElementById('dropbox-role-badge');
+    if (dbxRoleBadge) {
+      const isMember = (dbxRoleSetting && dbxRoleSetting.value === 'member');
+      dbxRoleBadge.textContent = isMember ? 'Thành Viên' : 'Chủ Sổ';
+      dbxRoleBadge.style.background = isMember ? 'rgba(16, 185, 129, 0.12)' : 'rgba(0, 97, 255, 0.12)';
+      dbxRoleBadge.style.color = isMember ? '#10b981' : '#0061ff';
     }
 
     // 2. Load Google User Profile & Role
@@ -322,6 +337,80 @@ const UISettings = {
           if (window.app && window.app.refreshAll) await window.app.refreshAll();
         } catch (e) {
           showToast('Đồng bộ Dropbox thất bại: ' + e.message, 'error');
+        }
+      });
+    }
+
+    // Dropbox Generate Shared Link
+    const dbxGenLinkBtn = document.getElementById('btn-dropbox-generate-link');
+    if (dbxGenLinkBtn) {
+      dbxGenLinkBtn.addEventListener('click', async () => {
+        try {
+          if (!window.dropboxService) return;
+          showToast('Đang tạo liên kết chia sẻ Dropbox...', 'info');
+          const link = await window.dropboxService.getOrCreateSharedLink();
+          if (link) {
+            const input = document.getElementById('settings-dropbox-share-link');
+            if (input) input.value = link;
+            showToast('Đã tạo liên kết chia sẻ thành công!', 'success');
+          } else {
+            showToast('Chưa thể tạo liên kết chia sẻ (vui lòng đảm bảo đã kết nối Dropbox)', 'error');
+          }
+        } catch (err) {
+          showToast('Lỗi tạo liên kết: ' + err.message, 'error');
+        }
+      });
+    }
+
+    // Dropbox Copy Shared Link
+    const dbxCopyLinkBtn = document.getElementById('btn-dropbox-copy-link');
+    if (dbxCopyLinkBtn) {
+      dbxCopyLinkBtn.addEventListener('click', async () => {
+        const input = document.getElementById('settings-dropbox-share-link');
+        const link = input ? input.value.trim() : '';
+        if (!link) {
+          showToast('Vui lòng bấm "Lấy Link" trước khi sao chép', 'warning');
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(link);
+          showToast('Đã sao chép liên kết chia sẻ vào bộ nhớ tạm!', 'success');
+        } catch (err) {
+          input.select();
+          document.execCommand('copy');
+          showToast('Đã sao chép liên kết chia sẻ!', 'success');
+        }
+      });
+    }
+
+    // Dropbox Join Vault via Shared Link
+    const dbxJoinBtn = document.getElementById('btn-dropbox-join-vault');
+    if (dbxJoinBtn) {
+      dbxJoinBtn.addEventListener('click', async () => {
+        const input = document.getElementById('settings-dropbox-join-link');
+        const link = input ? input.value.trim() : '';
+        if (!link) {
+          showToast('Vui lòng nhập link chia sẻ Dropbox của chủ sổ', 'warning');
+          return;
+        }
+        try {
+          if (!window.dropboxService) return;
+          showToast('Đang kết nối vào sổ qua liên kết...', 'info');
+          window.dropboxService.sharedLink = link;
+          window.dropboxService.role = 'member';
+          await db.settings.put({ key: 'dropboxSharedLink', value: link });
+          await db.settings.put({ key: 'dropboxRole', value: 'member' });
+          await window.dropboxService.sync();
+          showToast('Đã vào sổ chia sẻ Dropbox thành công!', 'success');
+          const dbxRoleBadge = document.getElementById('dropbox-role-badge');
+          if (dbxRoleBadge) {
+            dbxRoleBadge.textContent = 'Thành Viên';
+            dbxRoleBadge.style.background = 'rgba(16, 185, 129, 0.12)';
+            dbxRoleBadge.style.color = '#10b981';
+          }
+          if (window.app && window.app.refreshAll) await window.app.refreshAll();
+        } catch (err) {
+          showToast('Kết nối vào sổ thất bại: ' + err.message, 'error');
         }
       });
     }

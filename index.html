@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.4.5">
+  <link rel="stylesheet" href="./css/style.css?v=2.4.6">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -986,6 +986,44 @@
               </div>
             </div>
             <button id="btn-dropbox-disconnect" class="btn-text" style="font-size: 0.8rem; color: var(--danger); background: none; border: none; cursor: pointer;">Ngắt kết nối</button>
+          </div>
+
+          <!-- Chia sẻ Sổ qua Dropbox giữa các tài khoản độc lập -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <div style="font-weight: 600; font-size: 0.9rem;">Chia sẻ Sổ cho Thành viên (Tài khoản Độc lập)</div>
+              <span id="dropbox-role-badge" class="badge" style="font-size: 0.72rem; padding: 2px 7px; background: rgba(0, 97, 255, 0.12); color: #0061ff; border-radius: 9999px;">Chủ Sổ</span>
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.5;">
+              Tạo liên kết chia sẻ để thành viên khác (dùng tài khoản Dropbox riêng) cùng đồng bộ và ghi chép vào sổ của bạn.
+            </div>
+
+            <!-- Dành cho Chủ Sổ: Tạo và sao chép Link chia sẻ -->
+            <div id="dropbox-owner-share-box" style="margin-bottom: 10px;">
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="settings-dropbox-share-link" class="form-control" readonly placeholder="Bấm 'Tạo Liên Kết' để chia sẻ cho người khác..." style="font-size: 0.82rem; background: var(--bg-surface);">
+                <button type="button" id="btn-dropbox-generate-link" class="btn-secondary" style="white-space: nowrap; font-size: 0.82rem;">
+                  <i data-lucide="link" style="width: 14px; height: 14px;"></i>
+                  <span>Lấy Link</span>
+                </button>
+                <button type="button" id="btn-dropbox-copy-link" class="btn-primary" style="background: #0061ff; border-color: #0061ff; white-space: nowrap; font-size: 0.82rem;">
+                  <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                  <span>Chép</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Dành cho Thành viên: Nhập link chia sẻ từ Chủ Sổ -->
+            <div style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 10px;">
+              <div style="font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary);">Hoặc Nhập Link Sổ do Người Khác Chia Sẻ:</div>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="settings-dropbox-join-link" class="form-control" placeholder="Dán link Dropbox của chủ sổ (https://www.dropbox.com/s/...)" style="font-size: 0.82rem;">
+                <button type="button" id="btn-dropbox-join-vault" class="btn-secondary" style="white-space: nowrap; font-size: 0.82rem;">
+                  <i data-lucide="log-in" style="width: 14px; height: 14px;"></i>
+                  <span>Vào Sổ</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           <div style="display: flex; gap: 8px;">
@@ -4135,25 +4173,25 @@
   <script src="./vendor/lucide.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=2.4.5"></script>
+  <script src="./js/config.js?v=2.4.6"></script>
   <script src="./js/crypto.js"></script>
   <script src="./js/db.js?v=2.2.8"></script>
-  <script src="./js/google-drive.js?v=2.4.5"></script>
-  <script src="./js/dropbox.js?v=2.4.5"></script>
+  <script src="./js/google-drive.js?v=2.4.6"></script>
+  <script src="./js/dropbox.js?v=2.4.6"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
-  <script src="./js/sync-coordinator.js?v=2.4.5"></script>
+  <script src="./js/sync-coordinator.js?v=2.4.6"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
   <script src="./js/ui-transactions.js?v=2.2.4"></script>
   <script src="./js/ui-debts.js?v=2.0.9"></script>
-  <script src="./js/ui-accounts.js?v=2.4.5"></script>
+  <script src="./js/ui-accounts.js?v=2.4.6"></script>
   <script src="./js/ui-budgets.js?v=2.2.8"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
-  <script src="./js/ui-settings.js?v=2.4.5"></script>
+  <script src="./js/ui-settings.js?v=2.4.6"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.4.5"></script>
+  <script src="./js/app.js?v=2.4.6"></script>
 </body>
 </html>
