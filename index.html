@@ -165,6 +165,48 @@
           </button>
 
           <!-- Privacy Toggle Button -->
+                    <!-- Micro Sync & Backup Status Indicator -->
+          <div class="sync-indicator-wrapper" id="sync-indicator-wrapper">
+            <button type="button" id="header-sync-btn" class="header-sync-btn" title="Trạng thái sao lưu & đồng bộ" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event)">
+              <span class="sync-status-dot" id="header-sync-dot"></span>
+              <i data-lucide="cloud" id="header-sync-icon" style="width: 19px; height: 19px;"></i>
+            </button>
+
+            <!-- Micro Sync Status Popover -->
+            <div id="sync-status-popover" class="sync-popover" style="display: none;">
+              <div class="sync-popover-header">
+                <div class="sync-popover-status">
+                  <span class="sync-popover-dot" id="popover-status-dot"></span>
+                  <strong id="popover-status-title">Đã sao lưu an toàn</strong>
+                </div>
+                <button type="button" class="sync-popover-close" onclick="window.SyncCoordinator && window.SyncCoordinator.closePopover()" title="Đóng">
+                  <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
+              <div class="sync-popover-body">
+                <div class="sync-popover-detail">
+                  <span class="sync-detail-label">Lần cuối:</span>
+                  <span class="sync-detail-value" id="popover-last-time">Vừa xong</span>
+                </div>
+                <div class="sync-popover-detail">
+                  <span class="sync-detail-label">Nơi lưu:</span>
+                  <span class="sync-detail-value" id="popover-target">Google Drive (Vùng ứng dụng)</span>
+                </div>
+                <div id="popover-error-box" class="sync-popover-error" style="display: none;"></div>
+              </div>
+              <div class="sync-popover-actions">
+                <button type="button" id="popover-sync-now-btn" class="btn-primary btn-sm" onclick="window.SyncCoordinator && window.SyncCoordinator.syncNow()">
+                  <i data-lucide="refresh-cw" style="width: 13px; height: 13px;"></i>
+                  <span>Đồng bộ ngay</span>
+                </button>
+                <button type="button" class="btn-secondary btn-sm" onclick="window.SyncCoordinator && window.SyncCoordinator.openSettings()">
+                  <i data-lucide="settings" style="width: 13px; height: 13px;"></i>
+                  <span>Cài đặt</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <button id="btn-privacy-toggle" class="btn-icon" title="Ẩn/Hiện số tiền (Phím tắt: P)">
             <i data-lucide="eye" style="width: 20px; height: 20px;"></i>
           </button>
@@ -751,25 +793,132 @@
         </div>
       </section>
 
-      <!-- View: Settings (Cài đặt & Google Drive) -->
+            <!-- View: Settings (Cài đặt & Đồng bộ / Sao lưu đa kênh) -->
       <section id="view-settings" class="page-view">
+        <!-- 1. Google Drive Sync Section -->
         <div class="card-panel" style="margin-bottom: 20px;">
-          <h3 class="panel-title" style="margin-bottom: 14px;"><i data-lucide="cloud"></i> Đồng Bộ Google Drive (Offline-First)</h3>
+          <h3 class="panel-title" style="margin-bottom: 14px;"><i data-lucide="cloud"></i> Đồng Bộ Google Drive & Đa Thiết Bị</h3>
           <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.6;">
-            Dữ liệu được lưu trữ trực tiếp trên Google Drive của chính bạn (không qua bất kỳ máy chủ trung gian nào). Mỗi thiết bị đều có thể dùng chung dữ liệu.
+            Dữ liệu được lưu trữ trực tiếp trên Google Drive của bạn (Zero-Backend). Kết hợp xác thực danh tính Google với mã hóa đầu cuối E2EE bảo vệ tối đa dữ liệu tài chính.
           </p>
 
-          <div class="form-group" style="margin-bottom: 14px;">
-            <label class="form-label">Google Cloud OAuth 2.0 Client ID:</label>
+          <!-- Banner Tài khoản Google đăng nhập -->
+          <div id="google-profile-card" class="google-user-banner" style="display: none;">
+            <div class="google-user-info">
+              <img id="google-profile-avatar" src="./assets/icons/icon.svg" alt="Avatar" class="google-user-avatar">
+              <div style="min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span id="google-profile-name" class="google-user-name">Tài khoản Google</span>
+                  <span id="google-vault-role-badge" class="google-role-badge">Chủ sổ</span>
+                </div>
+                <div id="google-profile-email" class="google-user-email">email@gmail.com</div>
+              </div>
+            </div>
+            <button type="button" id="btn-google-reauth" class="btn-secondary btn-sm" title="Kết nối lại / Đổi tài khoản">
+              <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+              <span>Đổi tài khoản</span>
+            </button>
+          </div>
+
+          <!-- Google Client ID -->
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Google Cloud OAuth 2.0 Client ID:</span>
+              <button type="button" id="btn-toggle-client-id-help" class="btn-text" style="font-size: 0.78rem; color: var(--primary); background: none; border: none; cursor: pointer;">Hướng dẫn tạo ID</button>
+            </label>
             <div style="display: flex; gap: 10px;">
               <input type="text" id="settings-client-id" class="form-control" placeholder="Nhập Client ID của bạn (ví dụ: xxx.apps.googleusercontent.com)">
               <button id="btn-save-client-id" class="btn-secondary">Lưu</button>
             </div>
-            <small style="color: var(--text-muted); font-size: 0.78rem; margin-top: 4px;">
-              * Xem hướng dẫn tạo Google Client ID miễn phí trong file README hoặc tài liệu đính kèm.
+            <div id="client-id-help-box" style="display: none; margin-top: 8px; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
+              <strong>Cách tạo Client ID miễn phí từ Google Cloud Console:</strong><br>
+              1. Truy cập <code>console.cloud.google.com</code> &rarr; Tạo Project mới.<br>
+              2. Vào <strong>APIs & Services</strong> &rarr; <strong>Library</strong> &rarr; Bật <strong>Google Drive API</strong>.<br>
+              3. Vào <strong>OAuth consent screen</strong> &rarr; Chọn External &rarr; Điền tên ứng dụng & email.<br>
+              4. Vào <strong>Credentials</strong> &rarr; Tạo <strong>OAuth client ID</strong> &rarr; Chọn <strong>Web application</strong>.<br>
+              5. Thêm địa chỉ truy cập (hoặc <code>http://localhost</code>) vào mục <strong>Authorized JavaScript origins</strong> &rarr; Lưu và dán Client ID vào đây.
+            </div>
+          </div>
+
+          <!-- Tùy chọn vị trí lưu trữ trên Google Drive -->
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label">Vị trí lưu trữ dữ liệu trên Google Drive:</label>
+            <div class="storage-loc-grid">
+              <label class="storage-loc-card active" id="loc-card-appdata">
+                <input type="radio" name="drive-storage-location" id="loc-radio-appdata" value="appDataFolder" checked>
+                <div class="storage-loc-info">
+                  <span class="storage-loc-title"><i data-lucide="shield-check" style="width: 16px; height: 16px; color: var(--primary);"></i> Thư mục ứng dụng (Mặc định)</span>
+                  <span class="storage-loc-desc">Lưu trong vùng ẩn an toàn của Google Drive. File không bao giờ bị xóa nhầm khi duyệt Drive thông thường.</span>
+                </div>
+              </label>
+
+              <label class="storage-loc-card" id="loc-card-custom">
+                <input type="radio" name="drive-storage-location" id="loc-radio-custom" value="customFolder">
+                <div class="storage-loc-info">
+                  <span class="storage-loc-title"><i data-lucide="folder" style="width: 16px; height: 16px; color: var(--income);"></i> Thư mục riêng hiển thị</span>
+                  <span class="storage-loc-desc">Lưu trong một thư mục trên Google Drive của tôi. Bạn có thể thấy file, tải về hoặc quản lý trực tiếp.</span>
+                </div>
+              </label>
+            </div>
+
+            <!-- Tên thư mục tùy chọn (hiện khi chọn customFolder) -->
+            <div id="custom-folder-name-wrap" style="display: none; margin-top: 8px;">
+              <label class="form-label" style="font-size: 0.8rem; color: var(--text-muted);">Tên thư mục trên Google Drive:</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="settings-drive-folder-name" class="form-control" value="Sổ Thu Chi" placeholder="Ví dụ: Sổ Thu Chi">
+                <button type="button" id="btn-save-folder-name" class="btn-secondary btn-sm">Áp dụng</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mật khẩu mã hóa sổ (Master Vault Password / E2EE) -->
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label">Mật khẩu Mã hóa Sổ (End-to-End Encryption):</label>
+            <div style="display: flex; gap: 10px;">
+              <input type="password" id="settings-vault-password" class="form-control" placeholder="Để trống nếu không mã hóa (Khuyên dùng: Đặt mật khẩu)">
+              <button type="button" id="btn-save-vault-password" class="btn-secondary">Lưu</button>
+            </div>
+            <small style="color: var(--text-muted); font-size: 0.78rem; margin-top: 4px; display: block; line-height: 1.4;">
+              * Khi đặt mật khẩu, toàn bộ dữ liệu sẽ được mã hóa bằng AES-GCM 256-bit trước khi gửi lên Drive. Chỉ những ai có mật khẩu này mới có thể giải mã và đọc dữ liệu.
             </small>
           </div>
 
+          <!-- Tùy chọn dành cho Người được chia sẻ & Sao lưu dự phòng cá nhân -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <div>
+                <div style="font-weight: 600; font-size: 0.9rem;">Bản sao lưu dự phòng vào Drive cá nhân (Mirror Backup)</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Tự động lưu thêm 1 bản dự phòng vào Google Drive của bạn khi dùng chung sổ với người khác</div>
+              </div>
+              <input type="checkbox" id="settings-auto-mirror" style="width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer;">
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px; flex-wrap: wrap; gap: 8px;">
+              <span style="font-size: 0.78rem; color: var(--text-secondary);">Nếu Chủ sổ cũ bị khóa/xóa tài khoản:</span>
+              <button type="button" id="btn-promote-master" class="btn-secondary btn-sm" title="Tách sổ thành sổ chính độc lập trên tài khoản Google của bạn">
+                <i data-lucide="crown" style="width: 14px; height: 14px; color: #f59e0b;"></i>
+                <span>Thăng cấp thành Sổ chính</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Chia sẻ sổ với thành viên qua Email Google -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 16px;">
+            <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 4px;">Chia sẻ Sổ cho Thành viên (Email Google)</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px;">Thành viên chỉ cần đăng nhập Google bằng email này là có thể vào chung sổ</div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <input type="email" id="settings-share-email" class="form-control" placeholder="Nhập email Google thành viên (vd: vo.yeu@gmail.com)" style="flex: 2; min-width: 200px;">
+              <select id="settings-share-role" class="form-control" style="flex: 1; min-width: 130px;">
+                <option value="writer">Được ghi chép (Editor)</option>
+                <option value="reader">Chỉ xem báo cáo (Viewer)</option>
+              </select>
+              <button type="button" id="btn-share-invite" class="btn-secondary">
+                <i data-lucide="user-plus" style="width: 15px; height: 15px;"></i>
+                <span>Cấp quyền</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Toggle Tự động đồng bộ -->
           <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); margin-bottom: 16px;">
             <div>
               <div style="font-weight: 600; font-size: 0.95rem;">Tự Động Đồng Bộ Khi Có Thay Đổi</div>
@@ -782,14 +931,49 @@
             <div style="font-size: 0.85rem; color: var(--text-secondary);">
               Đồng bộ lần cuối: <strong id="settings-last-sync-time" style="color: var(--text-primary);">Chưa đồng bộ</strong>
             </div>
-            <button id="btn-sync-now" class="btn-primary">
-              <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
-              Đồng Bộ Ngay
-            </button>
+            <div style="display: flex; gap: 8px;">
+              <button id="btn-google-login" class="btn-secondary">
+                <i data-lucide="log-in" style="width: 16px; height: 16px;"></i>
+                Đăng Nhập Google
+              </button>
+              <button id="btn-sync-now" class="btn-primary">
+                <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                Đồng Bộ Ngay
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- Export CSV Section -->
+        <!-- 2. Local Folder Auto-Backup Section (Offline - Không cần Google) -->
+        <div class="card-panel" style="margin-bottom: 20px;">
+          <h3 class="panel-title" style="margin-bottom: 14px;"><i data-lucide="folder-sync"></i> Tự Động Sao Lưu Vào Thư Mục Máy (Offline)</h3>
+          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.6;">
+            Dành cho bạn muốn sử dụng hoàn toàn độc lập mà không cần tài khoản Google. Ứng dụng sẽ tự động ghi file sao lưu trực tiếp vào một thư mục bạn chọn trên ổ cứng máy tính sau mỗi lần ghi chép.
+          </p>
+
+          <div class="local-folder-card">
+            <div class="local-folder-left">
+              <div class="local-folder-icon">
+                <i data-lucide="folder" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div style="min-width: 0;">
+                <div class="local-folder-title" id="local-folder-name">Chưa chọn thư mục sao lưu</div>
+                <div class="local-folder-desc" id="local-folder-status">Tự động ghi file SoThuChi_AutoBackup vào ổ cứng khi có thay đổi</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; flex-shrink: 0;">
+              <button type="button" id="btn-select-local-folder" class="btn-primary btn-sm">
+                <i data-lucide="folder-plus" style="width: 14px; height: 14px;"></i>
+                <span id="btn-select-local-folder-text">Chọn Thư Mục</span>
+              </button>
+              <button type="button" id="btn-remove-local-folder" class="btn-secondary btn-sm" style="display: none;" title="Hủy kết nối thư mục này">
+                <i data-lucide="trash-2" style="width: 14px; height: 14px; color: #f43f5e;"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Export CSV Section -->
         <div class="card-panel" style="margin-bottom: 20px;">
           <h3 class="panel-title" style="margin-bottom: 14px;"><i data-lucide="file-spreadsheet"></i> Xuất Dữ Liệu Ra File CSV (Excel)</h3>
           <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px;">
@@ -808,9 +992,9 @@
           </div>
         </div>
 
-        <!-- Full Backup & Restore Section -->
+        <!-- 4. Full Backup & Restore Section -->
         <div class="card-panel" style="margin-bottom: 20px;">
-          <h3 class="panel-title" style="margin-bottom: 14px;"><i data-lucide="database"></i> Sao Lưu & Khôi Phục Dự Phòng (JSON)</h3>
+          <h3 class="panel-title" style="margin-bottom: 14px;"><i data-lucide="database"></i> Sao Lưu & Khôi Phục Dự Phòng (JSON / STC)</h3>
           <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px;">
             Tải toàn bộ cơ sở dữ liệu về máy hoặc khôi phục từ tệp đã sao lưu trước đó. Hỗ trợ đặt mật khẩu mã hóa AES-GCM.
           </p>
@@ -818,7 +1002,7 @@
           <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
             <button id="btn-export-json" class="btn-secondary">
               <i data-lucide="hard-drive-download" style="width: 16px; height: 16px;"></i>
-              Tải File Sao Lưu (.JSON)
+              Tải File Sao Lưu (.JSON / .STC)
             </button>
 
             <label class="btn-secondary" style="cursor: pointer; margin: 0;">
@@ -829,7 +1013,7 @@
           </div>
         </div>
 
-        <!-- Appearance & Privacy Section -->
+        <!-- 5. Appearance & Privacy Section -->
         <div class="card-panel">
           <h3 class="panel-title" style="margin-bottom: 14px;"><i data-lucide="palette"></i> Tùy Chọn Giao Diện & Riêng Tư</h3>
           
@@ -855,7 +1039,7 @@
         </div>
 
         <div style="text-align: center; padding: 24px 0 12px; color: var(--text-muted); font-size: 0.82rem;">
-          Sổ Thu Chi PWA &bull; Phiên bản <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; background: rgba(13, 148, 136, 0.2); color: #2dd4bf; font-weight: 600; font-size: 0.8rem;">v1.9.97</span>
+          Sổ Thu Chi PWA &bull; Phiên bản <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; background: rgba(13, 148, 136, 0.2); color: #2dd4bf; font-weight: 600; font-size: 0.8rem;">v2.2.5</span>
         </div>
       </section>
 
@@ -3836,6 +4020,7 @@
   <script src="./js/google-drive.js"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.0.9"></script>
+  <script src="./js/sync-coordinator.js?v=2.2.5"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>

@@ -1,5 +1,5 @@
-/**
- * SỔ THU CHI - DATABASE ENGINE (INDEXEDDB VIA DEXIE)
+﻿/**
+ * Sá»” THU CHI - DATABASE ENGINE (INDEXEDDB VIA DEXIE)
  * Offline-First Storage with Change-Tracking for Google Drive Sync
  */
 
@@ -16,7 +16,7 @@ db.version(1).stores({
   settings: 'key'
 });
 
-// Schema Version 2: Bổ sung Quản lý Sổ Tiết Kiệm, Sổ Tích Lũy, Quản lý Tài Sản
+// Schema Version 2: Bá»• sung Quáº£n lÃ½ Sá»• Tiáº¿t Kiá»‡m, Sá»• TÃ­ch LÅ©y, Quáº£n lÃ½ TÃ i Sáº£n
 db.version(2).stores({
   transactions: '++id, type, categoryId, accountId, toAccountId, amount, date, isDeleted, updatedAt',
   accounts: '++id, name, type, balance, isDeleted, updatedAt',
@@ -25,52 +25,52 @@ db.version(2).stores({
   budgets: '++id, categoryId, month, updatedAt',
   recurring: '++id, title, type, amount, categoryId, accountId, frequency, nextDueDate, updatedAt',
   settings: 'key',
-  // Bảng quản lý sổ tiết kiệm ngân hàng
+  // Báº£ng quáº£n lÃ½ sá»• tiáº¿t kiá»‡m ngÃ¢n hÃ ng
   savings: '++id, name, bankCode, balance, status, dueDate, isDeleted, updatedAt',
-  // Bảng quản lý sổ tích lũy theo mục tiêu
+  // Báº£ng quáº£n lÃ½ sá»• tÃ­ch lÅ©y theo má»¥c tiÃªu
   accumulations: '++id, name, targetAmount, currentAmount, status, isDeleted, updatedAt',
-  // Bảng quản lý tài sản (BĐS, Kim loại quý, Ngoại tệ, Tài sản khác)
+  // Báº£ng quáº£n lÃ½ tÃ i sáº£n (BÄS, Kim loáº¡i quÃ½, Ngoáº¡i tá»‡, TÃ i sáº£n khÃ¡c)
   assets: '++id, assetType, subType, name, status, includeInNetWorth, isDeleted, updatedAt',
-  // Bảng quản lý sổ vay ngân hàng
+  // Báº£ng quáº£n lÃ½ sá»• vay ngÃ¢n hÃ ng
   loans: '++id, name, bankCode, loanAmount, remainingAmount, status, isDeleted, updatedAt'
 });
 
 // Default Seed Categories
 const DEFAULT_CATEGORIES = [
-  // Chi tiêu (Expense) - Quick items
-  { name: 'Ăn uống & Cà phê', type: 'expense', icon: 'utensils', color: '#f43f5e', isQuick: 1 },
-  { name: 'Đi chợ & Siêu thị', type: 'expense', icon: 'shopping-cart', color: '#fb7185', isQuick: 1 },
-  { name: 'Di chuyển & Xăng', type: 'expense', icon: 'car', color: '#f59e0b', isQuick: 1 },
-  { name: 'Hóa đơn & Điện nước', type: 'expense', icon: 'zap', color: '#eab308', isQuick: 1 },
-  { name: 'Mua sắm đồ dùng', type: 'expense', icon: 'shopping-bag', color: '#ec4899', isQuick: 1 },
-  { name: 'Nhà ở & Tiền thuê', type: 'expense', icon: 'home', color: '#8b5cf6', isQuick: 1 },
-  { name: 'Sức khỏe & Y tế', type: 'expense', icon: 'heart-pulse', color: '#10b981', isQuick: 1 },
-  { name: 'Giải trí & Phim ảnh', type: 'expense', icon: 'film', color: '#06b6d4', isQuick: 1 },
-  { name: 'Giáo dục & Khóa học', type: 'expense', icon: 'graduation-cap', color: '#3b82f6', isQuick: 1 },
-  { name: 'Gia đình & Con cái', type: 'expense', icon: 'users', color: '#6366f1', isQuick: 1 },
-  // Trả nợ vay ngân hàng (Danh mục hệ thống)
-  { name: 'Trả nợ vay ngân hàng', type: 'expense', icon: 'badge-percent', color: '#ef4444', isQuick: 0, isSystem: 1, systemKey: 'loan_repay' },
-  { name: 'Chi phí khác', type: 'expense', icon: 'more-horizontal', color: '#64748b', isQuick: 1 },
+  // Chi tiÃªu (Expense) - Quick items
+  { name: 'Ä‚n uá»‘ng & CÃ  phÃª', type: 'expense', icon: 'utensils', color: '#f43f5e', isQuick: 1 },
+  { name: 'Äi chá»£ & SiÃªu thá»‹', type: 'expense', icon: 'shopping-cart', color: '#fb7185', isQuick: 1 },
+  { name: 'Di chuyá»ƒn & XÄƒng', type: 'expense', icon: 'car', color: '#f59e0b', isQuick: 1 },
+  { name: 'HÃ³a Ä‘Æ¡n & Äiá»‡n nÆ°á»›c', type: 'expense', icon: 'zap', color: '#eab308', isQuick: 1 },
+  { name: 'Mua sáº¯m Ä‘á»“ dÃ¹ng', type: 'expense', icon: 'shopping-bag', color: '#ec4899', isQuick: 1 },
+  { name: 'NhÃ  á»Ÿ & Tiá»n thuÃª', type: 'expense', icon: 'home', color: '#8b5cf6', isQuick: 1 },
+  { name: 'Sá»©c khá»e & Y táº¿', type: 'expense', icon: 'heart-pulse', color: '#10b981', isQuick: 1 },
+  { name: 'Giáº£i trÃ­ & Phim áº£nh', type: 'expense', icon: 'film', color: '#06b6d4', isQuick: 1 },
+  { name: 'GiÃ¡o dá»¥c & KhÃ³a há»c', type: 'expense', icon: 'graduation-cap', color: '#3b82f6', isQuick: 1 },
+  { name: 'Gia Ä‘Ã¬nh & Con cÃ¡i', type: 'expense', icon: 'users', color: '#6366f1', isQuick: 1 },
+  // Tráº£ ná»£ vay ngÃ¢n hÃ ng (Danh má»¥c há»‡ thá»‘ng)
+  { name: 'Tráº£ ná»£ vay ngÃ¢n hÃ ng', type: 'expense', icon: 'badge-percent', color: '#ef4444', isQuick: 0, isSystem: 1, systemKey: 'loan_repay' },
+  { name: 'Chi phÃ­ khÃ¡c', type: 'expense', icon: 'more-horizontal', color: '#64748b', isQuick: 1 },
 
-  // Thu nhập (Income) - Quick items
-  { name: 'Lương cố định', type: 'income', icon: 'banknote', color: '#10b981', isQuick: 1 },
-  { name: 'Thưởng & Hoa hồng', type: 'income', icon: 'award', color: '#059669', isQuick: 1 },
-  { name: 'Lợi nhuận đầu tư', type: 'income', icon: 'trending-up', color: '#0ea5e9', isQuick: 1 },
-  { name: 'Thu nhập phụ', type: 'income', icon: 'briefcase', color: '#8b5cf6', isQuick: 0 },
-  // Giải ngân khoản vay (Danh mục hệ thống)
-  { name: 'Giải ngân khoản vay', type: 'income', icon: 'landmark', color: '#0ea5e9', isQuick: 0, isSystem: 1, systemKey: 'loan_disburse' },
-  { name: 'Quà tặng & Cho', type: 'income', icon: 'gift', color: '#ec4899', isQuick: 0 },
-  { name: 'Thu nhập khác', type: 'income', icon: 'plus-circle', color: '#64748b', isQuick: 0 }
+  // Thu nháº­p (Income) - Quick items
+  { name: 'LÆ°Æ¡ng cá»‘ Ä‘á»‹nh', type: 'income', icon: 'banknote', color: '#10b981', isQuick: 1 },
+  { name: 'ThÆ°á»Ÿng & Hoa há»“ng', type: 'income', icon: 'award', color: '#059669', isQuick: 1 },
+  { name: 'Lá»£i nhuáº­n Ä‘áº§u tÆ°', type: 'income', icon: 'trending-up', color: '#0ea5e9', isQuick: 1 },
+  { name: 'Thu nháº­p phá»¥', type: 'income', icon: 'briefcase', color: '#8b5cf6', isQuick: 0 },
+  // Giáº£i ngÃ¢n khoáº£n vay (Danh má»¥c há»‡ thá»‘ng)
+  { name: 'Giáº£i ngÃ¢n khoáº£n vay', type: 'income', icon: 'landmark', color: '#0ea5e9', isQuick: 0, isSystem: 1, systemKey: 'loan_disburse' },
+  { name: 'QuÃ  táº·ng & Cho', type: 'income', icon: 'gift', color: '#ec4899', isQuick: 0 },
+  { name: 'Thu nháº­p khÃ¡c', type: 'income', icon: 'plus-circle', color: '#64748b', isQuick: 0 }
 ];
 
 // Default Seed Accounts
 const DEFAULT_ACCOUNTS = [
-  { name: 'Tiền mặt', type: 'cash', balance: 0, initialBalance: 0, icon: 'wallet', color: '#10b981', order: 0 },
-  { name: 'Ngân hàng', type: 'bank', balance: 0, initialBalance: 0, icon: 'landmark', color: '#4f46e5', order: 1 },
-  { name: 'Ví điện tử', type: 'ewallet', balance: 0, initialBalance: 0, icon: 'smartphone', color: '#ec4899', order: 2 }
+  { name: 'Tiá»n máº·t', type: 'cash', balance: 0, initialBalance: 0, icon: 'wallet', color: '#10b981', order: 0 },
+  { name: 'NgÃ¢n hÃ ng', type: 'bank', balance: 0, initialBalance: 0, icon: 'landmark', color: '#4f46e5', order: 1 },
+  { name: 'VÃ­ Ä‘iá»‡n tá»­', type: 'ewallet', balance: 0, initialBalance: 0, icon: 'smartphone', color: '#ec4899', order: 2 }
 ];
 
-// Tự động kiểm tra và gộp tài khoản bị trùng lặp tên & loại (khắc phục nhân đôi trên PWA/Sync)
+// Tá»± Ä‘á»™ng kiá»ƒm tra vÃ  gá»™p tÃ i khoáº£n bá»‹ trÃ¹ng láº·p tÃªn & loáº¡i (kháº¯c phá»¥c nhÃ¢n Ä‘Ã´i trÃªn PWA/Sync)
 async function deduplicateAccounts() {
   try {
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
@@ -81,7 +81,7 @@ async function deduplicateAccounts() {
         seen.set(key, acc);
       } else {
         const existing = seen.get(key);
-        // Xác định tài khoản nào có dữ liệu giao dịch hoặc số dư cao hơn
+        // XÃ¡c Ä‘á»‹nh tÃ i khoáº£n nÃ o cÃ³ dá»¯ liá»‡u giao dá»‹ch hoáº·c sá»‘ dÆ° cao hÆ¡n
         const existingTxCount = await db.transactions.where('accountId').equals(existing.id).count();
         const currentTxCount = await db.transactions.where('accountId').equals(acc.id).count();
 
@@ -93,7 +93,7 @@ async function deduplicateAccounts() {
           seen.set(key, keep);
         }
 
-        // Chuyển toàn bộ giao dịch từ tài khoản trùng sang tài khoản giữ lại
+        // Chuyá»ƒn toÃ n bá»™ giao dá»‹ch tá»« tÃ i khoáº£n trÃ¹ng sang tÃ i khoáº£n giá»¯ láº¡i
         const removeTxs = await db.transactions.where('accountId').equals(remove.id).toArray();
         for (const tx of removeTxs) {
           await db.transactions.update(tx.id, { accountId: keep.id });
@@ -103,13 +103,13 @@ async function deduplicateAccounts() {
           await db.debts.update(d.id, { accountId: keep.id });
         }
 
-        // Đánh dấu tài khoản trùng là đã xóa
+        // ÄÃ¡nh dáº¥u tÃ i khoáº£n trÃ¹ng lÃ  Ä‘Ã£ xÃ³a
         await db.accounts.update(remove.id, { isDeleted: 1, updatedAt: Date.now() });
-        console.log(`[Deduplicate] Đã gộp tài khoản trùng "${remove.name}" (ID ${remove.id}) vào ID ${keep.id}`);
+        console.log(`[Deduplicate] ÄÃ£ gá»™p tÃ i khoáº£n trÃ¹ng "${remove.name}" (ID ${remove.id}) vÃ o ID ${keep.id}`);
       }
     }
   } catch (err) {
-    console.warn('Lỗi khi lọc tài khoản trùng:', err);
+    console.warn('Lá»—i khi lá»c tÃ i khoáº£n trÃ¹ng:', err);
   }
 }
 
@@ -135,7 +135,7 @@ async function initDatabase() {
     const now = Date.now();
     await db.accounts.bulkAdd(DEFAULT_ACCOUNTS.map((a, index) => ({ ...a, order: a.order ?? index, isDeleted: 0, updatedAt: now })));
   } else {
-    // Tự động kiểm tra và khởi tạo order tuần tự nếu có tài khoản thiếu order
+    // Tá»± Ä‘á»™ng kiá»ƒm tra vÃ  khá»Ÿi táº¡o order tuáº§n tá»± náº¿u cÃ³ tÃ i khoáº£n thiáº¿u order
     try {
       const allAccs = await db.accounts.where('isDeleted').equals(0).toArray();
       const needsOrder = allAccs.some(a => a.order === undefined || a.order === null);
@@ -151,11 +151,11 @@ async function initDatabase() {
     } catch (e) {
       console.warn('Init accounts order error:', e);
     }
-    // Tự động chuyển đổi tên và reset số dư ban đầu mẫu về 0đ cho các tài khoản mặc định
+    // Tá»± Ä‘á»™ng chuyá»ƒn Ä‘á»•i tÃªn vÃ  reset sá»‘ dÆ° ban Ä‘áº§u máº«u vá» 0Ä‘ cho cÃ¡c tÃ i khoáº£n máº·c Ä‘á»‹nh
     const defaultAccountsToReset = [
-      { oldNames: ['MoMo / ZaloPay', 'Momo / ZaloPay', 'Ví điện tử'], oldInit: 500000, newName: 'Ví điện tử' },
-      { oldNames: ['Ngân hàng', 'Tài khoản Ngân hàng'], oldInit: 12500000, newName: 'Ngân hàng' },
-      { oldNames: ['Tiền mặt'], oldInit: 1500000, newName: 'Tiền mặt' }
+      { oldNames: ['MoMo / ZaloPay', 'Momo / ZaloPay', 'VÃ­ Ä‘iá»‡n tá»­'], oldInit: 500000, newName: 'VÃ­ Ä‘iá»‡n tá»­' },
+      { oldNames: ['NgÃ¢n hÃ ng', 'TÃ i khoáº£n NgÃ¢n hÃ ng'], oldInit: 12500000, newName: 'NgÃ¢n hÃ ng' },
+      { oldNames: ['Tiá»n máº·t'], oldInit: 1500000, newName: 'Tiá»n máº·t' }
     ];
     for (const item of defaultAccountsToReset) {
       for (const n of item.oldNames) {
@@ -177,10 +177,10 @@ async function initDatabase() {
     }
   }
 
-  // Đảm bảo khởi tạo 2 danh mục hệ thống cho sổ vay và khóa bảo vệ
+  // Äáº£m báº£o khá»Ÿi táº¡o 2 danh má»¥c há»‡ thá»‘ng cho sá»• vay vÃ  khÃ³a báº£o vá»‡
   const { disburseCat, repayCat } = await getLoanSystemCategories();
 
-  // Tự động kiểm tra và bù giao dịch giải ngân cho các sổ vay đã có tài khoản nhận nhưng chưa có ghi chú thu chi
+  // Tá»± Ä‘á»™ng kiá»ƒm tra vÃ  bÃ¹ giao dá»‹ch giáº£i ngÃ¢n cho cÃ¡c sá»• vay Ä‘Ã£ cÃ³ tÃ i khoáº£n nháº­n nhÆ°ng chÆ°a cÃ³ ghi chÃº thu chi
   if (db.loans) {
     try {
       const activeLoans = await db.loans.where('isDeleted').equals(0).toArray();
@@ -202,7 +202,7 @@ async function initDatabase() {
                 toAccountId: null,
                 date: l.startDate || new Date().toISOString().split('T')[0],
                 time: '09:00',
-                note: `Giải ngân sổ vay: ${l.name}`,
+                note: `Giáº£i ngÃ¢n sá»• vay: ${l.name}`,
                 excludeFromReport: l.excludeFromReport ? 1 : 0,
                 images: [],
                 loanId: l.id,
@@ -221,10 +221,10 @@ async function initDatabase() {
         }
       }
 
-      // Tự động gán categoryId cho các giao dịch trả nợ gốc hiện có nếu chưa có categoryId
+      // Tá»± Ä‘á»™ng gÃ¡n categoryId cho cÃ¡c giao dá»‹ch tráº£ ná»£ gá»‘c hiá»‡n cÃ³ náº¿u chÆ°a cÃ³ categoryId
       if (repayCat) {
         const repayTxs = await db.transactions
-          .filter(t => (t.loanAction === 'repay' || (t.note && t.note.startsWith('Trả nợ gốc sổ vay:'))) && !t.categoryId && !t.isDeleted)
+          .filter(t => (t.loanAction === 'repay' || (t.note && t.note.startsWith('Tráº£ ná»£ gá»‘c sá»• vay:'))) && !t.categoryId && !t.isDeleted)
           .toArray();
         for (const rTx of repayTxs) {
           await db.transactions.update(rTx.id, {
@@ -238,7 +238,7 @@ async function initDatabase() {
     }
   }
 
-  // Tự động gộp và loại bỏ tài khoản bị nhân đôi (do PWA khởi tạo nhiều lần hoặc do sync)
+  // Tá»± Ä‘á»™ng gá»™p vÃ  loáº¡i bá» tÃ i khoáº£n bá»‹ nhÃ¢n Ä‘Ã´i (do PWA khá»Ÿi táº¡o nhiá»u láº§n hoáº·c do sync)
   await deduplicateAccounts();
 
   // Seed default settings if empty
@@ -270,7 +270,7 @@ async function addTransaction(data) {
     updatedAt: now
   };
 
-  // If user checked "Đi vay để trả khoản này", create linked borrow debt record
+  // If user checked "Äi vay Ä‘á»ƒ tráº£ khoáº£n nÃ y", create linked borrow debt record
   if (data.isBorrowed && data.borrowPerson) {
     await addDebt({
       type: 'borrow',
@@ -278,7 +278,7 @@ async function addTransaction(data) {
       originalAmount: tx.amount,
       dueDate: data.borrowDueDate || null,
       accountId: tx.accountId,
-      note: `Vay để chi trả: ${data.note || 'Khoản chi'}`
+      note: `Vay Ä‘á»ƒ chi tráº£: ${data.note || 'Khoáº£n chi'}`
     });
   }
 
@@ -315,9 +315,9 @@ async function deleteTransaction(txId) {
     const tx = await db.transactions.get(Number(txId));
     if (!tx || tx.isDeleted) return;
 
-    // Giao dịch thuộc Sổ Vay Ngân Hàng phải được quản lý và xóa thông qua Sổ Vay
+    // Giao dá»‹ch thuá»™c Sá»• Vay NgÃ¢n HÃ ng pháº£i Ä‘Æ°á»£c quáº£n lÃ½ vÃ  xÃ³a thÃ´ng qua Sá»• Vay
     if (tx.loanId) {
-      throw new Error('Giao dịch thuộc Sổ Vay Ngân Hàng, không thể xóa trực tiếp! Vui lòng quản lý trong mục Sổ Vay.');
+      throw new Error('Giao dá»‹ch thuá»™c Sá»• Vay NgÃ¢n HÃ ng, khÃ´ng thá»ƒ xÃ³a trá»±c tiáº¿p! Vui lÃ²ng quáº£n lÃ½ trong má»¥c Sá»• Vay.');
     }
 
     const fee = Number(tx.fee) || 0;
@@ -343,15 +343,15 @@ async function deleteTransaction(txId) {
   triggerAutoSync();
 }
 
-// Helper đảm bảo danh mục hệ thống cho sổ vay ngân hàng luôn tồn tại và được bảo vệ
+// Helper Ä‘áº£m báº£o danh má»¥c há»‡ thá»‘ng cho sá»• vay ngÃ¢n hÃ ng luÃ´n tá»“n táº¡i vÃ  Ä‘Æ°á»£c báº£o vá»‡
 async function getLoanSystemCategories() {
   const cats = await db.categories.toArray();
 
-  let disburseCat = cats.find(c => c.systemKey === 'loan_disburse' || c.name === 'Giải ngân khoản vay');
+  let disburseCat = cats.find(c => c.systemKey === 'loan_disburse' || c.name === 'Giáº£i ngÃ¢n khoáº£n vay');
   if (!disburseCat) {
     const now = Date.now();
     const id = await db.categories.add({
-      name: 'Giải ngân khoản vay',
+      name: 'Giáº£i ngÃ¢n khoáº£n vay',
       type: 'income',
       icon: 'landmark',
       color: '#0ea5e9',
@@ -361,7 +361,7 @@ async function getLoanSystemCategories() {
       isDeleted: 0,
       updatedAt: now
     });
-    disburseCat = { id, name: 'Giải ngân khoản vay', type: 'income', icon: 'landmark', color: '#0ea5e9', isSystem: 1, systemKey: 'loan_disburse' };
+    disburseCat = { id, name: 'Giáº£i ngÃ¢n khoáº£n vay', type: 'income', icon: 'landmark', color: '#0ea5e9', isSystem: 1, systemKey: 'loan_disburse' };
   } else if (!disburseCat.isSystem || !disburseCat.systemKey || disburseCat.isDeleted) {
     await db.categories.update(disburseCat.id, {
       isSystem: 1,
@@ -374,11 +374,11 @@ async function getLoanSystemCategories() {
     disburseCat.isDeleted = 0;
   }
 
-  let repayCat = cats.find(c => c.systemKey === 'loan_repay' || c.name === 'Trả nợ vay ngân hàng');
+  let repayCat = cats.find(c => c.systemKey === 'loan_repay' || c.name === 'Tráº£ ná»£ vay ngÃ¢n hÃ ng');
   if (!repayCat) {
     const now = Date.now();
     const id = await db.categories.add({
-      name: 'Trả nợ vay ngân hàng',
+      name: 'Tráº£ ná»£ vay ngÃ¢n hÃ ng',
       type: 'expense',
       icon: 'badge-percent',
       color: '#ef4444',
@@ -388,7 +388,7 @@ async function getLoanSystemCategories() {
       isDeleted: 0,
       updatedAt: now
     });
-    repayCat = { id, name: 'Trả nợ vay ngân hàng', type: 'expense', icon: 'badge-percent', color: '#ef4444', isSystem: 1, systemKey: 'loan_repay' };
+    repayCat = { id, name: 'Tráº£ ná»£ vay ngÃ¢n hÃ ng', type: 'expense', icon: 'badge-percent', color: '#ef4444', isSystem: 1, systemKey: 'loan_repay' };
   } else if (!repayCat.isSystem || !repayCat.systemKey || repayCat.isDeleted) {
     await db.categories.update(repayCat.id, {
       isSystem: 1,
@@ -423,12 +423,12 @@ async function addCategory(data) {
 async function updateCategory(id, data) {
   const cat = await db.categories.get(Number(id));
   if (cat && (cat.isSystem || cat.systemKey)) {
-    // Cho phép đổi trạng thái chọn nhanh isQuick, nhưng khóa không cho sửa tên, loại
+    // Cho phÃ©p Ä‘á»•i tráº¡ng thÃ¡i chá»n nhanh isQuick, nhÆ°ng khÃ³a khÃ´ng cho sá»­a tÃªn, loáº¡i
     if (data.name && data.name !== cat.name) {
-      throw new Error('Danh mục hệ thống được bảo vệ, không thể sửa đổi tên!');
+      throw new Error('Danh má»¥c há»‡ thá»‘ng Ä‘Æ°á»£c báº£o vá»‡, khÃ´ng thá»ƒ sá»­a Ä‘á»•i tÃªn!');
     }
     if (data.type && data.type !== cat.type) {
-      throw new Error('Danh mục hệ thống được bảo vệ, không thể sửa đổi loại!');
+      throw new Error('Danh má»¥c há»‡ thá»‘ng Ä‘Æ°á»£c báº£o vá»‡, khÃ´ng thá»ƒ sá»­a Ä‘á»•i loáº¡i!');
     }
   }
   const now = Date.now();
@@ -442,7 +442,7 @@ async function updateCategory(id, data) {
 async function deleteCategory(id) {
   const cat = await db.categories.get(Number(id));
   if (cat && (cat.isSystem || cat.systemKey)) {
-    throw new Error('Danh mục hệ thống được bảo vệ, không thể xóa!');
+    throw new Error('Danh má»¥c há»‡ thá»‘ng Ä‘Æ°á»£c báº£o vá»‡, khÃ´ng thá»ƒ xÃ³a!');
   }
   const now = Date.now();
   await db.categories.update(Number(id), {
@@ -469,8 +469,8 @@ async function addDebt(data) {
   await db.transaction('rw', db.debts, db.accounts, async () => {
     await db.debts.add(debt);
 
-    // If "lend" (cho mượn): money exits chosen wallet
-    // If "borrow" (mượn nợ): money enters chosen wallet
+    // If "lend" (cho mÆ°á»£n): money exits chosen wallet
+    // If "borrow" (mÆ°á»£n ná»£): money enters chosen wallet
     const acc = await db.accounts.get(debt.accountId);
     if (acc) {
       const newBal = debt.type === 'lend' 
@@ -513,8 +513,8 @@ async function recordDebtPayment(debtId, paymentAmount, accountId, note = '') {
     });
 
     // Update account balance:
-    // If debt.type === 'lend' (thu hồi nợ cho vay) -> money enters wallet
-    // If debt.type === 'borrow' (trả nợ đi vay) -> money exits wallet
+    // If debt.type === 'lend' (thu há»“i ná»£ cho vay) -> money enters wallet
+    // If debt.type === 'borrow' (tráº£ ná»£ Ä‘i vay) -> money exits wallet
     const acc = await db.accounts.get(accId);
     if (acc) {
       const newBal = debt.type === 'lend' 
@@ -533,7 +533,7 @@ async function deleteDebt(debtId) {
   triggerAutoSync();
 }
 
-/* ==================== QUẢN LÝ SỔ TIẾT KIỆM (SAVINGS OPERATIONS) ==================== */
+/* ==================== QUáº¢N LÃ Sá»” TIáº¾T KIá»†M (SAVINGS OPERATIONS) ==================== */
 async function addSaving(data) {
   const now = Date.now();
   const amount = Number(data.balance || data.initialBalance || 0);
@@ -546,10 +546,10 @@ async function addSaving(data) {
     balance: amount,
     currency: data.currency || 'VND',
     depositDate: data.depositDate || new Date().toISOString().split('T')[0],
-    termMonths: Number(data.termMonths || 0), // 0: không kỳ hạn
+    termMonths: Number(data.termMonths || 0), // 0: khÃ´ng ká»³ háº¡n
     dueDate: data.dueDate || '',
-    interestRate: Number(data.interestRate || 0), // %/năm
-    nonTermRate: Number(data.nonTermRate || 0.05), // %/năm
+    interestRate: Number(data.interestRate || 0), // %/nÄƒm
+    nonTermRate: Number(data.nonTermRate || 0.05), // %/nÄƒm
     interestDaysYear: Number(data.interestDaysYear || 365),
     interestPayment: data.interestPayment || 'end', // 'end' | 'start' | 'monthly'
     maturityAction: data.maturityAction || 'rollover_all', // 'rollover_all' | 'rollover_principal' | 'settle'
@@ -566,7 +566,7 @@ async function addSaving(data) {
 
   await db.transaction('rw', db.savings, db.accounts, async () => {
     const id = await db.savings.add(saving);
-    // Nếu có chọn tài khoản trích tiền, tự động trừ tiền trong tài khoản đó
+    // Náº¿u cÃ³ chá»n tÃ i khoáº£n trÃ­ch tiá»n, tá»± Ä‘á»™ng trá»« tiá»n trong tÃ i khoáº£n Ä‘Ã³
     if (sourceAccountId && amount > 0) {
       const srcAcc = await db.accounts.get(sourceAccountId);
       if (srcAcc) {
@@ -607,7 +607,7 @@ async function settleSaving(id, settleData) {
       updatedAt: now
     });
 
-    // Nếu người dùng chọn tài khoản nhận tiền tất toán, cộng tiền vào tài khoản
+    // Náº¿u ngÆ°á»i dÃ¹ng chá»n tÃ i khoáº£n nháº­n tiá»n táº¥t toÃ¡n, cá»™ng tiá»n vÃ o tÃ i khoáº£n
     if (targetAccountId && settleAmount > 0) {
       const targetAcc = await db.accounts.get(targetAccountId);
       if (targetAcc) {
@@ -628,7 +628,7 @@ async function deleteSaving(id) {
   triggerAutoSync();
 }
 
-/* ==================== QUẢN LÝ SỔ TÍCH LŨY (ACCUMULATIONS OPERATIONS) ==================== */
+/* ==================== QUáº¢N LÃ Sá»” TÃCH LÅ¨Y (ACCUMULATIONS OPERATIONS) ==================== */
 async function addAccumulation(data) {
   const now = Date.now();
   const targetAmount = Number(data.targetAmount || 0);
@@ -653,7 +653,7 @@ async function addAccumulation(data) {
     updatedAt: now
   };
 
-  // Chống nhân đôi nếu submit liên tiếp trong vòng 2.5 giây
+  // Chá»‘ng nhÃ¢n Ä‘Ã´i náº¿u submit liÃªn tiáº¿p trong vÃ²ng 2.5 giÃ¢y
   const recentAccDup = await db.accumulations
     .filter(a => !a.isDeleted && a.name === accumulation.name && a.targetAmount === accumulation.targetAmount && Math.abs((a.updatedAt || 0) - now) < 2500)
     .first();
@@ -664,7 +664,7 @@ async function addAccumulation(data) {
 
   await db.transaction('rw', db.accumulations, db.accounts, async () => {
     await db.accumulations.add(accumulation);
-    // Trích tiền khởi điểm từ tài khoản nếu có chọn
+    // TrÃ­ch tiá»n khá»Ÿi Ä‘iá»ƒm tá»« tÃ i khoáº£n náº¿u cÃ³ chá»n
     if (sourceAccountId && currentAmount > 0) {
       const srcAcc = await db.accounts.get(sourceAccountId);
       if (srcAcc) {
@@ -727,7 +727,7 @@ async function deleteAccumulation(id) {
   triggerAutoSync();
 }
 
-/* ==================== QUẢN LÝ TÀI SẢN (ASSETS OPERATIONS) ==================== */
+/* ==================== QUáº¢N LÃ TÃ€I Sáº¢N (ASSETS OPERATIONS) ==================== */
 async function addAsset(data) {
   const now = Date.now();
   const quantity = Number(data.quantity || 1);
@@ -745,7 +745,7 @@ async function addAsset(data) {
     isGift: data.isGift ? 1 : 0,
     buyDate: data.buyDate || new Date().toISOString().split('T')[0],
     quantity: quantity,
-    unit: data.unit || 'Chiếc',
+    unit: data.unit || 'Chiáº¿c',
     currency: data.currency || 'VND',
     buyPrice: buyPrice,
     currentPrice: currentPrice,
@@ -765,7 +765,7 @@ async function addAsset(data) {
     updatedAt: now
   };
 
-  // Chống nhân đôi nếu submit liên tiếp trong vòng 2.5 giây
+  // Chá»‘ng nhÃ¢n Ä‘Ã´i náº¿u submit liÃªn tiáº¿p trong vÃ²ng 2.5 giÃ¢y
   const recentAssetDup = await db.assets
     .filter(x => !x.isDeleted && x.name === asset.name && x.type === asset.type && Math.abs((x.updatedAt || 0) - now) < 2500)
     .first();
@@ -776,7 +776,7 @@ async function addAsset(data) {
 
   await db.transaction('rw', db.assets, db.accounts, async () => {
     await db.assets.add(asset);
-    // Nếu có chọn tài khoản thanh toán, trừ tiền mua
+    // Náº¿u cÃ³ chá»n tÃ i khoáº£n thanh toÃ¡n, trá»« tiá»n mua
     if (sourceAccountId && totalBuyValue > 0) {
       const srcAcc = await db.accounts.get(sourceAccountId);
       if (srcAcc) {
@@ -842,7 +842,7 @@ async function deleteAsset(id) {
   triggerAutoSync();
 }
 
-// ==================== LOANS (SỔ VAY NGÂN HÀNG) CRUD ====================
+// ==================== LOANS (Sá»” VAY NGÃ‚N HÃ€NG) CRUD ====================
 async function addLoan(loanData) {
   const now = new Date().toISOString();
   const nowTs = Date.now();
@@ -867,7 +867,7 @@ async function addLoan(loanData) {
           balance: (acc.balance || 0) + loan.loanAmount,
           updatedAt: nowTs
         });
-        // Thêm ghi chú giao dịch thu nhập giải ngân vào ví
+        // ThÃªm ghi chÃº giao dá»‹ch thu nháº­p giáº£i ngÃ¢n vÃ o vÃ­
         await db.transactions.add({
           type: 'income',
           categoryId: disburseCat ? disburseCat.id : null,
@@ -877,7 +877,7 @@ async function addLoan(loanData) {
           toAccountId: null,
           date: loan.startDate || now.split('T')[0],
           time: new Date().toTimeString().slice(0, 5),
-          note: `Giải ngân sổ vay: ${loan.name}`,
+          note: `Giáº£i ngÃ¢n sá»• vay: ${loan.name}`,
           excludeFromReport: loan.excludeFromReport ? 1 : 0,
           images: [],
           loanId: id,
@@ -908,14 +908,14 @@ async function updateLoan(id, loanData) {
 
     let remaining = oldLoan.remainingAmount !== undefined ? oldLoan.remainingAmount : (oldLoan.loanAmount || 0);
 
-    // Nếu người dùng thay đổi số tiền vay ban đầu (ví dụ sửa lúc nhập nhầm):
+    // Náº¿u ngÆ°á»i dÃ¹ng thay Ä‘á»•i sá»‘ tiá»n vay ban Ä‘áº§u (vÃ­ dá»¥ sá»­a lÃºc nháº­p nháº§m):
     if (loanData.loanAmount !== undefined && loanData.loanAmount !== oldLoan.loanAmount) {
       const history = oldLoan.repaymentHistory || [];
       const totalPaid = history.reduce((sum, h) => sum + (h.amount || 0), 0);
       remaining = Math.max(0, loanData.loanAmount - totalPaid);
     }
 
-    // Xử lý đồng bộ ghi chú giao dịch giải ngân vào ví
+    // Xá»­ lÃ½ Ä‘á»“ng bá»™ ghi chÃº giao dá»‹ch giáº£i ngÃ¢n vÃ o vÃ­
     const oldDisburseTx = await db.transactions
       .filter(t => t.loanId === lId && t.loanAction === 'disburse' && !t.isDeleted)
       .first();
@@ -931,7 +931,7 @@ async function updateLoan(id, loanData) {
       const oldAmount = oldDisburseTx.amount || 0;
 
       if (!newDisburseAccId) {
-        // Đổi sang không cộng vào ví: hoàn tác số dư ví cũ và xóa giao dịch giải ngân
+        // Äá»•i sang khÃ´ng cá»™ng vÃ o vÃ­: hoÃ n tÃ¡c sá»‘ dÆ° vÃ­ cÅ© vÃ  xÃ³a giao dá»‹ch giáº£i ngÃ¢n
         const oldAcc = await db.accounts.get(oldAccId);
         if (oldAcc) {
           await db.accounts.update(oldAccId, {
@@ -944,7 +944,7 @@ async function updateLoan(id, loanData) {
           updatedAt: nowTs
         });
       } else if (oldAccId === newDisburseAccId) {
-        // Vẫn cùng ví: điều chỉnh số dư chênh lệch (nếu đổi loanAmount) và cập nhật thông tin giao dịch
+        // Váº«n cÃ¹ng vÃ­: Ä‘iá»u chá»‰nh sá»‘ dÆ° chÃªnh lá»‡ch (náº¿u Ä‘á»•i loanAmount) vÃ  cáº­p nháº­t thÃ´ng tin giao dá»‹ch
         const diff = newLoanAmount - oldAmount;
         if (diff !== 0) {
           const acc = await db.accounts.get(newDisburseAccId);
@@ -959,12 +959,12 @@ async function updateLoan(id, loanData) {
           categoryId: disburseCat ? disburseCat.id : (oldDisburseTx.categoryId || null),
           amount: newLoanAmount,
           date: newStartDate,
-          note: `Giải ngân sổ vay: ${newName}`,
+          note: `Giáº£i ngÃ¢n sá»• vay: ${newName}`,
           excludeFromReport: newExclude,
           updatedAt: nowTs
         });
       } else {
-        // Đổi sang ví khác: trừ ví cũ, cộng ví mới, cập nhật transaction
+        // Äá»•i sang vÃ­ khÃ¡c: trá»« vÃ­ cÅ©, cá»™ng vÃ­ má»›i, cáº­p nháº­t transaction
         const oldAcc = await db.accounts.get(oldAccId);
         if (oldAcc) {
           await db.accounts.update(oldAccId, {
@@ -984,13 +984,13 @@ async function updateLoan(id, loanData) {
           accountId: newDisburseAccId,
           amount: newLoanAmount,
           date: newStartDate,
-          note: `Giải ngân sổ vay: ${newName}`,
+          note: `Giáº£i ngÃ¢n sá»• vay: ${newName}`,
           excludeFromReport: newExclude,
           updatedAt: nowTs
         });
       }
     } else {
-      // Chưa từng có giao dịch giải ngân vào ví (lúc tạo để ngoài ví, giờ chọn ví nhận)
+      // ChÆ°a tá»«ng cÃ³ giao dá»‹ch giáº£i ngÃ¢n vÃ o vÃ­ (lÃºc táº¡o Ä‘á»ƒ ngoÃ i vÃ­, giá» chá»n vÃ­ nháº­n)
       if (newDisburseAccId && newLoanAmount > 0) {
         const acc = await db.accounts.get(newDisburseAccId);
         if (acc) {
@@ -1007,7 +1007,7 @@ async function updateLoan(id, loanData) {
             toAccountId: null,
             date: newStartDate,
             time: new Date().toTimeString().slice(0, 5),
-            note: `Giải ngân sổ vay: ${newName}`,
+            note: `Giáº£i ngÃ¢n sá»• vay: ${newName}`,
             excludeFromReport: newExclude,
             images: [],
             loanId: lId,
@@ -1051,7 +1051,7 @@ async function payLoan(loanId, paymentAmount, sourceAccountId = null, dateStr = 
       date: pDate,
       amount: paymentAmount,
       sourceAccountId: sourceAccountId ? Number(sourceAccountId) : null,
-      note: `Trả nợ gốc sổ vay: ${loan.name}`,
+      note: `Tráº£ ná»£ gá»‘c sá»• vay: ${loan.name}`,
       createdAt: now
     });
 
@@ -1070,7 +1070,7 @@ async function payLoan(loanId, paymentAmount, sourceAccountId = null, dateStr = 
           balance: (src.balance || 0) - paymentAmount,
           updatedAt: nowTs
         });
-        // Ghi nhận giao dịch chi phí trả nợ gốc vào ví
+        // Ghi nháº­n giao dá»‹ch chi phÃ­ tráº£ ná»£ gá»‘c vÃ o vÃ­
         await db.transactions.add({
           type: 'expense',
           categoryId: repayCat ? repayCat.id : null,
@@ -1080,7 +1080,7 @@ async function payLoan(loanId, paymentAmount, sourceAccountId = null, dateStr = 
           toAccountId: null,
           date: pDate,
           time: new Date().toTimeString().slice(0, 5),
-          note: `Trả nợ gốc sổ vay: ${loan.name}`,
+          note: `Tráº£ ná»£ gá»‘c sá»• vay: ${loan.name}`,
           excludeFromReport: loan.excludeFromReport ? 1 : 0,
           images: [],
           loanId: lId,
@@ -1105,7 +1105,7 @@ async function deleteLoan(id) {
     const loan = await db.loans.get(lId);
     if (!loan || loan.isDeleted) return;
 
-    // Tìm các giao dịch liên quan đến sổ vay và hoàn tác số dư ví
+    // TÃ¬m cÃ¡c giao dá»‹ch liÃªn quan Ä‘áº¿n sá»• vay vÃ  hoÃ n tÃ¡c sá»‘ dÆ° vÃ­
     const relatedTxs = await db.transactions
       .filter(t => t.loanId === lId && !t.isDeleted)
       .toArray();
@@ -1142,7 +1142,7 @@ async function getNetWorth() {
   const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
   const totalAccountBalance = accounts.filter(a => !a.isArchived).reduce((sum, a) => sum + (a.balance || 0), 0);
 
-  // Sổ tiết kiệm đang gửi
+  // Sá»• tiáº¿t kiá»‡m Ä‘ang gá»­i
   let totalSavings = 0;
   try {
     if (db.savings) {
@@ -1153,7 +1153,7 @@ async function getNetWorth() {
     console.warn('Savings read error:', e);
   }
 
-  // Sổ tích lũy
+  // Sá»• tÃ­ch lÅ©y
   let totalAccumulations = 0;
   try {
     if (db.accumulations) {
@@ -1164,7 +1164,7 @@ async function getNetWorth() {
     console.warn('Accumulations read error:', e);
   }
 
-  // Tài sản (Bất động sản, Kim loại quý, Ngoại tệ, Tài sản khác)
+  // TÃ i sáº£n (Báº¥t Ä‘á»™ng sáº£n, Kim loáº¡i quÃ½, Ngoáº¡i tá»‡, TÃ i sáº£n khÃ¡c)
   let totalAssets = 0;
   try {
     if (db.assets) {
@@ -1177,7 +1177,7 @@ async function getNetWorth() {
     console.warn('Assets read error:', e);
   }
 
-  // Sổ vay ngân hàng (Nghĩa vụ nợ gốc còn lại)
+  // Sá»• vay ngÃ¢n hÃ ng (NghÄ©a vá»¥ ná»£ gá»‘c cÃ²n láº¡i)
   let totalLoans = 0;
   try {
     if (db.loans) {
@@ -1189,8 +1189,8 @@ async function getNetWorth() {
   }
 
   const activeDebts = await db.debts.where('isDeleted').equals(0).toArray();
-  // lend = nợ cần thu (tài sản tăng)
-  // borrow = nợ cần trả (nghĩa vụ tài chính)
+  // lend = ná»£ cáº§n thu (tÃ i sáº£n tÄƒng)
+  // borrow = ná»£ cáº§n tráº£ (nghÄ©a vá»¥ tÃ i chÃ­nh)
   const totalLend = activeDebts.filter(d => d.type === 'lend' && d.status !== 'settled').reduce((s, d) => s + d.remainingAmount, 0);
   const totalBorrow = activeDebts.filter(d => d.type === 'borrow' && d.status !== 'settled').reduce((s, d) => s + d.remainingAmount, 0) + totalLoans;
 
@@ -1211,11 +1211,5 @@ async function getNetWorth() {
 
 // Auto-sync debouncer hook
 let autoSyncTimeout = null;
-function triggerAutoSync() {
-  if (autoSyncTimeout) clearTimeout(autoSyncTimeout);
-  autoSyncTimeout = setTimeout(() => {
-    if (window.googleDriveService && window.googleDriveService.isAutoSyncEnabled()) {
-      window.googleDriveService.sync();
-    }
-  }, 3000);
-}
+function triggerAutoSync() { if (window.SyncCoordinator) { window.SyncCoordinator.notifyDataChange(); } else { if (autoSyncTimeout) clearTimeout(autoSyncTimeout); autoSyncTimeout = setTimeout(() => { if (window.googleDriveService && window.googleDriveService.isAutoSyncEnabled()) { window.googleDriveService.sync(); } }, 3000); } }
+

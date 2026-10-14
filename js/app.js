@@ -161,9 +161,15 @@ class App {
       await window.UITransactions.resetForm('expense');
     }
 
-    // 3. Initialize Google Drive Sync engine (non-blocking)
+    // 3. Initialize Google Drive Sync, Local Backup & SyncCoordinator (non-blocking)
     if (window.googleDriveService) {
-      window.googleDriveService.init().catch(e => console.warn('Drive init error:', e));
+      await window.googleDriveService.init().catch(e => console.warn('Drive init error:', e));
+    }
+    if (window.BackupService && window.BackupService.init) {
+      await window.BackupService.init().catch(e => console.warn('BackupService init error:', e));
+    }
+    if (window.SyncCoordinator && window.SyncCoordinator.init) {
+      await window.SyncCoordinator.init().catch(e => console.warn('SyncCoordinator init error:', e));
     }
 
     // 4. Setup Other UI Modules
