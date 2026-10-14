@@ -24,6 +24,8 @@ class DropboxSync {
       const keySetting = await db.settings.get('dropboxAppKey');
       if (keySetting && keySetting.value) {
         this.appKey = keySetting.value.trim();
+      } else if (window.EnvConfig) {
+        this.appKey = window.EnvConfig.get('DROPBOX_APP_KEY', '').trim();
       }
 
       const refreshSetting = await db.settings.get('dropboxRefreshToken');

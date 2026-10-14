@@ -11,3 +11,8 @@ scratch/
 
 # Note
 note
+
+# Environment & Local Secrets (DO NOT COMMIT SENSITIVE KEYS)
+.env
+.env.local
+.env.*.local

@@ -148,8 +148,11 @@ class App {
   }
 
   async init() {
-    // 0. Render icons immediately
+    // 0. Render icons immediately & Load .env configuration
     if (window.lucide) lucide.createIcons();
+    if (window.EnvConfig && window.EnvConfig.load) {
+      await window.EnvConfig.load().catch(e => console.warn('EnvConfig load error:', e));
+    }
 
     // 1. Initialize IndexedDB
     await initDatabase();

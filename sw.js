@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v2.4.1';
+const CACHE_NAME = 'sothuchi-pwa-v2.4.2';
 
 const PRECACHE_ASSETS = [
   './',
@@ -8,6 +8,7 @@ const PRECACHE_ASSETS = [
   './vendor/dexie.min.js',
   './vendor/chart.umd.min.js',
   './vendor/lucide.min.js',
+  './js/config.js',
   './js/db.js',
   './js/crypto.js',
   './js/google-drive.js',

@@ -34,12 +34,15 @@ class GoogleDriveSync {
     this.mirrorFileId = null;
   }
 
-  // Load saved configuration from DB
+  // Load saved configuration from DB & EnvConfig
   async init() {
     try {
+      // 1. Load from DB or Fallback to .env
       const savedClientId = await db.settings.get('googleClientId');
       if (savedClientId && savedClientId.value) {
         this.clientId = savedClientId.value;
+      } else if (window.EnvConfig) {
+        this.clientId = window.EnvConfig.get('GOOGLE_CLIENT_ID', '');
       }
 
       const autoSyncSetting = await db.settings.get('autoSyncEnabled');
@@ -95,10 +98,18 @@ class GoogleDriveSync {
       }
 
       const workerSetting = await db.settings.get('googleWorkerUrl');
-      if (workerSetting && workerSetting.value) this.workerUrl = workerSetting.value.trim();
+      if (workerSetting && workerSetting.value) {
+        this.workerUrl = workerSetting.value.trim();
+      } else if (window.EnvConfig) {
+        this.workerUrl = window.EnvConfig.get('GOOGLE_WORKER_URL', '').trim();
+      }
 
       const secretSetting = await db.settings.get('googleClientSecret');
-      if (secretSetting && secretSetting.value) this.clientSecret = secretSetting.value.trim();
+      if (secretSetting && secretSetting.value) {
+        this.clientSecret = secretSetting.value.trim();
+      } else if (window.EnvConfig) {
+        this.clientSecret = window.EnvConfig.get('GOOGLE_CLIENT_SECRET', '').trim();
+      }
 
       const refreshSetting = await db.settings.get('googleRefreshToken');
       if (refreshSetting && refreshSetting.value) this.refreshToken = refreshSetting.value.trim();

@@ -20,8 +20,44 @@ const UISettings = {
     // 1. Load Google Client ID
     const clientIdSetting = await db.settings.get('googleClientId');
     const clientIdInput = document.getElementById('settings-client-id');
-    if (clientIdSetting && clientIdInput) {
-      clientIdInput.value = clientIdSetting.value;
+    if (clientIdInput) {
+      if (clientIdSetting && clientIdSetting.value) {
+        clientIdInput.value = clientIdSetting.value;
+      } else if (window.EnvConfig && window.EnvConfig.get('GOOGLE_CLIENT_ID')) {
+        clientIdInput.value = window.EnvConfig.get('GOOGLE_CLIENT_ID');
+      }
+    }
+
+    // 1.1 Load Cloudflare Worker URL & Secret
+    const workerSetting = await db.settings.get('googleWorkerUrl');
+    const workerInput = document.getElementById('settings-google-worker-url');
+    if (workerInput) {
+      if (workerSetting && workerSetting.value) {
+        workerInput.value = workerSetting.value;
+      } else if (window.EnvConfig && window.EnvConfig.get('GOOGLE_WORKER_URL')) {
+        workerInput.value = window.EnvConfig.get('GOOGLE_WORKER_URL');
+      }
+    }
+
+    const secretSetting = await db.settings.get('googleClientSecret');
+    const secretInput = document.getElementById('settings-google-client-secret');
+    if (secretInput) {
+      if (secretSetting && secretSetting.value) {
+        secretInput.value = secretSetting.value;
+      } else if (window.EnvConfig && window.EnvConfig.get('GOOGLE_CLIENT_SECRET')) {
+        secretInput.value = window.EnvConfig.get('GOOGLE_CLIENT_SECRET');
+      }
+    }
+
+    // 1.2 Load Dropbox App Key
+    const dbxKeySetting = await db.settings.get('dropboxAppKey');
+    const dbxKeyInput = document.getElementById('settings-dropbox-app-key');
+    if (dbxKeyInput) {
+      if (dbxKeySetting && dbxKeySetting.value) {
+        dbxKeyInput.value = dbxKeySetting.value;
+      } else if (window.EnvConfig && window.EnvConfig.get('DROPBOX_APP_KEY')) {
+        dbxKeyInput.value = window.EnvConfig.get('DROPBOX_APP_KEY');
+      }
     }
 
     // 2. Load Google User Profile & Role
