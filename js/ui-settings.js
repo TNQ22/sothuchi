@@ -14,6 +14,12 @@ const UISettings = {
     window.addEventListener('google-profile-updated', (e) => {
       this.renderGoogleProfile(e.detail);
     });
+
+    window.addEventListener('server-connection-changed', () => this.renderServerSyncUI());
+    window.addEventListener('server-auth-changed', () => this.renderServerSyncUI());
+    window.addEventListener('server-shares-updated', () => this.renderServerSharesList());
+    window.addEventListener('server-vault-switched', () => this.renderServerSyncUI());
+    window.addEventListener('sync-success', () => this.renderServerSyncUI());
   },
 
   async loadSettings() {
@@ -255,6 +261,273 @@ const UISettings = {
   },
 
   bindEvents() {
+
+    // --- DEDICATED SYNC SERVER EVENTS ---
+    const sService = window.serverSyncService;
+
+    // Toggle Docker Help
+    const dockerHelpBtn = document.getElementById('btn-toggle-server-docker-help');
+    const dockerHelpBox = document.getElementById('box-server-docker-help');
+    if (dockerHelpBtn && dockerHelpBox) {
+      dockerHelpBtn.addEventListener('click', () => {
+        const isHidden = dockerHelpBox.style.display === 'none';
+        dockerHelpBox.style.display = isHidden ? 'block' : 'none';
+        dockerHelpBtn.textContent = isHidden ? 'Ẩn hướng dẫn' : 'Hướng dẫn Docker';
+      });
+    }
+
+    // Kiểm tra kết nối Máy chủ
+    const testServerBtn = document.getElementById('btn-test-server-connection');
+    if (testServerBtn) {
+      testServerBtn.addEventListener('click', async () => {
+        const urlInput = document.getElementById('settings-server-url');
+        const url = (urlInput ? urlInput.value : '').trim();
+        if (!url) {
+          showToast('Vui lòng nhập địa chỉ Máy Chủ Riêng', 'warning');
+          return;
+        }
+
+        testServerBtn.disabled = true;
+        showToast('Đang kiểm tra kết nối tới máy chủ...', 'info');
+        try {
+          if (sService) {
+            await sService.setServerUrl(url);
+            const ok = await sService.checkConnection();
+            if (ok) {
+              showToast('Kết nối tới Máy Chủ Riêng thành công!', 'success');
+            } else {
+              showToast('Không thể kết nối tới máy chủ. Vui lòng kiểm tra lại URL hoặc trạng thái Docker', 'error');
+            }
+          }
+        } catch (e) {
+          showToast('Lỗi kết nối máy chủ: ' + e.message, 'error');
+        } finally {
+          testServerBtn.disabled = false;
+        }
+      });
+    }
+
+    // Lưu URL Máy chủ
+    const saveServerUrlBtn = document.getElementById('btn-save-server-url');
+    if (saveServerUrlBtn) {
+      saveServerUrlBtn.addEventListener('click', async () => {
+        const urlInput = document.getElementById('settings-server-url');
+        const url = (urlInput ? urlInput.value : '').trim();
+        if (sService) {
+          await sService.setServerUrl(url);
+          showToast('Đã lưu URL Máy Chủ Riêng', 'success');
+        }
+      });
+    }
+
+    // Đăng nhập Máy chủ bằng Google
+    const serverGoogleLoginBtn = document.getElementById('btn-server-google-login');
+    if (serverGoogleLoginBtn) {
+      serverGoogleLoginBtn.addEventListener('click', async () => {
+        if (!sService) return;
+        const urlInput = document.getElementById('settings-server-url');
+        if (urlInput && urlInput.value) {
+          await sService.setServerUrl(urlInput.value);
+        }
+
+        if (!sService.serverUrl) {
+          showToast('Vui lòng nhập và kiểm tra URL máy chủ trước khi đăng nhập', 'warning');
+          return;
+        }
+
+        try {
+          showToast('Đang mở màn hình xác thực Google...', 'info');
+          serverGoogleLoginBtn.disabled = true;
+          const result = await sService.loginWithGoogle();
+          showToast(`Đăng nhập thành công! Xin chào ${result.user.name}`, 'success');
+          if (window.app && window.app.refreshAll) await window.app.refreshAll();
+          // Tự động kéo dữ liệu về
+          await sService.sync({ interactive: true });
+        } catch (err) {
+          if (err.message && err.message.includes('popup_closed_by_user')) {
+            showToast('Đã hủy đăng nhập Google', 'info');
+          } else {
+            showToast('Đăng nhập máy chủ thất bại: ' + err.message, 'error');
+          }
+        } finally {
+          serverGoogleLoginBtn.disabled = false;
+        }
+      });
+    }
+
+    // Đăng xuất Máy chủ
+    const serverLogoutBtn = document.getElementById('btn-server-logout');
+    if (serverLogoutBtn) {
+      serverLogoutBtn.addEventListener('click', async () => {
+        if (confirm('Bạn có chắc muốn đăng xuất khỏi Máy Chủ Riêng?')) {
+          if (sService) await sService.logout();
+          showToast('Đã đăng xuất khỏi Máy Chủ Riêng', 'info');
+        }
+      });
+    }
+
+    // Chuyển Sổ (Vault Switcher)
+    const vaultSelectEl = document.getElementById('settings-server-vault-select');
+    if (vaultSelectEl) {
+      vaultSelectEl.addEventListener('change', async (e) => {
+        const vaultId = e.target.value;
+        if (!vaultId || !sService) return;
+        try {
+          showToast('Đang chuyển sổ và đồng bộ dữ liệu...', 'info');
+          await sService.switchVault(vaultId);
+          showToast('Đã chuyển sang sổ mới thành công!', 'success');
+          if (window.app && window.app.refreshAll) await window.app.refreshAll();
+        } catch (err) {
+          showToast('Lỗi khi chuyển sổ: ' + err.message, 'error');
+        }
+      });
+    }
+
+    // Tạo Sổ mới
+    const createVaultBtn = document.getElementById('btn-server-create-vault');
+    if (createVaultBtn) {
+      createVaultBtn.addEventListener('click', async () => {
+        const name = prompt('Nhập tên Sổ mới (ví dụ: Sổ Chi Tiêu Gia Đình, Sổ Quỹ Lớp...):');
+        if (!name || !name.trim() || !sService) return;
+        try {
+          showToast('Đang tạo sổ mới trên máy chủ...', 'info');
+          const v = await sService.createVault(name.trim());
+          showToast(`Đã tạo sổ "${v.name}" thành công!`, 'success');
+          if (window.app && window.app.refreshAll) await window.app.refreshAll();
+        } catch (err) {
+          showToast('Tạo sổ thất bại: ' + err.message, 'error');
+        }
+      });
+    }
+
+    // Đổi tên Sổ
+    const renameVaultBtn = document.getElementById('btn-server-rename-vault');
+    if (renameVaultBtn) {
+      renameVaultBtn.addEventListener('click', async () => {
+        if (!sService || !sService.activeVaultId) return;
+        const current = sService.getActiveVault();
+        const newName = prompt('Nhập tên mới cho sổ:', current?.name || '');
+        if (!newName || !newName.trim()) return;
+        try {
+          await sService.renameVault(sService.activeVaultId, newName.trim());
+          showToast('Đã đổi tên sổ thành công!', 'success');
+        } catch (err) {
+          showToast('Đổi tên sổ thất bại: ' + err.message, 'error');
+        }
+      });
+    }
+
+    // Xóa Sổ
+    const deleteVaultBtn = document.getElementById('btn-server-delete-vault');
+    if (deleteVaultBtn) {
+      deleteVaultBtn.addEventListener('click', async () => {
+        if (!sService || !sService.activeVaultId) return;
+        const current = sService.getActiveVault();
+        if (current?.role !== 'owner') {
+          showToast('Chỉ Chủ Sổ mới có quyền xóa sổ này', 'warning');
+          return;
+        }
+        if (confirm(`Bạn có chắc chắn muốn xóa sổ "${current.name}" vĩnh viễn trên máy chủ?`)) {
+          try {
+            await sService.deleteVault(sService.activeVaultId);
+            showToast('Đã xóa sổ thành công!', 'success');
+            if (window.app && window.app.refreshAll) await window.app.refreshAll();
+          } catch (err) {
+            showToast('Xóa sổ thất bại: ' + err.message, 'error');
+          }
+        }
+      });
+    }
+
+    // Mời / Chia sẻ Sổ cho Email Google
+    const addShareBtn = document.getElementById('btn-server-add-share');
+    if (addShareBtn) {
+      addShareBtn.addEventListener('click', async () => {
+        const emailInput = document.getElementById('settings-server-share-email');
+        const roleSelect = document.getElementById('settings-server-share-role');
+        const email = (emailInput ? emailInput.value : '').trim();
+        const role = roleSelect ? roleSelect.value : 'editor';
+
+        if (!email || !email.includes('@')) {
+          showToast('Vui lòng nhập địa chỉ email Google hợp lệ', 'warning');
+          return;
+        }
+
+        try {
+          addShareBtn.disabled = true;
+          showToast(`Đang cấp quyền cho ${email}...`, 'info');
+          await sService.shareVaultWithEmail(email, role);
+          showToast(`Đã chia sẻ sổ thành công cho ${email}!`, 'success');
+          if (emailInput) emailInput.value = '';
+        } catch (err) {
+          showToast('Chia sẻ thất bại: ' + err.message, 'error');
+        } finally {
+          addShareBtn.disabled = false;
+        }
+      });
+    }
+
+    // Xóa quyền thành viên chia sẻ (Delegated Click)
+    const sharesListEl = document.getElementById('server-shares-list');
+    if (sharesListEl) {
+      sharesListEl.addEventListener('click', async (e) => {
+        const removeBtn = e.target.closest('.btn-server-remove-share');
+        if (!removeBtn) return;
+        const shareId = removeBtn.getAttribute('data-share-id');
+        if (!shareId || !sService) return;
+
+        if (confirm('Bạn có chắc muốn xóa quyền truy cập của thành viên này?')) {
+          try {
+            await sService.removeShare(shareId);
+            showToast('Đã xóa quyền thành viên thành công!', 'success');
+          } catch (err) {
+            showToast('Xóa quyền thất bại: ' + err.message, 'error');
+          }
+        }
+      });
+    }
+
+    // Toggle Tự động đồng bộ máy chủ
+    const serverAutoSyncToggle = document.getElementById('settings-server-auto-sync');
+    if (serverAutoSyncToggle) {
+      serverAutoSyncToggle.addEventListener('change', (e) => {
+        if (sService) {
+          sService.setAutoSync(e.target.checked);
+          showToast(e.target.checked ? 'Đã bật tự động đồng bộ Máy Chủ Riêng' : 'Đã tắt tự động đồng bộ Máy Chủ Riêng', 'info');
+        }
+      });
+    }
+
+    // Nút Đồng bộ Máy chủ ngay
+    const serverSyncNowBtn = document.getElementById('btn-server-sync-now');
+    if (serverSyncNowBtn) {
+      serverSyncNowBtn.addEventListener('click', async () => {
+        if (!sService) return;
+        if (!sService.serverUrl || !sService.token) {
+          showToast('Vui lòng kết nối và đăng nhập vào Máy Chủ Riêng trước', 'warning');
+          return;
+        }
+
+        try {
+          serverSyncNowBtn.disabled = true;
+          serverSyncNowBtn.innerHTML = '<i data-lucide="loader-2" class="spin-animation" style="width: 14px; height: 14px;"></i> <span>Đang đồng bộ...</span>';
+          if (window.lucide) lucide.createIcons();
+
+          showToast('Đang đồng bộ dữ liệu với Máy Chủ Riêng...', 'info');
+          await sService.sync({ interactive: true });
+          showToast('Đồng bộ Máy Chủ Riêng thành công!', 'success');
+
+          if (window.app && window.app.refreshAll) await window.app.refreshAll();
+        } catch (err) {
+          showToast('Đồng bộ thất bại: ' + err.message, 'error');
+        } finally {
+          serverSyncNowBtn.disabled = false;
+          serverSyncNowBtn.innerHTML = '<i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> <span>Đồng bộ máy chủ ngay</span>';
+          if (window.lucide) lucide.createIcons();
+        }
+      });
+    }
+
     // Toggle Google Advanced Box
     const advBtn = document.getElementById('btn-toggle-google-advanced');
     const advBox = document.getElementById('google-advanced-box');

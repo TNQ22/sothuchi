@@ -8,6 +8,13 @@ Thumbs.db
 # Temp
 tmp/
 scratch/
+test_data/
+
+# Persistent SQLite Server Data & Backups
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
 
 # Note
 note

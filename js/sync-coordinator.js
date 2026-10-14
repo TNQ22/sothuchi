@@ -37,6 +37,9 @@ class SyncCoordinator {
     }
 
     // Đăng ký adapter mặc định nếu có
+    if (window.serverSyncService) {
+      this.registerAdapter('custom-server', window.serverSyncService);
+    }
     if (window.googleDriveService) {
       this.registerAdapter('google-drive', window.googleDriveService);
     }
@@ -140,6 +143,18 @@ class SyncCoordinator {
   // Kích hoạt đồng bộ các adapter đang hoạt động
   async syncAll(isAuto = false) {
     let performedSync = false;
+
+    // 0. Dedicated Sync Server Adapter (Máy chủ riêng - Ưu tiên hàng đầu)
+    const serverAdapter = this.adapters.get('custom-server') || window.serverSyncService;
+    if (serverAdapter && (isAuto ? serverAdapter.isAutoSyncEnabled() : (serverAdapter.serverUrl && serverAdapter.token))) {
+      performedSync = true;
+      try {
+        await serverAdapter.sync();
+      } catch (err) {
+        console.warn('Dedicated Server sync failed during syncAll:', err);
+        if (!isAuto) throw err;
+      }
+    }
 
     // 1. Google Drive Adapter
     const driveAdapter = this.adapters.get('google-drive') || window.googleDriveService;

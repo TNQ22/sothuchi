@@ -758,6 +758,161 @@
 
             <!-- View: Settings (Cài đặt & Đồng bộ / Sao lưu đa kênh) -->
       <section id="view-settings" class="page-view">
+                <!-- 0. Dedicated Sync Server Section (Máy Chủ Riêng Docker / Google Login & Sharing) -->
+        <div class="card-panel" style="margin-bottom: 20px; border: 1.5px solid var(--primary-light, rgba(20, 184, 166, 0.4)); background: linear-gradient(180deg, rgba(20, 184, 166, 0.04) 0%, var(--bg-surface) 100%);">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <h3 class="panel-title" style="margin-bottom: 0;">
+              <i data-lucide="server"></i> Máy Chủ Riêng (Docker / Self-Hosted Sync Server)
+            </h3>
+            <span id="server-status-badge" class="badge-status badge-disconnected">
+              <span class="badge-dot"></span> <span id="server-status-text">Chưa kết nối</span>
+            </span>
+          </div>
+
+          <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
+            Đồng bộ dữ liệu hai chiều tốc độ cao, hỗ trợ chạy máy chủ qua <strong>Docker</strong>, đăng nhập và chia sẻ Sổ qua tài khoản Google với phân quyền thành viên (Chủ sổ / Ghi chép / Chỉ xem).
+          </p>
+
+          <!-- Địa chỉ Máy chủ Server URL -->
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Địa chỉ Máy Chủ Riêng (URL):</span>
+              <button type="button" id="btn-toggle-server-docker-help" class="btn-text" style="font-size: 0.78rem; color: var(--primary); background: none; border: none; cursor: pointer;">Hướng dẫn Docker</button>
+            </label>
+            <div style="display: flex; gap: 8px;">
+              <input type="url" id="settings-server-url" class="form-control" placeholder="http://localhost:8081 hoặc https://sync.domain-cua-ban.com">
+              <button type="button" id="btn-test-server-connection" class="btn-secondary" title="Kiểm tra kết nối tới máy chủ" style="white-space: nowrap;">
+                <i data-lucide="activity" style="width: 14px; height: 14px;"></i> Kiểm tra
+              </button>
+              <button type="button" id="btn-save-server-url" class="btn-primary" style="white-space: nowrap;">Lưu URL</button>
+            </div>
+          </div>
+
+          <!-- Khối hướng dẫn Docker (ẩn mặc định) -->
+          <div id="box-server-docker-help" style="display: none; background: var(--bg-hover, rgba(0,0,0,0.03)); border: 1px dashed var(--border-color); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px; font-size: 0.85rem; line-height: 1.6;">
+            <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="container" style="width: 16px; height: 16px; color: var(--primary);"></i> Chạy máy chủ qua Docker & Docker Compose:
+            </div>
+            <pre style="background: #1e293b; color: #f8fafc; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 0.8rem; margin: 8px 0;"><code># 1. Khởi động máy chủ bằng Docker Compose (Đã tích hợp SQLite và Web App)
+docker compose up -d
+
+# 2. Hoặc build và chạy trực tiếp bằng Docker:
+docker build -t sothuchi-sync-server .
+docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi sothuchi-sync-server</code></pre>
+            <div style="color: var(--text-secondary); font-size: 0.8rem;">
+              • Dữ liệu SQLite và lịch sử được lưu bền vững tại thư mục <code>./data</code>.<br>
+              • Truy cập ứng dụng và máy chủ tại <code>http://localhost:8081</code> hoặc qua Reverse Proxy (Nginx/Caddy/Cloudflare Tunnel).
+            </div>
+          </div>
+
+          <!-- Banner Tài khoản Google trên Máy Chủ -->
+          <div id="server-user-card" class="google-user-banner" style="display: none;">
+            <div class="google-user-info">
+              <img id="server-user-avatar" src="./assets/icons/icon.svg" alt="Avatar" class="google-user-avatar">
+              <div style="min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span id="server-user-name" class="google-user-name">Người dùng Google</span>
+                  <span id="server-user-role-badge" class="google-role-badge">Chủ Sổ</span>
+                </div>
+                <div id="server-user-email" class="google-user-email">email@gmail.com</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+              <button type="button" id="btn-server-logout" class="btn-secondary btn-sm" style="color: #ef4444;" title="Đăng xuất khỏi Máy chủ">
+                <i data-lucide="log-out" style="width: 14px; height: 14px;"></i> <span>Đăng xuất</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Nút Đăng nhập Google (nếu chưa đăng nhập) -->
+          <div id="server-login-prompt" style="margin-bottom: 16px;">
+            <button type="button" id="btn-server-google-login" class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+              <span>Đăng nhập Máy chủ bằng Google</span>
+            </button>
+          </div>
+
+          <!-- Quản lý Sổ (Vault Selector) -->
+          <div id="server-vault-section" style="display: none; margin-bottom: 16px; padding: 14px; background: var(--bg-hover, rgba(0,0,0,0.02)); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <label class="form-label" style="margin-bottom: 0; font-weight: 700;">
+                <i data-lucide="book-marked" style="width: 14px; height: 14px; vertical-align: middle;"></i> Sổ Đang Đồng Bộ:
+              </label>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" id="btn-server-create-vault" class="btn-secondary btn-sm" title="Tạo sổ chi tiêu mới">
+                  <i data-lucide="plus" style="width: 12px; height: 12px;"></i> Sổ mới
+                </button>
+                <button type="button" id="btn-server-rename-vault" class="btn-secondary btn-sm" title="Đổi tên sổ hiện tại">
+                  <i data-lucide="edit-3" style="width: 12px; height: 12px;"></i> Đổi tên
+                </button>
+                <button type="button" id="btn-server-delete-vault" class="btn-secondary btn-sm" style="color: #ef4444;" title="Xóa sổ (Chỉ chủ sổ)">
+                  <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+                </button>
+              </div>
+            </div>
+
+            <select id="settings-server-vault-select" class="form-control" style="margin-bottom: 8px;">
+              <option value="">(Đang tải danh sách sổ...)</option>
+            </select>
+            <div id="server-vault-meta" style="font-size: 0.78rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+              <span id="server-vault-owner-text">Chủ sở hữu: Tôi</span>
+              <span id="server-vault-role-text">Quyền: Toàn quyền</span>
+            </div>
+          </div>
+
+          <!-- Chia sẻ Sổ qua Email Google (Chỉ hiển thị khi là Chủ sổ) -->
+          <div id="server-sharing-panel" style="display: none; margin-bottom: 16px; padding: 14px; background: rgba(59, 130, 246, 0.05); border-radius: var(--radius-md); border: 1px dashed rgba(59, 130, 246, 0.3);">
+            <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="share-2" style="width: 16px; height: 16px; color: #3b82f6;"></i> Chia Sẻ Sổ Cho Người Khác Qua Email Google:
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">
+              Người được chia sẻ chỉ cần đăng nhập Google trên app của họ là sẽ thấy Sổ này và có thể cùng ghi chép chi tiêu với bạn.
+            </p>
+
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+              <input type="email" id="settings-server-share-email" class="form-control" placeholder="Nhập email Google (vd: banbe@gmail.com)" style="flex: 2; min-width: 180px;">
+              <select id="settings-server-share-role" class="form-control" style="flex: 1; min-width: 130px;">
+                <option value="editor">Ghi chép (Editor)</option>
+                <option value="viewer">Chỉ xem (Viewer)</option>
+              </select>
+              <button type="button" id="btn-server-add-share" class="btn-primary" style="white-space: nowrap;">
+                <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i> Mời
+              </button>
+            </div>
+
+            <!-- Danh sách thành viên đã chia sẻ -->
+            <div id="server-shares-container">
+              <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Thành viên đang tham gia sổ:</div>
+              <div id="server-shares-list" style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">Chưa có thành viên nào được chia sẻ.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Điều khiển Đồng bộ & Tự động -->
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-top: 6px; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div style="font-weight: 600; font-size: 0.9rem;">Tự động đồng bộ với máy chủ</div>
+              <div style="font-size: 0.78rem; color: var(--text-muted);">Tự động gửi và nhận giao dịch mới ngầm mỗi khi có thay đổi</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="settings-server-auto-sync" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <!-- Nút Đồng bộ ngay & Thời gian -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="font-size: 0.8rem; color: var(--text-muted);">
+              Đồng bộ lần cuối: <span id="settings-server-last-sync-time" style="font-weight: 600; color: var(--text-primary);">Chưa đồng bộ</span>
+            </div>
+            <button type="button" id="btn-server-sync-now" class="btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+              <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+              <span>Đồng bộ máy chủ ngay</span>
+            </button>
+          </div>
+        </div>
+
         <!-- 1. Google Drive Sync Section -->
         <div class="card-panel" style="margin-bottom: 20px;">
           <h3 class="panel-title" style="margin-bottom: 14px;"><i data-lucide="cloud"></i> Đồng Bộ Google Drive & Đa Thiết Bị</h3>
@@ -4207,6 +4362,7 @@
   <script src="./js/db.js?v=2.2.8"></script>
   <script src="./js/google-drive.js?v=2.4.7"></script>
   <script src="./js/dropbox.js?v=2.4.7"></script>
+  <script src="./js/server-sync.js?v=2.5.0"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
   <script src="./js/sync-coordinator.js?v=2.4.7"></script>

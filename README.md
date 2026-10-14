@@ -85,6 +85,59 @@ git push -u origin main
 
 ---
 
+
+---
+
+## 🐳 Chạy Máy Chủ Riêng Bằng Docker (Self-Hosted Sync Server & Chia Sẻ Qua Google)
+
+Ứng dụng hỗ trợ chạy **Máy Chủ Riêng (Dedicated Sync Server)** phục vụ đầy đủ tính năng: đồng bộ hai chiều thời gian thực cực nhanh, hỗ trợ đa người dùng (Multi-User), quản lý nhiều Sổ (Multi-Vault), và **đăng nhập / chia sẻ Sổ qua tài khoản Google** với phân quyền (Chủ sổ / Ghi chép / Chỉ xem).
+
+### 1. Tự Động Build Docker (GitHub Actions & Docker Hub)
+Khi bạn push mã nguồn lên GitHub (nhánh `main` hoặc tạo tag release `v*`), quy trình **GitHub Actions** (`.github/workflows/docker-publish.yml`) sẽ tự động:
+- Build image container đa kiến trúc (`linux/amd64` và `linux/arm64`).
+- Đẩy trực tiếp lên **GitHub Container Registry (GHCR)**: `ghcr.io/tnq22/sothuchi:latest`.
+- Đẩy lên **Docker Hub** nếu bạn đã cấu hình 2 Secret trong GitHub Repo (*Settings -> Secrets and variables -> Actions*):
+  - `DOCKERHUB_USERNAME`: Tên tài khoản Docker Hub của bạn.
+  - `DOCKERHUB_TOKEN`: Personal Access Token lấy từ Docker Hub (*Account Settings -> Security -> New Access Token*).
+
+### 2. Tích Hợp PWA Trực Tiếp & Tự Động Nhận Diện Tên Miền
+- **App PWA All-in-One**: Toàn bộ ứng dụng Web PWA (offline-first, icon, service worker) đã được nhúng sẵn vào container Docker cùng với API máy chủ.
+- **Tự động nhận diện tên miền**: Khi bạn mở ứng dụng trên trình duyệt qua bất kỳ domain hay cổng nào (ví dụ: `http://localhost:8081`, `http://192.168.1.100:8081`, hoặc domain riêng có HTTPS `https://chi-tieu.tenban.com`), app sẽ **tự động phát hiện tên miền hiện tại** và thiết lập kết nối ngay mà không cần cấu hình thủ công!
+- **Hoàn toàn độc lập cho người dùng không có server**: Người dùng truy cập qua GitHub Pages (`https://tnq22.github.io/sothuchi/`) hoặc mở file cục bộ vẫn dùng bình thường 100% với IndexedDB, Google Drive serverless và sao lưu thư mục máy tính mà không bị phụ thuộc vào server riêng.
+
+### 3. Khởi động nhanh với Docker Compose
+Trong thư mục dự án đã có sẵn file `Dockerfile` và `docker-compose.yml`:
+
+```bash
+# Khởi động máy chủ ngầm (All-in-one bao gồm Web App + REST API + SQLite)
+docker compose up -d
+```
+
+Sau khi chạy lệnh trên:
+- **Ứng dụng Web & API**: Truy cập ngay tại `http://localhost:8081`
+- **Cơ sở dữ liệu**: Dữ liệu SQLite và các bản sao lưu lịch sử được lưu bền vững tại thư mục `./data` trên máy chủ của bạn.
+
+### 2. Tùy chỉnh biến môi trường (`docker-compose.yml` hoặc `.env`)
+| Biến môi trường | Mặc định | Ý nghĩa |
+| :--- | :--- | :--- |
+| `PORT` | `8081` | Cổng lắng nghe của máy chủ |
+| `DATA_DIR` | `/app/data` | Thư mục lưu file SQLite (`sothuchi.sqlite`) và bản sao lưu |
+| `JWT_SECRET` | Chuỗi ngẫu nhiên | Khóa bí mật bảo vệ phiên đăng nhập token của người dùng |
+| `GOOGLE_CLIENT_ID` | *(Tùy chọn)* | Client ID từ Google Cloud Console để máy chủ tự động cung cấp cho client |
+| `CORS_ORIGIN` | `*` | Cho phép ứng dụng PWA từ bất kỳ domain nào (hoặc GitHub Pages) kết nối vào |
+
+### 3. Đăng nhập và Chia sẻ Sổ qua Email Google
+1. **Kết nối**: Mở ứng dụng PWA (trên máy tính hoặc điện thoại) -> vào **Cài Đặt** -> tại mục **Máy Chủ Riêng**, nhập địa chỉ máy chủ (vd: `http://localhost:8081` hoặc tên miền VPS của bạn) -> bấm **Lưu URL**.
+2. **Đăng nhập Google**: Bấm **Đăng nhập Máy chủ bằng Google** để xác thực danh tính.
+3. **Quản lý Sổ**: Bạn có thể tạo nhiều sổ (Sổ Cá Nhân, Sổ Chi Tiêu Gia Đình, Sổ Quỹ Lớp...).
+4. **Chia sẻ cho người thân**:
+   - Tại mục **Chia Sẻ Sổ Cho Người Khác Qua Email Google**: Nhập email Google của người thân (vd: `nguoithan@gmail.com`).
+   - Chọn quyền: **Ghi chép (Editor)** hoặc **Chỉ xem (Viewer)** -> bấm **Mời**.
+   - Người thân chỉ cần mở ứng dụng và đăng nhập bằng email Google đó là sẽ tự động thấy Sổ được chia sẻ và có thể cùng ghi chép chi tiêu với bạn!
+   - Chủ sổ có thể thu hồi quyền chia sẻ bất kỳ lúc nào.
+
+---
+
 ## ⌨️ Phím Tắt Tiện Lợi Trên Máy Tính
 
 - **`N`**: Mở nhanh cửa sổ thêm giao dịch mới.

@@ -1,0 +1,9 @@
+.git
+.github
+node_modules
+data/*.sqlite
+data/*.sqlite-wal
+data/*.sqlite-shm
+data/*.json
+*.log
+.DS_Store

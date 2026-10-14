@@ -1,0 +1,26 @@
+{
+  "name": "sothuchi",
+  "version": "2.5.0",
+  "description": "Offline-First Personal Finance PWA & Dedicated Sync Server with Google Login & Multi-user Sharing",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "keywords": [
+    "pwa",
+    "offline-first",
+    "personal-finance",
+    "expense-tracker",
+    "sync-server",
+    "docker",
+    "self-hosted",
+    "google-auth"
+  ],
+  "author": "TNQ",
+  "license": "MIT"
+}

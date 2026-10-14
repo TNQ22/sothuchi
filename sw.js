@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v2.4.7';
+const CACHE_NAME = 'sothuchi-pwa-v2.5.0';
 
 const PRECACHE_ASSETS = [
   './',
@@ -13,6 +13,7 @@ const PRECACHE_ASSETS = [
   './js/crypto.js',
   './js/google-drive.js',
   './js/dropbox.js',
+  './js/server-sync.js',
   './js/csv-export.js',
   './js/backup.js',
   './js/sync-coordinator.js',
@@ -48,115 +49,76 @@ const PRECACHE_ASSETS = [
   './assets/logos/tcb.png',
   './assets/logos/timo.png',
   './assets/logos/tpb.png',
-  './assets/logos/varb.png',
   './assets/logos/vcb.png',
   './assets/logos/vib.png',
-  './assets/logos/viettelmoney.png',
-  './assets/logos/vnpay.png',
   './assets/logos/vpb.png',
   './assets/logos/zalopay.png'
 ];
 
-// Install Event: Precache static assets individually so no single failure breaks offline support
+// Install: Tải và lưu trước toàn bộ tài nguyên cốt lõi vào Cache
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      console.log('[ServiceWorker] Pre-caching offline assets for:', CACHE_NAME);
-      await Promise.all(
-        PRECACHE_ASSETS.map(async (assetUrl) => {
-          try {
-            const response = await fetch(assetUrl, { cache: 'reload' });
-            if (response.ok) {
-              await cache.put(assetUrl, response);
-            }
-          } catch (err) {
-            console.warn('[ServiceWorker] Precache failed for:', assetUrl, err);
-          }
-        })
-      );
-    })
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('[SW] Pre-caching offline assets...');
+      return cache.addAll(PRECACHE_ASSETS);
+    }).then(() => self.skipWaiting())
   );
 });
 
-// Activate Event: Clean up old caches & take control immediately
+// Activate: Xóa các Cache phiên bản cũ
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keyList) => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        keyList.map((key) => {
-          if (key !== CACHE_NAME) {
-            console.log('[ServiceWorker] Deleting old cache:', key);
-            return caches.delete(key);
-          }
-        })
+        cacheNames
+          .filter((name) => name.startsWith('sothuchi-pwa-') && name !== CACHE_NAME)
+          .map((name) => {
+            console.log('[SW] Deleting old cache:', name);
+            return caches.delete(name);
+          })
       );
     }).then(() => self.clients.claim())
   );
 });
 
-// Fetch Event: Cache First for 100% Offline Capability
+// Fetch: Chiến lược Network-First cho HTML/API, Stale-While-Revalidate cho assets tĩnh
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  if (!event.request.url.startsWith('http')) return;
+  const url = new URL(event.request.url);
 
-  // Handle navigation requests (opening app / refreshing)
+  // Không cache các yêu cầu Google API, Dropbox API, máy chủ REST API hoặc script bên ngoài
+  if (
+    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('google.com') ||
+    url.hostname.includes('dropboxapi.com') ||
+    url.hostname.includes('dropbox.com') ||
+    url.pathname.startsWith('/api/') ||
+    event.request.method !== 'GET'
+  ) {
+    return;
+  }
+
+  // Đối với điều hướng trang HTML (Network-First, fallback về Cache)
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      (async () => {
-        try {
-          // If online and network is fast, try network fetch with 1.5s timeout
-          const networkPromise = fetch(event.request).then(async (response) => {
-            if (response && response.status === 200) {
-              const cache = await caches.open(CACHE_NAME);
-              cache.put(event.request, response.clone());
-            }
-            return response;
-          });
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Network timeout')), 1500)
-          );
-          return await Promise.race([networkPromise, timeoutPromise]);
-        } catch (err) {
-          // Offline or slow network: fall back to cached index.html immediately
-          const cache = await caches.open(CACHE_NAME);
-          const cached = (await cache.match(event.request, { ignoreSearch: true }))
-            || (await cache.match('./index.html', { ignoreSearch: true }))
-            || (await cache.match('./', { ignoreSearch: true }))
-            || (await cache.match('index.html', { ignoreSearch: true }));
-          if (cached) return cached;
-          return (await caches.match('index.html', { ignoreSearch: true })) || Response.error();
-        }
-      })()
+      fetch(event.request).catch(() => caches.match('./index.html'))
     );
     return;
   }
 
-  // Handle asset requests (CSS, JS, images, icons, vendor scripts)
+  // Đối với tài nguyên tĩnh (Stale-While-Revalidate)
   event.respondWith(
-    (async () => {
-      // 1. Try exact cache match first (matches exact ?v=... if present)
-      const exactMatch = await caches.match(event.request);
-      if (exactMatch) {
-        return exactMatch;
-      }
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      }).catch(() => cachedResponse);
 
-      // 2. If online and no exact match (new version requested), fetch fresh from network!
-      if (navigator.onLine) {
-        try {
-          const networkResponse = await fetch(event.request);
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type !== 'opaque') {
-            const cache = await caches.open(CACHE_NAME);
-            cache.put(event.request, networkResponse.clone());
-          }
-          return networkResponse;
-        } catch (err) {}
-      }
-
-      // 3. Fallback when offline or network failed: match ignoring search params
-      const fallback = await caches.match(event.request, { ignoreSearch: true });
-      if (fallback) return fallback;
-      return Response.error();
-    })()
+      return cachedResponse || fetchPromise;
+    })
   );
 });

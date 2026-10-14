@@ -1,0 +1,23 @@
+services:
+  sothuchi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/tnq22/sothuchi:latest
+    container_name: sothuchi-sync-server
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - HOST=0.0.0.0
+      - DATA_DIR=/app/data
+      # Khóa bí mật bảo vệ phiên đăng nhập (Nên đổi thành chuỗi ngẫu nhiên dài)
+      - JWT_SECRET=sothuchi_super_secure_vault_secret_key_change_me_12345
+      # Google Client ID (Tùy chọn: lấy từ Google Cloud Console)
+      - GOOGLE_CLIENT_ID=
+      # Cho phép ứng dụng PWA (từ GitHub Pages hoặc tên miền riêng) kết nối vào API
+      - CORS_ORIGIN=*
+    volumes:
+      # Lưu trữ cơ sở dữ liệu SQLite và bản sao lưu bền vững trên máy chủ
+      - ./data:/app/data

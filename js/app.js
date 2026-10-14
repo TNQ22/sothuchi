@@ -165,6 +165,12 @@ class App {
     }
 
     // 3. Initialize Google Drive Sync, Local Backup & SyncCoordinator (non-blocking)
+    if (window.serverSyncService) {
+      await window.serverSyncService.init().catch(e => console.warn('ServerSync init error:', e));
+      if (window.SyncCoordinator) {
+        window.SyncCoordinator.registerAdapter('custom-server', window.serverSyncService);
+      }
+    }
     if (window.googleDriveService) {
       await window.googleDriveService.init().catch(e => console.warn('Drive init error:', e));
     }
@@ -198,6 +204,18 @@ class App {
     } else {
       this.updateBrandLogos(null);
     }
+
+    window.addEventListener('server-auth-changed', (e) => {
+      if (e.detail?.user) {
+        this.updateBrandLogos(e.detail.user);
+      } else if (window.googleDriveService?.userProfile) {
+        this.updateBrandLogos(window.googleDriveService.userProfile);
+      } else if (window.dropboxService?.userProfile) {
+        this.updateBrandLogos(window.dropboxService.userProfile);
+      } else {
+        this.updateBrandLogos(null);
+      }
+    });
 
     window.addEventListener('google-profile-updated', (e) => {
       this.updateBrandLogos(e.detail);
@@ -267,6 +285,12 @@ class App {
             console.log('[GoogleDrive] Trình duyệt chặn kết nối ngầm (sẵn sàng kết nối khi bấm vào Avatar):', err.message);
           });
       }
+    }
+
+    // Tự động đồng bộ với Máy Chủ Riêng khi mở app
+    if (window.serverSyncService && window.serverSyncService.isAutoSyncEnabled()) {
+      console.log('[ServerSync] Tự động đồng bộ với Máy Chủ Riêng khi mở app...');
+      window.serverSyncService.sync().catch(e => console.warn('[ServerSync] Startup sync error:', e));
     }
 
     // 10. Register Service Worker for PWA
