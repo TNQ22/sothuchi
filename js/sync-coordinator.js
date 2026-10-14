@@ -11,7 +11,7 @@ class SyncCoordinator {
   constructor() {
     this.status = 'idle'; // 'idle' | 'pending' | 'syncing' | 'synced' | 'error'
     this.lastSyncTime = null;
-    this.lastSyncTarget = 'Nội bộ máy';
+    this.lastSyncTarget = 'Bộ nhớ trình duyệt (IndexedDB)';
     this.lastError = null;
     this.isDirty = false;
     this.debounceTimer = null;
@@ -158,7 +158,7 @@ class SyncCoordinator {
 
     if (!performedSync && !isAuto) {
       // Không có dịch vụ nào kích hoạt
-      this.setStatus('idle', 'Nội bộ máy');
+      this.setStatus('idle', 'Bộ nhớ trình duyệt (IndexedDB)');
     }
   }
 
@@ -342,8 +342,22 @@ class SyncCoordinator {
       timeEl.textContent = this.lastSyncTime ? new Date(this.lastSyncTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : 'Chưa có';
     }
 
+    const isOnlyLocalDB = !this.lastSyncTarget || 
+      this.lastSyncTarget === 'Nội bộ máy' || 
+      this.lastSyncTarget.includes('IndexedDB') || 
+      this.lastSyncTarget.includes('trình duyệt');
+
     if (targetEl) {
-      targetEl.textContent = this.lastSyncTarget || 'Nội bộ máy';
+      if (isOnlyLocalDB) {
+        targetEl.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.8rem;">Bộ nhớ trình duyệt (IndexedDB)</span>';
+      } else {
+        targetEl.textContent = this.lastSyncTarget;
+      }
+    }
+
+    const warningEl = document.getElementById('popover-warning-note');
+    if (warningEl) {
+      warningEl.style.display = isOnlyLocalDB ? 'block' : 'none';
     }
 
     if (errBox) {

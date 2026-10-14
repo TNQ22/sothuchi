@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.3.6">
+  <link rel="stylesheet" href="./css/style.css?v=2.3.7">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -4095,7 +4095,10 @@
                 </div>
                 <div class="sync-popover-detail">
                   <span class="sync-detail-label">Nơi lưu:</span>
-                  <span class="sync-detail-value" id="popover-target">Google Drive (Vùng ứng dụng)</span>
+                  <span class="sync-detail-value" id="popover-target">Bộ nhớ trình duyệt (IndexedDB)</span>
+                </div>
+                <div id="popover-warning-note" style="display: none; margin-top: 8px; padding: 7px 10px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-sm); font-size: 0.74rem; color: #d97706; line-height: 1.45;">
+                  ⚠️ <strong>Chưa lưu vào ổ cứng / Đám mây:</strong> Dữ liệu hiện nằm trong bộ nhớ tạm của trình duyệt (IndexedDB). Nếu xóa lịch sử duyệt web sẽ bị mất. Hãy kết nối <strong>Google Drive</strong> hoặc <strong>Dropbox</strong> để lưu an toàn vĩnh viễn!
                 </div>
                 <div id="popover-error-box" class="sync-popover-error" style="display: none;"></div>
               </div>
@@ -4122,11 +4125,11 @@
   <!-- App Core Modules -->
   <script src="./js/crypto.js"></script>
   <script src="./js/db.js?v=2.2.8"></script>
-  <script src="./js/google-drive.js?v=2.3.6"></script>
-  <script src="./js/dropbox.js?v=2.3.6"></script>
+  <script src="./js/google-drive.js?v=2.3.7"></script>
+  <script src="./js/dropbox.js?v=2.3.7"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
-  <script src="./js/sync-coordinator.js?v=2.3.6"></script>
+  <script src="./js/sync-coordinator.js?v=2.3.7"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
@@ -4135,9 +4138,9 @@
   <script src="./js/ui-accounts.js?v=2.2.8"></script>
   <script src="./js/ui-budgets.js?v=2.2.8"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
-  <script src="./js/ui-settings.js?v=2.3.6"></script>
+  <script src="./js/ui-settings.js?v=2.3.7"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.3.6"></script>
+  <script src="./js/app.js?v=2.3.7"></script>
 </body>
 </html>
