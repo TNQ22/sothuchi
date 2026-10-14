@@ -208,17 +208,31 @@ class App {
     // Render icons again after dynamic DOM render
     if (window.lucide) lucide.createIcons();
 
-    // Tự động đồng bộ dữ liệu từ Google Drive khi mở app nếu token còn hiệu lực
+    // Tự động đồng bộ dữ liệu từ Google Drive khi mở app
     if (window.googleDriveService && window.googleDriveService.clientId && window.googleDriveService.autoSync) {
       if (window.googleDriveService.hasValidToken()) {
-        console.log('[GoogleDrive] Tự động đồng bộ khi mở app...');
+        console.log('[GoogleDrive] Token còn hạn, tự động đồng bộ khi mở app...');
         if (window.SyncCoordinator) {
           window.SyncCoordinator.syncAll(true).catch(e => console.warn('Startup sync:', e));
         } else {
           window.googleDriveService.sync().catch(e => console.warn('Startup sync:', e));
         }
-      } else {
-        console.log('[GoogleDrive] Chưa có token hợp lệ, sẵn sàng chờ người dùng tương tác.');
+      } else if (window.googleDriveService.userProfile?.email) {
+        // Token đã hết hạn nhưng đã có email -> Thử tự động gia hạn ngầm (Silent Auto-Auth)
+        console.log('[GoogleDrive] Thử gia hạn ngầm phiên đăng nhập với email đã nhớ...');
+        window.googleDriveService.requestToken({ prompt: '', interactive: false })
+          .then(async () => {
+            console.log('[GoogleDrive] Gia hạn ngầm thành công khi mở app! Bắt đầu đồng bộ...');
+            if (window.SyncCoordinator) {
+              await window.SyncCoordinator.syncAll(true);
+            } else {
+              await window.googleDriveService.sync();
+            }
+            await this.refreshAll();
+          })
+          .catch(err => {
+            console.log('[GoogleDrive] Trình duyệt chặn kết nối ngầm (sẵn sàng kết nối khi bấm vào Avatar):', err.message);
+          });
       }
     }
 
