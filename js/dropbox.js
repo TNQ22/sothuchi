@@ -16,6 +16,7 @@ class DropboxSync {
     this.autoSync = true;
     this.lastSyncTime = null;
     this.filePath = '/sothuchi_vault.json';
+    this.folderPath = ''; // Đường dẫn thư mục dùng chung (VD: /SoThuChi_Shared)
     this.sharedLink = '';
     this.role = 'owner'; // 'owner' hoặc 'member'
     this.refreshTimer = null;
@@ -53,6 +54,12 @@ class DropboxSync {
       const roleSetting = await db.settings.get('dropboxRole');
       if (roleSetting && roleSetting.value) {
         this.role = roleSetting.value;
+      }
+
+      const folderSetting = await db.settings.get('dropboxFolderPath');
+      if (folderSetting && folderSetting.value) {
+        this.folderPath = folderSetting.value.trim();
+        this.updateResolvedFilePath();
       }
 
       // Khôi phục token còn hạn
@@ -323,6 +330,23 @@ class DropboxSync {
         }
       }
     }, 3 * 3600 * 1000);
+  }
+
+  updateResolvedFilePath() {
+    if (this.folderPath && this.folderPath.trim()) {
+      let clean = this.folderPath.trim();
+      if (!clean.startsWith('/')) clean = '/' + clean;
+      if (clean.endsWith('/')) clean = clean.slice(0, -1);
+      this.filePath = clean + '/sothuchi_vault.json';
+    } else {
+      this.filePath = '/sothuchi_vault.json';
+    }
+  }
+
+  async setFolderPath(path) {
+    this.folderPath = (path || '').trim();
+    this.updateResolvedFilePath();
+    await db.settings.put({ key: 'dropboxFolderPath', value: this.folderPath });
   }
 
   // Tạo hoặc lấy Shared Link cho file sao lưu của Chủ sổ

@@ -66,6 +66,12 @@ const UISettings = {
       dbxShareInput.value = dbxShareLinkSetting.value;
     }
 
+    const dbxFolderSetting = await db.settings.get('dropboxFolderPath');
+    const dbxFolderInput = document.getElementById('settings-dropbox-folder-path');
+    if (dbxFolderInput) {
+      dbxFolderInput.value = (dbxFolderSetting && dbxFolderSetting.value) || '';
+    }
+
     const dbxRoleSetting = await db.settings.get('dropboxRole');
     const dbxRoleBadge = document.getElementById('dropbox-role-badge');
     if (dbxRoleBadge) {
@@ -411,6 +417,28 @@ const UISettings = {
           if (window.app && window.app.refreshAll) await window.app.refreshAll();
         } catch (err) {
           showToast('Kết nối vào sổ thất bại: ' + err.message, 'error');
+        }
+      });
+    }
+
+    // Toggle Dropbox Folder Help Box
+    const dbxFolderHelpBtn = document.getElementById('btn-toggle-dropbox-folder-help');
+    const dbxFolderHelpBox = document.getElementById('dropbox-folder-help-box');
+    if (dbxFolderHelpBtn && dbxFolderHelpBox) {
+      dbxFolderHelpBtn.addEventListener('click', () => {
+        dbxFolderHelpBox.style.display = dbxFolderHelpBox.style.display === 'none' ? 'block' : 'none';
+      });
+    }
+
+    // Save Dropbox Shared Folder Path
+    const dbxSaveFolderBtn = document.getElementById('btn-save-dropbox-folder');
+    if (dbxSaveFolderBtn) {
+      dbxSaveFolderBtn.addEventListener('click', async () => {
+        const input = document.getElementById('settings-dropbox-folder-path');
+        const folder = input ? input.value.trim() : '';
+        if (window.dropboxService) {
+          await window.dropboxService.setFolderPath(folder);
+          showToast('Đã lưu cấu hình thư mục Dropbox! Bấm Đồng Bộ để kiểm tra.', 'success');
         }
       });
     }

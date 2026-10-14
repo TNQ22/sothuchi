@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.4.6">
+  <link rel="stylesheet" href="./css/style.css?v=2.4.7">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -970,8 +970,8 @@
             <div id="dropbox-help-box" style="display: none; margin-top: 8px; padding: 12px 14px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6;">
               <strong style="color: var(--text-primary); display: block; margin-bottom: 6px;">📋 Hướng dẫn lấy Dropbox App Key (Miễn phí):</strong>
               <strong>1.</strong> Truy cập <code>dropbox.com/developers/apps</code> &rarr; Bấm <strong>Create app</strong>.<br>
-              <strong>2.</strong> Chọn <strong>Scoped access</strong> &rarr; Chọn <strong>App folder</strong> &rarr; Đặt tên app (ví dụ: <code>SoThuChi-YourName</code>).<br>
-              <strong>3.</strong> Vào tab <strong>Permissions</strong> &rarr; Tích chọn 3 quyền: <code>files.content.write</code>, <code>files.content.read</code>, <code>account_info.read</code> &rarr; Bấm <strong>Submit</strong>.<br>
+              <strong>2.</strong> Chọn <strong>Scoped access</strong> &rarr; Chọn <strong>Full Dropbox</strong> (để hỗ trợ Thư mục dùng chung hai chiều) hoặc <strong>App folder</strong> &rarr; Đặt tên app (ví dụ: <code>SoThuChi-YourName</code>).<br>
+              <strong>3.</strong> Vào tab <strong>Permissions</strong> &rarr; Tích chọn các quyền: <code>files.content.write</code>, <code>files.content.read</code>, <code>sharing.write</code>, <code>sharing.read</code>, <code>account_info.read</code> &rarr; Bấm <strong>Submit</strong>.<br>
               <strong>4.</strong> Vào tab <strong>Settings</strong> &rarr; Mục <strong>Redirect URIs</strong>: nhập URL trang web của bạn (VD: <code>https://tnq22.github.io/sothuchi/</code>).<br>
               <strong>5.</strong> Sao chép <strong>App key</strong> dán vào ô bên trên rồi bấm <strong>Lưu</strong> và <strong>Kết Nối Dropbox</strong>.
             </div>
@@ -1013,15 +1013,44 @@
               </div>
             </div>
 
-            <!-- Dành cho Thành viên: Nhập link chia sẻ từ Chủ Sổ -->
+            <!-- Dành cho Thành viên: Nhập link chia sẻ từ Chủ Sổ (Chỉ xem) -->
             <div style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 10px;">
-              <div style="font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary);">Hoặc Nhập Link Sổ do Người Khác Chia Sẻ:</div>
+              <div style="font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary);">Cách 1: Nhập Link Sổ (Đồng bộ xem dữ liệu):</div>
               <div style="display: flex; gap: 8px;">
                 <input type="text" id="settings-dropbox-join-link" class="form-control" placeholder="Dán link Dropbox của chủ sổ (https://www.dropbox.com/s/...)" style="font-size: 0.82rem;">
                 <button type="button" id="btn-dropbox-join-vault" class="btn-secondary" style="white-space: nowrap; font-size: 0.82rem;">
                   <i data-lucide="log-in" style="width: 14px; height: 14px;"></i>
                   <span>Vào Sổ</span>
                 </button>
+              </div>
+            </div>
+
+            <!-- Cách 2: Đồng bộ Hai Chiều (Cả 2 cùng Ghi Chép & Sửa) qua Shared Folder -->
+            <div style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 10px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                <div style="font-size: 0.8rem; font-weight: 600; color: #0061ff; display: flex; align-items: center; gap: 4px;">
+                  <i data-lucide="folder-symlink" style="width: 14px; height: 14px;"></i>
+                  <span>Cách 2: Đồng Bộ 2 Chiều (Cùng Ghi Chép & Sửa)</span>
+                </div>
+                <button type="button" id="btn-toggle-dropbox-folder-help" class="btn-text" style="font-size: 0.74rem; color: #0061ff; background: none; border: none; cursor: pointer;">Hướng dẫn</button>
+              </div>
+              <div style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 8px;">
+                Tạo 1 thư mục dùng chung trên Dropbox và mời người thân. Cả 2 cùng nhập tên thư mục đó vào ô dưới:
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="settings-dropbox-folder-path" class="form-control" placeholder="Ví dụ: /SoThuChi_Shared (để trống nếu dùng mặc định)" style="font-size: 0.82rem;">
+                <button type="button" id="btn-save-dropbox-folder" class="btn-secondary" style="white-space: nowrap; font-size: 0.82rem;">
+                  <i data-lucide="save" style="width: 14px; height: 14px;"></i>
+                  <span>Áp Dụng</span>
+                </button>
+              </div>
+              <div id="dropbox-folder-help-box" style="display: none; margin-top: 8px; padding: 10px 12px; background: rgba(0, 97, 255, 0.05); border: 1px solid rgba(0, 97, 255, 0.2); border-radius: var(--radius-sm); font-size: 0.78rem; line-height: 1.5; color: var(--text-secondary);">
+                <strong>💡 Cách thiết lập Đồng bộ 2 Chiều (Cả 2 đều sửa được):</strong><br>
+                1. Trên website <code>dropbox.com</code>, tạo 1 thư mục mới tên <strong>SoThuChi_Shared</strong>.<br>
+                2. Bấm <strong>Share</strong> thư mục đó &rarr; Mời email Dropbox của người thân với quyền <strong>Can edit</strong>.<br>
+                3. Người thân mở email hoặc Dropbox bấm <strong>Accept</strong> (Chấp nhận).<br>
+                4. Cả 2 máy nhập <code>/SoThuChi_Shared</code> vào ô trên rồi bấm <strong>Áp Dụng</strong>.<br>
+                👉 Khi đó bất kỳ ai ghi chép thì dữ liệu sẽ tự động đồng bộ ngay lập tức cho cả 2 bên!
               </div>
             </div>
           </div>
@@ -4173,25 +4202,25 @@
   <script src="./vendor/lucide.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=2.4.6"></script>
+  <script src="./js/config.js?v=2.4.7"></script>
   <script src="./js/crypto.js"></script>
   <script src="./js/db.js?v=2.2.8"></script>
-  <script src="./js/google-drive.js?v=2.4.6"></script>
-  <script src="./js/dropbox.js?v=2.4.6"></script>
+  <script src="./js/google-drive.js?v=2.4.7"></script>
+  <script src="./js/dropbox.js?v=2.4.7"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
-  <script src="./js/sync-coordinator.js?v=2.4.6"></script>
+  <script src="./js/sync-coordinator.js?v=2.4.7"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
   <script src="./js/ui-transactions.js?v=2.2.4"></script>
   <script src="./js/ui-debts.js?v=2.0.9"></script>
-  <script src="./js/ui-accounts.js?v=2.4.6"></script>
+  <script src="./js/ui-accounts.js?v=2.4.7"></script>
   <script src="./js/ui-budgets.js?v=2.2.8"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
-  <script src="./js/ui-settings.js?v=2.4.6"></script>
+  <script src="./js/ui-settings.js?v=2.4.7"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.4.6"></script>
+  <script src="./js/app.js?v=2.4.7"></script>
 </body>
 </html>
