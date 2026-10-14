@@ -281,18 +281,24 @@ class SyncCoordinator {
     popover.style.display = 'block';
     this.isPopoverOpen = true;
 
-    if (triggerBtn && triggerBtn.getBoundingClientRect) {
+    const popoverWidth = 290;
+    if (triggerBtn && typeof triggerBtn.getBoundingClientRect === 'function') {
       const rect = triggerBtn.getBoundingClientRect();
       popover.style.position = 'fixed';
-      popover.style.top = (rect.bottom + 8) + 'px';
+      const topPos = (rect.bottom > 0 ? rect.bottom + 8 : 60);
+      popover.style.top = topPos + 'px';
       
-      const popoverWidth = 290;
       let left = rect.left;
       if (left + popoverWidth > window.innerWidth - 12) {
         left = window.innerWidth - popoverWidth - 12;
       }
       if (left < 12) left = 12;
       popover.style.left = left + 'px';
+      popover.style.right = 'auto';
+    } else {
+      popover.style.position = 'fixed';
+      popover.style.top = '60px';
+      popover.style.left = '16px';
       popover.style.right = 'auto';
     }
 
