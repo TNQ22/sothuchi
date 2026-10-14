@@ -195,7 +195,7 @@ const UISettings = {
       if (infoBox) infoBox.style.display = 'none';
       if (connectBtn) connectBtn.style.display = 'inline-flex';
     }
-  }
+  },
 
   bindEvents() {
     // Toggle Google Advanced Box
