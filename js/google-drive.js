@@ -17,7 +17,7 @@ class GoogleDriveSync {
     this.syncFileName = 'sothuchi_vault.json';
     this.driveFileId = null;
     this.lastSyncTime = null;
-    this.autoSync = false;
+    this.autoSync = true;
     this.encryptionPassword = null;
     this.clientId = '';
     this.storageLocation = 'appDataFolder'; // 'appDataFolder' | 'customFolder'
@@ -38,8 +38,10 @@ class GoogleDriveSync {
       }
 
       const autoSyncSetting = await db.settings.get('autoSyncEnabled');
-      if (autoSyncSetting) {
+      if (autoSyncSetting !== undefined) {
         this.autoSync = !!autoSyncSetting.value;
+      } else {
+        this.autoSync = true;
       }
 
       const lastSyncSetting = await db.settings.get('lastSyncTime');
@@ -119,7 +121,7 @@ class GoogleDriveSync {
   }
 
   isAutoSyncEnabled() {
-    return this.autoSync && this.accessToken !== null;
+    return !!(this.autoSync && this.clientId);
   }
 
   getTargetLabel() {
@@ -604,7 +606,12 @@ class GoogleDriveSync {
 
     try {
       if (!this.accessToken) {
-        await this.requestToken();
+        try {
+          await this.requestToken({ prompt: '' });
+        } catch (tokErr) {
+          console.warn('[GoogleDrive] Không thể lấy token ngầm:', tokErr.message);
+          throw new Error('Chưa đăng nhập Google hoặc phiên đã hết hạn. Bấm vào Avatar để kết nối lại.');
+        }
       }
 
       const fileId = await this.findRemoteFile();

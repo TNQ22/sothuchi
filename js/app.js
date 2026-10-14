@@ -172,6 +172,14 @@ class App {
       await window.SyncCoordinator.init().catch(e => console.warn('SyncCoordinator init error:', e));
     }
 
+    // Cập nhật Avatar tài khoản Google hoặc App Logo lên Header và Trang Ghi Chép
+    const savedProfile = await db.settings.get('googleUserProfile');
+    this.updateBrandLogos(savedProfile ? savedProfile.value : null);
+
+    window.addEventListener('google-profile-updated', (e) => {
+      this.updateBrandLogos(e.detail);
+    });
+
     // 4. Setup Other UI Modules
     window.UIDebts.init();
     window.UIAccounts.init();
@@ -199,6 +207,23 @@ class App {
 
     // Render icons again after dynamic DOM render
     if (window.lucide) lucide.createIcons();
+
+    // Tự động khôi phục kết nối ngầm và đồng bộ dữ liệu từ Google Drive khi mở app
+    if (window.googleDriveService && window.googleDriveService.clientId && window.googleDriveService.autoSync) {
+      window.googleDriveService.requestToken({ prompt: '' })
+        .then(async () => {
+          console.log('[GoogleDrive] Đã tự động kết nối ngầm Google Drive');
+          if (window.SyncCoordinator) {
+            await window.SyncCoordinator.syncAll(true);
+          } else {
+            await window.googleDriveService.sync();
+          }
+          await this.refreshAll();
+        })
+        .catch(err => {
+          console.log('[GoogleDrive] Phiên nền GIS cần tương tác hoặc máy offline:', err.message);
+        });
+    }
 
     // 10. Register Service Worker for PWA
     this.registerServiceWorker();
@@ -458,6 +483,30 @@ class App {
     this.switchView('transactions');
   }
 
+  updateBrandLogos(profile) {
+    const brandLogos = [
+      document.getElementById('header-brand-logo'),
+      document.getElementById('tx-brand-logo')
+    ];
+
+    const hasAvatar = profile && profile.picture;
+    const avatarUrl = hasAvatar ? profile.picture : './assets/icons/icon.svg';
+
+    brandLogos.forEach(img => {
+      if (!img) return;
+      img.src = avatarUrl;
+      if (hasAvatar) {
+        img.classList.remove('is-app-logo');
+        img.classList.add('is-google-avatar');
+        img.alt = profile.name || 'Google Avatar';
+      } else {
+        img.classList.remove('is-google-avatar');
+        img.classList.add('is-app-logo');
+        img.alt = 'Logo Sổ Thu Chi';
+      }
+    });
+  }
+
   switchView(viewId, isBack = false) {
     if (!viewId) return;
     // Chuyển trang/tab thì reset đếm lần chạm làm mới
@@ -621,7 +670,8 @@ class App {
 
       const hasBack = viewId === 'transactions' ? true : !!(this.txHistorySource || (this.previousView && this.previousView !== 'transactions'));
       if (txHistoryBackBtn) txHistoryBackBtn.style.display = hasBack ? 'inline-flex' : 'none';
-      if (brandLogo) brandLogo.style.display = hasBack ? 'none' : '';
+      const brandLogoBtn = document.getElementById('header-brand-logo-btn') || brandLogo;
+      if (brandLogoBtn) brandLogoBtn.style.display = hasBack ? 'none' : 'inline-flex';
 
       if (window.UITransactions) {
         window.UITransactions.updateHeaderAccountDisplay();
@@ -633,7 +683,8 @@ class App {
         titleEl.textContent = titles[viewId] || 'Sổ Thu Chi';
       }
       if (txHistoryBackBtn) txHistoryBackBtn.style.display = 'none';
-      if (brandLogo) brandLogo.style.display = '';
+      const brandLogoBtn = document.getElementById('header-brand-logo-btn') || brandLogo;
+      if (brandLogoBtn) brandLogoBtn.style.display = 'inline-flex';
       if (window.UITransactions) {
         if (typeof window.UITransactions.closeHeaderAccountDropdown === 'function') {
           window.UITransactions.closeHeaderAccountDropdown();
@@ -1096,9 +1147,16 @@ class App {
       if (text) text.textContent = 'Đang đồng bộ...';
     });
 
-    window.addEventListener('sync-success', (e) => {
+    window.addEventListener('sync-success', async (e) => {
       if (dot) dot.className = 'status-dot';
       if (text) text.textContent = 'Đã đồng bộ Drive';
+      if (window.UIBudgets && typeof window.UIBudgets.init === 'function') {
+        await window.UIBudgets.init();
+      }
+      if (typeof window.recalculateAccountBalances === 'function') {
+        await window.recalculateAccountBalances();
+      }
+      await this.refreshAll();
     });
 
     window.addEventListener('sync-error', (e) => {

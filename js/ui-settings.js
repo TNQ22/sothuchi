@@ -205,8 +205,20 @@ const UISettings = {
         if (!window.googleDriveService) return;
         showToast('Đang kết nối Google Identity Services...', 'info');
         await window.googleDriveService.requestToken({ prompt: 'select_account' });
-        showToast('Đăng nhập Google thành công!', 'success');
+
+        // Tự động kích hoạt tự động đồng bộ khi đăng nhập
+        window.googleDriveService.autoSync = true;
+        await db.settings.put({ key: 'autoSyncEnabled', value: true });
+
+        // Tự động đồng bộ dữ liệu từ Google Drive về máy ngay sau khi đăng nhập
+        showToast('Đang đồng bộ dữ liệu từ Google Drive...', 'info');
+        await window.googleDriveService.sync();
+        showToast('Đồng bộ dữ liệu thành công!', 'success');
+
         await this.loadSettings();
+        if (window.app && typeof window.app.refreshAll === 'function') {
+          await window.app.refreshAll();
+        }
         if (window.SyncCoordinator) {
           window.SyncCoordinator.setStatus('synced', window.googleDriveService.getTargetLabel());
         }
@@ -229,8 +241,18 @@ const UISettings = {
           if (!window.googleDriveService) return;
           showToast('Đang mở màn hình chọn tài khoản Google...', 'info');
           await window.googleDriveService.switchAccount();
-          showToast('Đã đổi tài khoản Google thành công!', 'success');
+
+          window.googleDriveService.autoSync = true;
+          await db.settings.put({ key: 'autoSyncEnabled', value: true });
+
+          showToast('Đang đồng bộ dữ liệu từ Google Drive...', 'info');
+          await window.googleDriveService.sync();
+          showToast('Đã đổi tài khoản và đồng bộ thành công!', 'success');
+
           await this.loadSettings();
+          if (window.app && typeof window.app.refreshAll === 'function') {
+            await window.app.refreshAll();
+          }
           if (window.SyncCoordinator) {
             window.SyncCoordinator.setStatus('synced', window.googleDriveService.getTargetLabel());
           }

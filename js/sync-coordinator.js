@@ -69,9 +69,11 @@ class SyncCoordinator {
     // Lắng nghe click ngoài popover để tự đóng
     document.addEventListener('click', (e) => {
       const popover = document.getElementById('sync-status-popover');
-      const btn = document.getElementById('header-sync-btn');
-      if (this.isPopoverOpen && popover && btn) {
-        if (!popover.contains(e.target) && !btn.contains(e.target)) {
+      if (this.isPopoverOpen && popover) {
+        const isClickOnAnyTrigger = e.target.closest('#header-brand-logo-btn') || 
+                                    e.target.closest('#tx-brand-logo-btn') || 
+                                    e.target.closest('#header-sync-btn');
+        if (!popover.contains(e.target) && !isClickOnAnyTrigger) {
           this.closePopover();
         }
       }
@@ -145,23 +147,30 @@ class SyncCoordinator {
     }
   }
 
-  // Cập nhật Micro Indicator trên Header và Sidebar
+  // Cập nhật Micro Indicator trên Header, Trang Ghi Chép và Sidebar
   updateUI() {
-    const headerBtn = document.getElementById('header-sync-btn');
-    const headerDot = document.getElementById('header-sync-dot');
+    const dots = [
+      document.getElementById('header-sync-dot'),
+      document.getElementById('tx-sync-dot')
+    ];
+    const btns = [
+      document.getElementById('header-brand-logo-btn'),
+      document.getElementById('tx-brand-logo-btn'),
+      document.getElementById('header-sync-btn')
+    ];
     const headerIcon = document.getElementById('header-sync-icon');
     const sidebarText = document.getElementById('sync-status-text');
     const sidebarDot = document.querySelector('.sidebar-footer .status-dot');
 
     // Tooltip & text
     let titleText = '';
-    let dotClass = 'sync-dot';
+    let dotClass = 'sync-status-dot';
     let iconName = 'cloud';
 
     switch (this.status) {
       case 'syncing':
         titleText = 'Đang đồng bộ dữ liệu...';
-        dotClass = 'sync-dot syncing';
+        dotClass = 'sync-status-dot syncing';
         iconName = 'refresh-cw';
         if (sidebarText) sidebarText.textContent = 'Đang đồng bộ...';
         if (sidebarDot) sidebarDot.className = 'status-dot syncing';
@@ -169,7 +178,7 @@ class SyncCoordinator {
 
       case 'synced':
         titleText = `Đã sao lưu an toàn (${this.formatRelativeTime(this.lastSyncTime)})`;
-        dotClass = 'sync-dot synced';
+        dotClass = 'sync-status-dot synced';
         iconName = 'cloud-check';
         if (sidebarText) sidebarText.textContent = 'Đồng bộ: ' + this.formatRelativeTime(this.lastSyncTime);
         if (sidebarDot) sidebarDot.className = 'status-dot active';
@@ -177,7 +186,7 @@ class SyncCoordinator {
 
       case 'pending':
         titleText = 'Có thay đổi mới đang chờ sao lưu';
-        dotClass = 'sync-dot pending';
+        dotClass = 'sync-status-dot pending';
         iconName = 'cloud';
         if (sidebarText) sidebarText.textContent = 'Chờ đồng bộ...';
         if (sidebarDot) sidebarDot.className = 'status-dot pending';
@@ -185,7 +194,7 @@ class SyncCoordinator {
 
       case 'error':
         titleText = 'Sự cố đồng bộ: ' + (this.lastError || 'Lỗi');
-        dotClass = 'sync-dot error';
+        dotClass = 'sync-status-dot error';
         iconName = 'alert-circle';
         if (sidebarText) sidebarText.textContent = 'Lỗi đồng bộ';
         if (sidebarDot) sidebarDot.className = 'status-dot error';
@@ -194,19 +203,20 @@ class SyncCoordinator {
       case 'idle':
       default:
         titleText = this.lastSyncTime ? `Sao lưu lần cuối: ${this.formatRelativeTime(this.lastSyncTime)}` : 'Sẵn sàng sao lưu';
-        dotClass = this.lastSyncTime ? 'sync-dot synced quiet' : 'sync-dot idle';
+        dotClass = this.lastSyncTime ? 'sync-status-dot synced quiet' : 'sync-status-dot idle';
         iconName = 'cloud';
         if (sidebarText) sidebarText.textContent = this.lastSyncTime ? `Đã lưu: ${this.formatRelativeTime(this.lastSyncTime)}` : 'Google Drive: Sẵn sàng';
         if (sidebarDot) sidebarDot.className = 'status-dot';
         break;
     }
 
-    if (headerBtn) {
-      headerBtn.setAttribute('title', titleText);
-    }
-    if (headerDot) {
-      headerDot.className = dotClass;
-    }
+    dots.forEach(dot => {
+      if (dot) dot.className = dotClass;
+    });
+
+    btns.forEach(btn => {
+      if (btn) btn.setAttribute('title', titleText);
+    });
     if (headerIcon) {
       headerIcon.setAttribute('data-lucide', iconName);
       if (this.status === 'syncing') {
@@ -240,21 +250,37 @@ class SyncCoordinator {
   }
 
   // Toggle mở/đóng Popover
-  togglePopover(e) {
+  togglePopover(e, triggerBtn = null) {
     if (e) e.stopPropagation();
     if (this.isPopoverOpen) {
       this.closePopover();
     } else {
-      this.openPopover();
+      this.openPopover(triggerBtn || e?.currentTarget);
     }
   }
 
-  openPopover() {
+  openPopover(triggerBtn = null) {
     const popover = document.getElementById('sync-status-popover');
     if (!popover) return;
     this.updatePopoverContent();
     popover.style.display = 'block';
     this.isPopoverOpen = true;
+
+    if (triggerBtn && triggerBtn.getBoundingClientRect) {
+      const rect = triggerBtn.getBoundingClientRect();
+      popover.style.position = 'fixed';
+      popover.style.top = (rect.bottom + 8) + 'px';
+      
+      const popoverWidth = 290;
+      let left = rect.left;
+      if (left + popoverWidth > window.innerWidth - 12) {
+        left = window.innerWidth - popoverWidth - 12;
+      }
+      if (left < 12) left = 12;
+      popover.style.left = left + 'px';
+      popover.style.right = 'auto';
+    }
+
     if (window.lucide) lucide.createIcons();
   }
 
@@ -319,9 +345,17 @@ class SyncCoordinator {
     }
 
     try {
+      const drive = window.googleDriveService;
+      if (drive && drive.clientId && !drive.accessToken) {
+        try {
+          await drive.requestToken({ prompt: '' });
+        } catch (silentErr) {
+          await drive.requestToken({ prompt: 'select_account' });
+        }
+      }
       await this.syncAll(false);
       showToast('Đồng bộ thành công!', 'success');
-      if (window.app && window.app.refreshAll) window.app.refreshAll();
+      if (window.app && window.app.refreshAll) await window.app.refreshAll();
     } catch (err) {
       showToast('Đồng bộ thất bại: ' + err.message, 'error');
     } finally {

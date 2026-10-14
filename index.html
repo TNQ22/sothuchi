@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.2.4">
+  <link rel="stylesheet" href="./css/style.css?v=2.3.0">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -104,7 +104,10 @@
           <button type="button" id="tx-history-back-btn" class="btn-icon tx-header-btn" onclick="window.app.goBack()" title="Trở về" style="display: none; margin-right: 2px;">
             <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
           </button>
-          <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo" id="header-brand-logo">
+          <button type="button" id="header-brand-logo-btn" class="header-brand-logo-btn" title="Trạng thái sao lưu & đồng bộ" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
+            <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="header-brand-logo">
+            <span class="sync-status-dot" id="header-sync-dot"></span>
+          </button>
           <h2 id="header-page-title" class="page-title-badge">Tổng Quan Tài Chính</h2>
         </div>
 
@@ -165,15 +168,8 @@
           </button>
 
           <!-- Privacy Toggle Button -->
-                    <!-- Micro Sync & Backup Status Indicator -->
-          <div class="sync-indicator-wrapper" id="sync-indicator-wrapper">
-            <button type="button" id="header-sync-btn" class="header-sync-btn" title="Trạng thái sao lưu & đồng bộ" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event)">
-              <span class="sync-status-dot" id="header-sync-dot"></span>
-              <i data-lucide="cloud" id="header-sync-icon" style="width: 19px; height: 19px;"></i>
-            </button>
-
-            <!-- Micro Sync Status Popover -->
-            <div id="sync-status-popover" class="sync-popover" style="display: none;">
+                    <!-- Micro Sync Status Popover (gắn với Logo Avatar & Trạng thái đồng bộ) -->
+          <div id="sync-status-popover" class="sync-popover" style="display: none;">
               <div class="sync-popover-header">
                 <div class="sync-popover-status">
                   <span class="sync-popover-dot" id="popover-status-dot"></span>
@@ -205,7 +201,6 @@
                 </button>
               </div>
             </div>
-          </div>
 
           <button id="btn-privacy-toggle" class="btn-icon" title="Ẩn/Hiện số tiền (Phím tắt: P)">
             <i data-lucide="eye" style="width: 20px; height: 20px;"></i>
@@ -1076,6 +1071,10 @@
             <div class="tx-header-left">
               <button type="button" id="tx-header-back-btn" class="btn-icon tx-header-btn" onclick="window.app.goBack()" title="Trở lại (hoặc vuốt sang phải)" style="display: none;">
                 <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+              </button>
+              <button type="button" id="tx-brand-logo-btn" class="header-brand-logo-btn" title="Trạng thái sao lưu & đồng bộ" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
+                <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="tx-brand-logo">
+                <span class="sync-status-dot" id="tx-sync-dot"></span>
               </button>
               <button type="button" class="btn-icon tx-header-btn" onclick="UITransactions.openHistoryView()" title="Lịch sử ghi chép">
                 <i data-lucide="history" style="width: 19px; height: 19px; color: var(--text-secondary);"></i>
@@ -4042,10 +4041,10 @@
   <!-- App Core Modules -->
   <script src="./js/crypto.js"></script>
   <script src="./js/db.js?v=2.2.8"></script>
-  <script src="./js/google-drive.js?v=2.2.9"></script>
+  <script src="./js/google-drive.js?v=2.3.0"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
-  <script src="./js/sync-coordinator.js?v=2.2.6"></script>
+  <script src="./js/sync-coordinator.js?v=2.3.0"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
@@ -4054,9 +4053,9 @@
   <script src="./js/ui-accounts.js?v=2.2.8"></script>
   <script src="./js/ui-budgets.js?v=2.2.8"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
-  <script src="./js/ui-settings.js?v=2.2.9"></script>
+  <script src="./js/ui-settings.js?v=2.3.0"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.2.9"></script>
+  <script src="./js/app.js?v=2.3.0"></script>
 </body>
 </html>
