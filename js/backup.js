@@ -36,7 +36,7 @@ const BackupService = {
   // Chọn thư mục máy tính để tự động sao lưu
   async selectBackupDirectory() {
     if (!this.isFileSystemAccessSupported()) {
-      throw new Error('Trình duyệt hiện tại chưa hỗ trợ File System Access API. Bạn có thể sử dụng nút Tải File Sao Lưu.');
+      throw new Error('Hệ điều hành iOS (Safari/iPhone) không hỗ trợ quyền tự động ghi thư mục. Vui lòng dùng nút Tải File Sao Lưu hoặc Đồng bộ Google Drive.');
     }
 
     try {

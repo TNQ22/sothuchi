@@ -136,20 +136,45 @@ const UISettings = {
     const nameEl = document.getElementById('local-folder-name');
     const statusEl = document.getElementById('local-folder-status');
     const btnText = document.getElementById('btn-select-local-folder-text');
+    const selectBtn = document.getElementById('btn-select-local-folder');
     const removeBtn = document.getElementById('btn-remove-local-folder');
+    const iosNotice = document.getElementById('local-folder-ios-notice');
 
+    const isSupported = window.BackupService && window.BackupService.isFileSystemAccessSupported();
+
+    if (!isSupported) {
+      if (iosNotice) iosNotice.style.display = 'block';
+      if (nameEl) nameEl.textContent = 'Thiết bị này không hỗ trợ tự động ghi thư mục';
+      if (statusEl) statusEl.textContent = 'Dành cho Chrome/Edge trên PC. Trên iPhone, bạn hãy dùng Google Drive (ở trên) hoặc bấm Tải Về Máy.';
+      if (selectBtn) {
+        selectBtn.className = 'btn-secondary btn-sm';
+        selectBtn.innerHTML = '<i data-lucide="download" style="width: 14px; height: 14px;"></i> <span id="btn-select-local-folder-text">Tải Về Máy Ngay</span>';
+      }
+      if (removeBtn) removeBtn.style.display = 'none';
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    if (iosNotice) iosNotice.style.display = 'none';
     const hasFolder = window.BackupService && window.BackupService.hasLocalDirectory();
     if (hasFolder) {
       if (nameEl) nameEl.textContent = `📂 Đang lưu vào: ${window.BackupService.localDirName}`;
       if (statusEl) statusEl.textContent = 'Tự động sao lưu vào ổ cứng sau mỗi lần thêm/sửa giao dịch';
-      if (btnText) btnText.textContent = 'Đổi Thư Mục';
+      if (selectBtn) {
+        selectBtn.className = 'btn-primary btn-sm';
+        selectBtn.innerHTML = '<i data-lucide="folder-sync" style="width: 14px; height: 14px;"></i> <span id="btn-select-local-folder-text">Đổi Thư Mục</span>';
+      }
       if (removeBtn) removeBtn.style.display = 'inline-flex';
     } else {
       if (nameEl) nameEl.textContent = 'Chưa chọn thư mục sao lưu';
       if (statusEl) statusEl.textContent = 'Tự động ghi file SoThuChi_AutoBackup vào ổ cứng khi có thay đổi';
-      if (btnText) btnText.textContent = 'Chọn Thư Mục';
+      if (selectBtn) {
+        selectBtn.className = 'btn-primary btn-sm';
+        selectBtn.innerHTML = '<i data-lucide="folder-plus" style="width: 14px; height: 14px;"></i> <span id="btn-select-local-folder-text">Chọn Thư Mục</span>';
+      }
       if (removeBtn) removeBtn.style.display = 'none';
     }
+    if (window.lucide) lucide.createIcons();
   },
 
   bindEvents() {
@@ -327,6 +352,15 @@ const UISettings = {
       selectLocalFolderBtn.addEventListener('click', async () => {
         try {
           if (!window.BackupService) return;
+          if (!window.BackupService.isFileSystemAccessSupported()) {
+            // Thiết bị không hỗ trợ File System Access API (như iPhone / iOS Safari)
+            const pass = prompt('iOS / Safari không cho phép ứng dụng web tự động ghi nền vào thư mục máy.\n\nNhập mật khẩu để mã hóa file (hoặc bấm OK để xuất file bình thường):');
+            if (pass === null) return; // Người dùng bấm Hủy
+            await window.BackupService.exportFullBackup(pass || null);
+            showToast('Đã tải file sao lưu về máy (lưu vào Tệp / Files)!', 'success');
+            return;
+          }
+
           const chosen = await window.BackupService.selectBackupDirectory();
           if (chosen) {
             this.renderLocalFolderStatus();

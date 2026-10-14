@@ -224,10 +224,34 @@ class GoogleDriveSync {
     return null;
   }
 
-  // Tìm file dữ liệu vault trên Google Drive (hỗ trợ cả AppData và Custom Folder)
+  // Tìm file dữ liệu vault trên Google Drive (hỗ trợ AppData, Custom Folder và cả File được chia sẻ)
   async findRemoteFile() {
     if (!this.accessToken) return null;
 
+    // 1. Ưu tiên kiểm tra xem có tệp nào được người khác chia sẻ với mình không (Shared With Me)
+    try {
+      const sharedQuery = encodeURIComponent(`sharedWithMe = true and name = '${this.syncFileName}' and trashed = false`);
+      const sharedRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${sharedQuery}&fields=files(id,name,modifiedTime,owners,capabilities)`, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (sharedRes.ok) {
+        const sharedData = await sharedRes.json();
+        if (sharedData.files && sharedData.files.length > 0) {
+          const sharedFile = sharedData.files[0];
+          this.driveFileId = sharedFile.id;
+          this.vaultRole = sharedFile.capabilities?.canEdit ? 'member' : 'viewer';
+          this.ownerEmail = sharedFile.owners?.[0]?.emailAddress || '';
+          await db.settings.put({ key: 'googleDriveFileId', value: this.driveFileId });
+          await db.settings.put({ key: 'vaultRole', value: this.vaultRole });
+          console.log(`[GoogleDrive] Đã tìm thấy Sổ được chia sẻ từ ${this.ownerEmail} (Quyền: ${this.vaultRole})`);
+          return this.driveFileId;
+        }
+      }
+    } catch (sErr) {
+      console.warn('Kiểm tra file được chia sẻ warning:', sErr);
+    }
+
+    // 2. Nếu không có file được chia sẻ, tìm file của chính mình
     let url;
     if (this.storageLocation === 'appDataFolder') {
       const query = encodeURIComponent(`name = '${this.syncFileName}' and trashed = false`);
@@ -258,7 +282,9 @@ class GoogleDriveSync {
     const data = await res.json();
     if (data.files && data.files.length > 0) {
       this.driveFileId = data.files[0].id;
+      this.vaultRole = 'owner';
       await db.settings.put({ key: 'googleDriveFileId', value: this.driveFileId });
+      await db.settings.put({ key: 'vaultRole', value: 'owner' });
       return this.driveFileId;
     }
     return null;
@@ -419,9 +445,17 @@ class GoogleDriveSync {
     if (!this.accessToken) {
       await this.requestToken();
     }
-    if (!this.driveFileId) {
+
+    // Google Drive không cho phép chia sẻ file trong 'appDataFolder'.
+    // Nếu sổ đang ở appDataFolder, tự động chuyển sang Thư mục riêng 'Sổ Thu Chi' (My Drive) để có thể chia sẻ
+    if (this.storageLocation === 'appDataFolder') {
+      await this.setStorageLocation('customFolder', 'Sổ Thu Chi');
+      this.driveFileId = null; // Tạo file mới ở My Drive
+      await this.sync();
+    } else if (!this.driveFileId) {
       await this.sync();
     }
+
     if (!this.driveFileId) {
       throw new Error('Chưa tìm thấy file dữ liệu trên Drive để chia sẻ. Hãy bấm Đồng bộ trước.');
     }

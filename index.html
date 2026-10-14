@@ -830,13 +830,22 @@
               <input type="text" id="settings-client-id" class="form-control" placeholder="Nhập Client ID của bạn (ví dụ: xxx.apps.googleusercontent.com)">
               <button id="btn-save-client-id" class="btn-secondary">Lưu</button>
             </div>
-            <div id="client-id-help-box" style="display: none; margin-top: 8px; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
-              <strong>Cách tạo Client ID miễn phí từ Google Cloud Console:</strong><br>
-              1. Truy cập <code>console.cloud.google.com</code> &rarr; Tạo Project mới.<br>
-              2. Vào <strong>APIs & Services</strong> &rarr; <strong>Library</strong> &rarr; Bật <strong>Google Drive API</strong>.<br>
-              3. Vào <strong>OAuth consent screen</strong> &rarr; Chọn External &rarr; Điền tên ứng dụng & email.<br>
-              4. Vào <strong>Credentials</strong> &rarr; Tạo <strong>OAuth client ID</strong> &rarr; Chọn <strong>Web application</strong>.<br>
-              5. Thêm địa chỉ truy cập (hoặc <code>http://localhost</code>) vào mục <strong>Authorized JavaScript origins</strong> &rarr; Lưu và dán Client ID vào đây.
+            <div id="client-id-help-box" style="display: none; margin-top: 8px; padding: 12px 14px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6;">
+              <strong style="color: var(--text-primary); display: block; margin-bottom: 6px;">📋 Hướng dẫn tạo Google Client ID (Chuẩn xác):</strong>
+              <strong>1.</strong> Truy cập <code>console.cloud.google.com</code> &rarr; Tạo một <strong>Project</strong> mới.<br>
+              <strong>2.</strong> Vào <strong>APIs & Services</strong> &rarr; <strong>Library</strong> &rarr; Tìm <strong>Google Drive API</strong> &rarr; Bấm <strong>Enable</strong>.<br>
+              <strong>3.</strong> Vào <strong>OAuth consent screen</strong> (Màn hình đồng ý OAuth):
+              <ul style="margin: 4px 0 6px 18px; padding: 0;">
+                <li>Chọn <strong>External</strong> &rarr; Điền tên app & email &rarr; Lưu.</li>
+                <li>Mục <strong>Audience / Test users (Người dùng thử nghiệm)</strong>: Bấm <strong>+ Add users</strong> &rarr; Nhập các email Gmail sẽ dùng sổ (bước này bắt buộc để không bị lỗi 403).</li>
+              </ul>
+              <strong>4.</strong> Vào <strong>Credentials</strong> &rarr; Bấm <strong>+ Create Credentials</strong> &rarr; <strong>OAuth client ID</strong> &rarr; Chọn <strong>Web application</strong>.<br>
+              <strong>5. Cấu hình 2 ô trên màn hình (Xem ảnh hướng dẫn):</strong>
+              <ul style="margin: 4px 0 6px 18px; padding: 0;">
+                <li><strong>Authorized JavaScript origins:</strong> Chỉ nhập Domain gốc, <em>tuyệt đối không để dấu <code>/</code> ở cuối và không có đường dẫn con</em>. Ví dụ: nhập <code>https://tnq22.github.io</code></li>
+                <li><strong>Authorized redirect URIs:</strong> Bấm vào icon thùng rác 🗑️ để <em>xóa bỏ ô trống đi</em> (app dùng Popup GIS nên không cần redirect).</li>
+              </ul>
+              <strong>6.</strong> Bấm <strong>Create</strong> &rarr; Sao chép mã <strong>Client ID</strong> dán vào ô bên trên rồi bấm <strong>Lưu</strong>.
             </div>
           </div>
 
@@ -946,10 +955,21 @@
 
         <!-- 2. Local Folder Auto-Backup Section (Offline - Không cần Google) -->
         <div class="card-panel" style="margin-bottom: 20px;">
-          <h3 class="panel-title" style="margin-bottom: 14px;"><i data-lucide="folder-sync"></i> Tự Động Sao Lưu Vào Thư Mục Máy (Offline)</h3>
-          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.6;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+            <h3 class="panel-title" style="margin-bottom: 0;"><i data-lucide="folder-sync"></i> Tự Động Sao Lưu Vào Thư Mục Máy (Offline)</h3>
+            <span class="badge" style="font-size: 0.72rem; padding: 3px 8px; background: rgba(59, 130, 246, 0.15); color: #3b82f6; border-radius: 9999px; font-weight: 600;">Dành cho Máy tính (PC / Chrome / Edge)</span>
+          </div>
+          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.6;">
             Dành cho bạn muốn sử dụng hoàn toàn độc lập mà không cần tài khoản Google. Ứng dụng sẽ tự động ghi file sao lưu trực tiếp vào một thư mục bạn chọn trên ổ cứng máy tính sau mỗi lần ghi chép.
           </p>
+
+          <div id="local-folder-ios-notice" style="display: none; padding: 10px 14px; background: rgba(245, 158, 11, 0.1); border-left: 3px solid #f59e0b; border-radius: 6px; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.5;">
+            <div style="font-weight: 700; color: #f59e0b; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="alert-triangle" style="width: 15px; height: 15px;"></i>
+              Lưu ý cho thiết bị iPhone / iPad (iOS):
+            </div>
+            Quy định bảo mật của Apple không cho phép các ứng dụng web tự động ghi nền vào thư mục máy. Trên iPhone, bạn nên dùng <strong>Đồng bộ Google Drive</strong> ở trên (tự động 100% ngầm) hoặc bấm <strong>Tải Về Máy Ngay</strong> bên dưới để lưu file vào ứng dụng Tệp (Files).
+          </div>
 
           <div class="local-folder-card">
             <div class="local-folder-left">
@@ -4017,9 +4037,9 @@
   <!-- App Core Modules -->
   <script src="./js/crypto.js"></script>
   <script src="./js/db.js"></script>
-  <script src="./js/google-drive.js"></script>
+  <script src="./js/google-drive.js?v=2.2.5"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=2.0.9"></script>
+  <script src="./js/backup.js?v=2.2.5"></script>
   <script src="./js/sync-coordinator.js?v=2.2.5"></script>
 
   <!-- UI Views Modules -->
@@ -4029,9 +4049,9 @@
   <script src="./js/ui-accounts.js?v=2.0.9"></script>
   <script src="./js/ui-budgets.js?v=2.2.2"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
-  <script src="./js/ui-settings.js?v=2.0.9"></script>
+  <script src="./js/ui-settings.js?v=2.2.5"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.2.4"></script>
+  <script src="./js/app.js?v=2.2.5"></script>
 </body>
 </html>
