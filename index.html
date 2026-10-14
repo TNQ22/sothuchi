@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.2.3">
+  <link rel="stylesheet" href="./css/style.css?v=2.2.4">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -240,10 +240,10 @@
         </div>
 
         <!-- Recent Transactions Quick Feed -->
-        <div class="card-panel">
+        <div class="card-panel card-panel-recent-tx">
           <div class="panel-header">
             <h3 class="panel-title"><i data-lucide="clock"></i> Giao Dịch Gần Đây</h3>
-            <button class="btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;" onclick="window.app.switchView('transactions')">
+            <button class="btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;" onclick="window.app.openTransactionsFromDashboard()">
               Xem tất cả <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
             </button>
           </div>
@@ -3839,7 +3839,7 @@
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
-  <script src="./js/ui-transactions.js?v=2.2.3"></script>
+  <script src="./js/ui-transactions.js?v=2.2.4"></script>
   <script src="./js/ui-debts.js?v=2.0.9"></script>
   <script src="./js/ui-accounts.js?v=2.0.9"></script>
   <script src="./js/ui-budgets.js?v=2.2.2"></script>
@@ -3847,6 +3847,6 @@
   <script src="./js/ui-settings.js?v=2.0.9"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.2.3"></script>
+  <script src="./js/app.js?v=2.2.4"></script>
 </body>
 </html>

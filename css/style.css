@@ -8822,3 +8822,93 @@ html, body {
     font-size: 0.88rem;
   }
 }
+
+
+/* =========================================================
+   DASHBOARD RECENT TRANSACTIONS: SÁT VIỀN & NHỎ GỌN (IMG_9902)
+   ========================================================= */
+.card-panel-recent-tx {
+  padding: 16px 14px;
+}
+
+.page-view.swiping,
+.tx-page-view.swiping {
+  will-change: transform, opacity;
+  transition: none !important;
+  touch-action: pan-y !important;
+}
+
+@media (max-width: 768px) {
+  #view-dashboard.page-view {
+    padding: 10px 8px 24px 8px; /* Sát viền màn hình như view Tài khoản / Sổ giao dịch */
+  }
+
+  .card-panel-recent-tx {
+    padding: 12px 6px 10px 6px !important; /* Thu hẹp padding của panel để tận dụng tối đa chiều rộng */
+  }
+
+  .card-panel-recent-tx .panel-header {
+    padding: 0 4px;
+    margin-bottom: 10px;
+  }
+
+  #transactions-list-container .transaction-group {
+    margin-bottom: 12px;
+  }
+
+  #transactions-list-container .transaction-date-header {
+    padding: 0 4px;
+    font-size: 0.76rem !important;
+    margin-bottom: 6px;
+  }
+
+  #transactions-list-container .tx-card {
+    padding: 8px 8px !important;
+    gap: 7px !important;
+    border-radius: 10px !important;
+  }
+
+  #transactions-list-container .tx-left {
+    gap: 7px !important;
+    min-width: 0;
+  }
+
+  #transactions-list-container .tx-icon-box {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 8px !important;
+    flex-shrink: 0;
+  }
+
+  #transactions-list-container .tx-icon-box i,
+  #transactions-list-container .tx-icon-box svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  #transactions-list-container .tx-info {
+    min-width: 0;
+    flex: 1;
+  }
+
+  #transactions-list-container .tx-title {
+    font-size: 0.84rem !important; /* Bóp font chữ nhỏ hơn 1 chút để hiển thị tên trọn vẹn */
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  #transactions-list-container .tx-meta {
+    font-size: 0.72rem !important;
+    gap: 4px;
+    margin-top: 2px;
+  }
+
+  #transactions-list-container .tx-right {
+    flex-shrink: 0;
+  }
+
+  #transactions-list-container .tx-amount {
+    font-size: 0.90rem !important;
+    font-weight: 700;
+  }
+}

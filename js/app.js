@@ -446,6 +446,12 @@ class App {
     }
   }
 
+  openTransactionsFromDashboard() {
+    this.txHistorySource = 'dashboard';
+    this.previousView = 'dashboard';
+    this.switchView('transactions');
+  }
+
   switchView(viewId, isBack = false) {
     if (!viewId) return;
     // Chuyển trang/tab thì reset đếm lần chạm làm mới
@@ -497,6 +503,13 @@ class App {
     const formSubViews = ['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history'];
     if (formSubViews.includes(viewId) && !formSubViews.includes(this.currentView)) {
       this.previousView = this.currentView;
+    } else if (viewId === 'transactions') {
+      if (!isBack) {
+        if (!this.txHistorySource) {
+          this.txHistorySource = (this.currentView && this.currentView !== 'transactions') ? this.currentView : 'dashboard';
+        }
+        this.previousView = this.txHistorySource;
+      }
     } else if (viewId === 'new-transaction') {
       // Tab Ghi Chép (new-transaction):
       // - Nếu mở từ menu 3 chấm của tài khoản (openedFromAccountMenu): previousView = currentView
@@ -600,7 +613,7 @@ class App {
       // Xóa và vô hiệu hóa nút hiển thị/ẩn số tiền cho mục lịch sử thu chi
       if (privacyBtn) privacyBtn.style.display = 'none';
 
-      const hasBack = !!(this.txHistorySource || (this.previousView && this.previousView !== 'transactions'));
+      const hasBack = viewId === 'transactions' ? true : !!(this.txHistorySource || (this.previousView && this.previousView !== 'transactions'));
       if (txHistoryBackBtn) txHistoryBackBtn.style.display = hasBack ? 'inline-flex' : 'none';
       if (brandLogo) brandLogo.style.display = hasBack ? 'none' : '';
 
@@ -816,7 +829,7 @@ class App {
       }
 
       // category-picker & borrow-select always support back to new-transaction
-      if (['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history'].includes(this.currentView)) {
+      if (['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history', 'transactions'].includes(this.currentView)) {
         window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
         this.goBack();
       } else if (this.currentView === 'new-transaction') {
@@ -854,12 +867,11 @@ class App {
         if (!page.classList.contains('active')) return;
 
         // Trang Lịch sử ghi chép (transactions):
-        // CHỈ cho phép vuốt trở về khi được mở từ view khác (new-transaction hoặc accounts)
+        // Luôn cho phép vuốt trở về màn hình trước đó (mặc định về Dashboard nếu mở từ Xem tất cả)
         if (page.id === 'view-transactions') {
-          const canBack = !!(this.txHistorySource || (this.previousView && this.previousView !== 'transactions'));
-          if (!canBack) {
-            canSwipe = false;
-            return;
+          if (!this.txHistorySource && (!this.previousView || this.previousView === 'transactions')) {
+            this.txHistorySource = 'dashboard';
+            this.previousView = 'dashboard';
           }
         }
 
@@ -875,6 +887,13 @@ class App {
         }
 
         const target = e.target;
+        // Skip if scrolling horizontally on filter bars
+        if (target.closest('.tx-type-filter-bar') || target.closest('.filter-bar')) {
+          if (startX > 45) {
+            canSwipe = false;
+            return;
+          }
+        }
         // Skip if inside open keypad or category manager
         if (target.closest('#modal-keypad.open') || target.closest('#modal-category-manager.open')) {
           canSwipe = false;
@@ -895,7 +914,7 @@ class App {
         isSwiping = false;
 
         // Allow swipe starting from left area of screen
-        canSwipe = (startX <= window.innerWidth * 0.4 || startX <= 140);
+        canSwipe = (startX <= window.innerWidth * 0.65 || startX <= 250);
       }, { passive: true });
 
       page.addEventListener('touchmove', (e) => {
@@ -961,6 +980,14 @@ class App {
 
       page.addEventListener('touchend', handleTouchEnd, { passive: true });
       page.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+
+      // Ngăn chặn mở nhầm chi tiết giao dịch khi người dùng đang thực hiện cử chỉ vuốt trở về
+      page.addEventListener('click', (e) => {
+        if (deltaX > 12) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
+      }, true);
     });
   }
 
