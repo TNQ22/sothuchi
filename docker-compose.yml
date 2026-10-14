@@ -1,23 +1,29 @@
 services:
   sothuchi:
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: ghcr.io/tnq22/sothuchi:latest
     container_name: sothuchi-sync-server
     restart: unless-stopped
     ports:
-      - "8081:8081"
+      # Cổng trên máy chủ : Cổng trong container (Đọc PORT từ .env nếu có, mặc định 8081)
+      - "${PORT:-8081}:8081"
     environment:
       - PORT=8081
       - HOST=0.0.0.0
       - DATA_DIR=/app/data
-      # Khóa bí mật bảo vệ phiên đăng nhập (Nên đổi thành chuỗi ngẫu nhiên dài)
-      - JWT_SECRET=sothuchi_super_secure_vault_secret_key_change_me_12345
-      # Google Client ID (Tùy chọn: lấy từ Google Cloud Console)
-      - GOOGLE_CLIENT_ID=
-      # Cho phép ứng dụng PWA (từ GitHub Pages hoặc tên miền riêng) kết nối vào API
-      - CORS_ORIGIN=*
+      # Khóa bí mật JWT (Đọc JWT_SECRET từ .env nếu có)
+      - JWT_SECRET=${JWT_SECRET:-sothuchi_super_secure_vault_secret_key_change_me_12345}
+      # Google Client ID cho Backend Máy chủ
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-${VITE_GOOGLE_CLIENT_ID:-}}
+      # Tên miền cho phép kết nối CORS (Đọc CORS_ORIGIN từ .env nếu có, mặc định *)
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      # --- CẤU HÌNH CẤP SẴN CHO CLIENT PWA (NGƯỜI DÙNG TỰ DO CHỌN DRIVE / DROPBOX) ---
+      - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID:-${GOOGLE_CLIENT_ID:-}}
+      - VITE_GOOGLE_STORAGE_LOCATION=${VITE_GOOGLE_STORAGE_LOCATION:-appDataFolder}
+      - VITE_GOOGLE_CUSTOM_FOLDER_NAME=${VITE_GOOGLE_CUSTOM_FOLDER_NAME:-Sổ Thu Chi}
+      - VITE_GOOGLE_WORKER_URL=${VITE_GOOGLE_WORKER_URL:-${GOOGLE_WORKER_URL:-}}
+      - VITE_GOOGLE_CLIENT_SECRET=${VITE_GOOGLE_CLIENT_SECRET:-${GOOGLE_CLIENT_SECRET:-}}
+      - VITE_DROPBOX_APP_KEY=${VITE_DROPBOX_APP_KEY:-${DROPBOX_APP_KEY:-}}
+      - VITE_AUTO_SYNC_ENABLED=${VITE_AUTO_SYNC_ENABLED:-true}
     volumes:
       # Lưu trữ cơ sở dữ liệu SQLite và bản sao lưu bền vững trên máy chủ
       - ./data:/app/data

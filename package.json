@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "docker:build": "docker compose build",
+    "docker:build": "docker build -t ghcr.io/tnq22/sothuchi:latest .",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f"

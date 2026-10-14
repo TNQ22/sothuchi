@@ -16,12 +16,35 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+// Tự động nạp file .env nếu có (khi chạy trực tiếp với node server.js)
+const envFilePath = path.join(__dirname, '.env');
+if (fs.existsSync(envFilePath)) {
+  try {
+    const envContent = fs.readFileSync(envFilePath, 'utf8');
+    for (const line of envContent.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const idx = trimmed.indexOf('=');
+      if (idx > 0) {
+        const k = trimmed.slice(0, idx).trim();
+        let v = trimmed.slice(idx + 1).trim();
+        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+          v = v.slice(1, -1);
+        }
+        if (k && process.env[k] === undefined) {
+          process.env[k] = v;
+        }
+      }
+    }
+  } catch (_) {}
+}
+
 // Tùy chọn cấu hình môi trường
 const PORT = parseInt(process.env.PORT || '8081', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const JWT_SECRET = process.env.JWT_SECRET || 'sothuchi_vault_secret_' + crypto.randomBytes(16).toString('hex');
-const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || '').trim();
+const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || '').trim();
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 
 // Đảm bảo thư mục lưu trữ dữ liệu tồn tại
@@ -885,6 +908,19 @@ async function handleApiRequest(req, res, pathname) {
   if (req.method === 'GET' && pathname === '/api/auth/config') {
     return sendJson(res, 200, {
       googleClientId: GOOGLE_CLIENT_ID || null
+    });
+  }
+
+  // 2.1 Cung cấp cấu hình PWA cấp sẵn cho người dùng (Google Drive, Dropbox, v.v...)
+  if (req.method === 'GET' && pathname === '/api/config') {
+    return sendJson(res, 200, {
+      VITE_GOOGLE_CLIENT_ID: process.env.VITE_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '',
+      VITE_GOOGLE_STORAGE_LOCATION: process.env.VITE_GOOGLE_STORAGE_LOCATION || 'appDataFolder',
+      VITE_GOOGLE_CUSTOM_FOLDER_NAME: process.env.VITE_GOOGLE_CUSTOM_FOLDER_NAME || 'Sổ Thu Chi',
+      VITE_GOOGLE_WORKER_URL: process.env.VITE_GOOGLE_WORKER_URL || process.env.GOOGLE_WORKER_URL || '',
+      VITE_GOOGLE_CLIENT_SECRET: process.env.VITE_GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '',
+      VITE_DROPBOX_APP_KEY: process.env.VITE_DROPBOX_APP_KEY || process.env.DROPBOX_APP_KEY || '',
+      VITE_AUTO_SYNC_ENABLED: process.env.VITE_AUTO_SYNC_ENABLED !== 'false'
     });
   }
 

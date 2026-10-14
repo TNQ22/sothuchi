@@ -867,6 +867,14 @@ class App {
       }
     }
 
+    // Settings Sub-page → back to Settings Hub
+    if (this.currentView === 'settings') {
+      if (window.UISettings && window.UISettings.currentSection) {
+        window.UISettings.backToHub();
+        return;
+      }
+    }
+
     // Sub-pages (category-picker, borrow-select) → back to new-transaction
     if (this.currentView === 'category-picker' || this.currentView === 'borrow-select') {
       this.switchView('new-transaction', true);
@@ -962,6 +970,12 @@ class App {
         return;
       }
 
+      if (this.currentView === 'settings' && window.UISettings && window.UISettings.currentSection) {
+        window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
+        this.goBack();
+        return;
+      }
+
       // category-picker & borrow-select always support back to new-transaction
       if (['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history', 'transactions'].includes(this.currentView)) {
         window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
@@ -982,7 +996,7 @@ class App {
 
   setupSwipeToBack() {
     // view-transactions, new-transaction, category-picker, etc.: support swipe-to-back
-    const pages = document.querySelectorAll('#view-transactions, #view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form, #view-account-provider, #view-savings-form, #view-accumulation-form, #view-asset-form, #view-loan-form, #view-budget-form, #view-budget-category-form, #view-budget-cat-history');
+    const pages = document.querySelectorAll('#view-transactions, #view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form, #view-account-provider, #view-savings-form, #view-accumulation-form, #view-asset-form, #view-loan-form, #view-budget-form, #view-budget-category-form, #view-budget-cat-history, #view-settings');
     if (!pages.length) return;
 
     pages.forEach(page => {
@@ -1006,6 +1020,14 @@ class App {
           if (!this.txHistorySource && (!this.previousView || this.previousView === 'transactions')) {
             this.txHistorySource = 'dashboard';
             this.previousView = 'dashboard';
+          }
+        }
+
+        // Trang Cài đặt (settings): chỉ vuốt khi đang ở sub-page chi tiết
+        if (page.id === 'view-settings') {
+          if (!window.UISettings || !window.UISettings.currentSection) {
+            canSwipe = false;
+            return;
           }
         }
 

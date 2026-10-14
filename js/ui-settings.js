@@ -1,25 +1,200 @@
 /**
- * SỔ THU CHI - UI SETTINGS MODULE (v2.2.5)
- * Thiết lập Google Drive Sync (AppData / Custom Folder, E2EE, Mirror Backup, Sharing),
- * Tự động sao lưu Thư mục máy tính (Local Folder Auto-Backup),
- * Xuất CSV, Sao lưu JSON, Chế độ riêng tư & Giao diện
+ * SỔ THU CHI - UI SETTINGS MODULE (v2.5.0)
+ * Tối ưu hóa giao diện Cài đặt: Menu đề mục dạng Hub + Sub-pages chi tiết
+ * Phân chia Thiết lập Cơ bản & Cài đặt Nâng cao (Collapsible Accordion)
+ * Google Drive Sync (E2EE, Custom Folder, Mirror Backup, Sharing),
+ * Dropbox Sync (PKCE, Shared Folder), Dedicated Server (Docker / Google Login / Multi-vault),
+ * Tự động sao lưu Thư mục PC (Offline), Xuất CSV Excel, Sao lưu/Khôi phục JSON & STC mã hóa, Giao diện & Riêng tư
  */
 
 const UISettings = {
+  currentSection: null,
+
   init() {
     this.bindEvents();
     this.loadSettings();
 
-    // Lắng nghe cập nhật profile Google
+    // Lắng nghe cập nhật profile Google & Drive
     window.addEventListener('google-profile-updated', (e) => {
       this.renderGoogleProfile(e.detail);
+      this.updateHubBadges();
     });
 
-    window.addEventListener('server-connection-changed', () => this.renderServerSyncUI());
-    window.addEventListener('server-auth-changed', () => this.renderServerSyncUI());
-    window.addEventListener('server-shares-updated', () => this.renderServerSharesList());
-    window.addEventListener('server-vault-switched', () => this.renderServerSyncUI());
-    window.addEventListener('sync-success', () => this.renderServerSyncUI());
+    // Lắng nghe các sự kiện Máy Chủ Riêng Docker
+    window.addEventListener('server-connection-changed', () => {
+      this.renderServerSyncUI();
+      this.updateHubBadges();
+    });
+    window.addEventListener('server-auth-changed', () => {
+      this.renderServerSyncUI();
+      this.updateHubBadges();
+    });
+    window.addEventListener('server-shares-updated', () => {
+      this.renderServerSharesList();
+    });
+    window.addEventListener('server-vault-switched', () => {
+      this.renderServerSyncUI();
+      this.updateHubBadges();
+    });
+    window.addEventListener('sync-success', () => {
+      this.renderServerSyncUI();
+      this.updateHubBadges();
+    });
+  },
+
+  // Mở trang chi tiết của một đề mục
+  openSection(sectionId) {
+    this.currentSection = sectionId;
+
+    const hubView = document.getElementById('settings-hub-view');
+    const detailView = document.getElementById('settings-detail-view');
+    const titleEl = document.getElementById('settings-detail-header-title');
+
+    if (!hubView || !detailView) return;
+
+    hubView.style.display = 'none';
+    detailView.style.display = 'block';
+
+    // Ẩn tất cả các panel, hiển thị panel được chọn
+    const panels = document.querySelectorAll('.settings-detail-panel');
+    panels.forEach(p => p.classList.remove('active'));
+
+    const targetPanel = document.getElementById(`panel-${sectionId}`);
+    if (targetPanel) {
+      targetPanel.classList.add('active');
+    }
+
+    // Cập nhật tiêu đề trang con
+    const titleMap = {
+      'google-drive': '<i data-lucide="cloud" style="color: #14b8a6; width: 20px; height: 20px;"></i> Google Drive',
+      'dropbox': '<i data-lucide="box" style="color: #0061ff; width: 20px; height: 20px;"></i> Dropbox',
+      'server': '<i data-lucide="server" style="color: #a855f7; width: 20px; height: 20px;"></i> Máy Chủ Riêng (Docker)',
+      'local-folder': '<i data-lucide="folder-sync" style="color: #f59e0b; width: 20px; height: 20px;"></i> Sao Lưu Thư Mục PC',
+      'backup-restore': '<i data-lucide="database" style="color: #ec4899; width: 20px; height: 20px;"></i> Sao Lưu & Khôi Phục File',
+      'export-csv': '<i data-lucide="file-spreadsheet" style="color: #10b981; width: 20px; height: 20px;"></i> Xuất Dữ Liệu Excel (CSV)',
+      'appearance': '<i data-lucide="palette" style="color: #6366f1; width: 20px; height: 20px;"></i> Giao Diện & Riêng Tư'
+    };
+
+    if (titleEl && titleMap[sectionId]) {
+      titleEl.innerHTML = titleMap[sectionId];
+    }
+
+    // Cuộn lên đầu trang
+    const settingsView = document.getElementById('view-settings');
+    if (settingsView) settingsView.scrollTop = 0;
+    window.scrollTo(0, 0);
+
+    if (window.lucide) lucide.createIcons();
+  },
+
+  // Quay lại màn hình menu Hub
+  backToHub() {
+    this.currentSection = null;
+    const hubView = document.getElementById('settings-hub-view');
+    const detailView = document.getElementById('settings-detail-view');
+
+    if (detailView) detailView.style.display = 'none';
+    if (hubView) hubView.style.display = 'block';
+
+    const panels = document.querySelectorAll('.settings-detail-panel');
+    panels.forEach(p => p.classList.remove('active'));
+
+    const settingsView = document.getElementById('view-settings');
+    if (settingsView) settingsView.scrollTop = 0;
+    window.scrollTo(0, 0);
+
+    this.updateHubBadges();
+    if (window.lucide) lucide.createIcons();
+  },
+
+  // Đóng / mở khối thiết lập nâng cao (Accordion)
+  toggleAccordion(headerEl) {
+    if (!headerEl) return;
+    const accordion = headerEl.closest('.settings-accordion');
+    if (!accordion) return;
+
+    accordion.classList.toggle('expanded');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  // Cập nhật trạng thái hiển thị nhanh trên từng mục ở Hub
+  async updateHubBadges() {
+    // 1. Google Drive
+    const gBadge = document.getElementById('hub-gdrive-badge');
+    const gDesc = document.getElementById('hub-gdrive-desc');
+    const gDrive = window.googleDriveService;
+    if (gBadge && gDesc) {
+      if (gDrive && gDrive.userProfile && gDrive.userProfile.email) {
+        gBadge.className = 'settings-status-pill pill-green';
+        gBadge.textContent = 'Đã kết nối';
+        gDesc.textContent = `Tài khoản: ${gDrive.userProfile.email}`;
+      } else {
+        gBadge.className = 'settings-status-pill pill-gray';
+        gBadge.textContent = 'Chưa kết nối';
+        gDesc.textContent = 'Lưu trữ đám mây Google & mã hóa E2EE';
+      }
+    }
+
+    // 2. Dropbox
+    const dBadge = document.getElementById('hub-dropbox-badge');
+    const dDesc = document.getElementById('hub-dropbox-desc');
+    const dbx = window.dropboxService;
+    if (dBadge && dDesc) {
+      if (dbx && (dbx.refreshToken || dbx.accessToken) && dbx.userProfile) {
+        dBadge.className = 'settings-status-pill pill-green';
+        dBadge.textContent = 'Đã kết nối';
+        dDesc.textContent = `Tài khoản: ${dbx.userProfile.name || dbx.userProfile.email || 'Dropbox'}`;
+      } else {
+        dBadge.className = 'settings-status-pill pill-gray';
+        dBadge.textContent = 'Chưa kết nối';
+        dDesc.textContent = 'Đồng bộ chuẩn PKCE mượt mà trên iPhone';
+      }
+    }
+
+    // 3. Máy Chủ Riêng Docker
+    const sBadge = document.getElementById('hub-server-badge');
+    const sDesc = document.getElementById('hub-server-desc');
+    const sService = window.serverSyncService;
+    if (sBadge && sDesc) {
+      if (sService && sService.token && sService.userProfile) {
+        sBadge.className = 'settings-status-pill pill-green';
+        sBadge.textContent = 'Đã kết nối';
+        sDesc.textContent = `Tài khoản: ${sService.userProfile.email || sService.userProfile.name}`;
+      } else if (sService && sService.serverUrl) {
+        sBadge.className = 'settings-status-pill pill-blue';
+        sBadge.textContent = 'Sẵn sàng';
+        sDesc.textContent = `Địa chỉ: ${sService.serverUrl}`;
+      } else {
+        sBadge.className = 'settings-status-pill pill-gray';
+        sBadge.textContent = 'Chưa kết nối';
+        sDesc.textContent = 'Máy chủ tự lưu trữ Self-Hosted tốc độ cao & đa sổ';
+      }
+    }
+
+    // 4. Thư Mục Máy PC
+    const lBadge = document.getElementById('hub-local-badge');
+    const lDesc = document.getElementById('hub-local-desc');
+    const bService = window.BackupService;
+    if (lBadge && lDesc) {
+      if (bService && bService.hasLocalDirectory && bService.hasLocalDirectory()) {
+        lBadge.className = 'settings-status-pill pill-green';
+        lBadge.textContent = 'Đang lưu';
+        lDesc.textContent = `📁 Thư mục: ${bService.localDirName || 'Đã liên kết'}`;
+      } else {
+        lBadge.className = 'settings-status-pill pill-gray';
+        lBadge.textContent = 'Chưa chọn';
+        lDesc.textContent = 'Tự động ghi file sao lưu vào ổ cứng máy tính';
+      }
+    }
+
+    // 5. Giao Diện
+    const tBadge = document.getElementById('hub-theme-badge');
+    if (tBadge) {
+      const themeSetting = await db.settings.get('theme');
+      const themeVal = (themeSetting && themeSetting.value) || 'dark';
+      const themeLabels = { dark: 'Tối', light: 'Sáng', system: 'Hệ thống' };
+      tBadge.textContent = themeLabels[themeVal] || 'Tối';
+    }
   },
 
   async loadSettings() {
@@ -142,7 +317,7 @@ const UISettings = {
     // 7. Load Auto Sync & Privacy Mode
     const autoSyncSetting = await db.settings.get('autoSyncEnabled');
     const autoSyncToggle = document.getElementById('settings-auto-sync');
-    if (autoSyncSetting && autoSyncToggle) {
+    if (autoSyncToggle) {
       autoSyncToggle.checked = !!autoSyncSetting.value;
     }
 
@@ -158,6 +333,15 @@ const UISettings = {
     if (lastSyncSetting && lastSyncDisplay) {
       lastSyncDisplay.textContent = new Date(lastSyncSetting.value).toLocaleString('vi-VN');
     }
+
+    // 9. Load Dropbox Account UI
+    this.updateDropboxAccountUI();
+
+    // 10. Load Server Sync UI
+    this.renderServerSyncUI();
+
+    // 11. Cập nhật các badge tóm tắt trên Hub
+    this.updateHubBadges();
   },
 
   renderGoogleProfile(profile) {
@@ -192,6 +376,7 @@ const UISettings = {
       }
     }
 
+    this.updateHubBadges();
     if (window.lucide) lucide.createIcons();
   },
 
@@ -215,13 +400,14 @@ const UISettings = {
       }
       if (removeBtn) removeBtn.style.display = 'none';
       if (window.lucide) lucide.createIcons();
+      this.updateHubBadges();
       return;
     }
 
     if (iosNotice) iosNotice.style.display = 'none';
     const hasFolder = window.BackupService && window.BackupService.hasLocalDirectory();
     if (hasFolder) {
-      if (nameEl) nameEl.textContent = `📂 Đang lưu vào: ${window.BackupService.localDirName}`;
+      if (nameEl) nameEl.textContent = `📁 Đang lưu: ${window.BackupService.localDirName}`;
       if (statusEl) statusEl.textContent = 'Tự động sao lưu vào ổ cứng sau mỗi lần thêm/sửa giao dịch';
       if (selectBtn) {
         selectBtn.className = 'btn-primary btn-sm';
@@ -237,6 +423,8 @@ const UISettings = {
       }
       if (removeBtn) removeBtn.style.display = 'none';
     }
+
+    this.updateHubBadges();
     if (window.lucide) lucide.createIcons();
   },
 
@@ -258,10 +446,138 @@ const UISettings = {
       if (infoBox) infoBox.style.display = 'none';
       if (connectBtn) connectBtn.style.display = 'inline-flex';
     }
+
+    this.updateHubBadges();
+    if (window.lucide) lucide.createIcons();
+  },
+
+  // Cập nhật giao diện Đồng bộ Máy Chủ Riêng Docker
+  renderServerSyncUI() {
+    const sService = window.serverSyncService;
+    if (!sService) return;
+
+    // 1. Cập nhật input Server URL
+    const urlInput = document.getElementById('settings-server-url');
+    if (urlInput && !urlInput.value && sService.serverUrl) {
+      urlInput.value = sService.serverUrl;
+    }
+
+    // 2. Cập nhật Status Badge
+    const badge = document.getElementById('server-status-badge');
+    const text = document.getElementById('server-status-text');
+    if (badge && text) {
+      if (sService.token) {
+        badge.className = 'badge-status badge-connected';
+        text.textContent = 'Đã kết nối';
+      } else if (sService.connectionStatus === 'connected') {
+        badge.className = 'badge-status badge-connected';
+        text.textContent = 'Máy chủ sẵn sàng';
+      } else if (sService.connectionStatus === 'checking') {
+        badge.className = 'badge-status badge-checking';
+        text.textContent = 'Đang kiểm tra...';
+      } else {
+        badge.className = 'badge-status badge-disconnected';
+        text.textContent = 'Chưa kết nối';
+      }
+    }
+
+    // 3. Cập nhật Auth & User Profile Card
+    const userCard = document.getElementById('server-user-card');
+    const loginPrompt = document.getElementById('server-login-prompt');
+    const vaultSection = document.getElementById('server-vault-section');
+    const sharingPanel = document.getElementById('server-sharing-panel');
+
+    if (sService.userProfile && sService.token) {
+      if (userCard) userCard.style.display = 'flex';
+      if (loginPrompt) loginPrompt.style.display = 'none';
+
+      const avatar = document.getElementById('server-user-avatar');
+      const nameEl = document.getElementById('server-user-name');
+      const emailEl = document.getElementById('server-user-email');
+      const roleBadge = document.getElementById('server-user-role-badge');
+
+      if (avatar) avatar.src = sService.userProfile.picture || './assets/icons/icon.svg';
+      if (nameEl) nameEl.textContent = sService.userProfile.name || 'Người dùng Google';
+      if (emailEl) emailEl.textContent = sService.userProfile.email || '';
+
+      const activeVault = sService.getActiveVault ? sService.getActiveVault() : null;
+      const isOwner = !activeVault || activeVault.role === 'owner';
+      if (roleBadge) {
+        roleBadge.textContent = isOwner ? 'Chủ Sổ' : 'Thành Viên';
+        roleBadge.className = isOwner ? 'google-role-badge' : 'google-role-badge member';
+      }
+
+      if (vaultSection) vaultSection.style.display = 'block';
+      if (sharingPanel) sharingPanel.style.display = isOwner ? 'block' : 'none';
+    } else {
+      if (userCard) userCard.style.display = 'none';
+      if (loginPrompt) loginPrompt.style.display = 'block';
+      if (vaultSection) vaultSection.style.display = 'none';
+      if (sharingPanel) sharingPanel.style.display = 'none';
+    }
+
+    // 4. Cập nhật danh sách Sổ (Vaults)
+    const vaultSelect = document.getElementById('settings-server-vault-select');
+    if (vaultSelect && sService.vaults && sService.vaults.length > 0) {
+      vaultSelect.innerHTML = sService.vaults.map(v => `
+        <option value="${v.id}" ${v.id === sService.activeVaultId ? 'selected' : ''}>
+          ${v.name} ${v.role === 'owner' ? '(Chủ sổ)' : '(Thành viên)'}
+        </option>
+      `).join('');
+
+      const activeVault = sService.getActiveVault ? sService.getActiveVault() : null;
+      const ownerEl = document.getElementById('server-vault-owner-text');
+      const roleEl = document.getElementById('server-vault-role-text');
+      if (ownerEl) ownerEl.textContent = activeVault ? `Chủ sở hữu: ${activeVault.ownerEmail || 'Tôi'}` : 'Chủ sở hữu: Tôi';
+      if (roleEl) roleEl.textContent = activeVault ? `Quyền: ${activeVault.role === 'owner' ? 'Toàn quyền' : (activeVault.role === 'editor' ? 'Ghi chép' : 'Chỉ xem')}` : 'Quyền: Toàn quyền';
+    }
+
+    // 5. Cập nhật Toggle Tự động đồng bộ
+    const autoSync = document.getElementById('settings-server-auto-sync');
+    if (autoSync) {
+      autoSync.checked = !!sService.autoSync;
+    }
+
+    // 6. Cập nhật Thời gian đồng bộ lần cuối
+    const timeEl = document.getElementById('settings-server-last-sync-time');
+    if (timeEl) {
+      timeEl.textContent = sService.lastSyncTime ? new Date(sService.lastSyncTime).toLocaleString('vi-VN') : 'Chưa đồng bộ';
+    }
+
+    this.renderServerSharesList();
+    this.updateHubBadges();
+    if (window.lucide) lucide.createIcons();
+  },
+
+  // Render danh sách thành viên được chia sẻ trên Máy chủ riêng
+  renderServerSharesList() {
+    const sService = window.serverSyncService;
+    const listEl = document.getElementById('server-shares-list');
+    if (!listEl) return;
+
+    if (sService && sService.shares && sService.shares.length > 0) {
+      listEl.innerHTML = sService.shares.map(s => `
+        <div class="server-share-item">
+          <div class="server-share-info">
+            <i data-lucide="user-check" style="width: 14px; height: 14px; color: #10b981;"></i>
+            <span class="server-share-email">${s.email}</span>
+            <span class="badge" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(59, 130, 246, 0.12); color: #3b82f6; border-radius: 9999px;">
+              ${s.role === 'editor' ? 'Ghi chép' : 'Chỉ xem'}
+            </span>
+          </div>
+          <button type="button" class="btn-text btn-server-remove-share" data-share-id="${s.id}" style="color: #ef4444; font-size: 0.78rem; padding: 2px 6px; border: none; background: none; cursor: pointer;" title="Xóa quyền truy cập">
+            <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i>
+          </button>
+        </div>
+      `).join('');
+    } else {
+      listEl.innerHTML = '<div style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">Chưa có thành viên nào được chia sẻ.</div>';
+    }
+
+    if (window.lucide) lucide.createIcons();
   },
 
   bindEvents() {
-
     // --- DEDICATED SYNC SERVER EVENTS ---
     const sService = window.serverSyncService;
 
@@ -405,7 +721,7 @@ const UISettings = {
     if (renameVaultBtn) {
       renameVaultBtn.addEventListener('click', async () => {
         if (!sService || !sService.activeVaultId) return;
-        const current = sService.getActiveVault();
+        const current = sService.getActiveVault ? sService.getActiveVault() : null;
         const newName = prompt('Nhập tên mới cho sổ:', current?.name || '');
         if (!newName || !newName.trim()) return;
         try {
@@ -422,7 +738,7 @@ const UISettings = {
     if (deleteVaultBtn) {
       deleteVaultBtn.addEventListener('click', async () => {
         if (!sService || !sService.activeVaultId) return;
-        const current = sService.getActiveVault();
+        const current = sService.getActiveVault ? sService.getActiveVault() : null;
         if (current?.role !== 'owner') {
           showToast('Chỉ Chủ Sổ mới có quyền xóa sổ này', 'warning');
           return;
@@ -926,7 +1242,7 @@ const UISettings = {
       shareBtn.addEventListener('click', async () => {
         const emailInput = document.getElementById('settings-share-email');
         const roleSelect = document.getElementById('settings-share-role');
-        const email = emailInput ? emailInput.value.trim() : '';
+        const email = emailInput ? emailInput.value : '';
         const role = roleSelect ? roleSelect.value : 'writer';
 
         if (!email || !email.includes('@')) {
@@ -939,7 +1255,7 @@ const UISettings = {
           shareBtn.innerHTML = '<i data-lucide="loader-2" class="spin-animation"></i> Đang cấp quyền...';
           if (window.lucide) lucide.createIcons();
 
-          await window.googleDriveService.shareVaultWithEmail(email, role);
+          await window.googleDriveService.shareVaultWithEmail(email.trim(), role);
           showToast(`Đã cấp quyền chia sẻ cho ${email}!`, 'success');
           if (emailInput) emailInput.value = '';
         } catch (err) {
@@ -959,9 +1275,8 @@ const UISettings = {
         try {
           if (!window.BackupService) return;
           if (!window.BackupService.isFileSystemAccessSupported()) {
-            // Thiết bị không hỗ trợ File System Access API (như iPhone / iOS Safari)
             const pass = prompt('iOS / Safari không cho phép ứng dụng web tự động ghi nền vào thư mục máy.\n\nNhập mật khẩu để mã hóa file (hoặc bấm OK để xuất file bình thường):');
-            if (pass === null) return; // Người dùng bấm Hủy
+            if (pass === null) return;
             await window.BackupService.exportFullBackup(pass || null);
             showToast('Đã tải file sao lưu về máy (lưu vào Tệp / Files)!', 'success');
             return;
@@ -1106,6 +1421,7 @@ const UISettings = {
         if (window.app && window.app.applyTheme) {
           window.app.applyTheme(theme);
         }
+        this.updateHubBadges();
       });
     }
   }
