@@ -208,21 +208,18 @@ class App {
     // Render icons again after dynamic DOM render
     if (window.lucide) lucide.createIcons();
 
-    // Tự động khôi phục kết nối ngầm và đồng bộ dữ liệu từ Google Drive khi mở app
+    // Tự động đồng bộ dữ liệu từ Google Drive khi mở app nếu token còn hiệu lực
     if (window.googleDriveService && window.googleDriveService.clientId && window.googleDriveService.autoSync) {
-      window.googleDriveService.requestToken({ prompt: '' })
-        .then(async () => {
-          console.log('[GoogleDrive] Đã tự động kết nối ngầm Google Drive');
-          if (window.SyncCoordinator) {
-            await window.SyncCoordinator.syncAll(true);
-          } else {
-            await window.googleDriveService.sync();
-          }
-          await this.refreshAll();
-        })
-        .catch(err => {
-          console.log('[GoogleDrive] Phiên nền GIS cần tương tác hoặc máy offline:', err.message);
-        });
+      if (window.googleDriveService.hasValidToken()) {
+        console.log('[GoogleDrive] Tự động đồng bộ khi mở app...');
+        if (window.SyncCoordinator) {
+          window.SyncCoordinator.syncAll(true).catch(e => console.warn('Startup sync:', e));
+        } else {
+          window.googleDriveService.sync().catch(e => console.warn('Startup sync:', e));
+        }
+      } else {
+        console.log('[GoogleDrive] Chưa có token hợp lệ, sẵn sàng chờ người dùng tương tác.');
+      }
     }
 
     // 10. Register Service Worker for PWA

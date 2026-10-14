@@ -18,6 +18,7 @@ class GoogleDriveSync {
     this.driveFileId = null;
     this.lastSyncTime = null;
     this.autoSync = true;
+    this.tokenExpiresAt = 0;
     this.encryptionPassword = null;
     this.clientId = '';
     this.storageLocation = 'appDataFolder'; // 'appDataFolder' | 'customFolder'
@@ -88,6 +89,28 @@ class GoogleDriveSync {
       if (mirrorSetting) {
         this.autoMirror = !!mirrorSetting.value;
       }
+
+      // Khôi phục Token nếu còn hiệu lực (tránh bắt đăng nhập lại hoặc treo khi reload)
+      try {
+        let savedToken = sessionStorage.getItem('sothuchi_google_access_token');
+        let savedExpires = parseInt(sessionStorage.getItem('sothuchi_google_token_expires_at') || '0', 10);
+        if (!savedToken || !savedExpires || Date.now() >= savedExpires) {
+          const dbToken = await db.settings.get('googleAccessToken');
+          const dbExpires = await db.settings.get('googleTokenExpiresAt');
+          if (dbToken && dbExpires) {
+            savedToken = dbToken.value;
+            savedExpires = Number(dbExpires.value);
+          }
+        }
+        if (savedToken && savedExpires && Date.now() < savedExpires) {
+          this.accessToken = savedToken;
+          this.tokenExpiresAt = savedExpires;
+          console.log('[GoogleDrive] Khôi phục phiên đăng nhập còn hiệu lực (' + Math.round((savedExpires - Date.now()) / 60000) + ' phút)');
+        } else {
+          this.accessToken = null;
+          this.tokenExpiresAt = 0;
+        }
+      } catch (tErr) {}
     } catch (err) {
       console.warn('GoogleDriveSync init settings warning:', err);
     }
@@ -120,8 +143,12 @@ class GoogleDriveSync {
     db.settings.put({ key: 'autoMirrorToPersonalDrive', value: this.autoMirror });
   }
 
+  hasValidToken() {
+    return !!(this.accessToken && (!this.tokenExpiresAt || Date.now() < this.tokenExpiresAt));
+  }
+
   isAutoSyncEnabled() {
-    return !!(this.autoSync && this.clientId);
+    return !!(this.autoSync && this.clientId && this.hasValidToken());
   }
 
   getTargetLabel() {
@@ -142,8 +169,23 @@ class GoogleDriveSync {
     }
 
     const promptValue = options.prompt !== undefined ? options.prompt : (options.forceSelect ? 'select_account' : '');
+    const isInteractive = promptValue === 'select_account' || options.interactive;
 
     return new Promise((resolve, reject) => {
+      let settled = false;
+      const timeoutMs = isInteractive ? 60000 : 3500;
+
+      const timer = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          if (isInteractive) {
+            reject(new Error('Hết thời gian chờ đăng nhập Google'));
+          } else {
+            reject(new Error('Phiên đăng nhập đã hết hạn. Hãy bấm vào Avatar để kết nối lại.'));
+          }
+        }
+      }, timeoutMs);
+
       try {
         const oldToken = this.accessToken;
 
@@ -152,6 +194,10 @@ class GoogleDriveSync {
           scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
           prompt: promptValue,
           callback: async (resp) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+
             if (resp.error) {
               if (resp.error === 'popup_closed_by_user') {
                 reject(new Error('Đã đóng cửa sổ đăng nhập'));
@@ -162,7 +208,17 @@ class GoogleDriveSync {
               }
               return;
             }
+
             this.accessToken = resp.access_token;
+            const expiresInSec = resp.expires_in || 3600;
+            this.tokenExpiresAt = Date.now() + (expiresInSec * 1000) - 120000;
+
+            try {
+              sessionStorage.setItem('sothuchi_google_access_token', this.accessToken);
+              sessionStorage.setItem('sothuchi_google_token_expires_at', String(this.tokenExpiresAt));
+              await db.settings.put({ key: 'googleAccessToken', value: this.accessToken });
+              await db.settings.put({ key: 'googleTokenExpiresAt', value: this.tokenExpiresAt });
+            } catch (e) {}
 
             // Nếu người dùng chọn đổi tài khoản, thu hồi token cũ ở chế độ nền
             if (options.forceSelect && oldToken && oldToken !== this.accessToken && window.google?.accounts?.oauth2?.revoke) {
@@ -190,10 +246,14 @@ class GoogleDriveSync {
           }
         });
 
-        // Gọi đồng bộ ngay trong user gesture turn để không bị Safari/iOS chặn popup
+        // Gọi yêu cầu Access Token
         this.tokenClient.requestAccessToken({ prompt: promptValue });
       } catch (err) {
-        reject(err);
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          reject(err);
+        }
       }
     });
   }
@@ -220,12 +280,21 @@ class GoogleDriveSync {
       }
     }
     this.accessToken = null;
+    this.tokenExpiresAt = 0;
     this.userProfile = null;
     this.driveFileId = null;
     this.customFolderId = null;
+    this.autoSync = false;
+
+    sessionStorage.removeItem('sothuchi_google_access_token');
+    sessionStorage.removeItem('sothuchi_google_token_expires_at');
+    await db.settings.delete('googleAccessToken');
+    await db.settings.delete('googleTokenExpiresAt');
     await db.settings.delete('googleUserProfile');
     await db.settings.delete('googleDriveFileId');
     await db.settings.delete('googleDriveCustomFolderId');
+    await db.settings.put({ key: 'autoSyncEnabled', value: false });
+
     window.dispatchEvent(new CustomEvent('google-profile-updated', { detail: null }));
   }
 
@@ -598,19 +667,25 @@ class GoogleDriveSync {
   }
 
   // Đồng bộ hai chiều với thuật toán Last-Write-Wins theo từng bản ghi
-  async sync() {
+  async sync(options = {}) {
     if (this.isSyncing) return;
     this.isSyncing = true;
     const targetLabel = this.getTargetLabel();
     window.dispatchEvent(new CustomEvent('sync-start', { detail: { target: targetLabel } }));
 
     try {
-      if (!this.accessToken) {
-        try {
-          await this.requestToken({ prompt: '' });
-        } catch (tokErr) {
-          console.warn('[GoogleDrive] Không thể lấy token ngầm:', tokErr.message);
-          throw new Error('Chưa đăng nhập Google hoặc phiên đã hết hạn. Bấm vào Avatar để kết nối lại.');
+      if (!this.hasValidToken()) {
+        if (options.interactive) {
+          await this.requestToken({ prompt: 'select_account', interactive: true });
+        } else {
+          try {
+            await this.requestToken({ prompt: '', interactive: false });
+          } catch (tokErr) {
+            this.accessToken = null;
+            this.tokenExpiresAt = 0;
+            console.warn('[GoogleDrive] Không thể lấy token ngầm:', tokErr.message);
+            throw new Error('Phiên đăng nhập đã hết hạn. Bấm vào Avatar để kết nối lại.');
+          }
         }
       }
 

@@ -120,9 +120,10 @@ class SyncCoordinator {
       if (driveAdapter.clientId) {
         performedSync = true;
         try {
-          await driveAdapter.sync();
+          await driveAdapter.sync({ interactive: !isAuto });
         } catch (err) {
           console.warn('Google Drive sync failed during syncAll:', err);
+          if (!isAuto) throw err;
         }
       }
     }
@@ -346,12 +347,9 @@ class SyncCoordinator {
 
     try {
       const drive = window.googleDriveService;
-      if (drive && drive.clientId && !drive.accessToken) {
-        try {
-          await drive.requestToken({ prompt: '' });
-        } catch (silentErr) {
-          await drive.requestToken({ prompt: 'select_account' });
-        }
+      if (drive && drive.clientId && !drive.hasValidToken()) {
+        showToast('Vui lòng chọn tài khoản Google...', 'info');
+        await drive.requestToken({ prompt: 'select_account', interactive: true });
       }
       await this.syncAll(false);
       showToast('Đồng bộ thành công!', 'success');
