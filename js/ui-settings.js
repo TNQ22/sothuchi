@@ -177,7 +177,119 @@ const UISettings = {
     if (window.lucide) lucide.createIcons();
   },
 
+  updateDropboxAccountUI() {
+    const infoBox = document.getElementById('dropbox-account-info');
+    const nameEl = document.getElementById('dropbox-user-name');
+    const emailEl = document.getElementById('dropbox-user-email');
+    const avatarEl = document.getElementById('dropbox-user-avatar');
+    const connectBtn = document.getElementById('btn-dropbox-connect');
+
+    const dbx = window.dropboxService;
+    if (dbx && (dbx.refreshToken || dbx.accessToken) && dbx.userProfile) {
+      if (infoBox) infoBox.style.display = 'flex';
+      if (nameEl) nameEl.textContent = dbx.userProfile.name || 'Dropbox User';
+      if (emailEl) emailEl.textContent = dbx.userProfile.email || '';
+      if (avatarEl && dbx.userProfile.picture) avatarEl.src = dbx.userProfile.picture;
+      if (connectBtn) connectBtn.style.display = 'none';
+    } else {
+      if (infoBox) infoBox.style.display = 'none';
+      if (connectBtn) connectBtn.style.display = 'inline-flex';
+    }
+  }
+
   bindEvents() {
+    // Toggle Google Advanced Box
+    const advBtn = document.getElementById('btn-toggle-google-advanced');
+    const advBox = document.getElementById('google-advanced-box');
+    if (advBtn && advBox) {
+      advBtn.addEventListener('click', () => {
+        advBox.style.display = advBox.style.display === 'none' ? 'block' : 'none';
+      });
+    }
+
+    // Save Google Advanced Settings
+    const saveAdvBtn = document.getElementById('btn-save-google-advanced');
+    if (saveAdvBtn) {
+      saveAdvBtn.addEventListener('click', async () => {
+        const workerUrl = (document.getElementById('settings-google-worker-url')?.value || '').trim();
+        const clientSecret = (document.getElementById('settings-google-client-secret')?.value || '').trim();
+        await db.settings.put({ key: 'googleWorkerUrl', value: workerUrl });
+        await db.settings.put({ key: 'googleClientSecret', value: clientSecret });
+        if (window.googleDriveService) {
+          window.googleDriveService.workerUrl = workerUrl;
+          window.googleDriveService.clientSecret = clientSecret;
+        }
+        showToast('Đã lưu cấu hình Cloudflare Worker!', 'success');
+      });
+    }
+
+    // Toggle Dropbox Help Box
+    const dbxHelpBtn = document.getElementById('btn-toggle-dropbox-help');
+    const dbxHelpBox = document.getElementById('dropbox-help-box');
+    if (dbxHelpBtn && dbxHelpBox) {
+      dbxHelpBtn.addEventListener('click', () => {
+        dbxHelpBox.style.display = dbxHelpBox.style.display === 'none' ? 'block' : 'none';
+      });
+    }
+
+    // Save Dropbox App Key
+    const saveDbxKeyBtn = document.getElementById('btn-save-dropbox-key');
+    if (saveDbxKeyBtn) {
+      saveDbxKeyBtn.addEventListener('click', async () => {
+        const key = (document.getElementById('settings-dropbox-app-key')?.value || '').trim();
+        await db.settings.put({ key: 'dropboxAppKey', value: key });
+        if (window.dropboxService) window.dropboxService.setAppKey(key);
+        showToast('Đã lưu Dropbox App Key', 'success');
+      });
+    }
+
+    // Dropbox Connect
+    const dbxConnectBtn = document.getElementById('btn-dropbox-connect');
+    if (dbxConnectBtn) {
+      dbxConnectBtn.addEventListener('click', async () => {
+        try {
+          if (!window.dropboxService) return;
+          showToast('Đang kết nối Dropbox PKCE...', 'info');
+          await window.dropboxService.requestAuth();
+          showToast('Đăng nhập Dropbox thành công! Đang đồng bộ...', 'info');
+          await window.dropboxService.sync();
+          showToast('Đồng bộ Dropbox hoàn tất!', 'success');
+          this.updateDropboxAccountUI();
+          if (window.app && window.app.refreshAll) await window.app.refreshAll();
+        } catch (e) {
+          showToast('Lỗi đăng nhập Dropbox: ' + e.message, 'error');
+        }
+      });
+    }
+
+    // Dropbox Disconnect
+    const dbxDisconnectBtn = document.getElementById('btn-dropbox-disconnect');
+    if (dbxDisconnectBtn) {
+      dbxDisconnectBtn.addEventListener('click', async () => {
+        if (confirm('Bạn có chắc muốn ngắt kết nối Dropbox?')) {
+          if (window.dropboxService) await window.dropboxService.disconnect();
+          this.updateDropboxAccountUI();
+          showToast('Đã ngắt kết nối Dropbox', 'info');
+        }
+      });
+    }
+
+    // Dropbox Sync Now
+    const dbxSyncBtn = document.getElementById('btn-dropbox-sync-now');
+    if (dbxSyncBtn) {
+      dbxSyncBtn.addEventListener('click', async () => {
+        try {
+          if (!window.dropboxService) return;
+          showToast('Đang đồng bộ Dropbox...', 'info');
+          await window.dropboxService.sync();
+          showToast('Đồng bộ Dropbox thành công!', 'success');
+          if (window.app && window.app.refreshAll) await window.app.refreshAll();
+        } catch (e) {
+          showToast('Đồng bộ Dropbox thất bại: ' + e.message, 'error');
+        }
+      });
+    }
+
     // 1. Google Client ID Save
     const saveClientIdBtn = document.getElementById('btn-save-client-id');
     if (saveClientIdBtn) {

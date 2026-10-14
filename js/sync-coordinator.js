@@ -128,7 +128,21 @@ class SyncCoordinator {
       }
     }
 
-    // 2. Local Folder Adapter (nếu người dùng chọn thư mục máy tính)
+    // 2. Dropbox Adapter (Tự động đồng bộ vĩnh viễn trên iPhone)
+    const dropboxAdapter = this.adapters.get('dropbox') || window.dropboxService;
+    if (dropboxAdapter && (isAuto ? dropboxAdapter.isAutoSyncEnabled() : true)) {
+      if (dropboxAdapter.appKey && (dropboxAdapter.refreshToken || dropboxAdapter.accessToken)) {
+        performedSync = true;
+        try {
+          await dropboxAdapter.sync();
+        } catch (err) {
+          console.warn('Dropbox sync failed during syncAll:', err);
+          if (!isAuto) throw err;
+        }
+      }
+    }
+
+    // 3. Local Folder Adapter (nếu người dùng chọn thư mục máy tính)
     const backupService = this.adapters.get('local-folder') || window.BackupService;
     if (backupService && backupService.hasLocalDirectory && backupService.hasLocalDirectory()) {
       try {
@@ -348,9 +362,22 @@ class SyncCoordinator {
     try {
       const drive = window.googleDriveService;
       if (drive && drive.clientId && !drive.hasValidToken()) {
-        showToast('Đang kết nối lại Google...', 'info');
-        await drive.requestToken({ interactive: true });
+        let ok = false;
+        if (drive.workerUrl && drive.refreshToken) {
+          ok = await drive.refreshViaWorker();
+        }
+        if (!ok) {
+          showToast('Đang kết nối lại Google...', 'info');
+          await drive.requestToken({ interactive: true });
+        }
       }
+
+      const dropbox = window.dropboxService;
+      if (dropbox && dropbox.appKey && !dropbox.hasValidToken() && !dropbox.refreshToken) {
+        showToast('Đang mở đăng nhập Dropbox...', 'info');
+        await dropbox.requestAuth();
+      }
+
       await this.syncAll(false);
       showToast('Đồng bộ thành công!', 'success');
       if (window.app && window.app.refreshAll) await window.app.refreshAll();

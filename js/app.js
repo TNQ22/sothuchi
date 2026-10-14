@@ -165,6 +165,12 @@ class App {
     if (window.googleDriveService) {
       await window.googleDriveService.init().catch(e => console.warn('Drive init error:', e));
     }
+    if (window.dropboxService) {
+      await window.dropboxService.init().catch(e => console.warn('Dropbox init error:', e));
+      if (window.SyncCoordinator) {
+        window.SyncCoordinator.registerAdapter('dropbox', window.dropboxService);
+      }
+    }
     if (window.BackupService && window.BackupService.init) {
       await window.BackupService.init().catch(e => console.warn('BackupService init error:', e));
     }
@@ -178,6 +184,16 @@ class App {
 
     window.addEventListener('google-profile-updated', (e) => {
       this.updateBrandLogos(e.detail);
+    });
+
+    window.addEventListener('dropbox-profile-updated', (e) => {
+      if (e.detail) {
+        this.updateBrandLogos(e.detail);
+      } else if (window.googleDriveService?.userProfile) {
+        this.updateBrandLogos(window.googleDriveService.userProfile);
+      } else {
+        this.updateBrandLogos(null);
+      }
     });
 
     // 4. Setup Other UI Modules

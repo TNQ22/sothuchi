@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.3.3">
+  <link rel="stylesheet" href="./css/style.css?v=2.3.4">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -950,6 +950,85 @@
                 Đồng Bộ Ngay
               </button>
             </div>
+          </div>
+
+          <!-- Tùy chọn Nâng cao: Cloudflare Worker Bridge (Đồng bộ vĩnh viễn trên iPhone) -->
+          <div style="margin-top: 14px; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+            <button type="button" id="btn-toggle-google-advanced" class="btn-text" style="font-size: 0.8rem; color: var(--primary); display: flex; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 0;">
+              <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
+              <span>⚡ Cấu hình Nâng cao (Cloudflare Worker - Đồng bộ vĩnh viễn trên iPhone)</span>
+            </button>
+            <div id="google-advanced-box" style="display: none; margin-top: 10px; padding: 12px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-sm); font-size: 0.82rem;">
+              <p style="margin: 0 0 10px 0; color: var(--text-secondary); line-height: 1.5;">
+                Giúp iPhone lưu trữ <strong>Refresh Token vĩnh viễn</strong>. Mỗi khi mở app trên iPhone, hệ thống sẽ tự động đồng bộ ngầm mãi mãi mà không bao giờ bị hỏi lại!
+              </p>
+              <div class="form-group" style="margin-bottom: 8px;">
+                <label class="form-label" style="font-size: 0.78rem;">URL Cloudflare Worker (VD: https://sothuchi-auth.xxx.workers.dev):</label>
+                <input type="text" id="settings-google-worker-url" class="form-control" placeholder="https://your-worker.workers.dev">
+              </div>
+              <div class="form-group" style="margin-bottom: 10px;">
+                <label class="form-label" style="font-size: 0.78rem;">Google Client Secret (từ Google Cloud Console):</label>
+                <input type="password" id="settings-google-client-secret" class="form-control" placeholder="Mã bí mật Client Secret">
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" id="btn-save-google-advanced" class="btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">Lưu Cấu Hình</button>
+                <span id="google-worker-status" style="font-size: 0.78rem; display: flex; align-items: center; color: var(--text-secondary);"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1.5. Card Đồng bộ Dropbox (Chuẩn PKCE - Tự động vĩnh viễn 100% trên iPhone không cần Server) -->
+        <div class="card-panel" style="margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+            <h3 class="panel-title" style="margin-bottom: 0;">
+              <i data-lucide="box" style="color: #0061ff;"></i> Đồng Bộ Dropbox (Hỗ Trợ iPhone Vĩnh Viễn)
+            </h3>
+            <span class="badge" style="font-size: 0.72rem; padding: 3px 8px; background: rgba(0, 97, 255, 0.15); color: #0061ff; border-radius: 9999px; font-weight: 600;">Chuẩn PKCE Client-side</span>
+          </div>
+          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.6;">
+            Dropbox hỗ trợ cấp <strong>Refresh Token vĩnh viễn trực tiếp trên iPhone</strong> mà không cần tạo Server hay Cloudflare Worker. Chỉ cần đăng nhập 1 lần là tự động sao lưu mãi mãi!
+          </p>
+
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Dropbox App Key (Client ID):</span>
+              <button type="button" id="btn-toggle-dropbox-help" class="btn-text" style="font-size: 0.78rem; color: #0061ff; background: none; border: none; cursor: pointer;">Hướng dẫn tạo App Key</button>
+            </label>
+            <div style="display: flex; gap: 10px;">
+              <input type="text" id="settings-dropbox-app-key" class="form-control" placeholder="Nhập Dropbox App Key (ví dụ: m1k2j3h4...)">
+              <button id="btn-save-dropbox-key" class="btn-secondary">Lưu</button>
+            </div>
+            <div id="dropbox-help-box" style="display: none; margin-top: 8px; padding: 12px 14px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6;">
+              <strong style="color: var(--text-primary); display: block; margin-bottom: 6px;">📋 Hướng dẫn lấy Dropbox App Key (Miễn phí):</strong>
+              <strong>1.</strong> Truy cập <code>dropbox.com/developers/apps</code> &rarr; Bấm <strong>Create app</strong>.<br>
+              <strong>2.</strong> Chọn <strong>Scoped access</strong> &rarr; Chọn <strong>App folder</strong> &rarr; Đặt tên app (ví dụ: <code>SoThuChi-YourName</code>).<br>
+              <strong>3.</strong> Vào tab <strong>Permissions</strong> &rarr; Tích chọn 3 quyền: <code>files.content.write</code>, <code>files.content.read</code>, <code>account_info.read</code> &rarr; Bấm <strong>Submit</strong>.<br>
+              <strong>4.</strong> Vào tab <strong>Settings</strong> &rarr; Mục <strong>Redirect URIs</strong>: nhập URL trang web của bạn (VD: <code>https://tnq22.github.io/sothuchi/</code>).<br>
+              <strong>5.</strong> Sao chép <strong>App key</strong> dán vào ô bên trên rồi bấm <strong>Lưu</strong> và <strong>Kết Nối Dropbox</strong>.
+            </div>
+          </div>
+
+          <div id="dropbox-account-info" style="display: none; margin-bottom: 14px; padding: 10px 14px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <img id="dropbox-user-avatar" src="./assets/icons/icon.svg" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+              <div>
+                <strong id="dropbox-user-name" style="font-size: 0.88rem; color: var(--text-primary); display: block;">Dropbox User</strong>
+                <span id="dropbox-user-email" style="font-size: 0.78rem; color: var(--text-secondary);">user@gmail.com</span>
+              </div>
+            </div>
+            <button id="btn-dropbox-disconnect" class="btn-text" style="font-size: 0.8rem; color: var(--danger); background: none; border: none; cursor: pointer;">Ngắt kết nối</button>
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <button id="btn-dropbox-connect" class="btn-primary" style="background: #0061ff; border-color: #0061ff;">
+              <i data-lucide="box" style="width: 16px; height: 16px;"></i>
+              Kết Nối Dropbox
+            </button>
+            <button id="btn-dropbox-sync-now" class="btn-secondary">
+              <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+              Đồng Bộ Dropbox Ngay
+            </button>
           </div>
         </div>
 
@@ -4041,10 +4120,11 @@
   <!-- App Core Modules -->
   <script src="./js/crypto.js"></script>
   <script src="./js/db.js?v=2.2.8"></script>
-  <script src="./js/google-drive.js?v=2.3.3"></script>
+  <script src="./js/google-drive.js?v=2.3.4"></script>
+  <script src="./js/dropbox.js?v=2.3.4"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
-  <script src="./js/sync-coordinator.js?v=2.3.3"></script>
+  <script src="./js/sync-coordinator.js?v=2.3.4"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
@@ -4053,9 +4133,9 @@
   <script src="./js/ui-accounts.js?v=2.2.8"></script>
   <script src="./js/ui-budgets.js?v=2.2.8"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
-  <script src="./js/ui-settings.js?v=2.3.3"></script>
+  <script src="./js/ui-settings.js?v=2.3.4"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.3.3"></script>
+  <script src="./js/app.js?v=2.3.4"></script>
 </body>
 </html>

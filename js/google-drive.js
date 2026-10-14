@@ -20,6 +20,9 @@ class GoogleDriveSync {
     this.autoSync = true;
     this.tokenExpiresAt = 0;
     this.refreshTimer = null;
+    this.workerUrl = '';
+    this.clientSecret = '';
+    this.refreshToken = null;
     this.encryptionPassword = null;
     this.clientId = '';
     this.storageLocation = 'appDataFolder'; // 'appDataFolder' | 'customFolder'
@@ -91,6 +94,15 @@ class GoogleDriveSync {
         this.autoMirror = !!mirrorSetting.value;
       }
 
+      const workerSetting = await db.settings.get('googleWorkerUrl');
+      if (workerSetting && workerSetting.value) this.workerUrl = workerSetting.value.trim();
+
+      const secretSetting = await db.settings.get('googleClientSecret');
+      if (secretSetting && secretSetting.value) this.clientSecret = secretSetting.value.trim();
+
+      const refreshSetting = await db.settings.get('googleRefreshToken');
+      if (refreshSetting && refreshSetting.value) this.refreshToken = refreshSetting.value.trim();
+
       this.setupTokenRefreshTimer();
 
       // Khôi phục Token nếu còn hiệu lực (tránh bắt đăng nhập lại hoặc treo khi reload)
@@ -150,8 +162,44 @@ class GoogleDriveSync {
     return !!(this.accessToken && (!this.tokenExpiresAt || Date.now() < this.tokenExpiresAt));
   }
 
+  async refreshViaWorker() {
+    if (!this.workerUrl || !this.refreshToken || !this.clientId) return false;
+    try {
+      const res = await fetch(`${this.workerUrl.replace(/\/+$/, '')}/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          refresh_token: this.refreshToken,
+          client_id: this.clientId,
+          client_secret: this.clientSecret || ''
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.access_token) {
+          this.accessToken = data.access_token;
+          const expiresInSec = data.expires_in || 3600;
+          this.tokenExpiresAt = Date.now() + (expiresInSec * 1000) - 120000;
+          sessionStorage.setItem('sothuchi_google_access_token', this.accessToken);
+          sessionStorage.setItem('sothuchi_google_token_expires_at', String(this.tokenExpiresAt));
+          await db.settings.put({ key: 'googleAccessToken', value: this.accessToken });
+          await db.settings.put({ key: 'googleTokenExpiresAt', value: this.tokenExpiresAt });
+          console.log('[GoogleDrive] Đã gia hạn token ngầm thành công qua Cloudflare Worker!');
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('[GoogleDrive] Gia hạn qua Worker lỗi:', e);
+    }
+    return false;
+  }
+
   isAutoSyncEnabled() {
     if (this.autoSync && this.clientId && this.hasValidToken()) {
+      return true;
+    }
+    // Đã cấu hình Cloudflare Worker + Refresh Token -> Luôn tự động đồng bộ ngầm vĩnh viễn trên iPhone!
+    if (this.autoSync && this.clientId && this.workerUrl && this.refreshToken) {
       return true;
     }
     // Nếu có email và đã bật autoSync -> cho phép thử gia hạn ngầm khi có dữ liệu mới
@@ -191,6 +239,72 @@ class GoogleDriveSync {
 
     if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
       throw new Error('Thư viện Google Identity Services chưa tải xong hoặc máy đang ngoại tuyến.');
+    }
+
+    // Nếu đã cấu hình Cloudflare Worker: dùng Authorization Code flow để lấy Refresh Token vĩnh viễn
+    if (this.workerUrl && this.clientSecret && window.google?.accounts?.oauth2?.initCodeClient && (options.forceCode || options.interactive)) {
+      return new Promise((resolve, reject) => {
+        let settled = false;
+        const timer = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            reject(new Error('Hết thời gian chờ cấp quyền Google'));
+          }
+        }, 60000);
+
+        try {
+          const codeClient = google.accounts.oauth2.initCodeClient({
+            client_id: this.clientId,
+            scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+            ux_mode: 'popup',
+            callback: async (resp) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timer);
+              if (resp.error) {
+                return reject(new Error(resp.error_description || resp.error));
+              }
+              try {
+                const res = await fetch(`${this.workerUrl.replace(/\/+$/, '')}/token`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    code: resp.code,
+                    client_id: this.clientId,
+                    client_secret: this.clientSecret,
+                    redirect_uri: 'postmessage'
+                  })
+                });
+                const tokenData = await res.json();
+                if (tokenData.access_token) {
+                  this.accessToken = tokenData.access_token;
+                  if (tokenData.refresh_token) {
+                    this.refreshToken = tokenData.refresh_token;
+                    await db.settings.put({ key: 'googleRefreshToken', value: this.refreshToken });
+                  }
+                  const expiresInSec = tokenData.expires_in || 3600;
+                  this.tokenExpiresAt = Date.now() + (expiresInSec * 1000) - 120000;
+                  sessionStorage.setItem('sothuchi_google_access_token', this.accessToken);
+                  sessionStorage.setItem('sothuchi_google_token_expires_at', String(this.tokenExpiresAt));
+                  await db.settings.put({ key: 'googleAccessToken', value: this.accessToken });
+                  await db.settings.put({ key: 'googleTokenExpiresAt', value: this.tokenExpiresAt });
+                  await this.fetchUserProfile();
+                  this.setupTokenRefreshTimer();
+                  resolve(this.accessToken);
+                } else {
+                  reject(new Error(tokenData.error || 'Không nhận được token từ Worker'));
+                }
+              } catch (exErr) {
+                reject(exErr);
+              }
+            }
+          });
+          codeClient.requestCode();
+        } catch (cErr) {
+          clearTimeout(timer);
+          reject(cErr);
+        }
+      });
     }
 
     const promptValue = options.prompt !== undefined ? options.prompt : (options.forceSelect ? 'select_account' : '');
@@ -713,16 +827,23 @@ class GoogleDriveSync {
 
     try {
       if (!this.hasValidToken()) {
-        if (options.interactive) {
-          await this.requestToken({ prompt: 'select_account', interactive: true });
-        } else {
-          try {
-            await this.requestToken({ prompt: '', interactive: false });
-          } catch (tokErr) {
-            this.accessToken = null;
-            this.tokenExpiresAt = 0;
-            console.warn('[GoogleDrive] Không thể lấy token ngầm:', tokErr.message);
-            throw new Error('Phiên đăng nhập đã hết hạn. Bấm vào Avatar để kết nối lại.');
+        let refreshedViaWorker = false;
+        if (this.workerUrl && this.refreshToken) {
+          refreshedViaWorker = await this.refreshViaWorker();
+        }
+
+        if (!refreshedViaWorker && !this.hasValidToken()) {
+          if (options.interactive) {
+            await this.requestToken({ interactive: true });
+          } else {
+            try {
+              await this.requestToken({ prompt: '', interactive: false });
+            } catch (tokErr) {
+              this.accessToken = null;
+              this.tokenExpiresAt = 0;
+              console.warn('[GoogleDrive] Không thể lấy token ngầm:', tokErr.message);
+              throw new Error('Phiên đăng nhập đã hết hạn. Bấm vào Avatar để kết nối lại.');
+            }
           }
         }
       }
