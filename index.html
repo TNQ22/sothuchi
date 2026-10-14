@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.3.7">
+  <link rel="stylesheet" href="./css/style.css?v=2.3.8">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -4078,7 +4078,8 @@
   </div>
 
   <!-- Micro Sync Status Popover (gắn với Logo Avatar & Trạng thái đồng bộ) -->
-          <div id="sync-status-popover" class="sync-popover" style="display: none;">
+          <div id="sync-popover-backdrop" class="sync-popover-backdrop" style="display: none;" onclick="window.SyncCoordinator && window.SyncCoordinator.closePopover()"></div>
+  <div id="sync-status-popover" class="sync-popover" style="display: none;">
               <div class="sync-popover-header">
                 <div class="sync-popover-status">
                   <span class="sync-popover-dot" id="popover-status-dot"></span>
@@ -4125,11 +4126,11 @@
   <!-- App Core Modules -->
   <script src="./js/crypto.js"></script>
   <script src="./js/db.js?v=2.2.8"></script>
-  <script src="./js/google-drive.js?v=2.3.7"></script>
-  <script src="./js/dropbox.js?v=2.3.7"></script>
+  <script src="./js/google-drive.js?v=2.3.8"></script>
+  <script src="./js/dropbox.js?v=2.3.8"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
-  <script src="./js/sync-coordinator.js?v=2.3.7"></script>
+  <script src="./js/sync-coordinator.js?v=2.3.8"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
@@ -4138,9 +4139,9 @@
   <script src="./js/ui-accounts.js?v=2.2.8"></script>
   <script src="./js/ui-budgets.js?v=2.2.8"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
-  <script src="./js/ui-settings.js?v=2.3.7"></script>
+  <script src="./js/ui-settings.js?v=2.3.8"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.3.7"></script>
+  <script src="./js/app.js?v=2.3.8"></script>
 </body>
 </html>

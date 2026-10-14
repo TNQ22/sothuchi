@@ -66,8 +66,8 @@ class SyncCoordinator {
       this.setStatus('error', this.lastSyncTarget, this.lastError);
     });
 
-    // Lắng nghe click ngoài popover để tự đóng
-    document.addEventListener('click', (e) => {
+    // Lắng nghe chạm / click ngoài popover để tự đóng (hỗ trợ cả mobile iOS Safari và Desktop)
+    const handleOutsideDismiss = (e) => {
       const popover = document.getElementById('sync-status-popover');
       if (this.isPopoverOpen && popover) {
         const isClickOnAnyTrigger = e.target.closest('#header-brand-logo-btn') || 
@@ -77,7 +77,9 @@ class SyncCoordinator {
           this.closePopover();
         }
       }
-    });
+    };
+    document.addEventListener('click', handleOutsideDismiss);
+    document.addEventListener('touchstart', handleOutsideDismiss, { passive: true });
 
     // Cập nhật giao diện lần đầu
     this.updateUI();
@@ -276,8 +278,10 @@ class SyncCoordinator {
 
   openPopover(triggerBtn = null) {
     const popover = document.getElementById('sync-status-popover');
+    const backdrop = document.getElementById('sync-popover-backdrop');
     if (!popover) return;
     this.updatePopoverContent();
+    if (backdrop) backdrop.style.display = 'block';
     popover.style.display = 'block';
     this.isPopoverOpen = true;
 
@@ -307,6 +311,8 @@ class SyncCoordinator {
 
   closePopover() {
     const popover = document.getElementById('sync-status-popover');
+    const backdrop = document.getElementById('sync-popover-backdrop');
+    if (backdrop) backdrop.style.display = 'none';
     if (!popover) return;
     popover.style.display = 'none';
     this.isPopoverOpen = false;

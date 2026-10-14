@@ -9053,6 +9053,20 @@ html, body {
   animation: spinSync 0.9s linear infinite;
 }
 
+/* Micro Popover Backdrop (Invisible overlay to catch outside taps on mobile & desktop) */
+.sync-popover-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 100045;
+  background: transparent;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Micro Popover */
 .sync-popover {
   position: fixed;
