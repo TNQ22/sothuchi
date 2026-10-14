@@ -358,6 +358,14 @@ body:has(#view-account-provider.active) .app-header {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
 }
 
+.header-brand-logo.is-dropbox-avatar {
+  border-radius: 8px;
+  border: 1.5px solid #0061ff;
+  box-shadow: 0 2px 8px rgba(0, 97, 255, 0.25);
+  background: #0061ff;
+  padding: 2px;
+}
+
 .header-brand-logo-btn .sync-status-dot {
   position: absolute;
   bottom: -1px;

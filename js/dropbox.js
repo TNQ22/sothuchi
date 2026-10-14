@@ -285,7 +285,8 @@ class DropboxSync {
         this.userProfile = {
           name: data.name?.display_name || 'Dropbox User',
           email: data.email,
-          picture: data.profile_photo_url || null
+          picture: data.profile_photo_url || './assets/icons/dropbox.svg',
+          isDropbox: true
         };
         await db.settings.put({ key: 'dropboxUserProfile', value: this.userProfile });
         window.dispatchEvent(new CustomEvent('dropbox-profile-updated', { detail: this.userProfile }));
@@ -487,6 +488,8 @@ class DropboxSync {
 
     await db.settings.delete('dropboxAccessToken');
     await db.settings.delete('dropboxRefreshToken');
+    await db.settings.delete('dropboxUserProfile');
+    window.dispatchEvent(new CustomEvent('dropbox-profile-updated', { detail: null }));
     await db.settings.delete('dropboxTokenExpiresAt');
     await db.settings.delete('dropboxUserProfile');
     await db.settings.put({ key: 'dropboxAutoSync', value: false });

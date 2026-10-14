@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v2.4.4';
+const CACHE_NAME = 'sothuchi-pwa-v2.4.5';
 
 const PRECACHE_ASSETS = [
   './',
@@ -28,6 +28,7 @@ const PRECACHE_ASSETS = [
   './assets/icons/icon-512.png',
   './assets/icons/icon-maskable.png',
   './assets/icons/icon.svg',
+  './assets/icons/dropbox.svg',
   './assets/logos/acb.png',
   './assets/logos/bidv.png',
   './assets/logos/cake.png',

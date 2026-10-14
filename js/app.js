@@ -181,9 +181,23 @@ class App {
       await window.SyncCoordinator.init().catch(e => console.warn('SyncCoordinator init error:', e));
     }
 
-    // Cập nhật Avatar tài khoản Google hoặc App Logo lên Header và Trang Ghi Chép
-    const savedProfile = await db.settings.get('googleUserProfile');
-    this.updateBrandLogos(savedProfile ? savedProfile.value : null);
+    // Cập nhật Avatar tài khoản Google/Dropbox hoặc App Logo lên Header và Trang Ghi Chép
+    const savedGoogleProfile = await db.settings.get('googleUserProfile');
+    const savedDbxProfile = await db.settings.get('dropboxUserProfile');
+    const dbxHasToken = window.dropboxService && window.dropboxService.hasValidToken && window.dropboxService.hasValidToken();
+    const gDriveHasToken = window.googleDriveService && window.googleDriveService.hasValidToken && window.googleDriveService.hasValidToken();
+
+    if (dbxHasToken && savedDbxProfile?.value) {
+      this.updateBrandLogos(savedDbxProfile.value);
+    } else if (gDriveHasToken && savedGoogleProfile?.value) {
+      this.updateBrandLogos(savedGoogleProfile.value);
+    } else if (savedGoogleProfile?.value) {
+      this.updateBrandLogos(savedGoogleProfile.value);
+    } else if (savedDbxProfile?.value) {
+      this.updateBrandLogos(savedDbxProfile.value);
+    } else {
+      this.updateBrandLogos(null);
+    }
 
     window.addEventListener('google-profile-updated', (e) => {
       this.updateBrandLogos(e.detail);
@@ -519,18 +533,27 @@ class App {
       document.getElementById('tx-brand-logo')
     ];
 
-    const hasAvatar = profile && profile.picture;
-    const avatarUrl = hasAvatar ? profile.picture : './assets/icons/icon.svg';
+    const isDropbox = profile && (profile.isDropbox || (profile.picture && profile.picture.includes('dropbox')) || (window.dropboxService && window.dropboxService.userProfile === profile));
+    const hasAvatar = profile && (profile.picture || isDropbox);
+    let avatarUrl = './assets/icons/icon.svg';
+
+    if (isDropbox) {
+      avatarUrl = profile.picture || './assets/icons/dropbox.svg';
+    } else if (hasAvatar) {
+      avatarUrl = profile.picture;
+    }
 
     brandLogos.forEach(img => {
       if (!img) return;
       img.src = avatarUrl;
-      if (hasAvatar) {
-        img.classList.remove('is-app-logo');
+      img.classList.remove('is-app-logo', 'is-google-avatar', 'is-dropbox-avatar');
+      if (isDropbox) {
+        img.classList.add('is-dropbox-avatar');
+        img.alt = profile.name || 'Dropbox User';
+      } else if (hasAvatar) {
         img.classList.add('is-google-avatar');
         img.alt = profile.name || 'Google Avatar';
       } else {
-        img.classList.remove('is-google-avatar');
         img.classList.add('is-app-logo');
         img.alt = 'Logo Sổ Thu Chi';
       }
