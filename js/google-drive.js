@@ -130,7 +130,7 @@ class GoogleDriveSync {
   }
 
   // Yêu cầu Access Token từ Google Identity Services (GIS)
-  async requestToken() {
+  async requestToken(options = {}) {
     if (!this.clientId) {
       throw new Error('Vui lòng nhập Google Client ID trong mục Cài đặt trước khi kết nối.');
     }
@@ -139,17 +139,35 @@ class GoogleDriveSync {
       throw new Error('Thư viện Google Identity Services chưa tải xong hoặc máy đang ngoại tuyến.');
     }
 
+    const promptValue = options.prompt !== undefined ? options.prompt : (options.forceSelect ? 'select_account' : '');
+
     return new Promise((resolve, reject) => {
       try {
+        const oldToken = this.accessToken;
+
         this.tokenClient = google.accounts.oauth2.initTokenClient({
           client_id: this.clientId,
           scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+          prompt: promptValue,
           callback: async (resp) => {
             if (resp.error) {
-              reject(new Error(resp.error_description || resp.error));
+              if (resp.error === 'popup_closed_by_user') {
+                reject(new Error('Đã đóng cửa sổ đăng nhập'));
+              } else if (resp.error === 'access_denied') {
+                reject(new Error('Quyền truy cập bị từ chối'));
+              } else {
+                reject(new Error(resp.error_description || resp.error));
+              }
               return;
             }
             this.accessToken = resp.access_token;
+
+            // Nếu người dùng chọn đổi tài khoản, thu hồi token cũ ở chế độ nền
+            if (options.forceSelect && oldToken && oldToken !== this.accessToken && window.google?.accounts?.oauth2?.revoke) {
+              try {
+                window.google.accounts.oauth2.revoke(oldToken, () => {});
+              } catch (e) {}
+            }
 
             // Tải thông tin tài khoản Google đăng nhập
             try {
@@ -158,15 +176,55 @@ class GoogleDriveSync {
               console.warn('Lỗi khi tải profile Google:', pErr);
             }
 
+            // Nếu đổi tài khoản, reset file ID để định vị lại file đúng trên Drive của tài khoản mới
+            if (options.forceSelect) {
+              this.driveFileId = null;
+              this.customFolderId = null;
+              await db.settings.delete('googleDriveFileId');
+              await db.settings.delete('googleDriveCustomFolderId');
+            }
+
             resolve(this.accessToken);
           }
         });
 
-        this.tokenClient.requestAccessToken({ prompt: '' });
+        // Gọi đồng bộ ngay trong user gesture turn để không bị Safari/iOS chặn popup
+        this.tokenClient.requestAccessToken({ prompt: promptValue });
       } catch (err) {
         reject(err);
       }
     });
+  }
+
+  // Đổi sang tài khoản Google khác (bắt buộc hiển thị Account Chooser)
+  async switchAccount() {
+    if (window.google?.accounts?.id?.disableAutoSelect) {
+      try {
+        window.google.accounts.id.disableAutoSelect();
+      } catch (e) {}
+    }
+    return await this.requestToken({ prompt: 'select_account', forceSelect: true });
+  }
+
+  // Đăng xuất và ngắt kết nối Google Drive
+  async disconnect() {
+    if (this.accessToken && window.google?.accounts?.oauth2?.revoke) {
+      try {
+        await new Promise((res) => {
+          window.google.accounts.oauth2.revoke(this.accessToken, () => res());
+        });
+      } catch (e) {
+        console.warn('Revoke token error:', e);
+      }
+    }
+    this.accessToken = null;
+    this.userProfile = null;
+    this.driveFileId = null;
+    this.customFolderId = null;
+    await db.settings.delete('googleUserProfile');
+    await db.settings.delete('googleDriveFileId');
+    await db.settings.delete('googleDriveCustomFolderId');
+    window.dispatchEvent(new CustomEvent('google-profile-updated', { detail: null }));
   }
 
   // Lấy thông tin tài khoản người dùng đăng nhập

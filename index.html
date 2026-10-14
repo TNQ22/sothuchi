@@ -814,10 +814,15 @@
                 <div id="google-profile-email" class="google-user-email">email@gmail.com</div>
               </div>
             </div>
-            <button type="button" id="btn-google-reauth" class="btn-secondary btn-sm" title="Kết nối lại / Đổi tài khoản">
-              <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
-              <span>Đổi tài khoản</span>
-            </button>
+            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+              <button type="button" id="btn-google-reauth" class="btn-secondary btn-sm" title="Kết nối lại / Đổi sang tài khoản khác">
+                <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                <span>Đổi tài khoản</span>
+              </button>
+              <button type="button" id="btn-google-logout" class="btn-secondary btn-sm" style="color: #ef4444;" title="Đăng xuất khỏi Google Drive">
+                <i data-lucide="log-out" style="width: 14px; height: 14px;"></i>
+              </button>
+            </div>
           </div>
 
           <!-- Google Client ID -->
@@ -4037,7 +4042,7 @@
   <!-- App Core Modules -->
   <script src="./js/crypto.js"></script>
   <script src="./js/db.js?v=2.2.8"></script>
-  <script src="./js/google-drive.js?v=2.2.8"></script>
+  <script src="./js/google-drive.js?v=2.2.9"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
   <script src="./js/sync-coordinator.js?v=2.2.6"></script>
@@ -4049,9 +4054,9 @@
   <script src="./js/ui-accounts.js?v=2.2.8"></script>
   <script src="./js/ui-budgets.js?v=2.2.8"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
-  <script src="./js/ui-settings.js?v=2.2.6"></script>
+  <script src="./js/ui-settings.js?v=2.2.9"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.2.8"></script>
+  <script src="./js/app.js?v=2.2.9"></script>
 </body>
 </html>

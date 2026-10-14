@@ -199,16 +199,23 @@ const UISettings = {
       });
     }
 
-    // 2. Google Login / Re-auth Buttons
+    // 2. Google Login / Re-auth / Logout Buttons
     const handleGoogleLogin = async () => {
       try {
         if (!window.googleDriveService) return;
         showToast('Đang kết nối Google Identity Services...', 'info');
-        await window.googleDriveService.requestToken();
+        await window.googleDriveService.requestToken({ prompt: 'select_account' });
         showToast('Đăng nhập Google thành công!', 'success');
-        this.loadSettings();
+        await this.loadSettings();
+        if (window.SyncCoordinator) {
+          window.SyncCoordinator.setStatus('synced', window.googleDriveService.getTargetLabel());
+        }
       } catch (err) {
-        showToast('Đăng nhập thất bại: ' + err.message, 'error');
+        if (err.message && (err.message.includes('Đã đóng cửa sổ') || err.message.includes('popup_closed_by_user'))) {
+          showToast('Đã hủy đăng nhập', 'info');
+        } else {
+          showToast('Đăng nhập thất bại: ' + err.message, 'error');
+        }
       }
     };
 
@@ -216,7 +223,44 @@ const UISettings = {
     if (loginBtn) loginBtn.addEventListener('click', handleGoogleLogin);
 
     const reauthBtn = document.getElementById('btn-google-reauth');
-    if (reauthBtn) reauthBtn.addEventListener('click', handleGoogleLogin);
+    if (reauthBtn) {
+      reauthBtn.addEventListener('click', async () => {
+        try {
+          if (!window.googleDriveService) return;
+          showToast('Đang mở màn hình chọn tài khoản Google...', 'info');
+          await window.googleDriveService.switchAccount();
+          showToast('Đã đổi tài khoản Google thành công!', 'success');
+          await this.loadSettings();
+          if (window.SyncCoordinator) {
+            window.SyncCoordinator.setStatus('synced', window.googleDriveService.getTargetLabel());
+          }
+        } catch (err) {
+          if (err.message && (err.message.includes('Đã đóng cửa sổ') || err.message.includes('popup_closed_by_user'))) {
+            showToast('Đã hủy chọn tài khoản', 'info');
+          } else {
+            showToast('Đổi tài khoản thất bại: ' + err.message, 'error');
+          }
+          await this.loadSettings();
+        }
+      });
+    }
+
+    const logoutBtn = document.getElementById('btn-google-logout');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        try {
+          if (!window.googleDriveService) return;
+          await window.googleDriveService.disconnect();
+          showToast('Đã ngắt kết nối Google Drive', 'info');
+          await this.loadSettings();
+          if (window.SyncCoordinator) {
+            window.SyncCoordinator.setStatus('offline', 'Chưa kết nối');
+          }
+        } catch (err) {
+          showToast('Lỗi khi đăng xuất: ' + err.message, 'error');
+        }
+      });
+    }
 
     // 3. Storage Location Selector (Radio)
     const locRadios = document.querySelectorAll('input[name="drive-storage-location"]');
