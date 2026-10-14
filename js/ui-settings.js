@@ -204,7 +204,9 @@ const UISettings = {
       try {
         if (!window.googleDriveService) return;
         showToast('Đang kết nối Google Identity Services...', 'info');
-        await window.googleDriveService.requestToken({ prompt: 'select_account' });
+        const drive = window.googleDriveService;
+        const promptMode = (drive.userProfile && drive.userProfile.email) ? '' : 'select_account';
+        await drive.requestToken({ prompt: promptMode, interactive: true });
 
         // Tự động kích hoạt tự động đồng bộ khi đăng nhập
         window.googleDriveService.autoSync = true;

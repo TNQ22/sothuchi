@@ -348,8 +348,8 @@ class SyncCoordinator {
     try {
       const drive = window.googleDriveService;
       if (drive && drive.clientId && !drive.hasValidToken()) {
-        showToast('Vui lòng chọn tài khoản Google...', 'info');
-        await drive.requestToken({ prompt: 'select_account', interactive: true });
+        showToast('Đang kết nối lại Google...', 'info');
+        await drive.requestToken({ interactive: true });
       }
       await this.syncAll(false);
       showToast('Đồng bộ thành công!', 'success');

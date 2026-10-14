@@ -19,6 +19,7 @@ class GoogleDriveSync {
     this.lastSyncTime = null;
     this.autoSync = true;
     this.tokenExpiresAt = 0;
+    this.refreshTimer = null;
     this.encryptionPassword = null;
     this.clientId = '';
     this.storageLocation = 'appDataFolder'; // 'appDataFolder' | 'customFolder'
@@ -90,6 +91,8 @@ class GoogleDriveSync {
         this.autoMirror = !!mirrorSetting.value;
       }
 
+      this.setupTokenRefreshTimer();
+
       // Khôi phục Token nếu còn hiệu lực (tránh bắt đăng nhập lại hoặc treo khi reload)
       try {
         let savedToken = sessionStorage.getItem('sothuchi_google_access_token');
@@ -148,7 +151,29 @@ class GoogleDriveSync {
   }
 
   isAutoSyncEnabled() {
-    return !!(this.autoSync && this.clientId && this.hasValidToken());
+    if (this.autoSync && this.clientId && this.hasValidToken()) {
+      return true;
+    }
+    // Nếu có email và đã bật autoSync -> cho phép thử gia hạn ngầm khi có dữ liệu mới
+    if (this.autoSync && this.clientId && this.userProfile && this.userProfile.email) {
+      return true;
+    }
+    return false;
+  }
+
+  setupTokenRefreshTimer() {
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
+    // Mỗi 35 phút (trước khi token 60 phút hết hạn), tự động làm mới phiên ngầm
+    this.refreshTimer = setInterval(async () => {
+      if (this.clientId && this.userProfile?.email && this.autoSync) {
+        try {
+          await this.requestToken({ prompt: '', interactive: false });
+          console.log('[GoogleDrive] Đã tự động gia hạn phiên đăng nhập ngầm thành công!');
+        } catch (e) {
+          console.log('[GoogleDrive] Chưa thể gia hạn ngầm (sẽ gia hạn khi tương tác):', e.message);
+        }
+      }
+    }, 35 * 60 * 1000);
   }
 
   getTargetLabel() {
@@ -189,7 +214,9 @@ class GoogleDriveSync {
       try {
         const oldToken = this.accessToken;
 
-        this.tokenClient = google.accounts.oauth2.initTokenClient({
+        const userEmail = (options.hint !== undefined) ? options.hint : (this.userProfile?.email || '');
+
+        const tokenClientConfig = {
           client_id: this.clientId,
           scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
           prompt: promptValue,
@@ -242,12 +269,23 @@ class GoogleDriveSync {
               await db.settings.delete('googleDriveCustomFolderId');
             }
 
+            this.setupTokenRefreshTimer();
             resolve(this.accessToken);
           }
-        });
+        };
 
-        // Gọi yêu cầu Access Token
-        this.tokenClient.requestAccessToken({ prompt: promptValue });
+        if (userEmail && !options.forceSelect) {
+          tokenClientConfig.hint = userEmail;
+        }
+
+        this.tokenClient = google.accounts.oauth2.initTokenClient(tokenClientConfig);
+
+        // Gọi yêu cầu Access Token kèm hint để Google tự động chọn tài khoản
+        const reqConfig = { prompt: promptValue };
+        if (userEmail && !options.forceSelect) {
+          reqConfig.hint = userEmail;
+        }
+        this.tokenClient.requestAccessToken(reqConfig);
       } catch (err) {
         if (!settled) {
           settled = true;
