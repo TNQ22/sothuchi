@@ -193,49 +193,66 @@ class GoogleDriveSync {
     if (this.storageLocation !== 'customFolder') return null;
     if (this.customFolderId) return this.customFolderId;
 
-    // Kiểm tra cache trong DB
-    const savedFolder = await db.settings.get('googleDriveCustomFolderId');
-    if (savedFolder && savedFolder.value) {
-      this.customFolderId = savedFolder.value;
-      return this.customFolderId;
+    if (this._ensuringFolderPromise) {
+      return await this._ensuringFolderPromise;
     }
 
-    const folderName = this.customFolderName || 'Sổ Thu Chi';
-    const query = encodeURIComponent(`mimeType = 'application/vnd.google-apps.folder' and name = '${folderName}' and trashed = false`);
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
-      headers: { Authorization: `Bearer ${this.accessToken}` }
-    });
+    this._ensuringFolderPromise = (async () => {
+      try {
+        // 1. Kiểm tra cache trong DB
+        const savedFolder = await db.settings.get('googleDriveCustomFolderId');
+        if (savedFolder && savedFolder.value) {
+          this.customFolderId = savedFolder.value;
+          return this.customFolderId;
+        }
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data.files && data.files.length > 0) {
-        this.customFolderId = data.files[0].id;
-        await db.settings.put({ key: 'googleDriveCustomFolderId', value: this.customFolderId });
-        return this.customFolderId;
+        const targetName = (this.customFolderName || 'Sổ Thu Chi').normalize('NFC').trim().toLowerCase();
+
+        // 2. Quét tất cả thư mục app sở hữu để so khớp Unicode chuẩn NFC/NFD
+        const query = encodeURIComponent("mimeType = 'application/vnd.google-apps.folder' and trashed = false");
+        const res = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=drive&q=${query}&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc`, {
+          headers: { Authorization: `Bearer ${this.accessToken}` }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.files && data.files.length > 0) {
+            const matched = data.files.find(f => (f.name || '').normalize('NFC').trim().toLowerCase() === targetName);
+            if (matched) {
+              this.customFolderId = matched.id;
+              await db.settings.put({ key: 'googleDriveCustomFolderId', value: this.customFolderId });
+              return this.customFolderId;
+            }
+          }
+        }
+
+        // 3. Nếu chưa có thư mục nào, mới tạo mới
+        const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: this.customFolderName || 'Sổ Thu Chi',
+            mimeType: 'application/vnd.google-apps.folder'
+          })
+        });
+
+        if (createRes.ok) {
+          const created = await createRes.json();
+          this.customFolderId = created.id;
+          await db.settings.put({ key: 'googleDriveCustomFolderId', value: this.customFolderId });
+          return this.customFolderId;
+        }
+
+        return null;
+      } finally {
+        this._ensuringFolderPromise = null;
       }
-    }
+    })();
 
-    // Nếu chưa có, tạo thư mục mới
-    const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: folderName,
-        mimeType: 'application/vnd.google-apps.folder'
-      })
-    });
-
-    if (createRes.ok) {
-      const created = await createRes.json();
-      this.customFolderId = created.id;
-      await db.settings.put({ key: 'googleDriveCustomFolderId', value: this.customFolderId });
-      return this.customFolderId;
-    }
-
-    return null;
+    return await this._ensuringFolderPromise;
   }
 
   // Tìm file dữ liệu vault trên Google Drive (hỗ trợ AppData, Custom Folder và cả File được chia sẻ)
@@ -257,7 +274,7 @@ class GoogleDriveSync {
           this.ownerEmail = sharedFile.owners?.[0]?.emailAddress || '';
           await db.settings.put({ key: 'googleDriveFileId', value: this.driveFileId });
           await db.settings.put({ key: 'vaultRole', value: this.vaultRole });
-          console.log(`[GoogleDrive] Đã tìm thấy Sổ được chia sẻ từ ${this.ownerEmail} (Quyền: ${this.vaultRole})`);
+          console.log(`[GoogleDrive] Đã tìm thấy Sổ được chia sẻ từ ${this.ownerEmail} (Quyển: ${this.vaultRole})`);
           return this.driveFileId;
         }
       }
@@ -265,43 +282,68 @@ class GoogleDriveSync {
       console.warn('Kiểm tra file được chia sẻ warning:', sErr);
     }
 
-    // 2. Nếu không có file được chia sẻ, tìm file của chính mình
-    let url;
+    // 2. Tìm file của chính mình
     if (this.storageLocation === 'appDataFolder') {
       const query = encodeURIComponent(`name = '${this.syncFileName}' and trashed = false`);
-      url = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${query}&fields=files(id,name,modifiedTime)`;
+      const url = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${query}&fields=files(id,name,modifiedTime)`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          this.accessToken = null;
+          throw new Error('Phiên đăng nhập Google đã hết hạn. Vui lòng bấm Đăng nhập lại.');
+        }
+        throw new Error('Không thể tìm tệp trên Google Drive.');
+      }
+
+      const data = await res.json();
+      if (data.files && data.files.length > 0) {
+        this.driveFileId = data.files[0].id;
+        this.vaultRole = 'owner';
+        await db.settings.put({ key: 'googleDriveFileId', value: this.driveFileId });
+        await db.settings.put({ key: 'vaultRole', value: 'owner' });
+        return this.driveFileId;
+      }
+      return null;
     } else {
-      const folderId = await this.ensureCustomFolder();
-      let query;
-      if (folderId) {
-        query = encodeURIComponent(`'${folderId}' in parents and name = '${this.syncFileName}' and trashed = false`);
-      } else {
-        query = encodeURIComponent(`name = '${this.syncFileName}' and trashed = false`);
+      // VÙNG CUSTOM FOLDER:
+      // Tìm trực tiếp file sothuchi_vault.json trên Drive trước
+      // Tự động nhận diện được chính xác Folder chứa file mà không cần tạo mới
+      const query = encodeURIComponent(`name = '${this.syncFileName}' and trashed = false`);
+      const url = `https://www.googleapis.com/drive/v3/files?spaces=drive&q=${query}&fields=files(id,name,modifiedTime,parents)&orderBy=modifiedTime desc`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          this.accessToken = null;
+          throw new Error('Phiên đăng nhập Google đã hết hạn. Vui lòng bấm Đăng nhập lại.');
+        }
+        throw new Error('Không thể tìm tệp trên Google Drive.');
       }
-      url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,modifiedTime)`;
-    }
 
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${this.accessToken}` }
-    });
+      const data = await res.json();
+      if (data.files && data.files.length > 0) {
+        const foundFile = data.files[0];
+        this.driveFileId = foundFile.id;
+        this.vaultRole = 'owner';
+        await db.settings.put({ key: 'googleDriveFileId', value: this.driveFileId });
+        await db.settings.put({ key: 'vaultRole', value: 'owner' });
 
-    if (!res.ok) {
-      if (res.status === 401) {
-        this.accessToken = null;
-        throw new Error('Phiên đăng nhập Google đã hết hạn. Vui lòng bấm Đăng nhập lại.');
+        if (foundFile.parents && foundFile.parents.length > 0) {
+          this.customFolderId = foundFile.parents[0];
+          await db.settings.put({ key: 'googleDriveCustomFolderId', value: this.customFolderId });
+        }
+        return this.driveFileId;
       }
-      throw new Error('Không thể tìm tệp trên Google Drive.');
-    }
 
-    const data = await res.json();
-    if (data.files && data.files.length > 0) {
-      this.driveFileId = data.files[0].id;
-      this.vaultRole = 'owner';
-      await db.settings.put({ key: 'googleDriveFileId', value: this.driveFileId });
-      await db.settings.put({ key: 'vaultRole', value: 'owner' });
-      return this.driveFileId;
+      // Nếu chưa có file nào trên Drive, lúc này mới cần đảm bảo có sẵn Folder để lưu
+      await this.ensureCustomFolder();
+      return null;
     }
-    return null;
   }
 
   // Tải nội dung file từ Google Drive và giải mã nếu có mật khẩu
