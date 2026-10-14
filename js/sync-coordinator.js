@@ -76,11 +76,24 @@ class SyncCoordinator {
         }
         this.closePopover();
       };
-      backdrop.addEventListener('click', handleBackdropDismiss);
+      backdrop.addEventListener('pointerdown', handleBackdropDismiss);
       backdrop.addEventListener('touchstart', handleBackdropDismiss, { passive: false });
+      backdrop.addEventListener('click', handleBackdropDismiss);
     }
 
-    // Đóng popover khi click ngoài (dành cho desktop hoặc khi backdrop chưa render)
+    // Đóng popover khi click ngoài (dành cho desktop hoặc dự phòng)
+    document.addEventListener('pointerdown', (e) => {
+      const popover = document.getElementById('sync-status-popover');
+      if (this.isPopoverOpen && popover) {
+        const isClickOnAnyTrigger = e.target.closest('#header-brand-logo-btn') || 
+                                    e.target.closest('#tx-brand-logo-btn') || 
+                                    e.target.closest('#header-sync-btn');
+        if (!popover.contains(e.target) && !isClickOnAnyTrigger) {
+          this.closePopover();
+        }
+      }
+    }, { passive: true });
+
     document.addEventListener('click', (e) => {
       const popover = document.getElementById('sync-status-popover');
       if (this.isPopoverOpen && popover) {
