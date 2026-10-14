@@ -67,6 +67,11 @@ class GoogleDriveSync {
         this.customFolderName = folderNameSetting.value;
       }
 
+      const customFolderIdSetting = await db.settings.get('googleDriveCustomFolderId');
+      if (customFolderIdSetting && customFolderIdSetting.value) {
+        this.customFolderId = customFolderIdSetting.value;
+      }
+
       const userProfileSetting = await db.settings.get('googleUserProfile');
       if (userProfileSetting && userProfileSetting.value) {
         this.userProfile = userProfileSetting.value;
@@ -188,6 +193,13 @@ class GoogleDriveSync {
     if (this.storageLocation !== 'customFolder') return null;
     if (this.customFolderId) return this.customFolderId;
 
+    // Kiểm tra cache trong DB
+    const savedFolder = await db.settings.get('googleDriveCustomFolderId');
+    if (savedFolder && savedFolder.value) {
+      this.customFolderId = savedFolder.value;
+      return this.customFolderId;
+    }
+
     const folderName = this.customFolderName || 'Sổ Thu Chi';
     const query = encodeURIComponent(`mimeType = 'application/vnd.google-apps.folder' and name = '${folderName}' and trashed = false`);
     const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
@@ -198,6 +210,7 @@ class GoogleDriveSync {
       const data = await res.json();
       if (data.files && data.files.length > 0) {
         this.customFolderId = data.files[0].id;
+        await db.settings.put({ key: 'googleDriveCustomFolderId', value: this.customFolderId });
         return this.customFolderId;
       }
     }
@@ -218,6 +231,7 @@ class GoogleDriveSync {
     if (createRes.ok) {
       const created = await createRes.json();
       this.customFolderId = created.id;
+      await db.settings.put({ key: 'googleDriveCustomFolderId', value: this.customFolderId });
       return this.customFolderId;
     }
 
