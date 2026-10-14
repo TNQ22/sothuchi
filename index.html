@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.4.2">
+  <link rel="stylesheet" href="./css/style.css?v=2.4.3">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -2954,6 +2954,17 @@
           <span id="action-sheet-budget-badge" class="action-sheet-budget-badge active">Bật</span>
         </button>
 
+        <button type="button" class="action-sheet-item" onclick="UIAccounts.toggleAccountSharingAction()">
+          <div class="action-sheet-item-icon" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
+            <i data-lucide="share-2" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Đồng bộ / Chia sẻ</span>
+            <span class="action-sheet-item-desc" id="action-sheet-share-desc">Đang đồng bộ với đám mây & thành viên</span>
+          </div>
+          <span id="action-sheet-share-badge" class="action-sheet-share-badge active">Chia sẻ</span>
+        </button>
+
 <button type="button" class="action-sheet-item" id="action-sheet-archive-btn" onclick="UIAccounts.handleActionSheetSelect('toggle-archive')">
           <div class="action-sheet-item-icon" style="background: rgba(148, 163, 184, 0.12); color: var(--text-muted);">
             <i data-lucide="power" id="action-sheet-archive-icon" style="width: 18px; height: 18px;"></i>
@@ -4124,25 +4135,25 @@
   <script src="./vendor/lucide.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=2.4.2"></script>
+  <script src="./js/config.js?v=2.4.3"></script>
   <script src="./js/crypto.js"></script>
   <script src="./js/db.js?v=2.2.8"></script>
-  <script src="./js/google-drive.js?v=2.4.2"></script>
-  <script src="./js/dropbox.js?v=2.4.2"></script>
+  <script src="./js/google-drive.js?v=2.4.3"></script>
+  <script src="./js/dropbox.js?v=2.4.3"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
-  <script src="./js/sync-coordinator.js?v=2.4.2"></script>
+  <script src="./js/sync-coordinator.js?v=2.4.3"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
   <script src="./js/ui-transactions.js?v=2.2.4"></script>
   <script src="./js/ui-debts.js?v=2.0.9"></script>
-  <script src="./js/ui-accounts.js?v=2.2.8"></script>
+  <script src="./js/ui-accounts.js?v=2.4.3"></script>
   <script src="./js/ui-budgets.js?v=2.2.8"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
-  <script src="./js/ui-settings.js?v=2.4.2"></script>
+  <script src="./js/ui-settings.js?v=2.4.3"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.4.2"></script>
+  <script src="./js/app.js?v=2.4.3"></script>
 </body>
 </html>
