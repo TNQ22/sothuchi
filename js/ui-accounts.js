@@ -450,8 +450,8 @@ const UIAccounts = {
       budgetDesc.textContent = hasBudget ? 'Đang tính chi tiêu vào ngân sách tháng' : 'Không tính chi tiêu vào ngân sách tháng';
     }
 
-    // Update Sharing setting display (Mặc định: Được chia sẻ, trừ khi đặt isShared: false/0)
-    const isShared = acc.isShared === undefined ? true : (acc.isShared === 1 || acc.isShared === true);
+    // Update Sharing setting display (Mặc định: TẮT chia sẻ / Riêng tư, chỉ bật khi isShared === 1 || isShared === true)
+    const isShared = (acc.isShared === 1 || acc.isShared === true);
     const shareBadge = document.getElementById('action-sheet-share-badge');
     const shareDesc = document.getElementById('action-sheet-share-desc');
     if (shareBadge) {
@@ -459,7 +459,7 @@ const UIAccounts = {
       shareBadge.className = 'action-sheet-share-badge ' + (isShared ? 'active' : 'inactive');
     }
     if (shareDesc) {
-      shareDesc.textContent = isShared ? 'Đang đồng bộ với đám mây & thành viên' : 'Chỉ lưu nội bộ máy này, không chia sẻ';
+      shareDesc.textContent = isShared ? 'Đang chia sẻ vào tệp dùng chung với thành viên' : 'Chỉ lưu trong bản sao lưu riêng tư của bạn';
     }
 
     // Toggle archive button text & icon
@@ -496,12 +496,12 @@ const UIAccounts = {
     if (!accId) return;
     const acc = await db.accounts.get(Number(accId));
     if (!acc) return;
-    const currentShared = acc.isShared === undefined ? true : (acc.isShared === 1 || acc.isShared === true);
+    const currentShared = (acc.isShared === 1 || acc.isShared === true);
     const nextShared = currentShared ? 0 : 1;
     await db.accounts.update(Number(accId), { isShared: nextShared, updatedAt: Date.now() });
     this.closeActionSheet();
     await window.app.refreshAll();
-    showToast((nextShared ? 'Đã bật chia sẻ' : 'Đã chuyển sang riêng tư (chỉ lưu máy này)') + ' cho tài khoản "' + acc.name + '"', 'success');
+    showToast((nextShared ? 'Đã bật chia sẻ' : 'Đã tắt chia sẻ (chỉ lưu trong bản sao lưu riêng tư)') + ' cho tài khoản "' + acc.name + '"', 'success');
     if (window.SyncCoordinator && window.SyncCoordinator.syncAll) {
       window.SyncCoordinator.syncAll(false).catch(err => console.warn('Auto sync after toggle share error:', err));
     }
@@ -1437,6 +1437,7 @@ const UIAccounts = {
         order: newOrder,
         isDeleted: 0,
         isArchived: 0,
+        isShared: 0,
         updatedAt: now
       });
       showToast('Đã tạo tài khoản mới', 'success');
@@ -4799,7 +4800,7 @@ const UIAccounts = {
                   ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                   ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
                   ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
-                  ${(a.isShared === 0 || a.isShared === false) ? '<span class="account-share-badge" style="background: rgba(244, 63, 94, 0.1); color: #f43f5e; border-color: rgba(244, 63, 94, 0.25);" title="Chỉ lưu nội bộ máy này, không chia sẻ"><i data-lucide="lock" style="width:10px;height:10px;"></i> Riêng tư</span>' : '<span class="account-share-badge" title="Đang đồng bộ & chia sẻ"><i data-lucide="share-2" style="width:10px;height:10px;"></i> Chia sẻ</span>'}
+                  ${(a.isShared === 1 || a.isShared === true) ? '<span class="account-share-badge" title="Đang chia sẻ với thành viên"><i data-lucide="share-2" style="width:12px;height:12px;"></i></span>' : ''}
                 </div>
               </div>
               <div class="account-balance-wrapper">
@@ -4857,7 +4858,7 @@ const UIAccounts = {
                     ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
                     <span class="account-archived-badge" title="Đã ngừng sử dụng">Ngừng sử dụng</span>
                     ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
-                  ${(a.isShared === 0 || a.isShared === false) ? '<span class="account-share-badge" style="background: rgba(244, 63, 94, 0.1); color: #f43f5e; border-color: rgba(244, 63, 94, 0.25);" title="Chỉ lưu nội bộ máy này, không chia sẻ"><i data-lucide="lock" style="width:10px;height:10px;"></i> Riêng tư</span>' : '<span class="account-share-badge" title="Đang đồng bộ & chia sẻ"><i data-lucide="share-2" style="width:10px;height:10px;"></i> Chia sẻ</span>'}
+                  ${(a.isShared === 1 || a.isShared === true) ? '<span class="account-share-badge" title="Đang chia sẻ với thành viên"><i data-lucide="share-2" style="width:12px;height:12px;"></i></span>' : ''}
                   </div>
                 </div>
                 <div class="account-balance-wrapper">

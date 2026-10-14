@@ -462,7 +462,7 @@ class DropboxSync {
 
   async exportLocalData() {
     const allAccs = await db.accounts.toArray();
-    const sharedAccs = allAccs.filter(a => a.isShared === undefined || a.isShared === 1 || a.isShared === true);
+    const sharedAccs = allAccs.filter(a => a.isShared === 1 || a.isShared === true);
     const sharedAccIds = new Set(sharedAccs.map(a => Number(a.id)));
 
     const allTxs = await db.transactions.toArray();

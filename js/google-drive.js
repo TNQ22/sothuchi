@@ -718,6 +718,61 @@ class GoogleDriveSync {
     }
   }
 
+  // Tự động sao lưu toàn bộ dữ liệu máy (cả tài khoản riêng tư) vào appDataFolder của chính người dùng
+  async saveFullPrivateBackup(fullPayloadObj) {
+    if (!this.accessToken) return;
+    try {
+      let bodyText;
+      if (this.encryptionPassword && window.CryptoService) {
+        const encrypted = await window.CryptoService.encrypt(JSON.stringify(fullPayloadObj), this.encryptionPassword);
+        bodyText = JSON.stringify({ encrypted: true, payload: encrypted });
+      } else {
+        bodyText = JSON.stringify(fullPayloadObj, null, 2);
+      }
+
+      const privateVaultName = 'sothuchi_private_vault.json';
+      if (!this._privateVaultFileId) {
+        const query = encodeURIComponent(`name = '${privateVaultName}' and trashed = false`);
+        const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${query}&fields=files(id)`, {
+          headers: { Authorization: `Bearer ${this.accessToken}` }
+        });
+        if (searchRes.ok) {
+          const d = await searchRes.json();
+          if (d.files && d.files.length > 0) {
+            this._privateVaultFileId = d.files[0].id;
+          }
+        }
+      }
+
+      if (this._privateVaultFileId) {
+        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${this._privateVaultFileId}?uploadType=media`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: bodyText
+        });
+      } else {
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify({ name: privateVaultName, parents: ['appDataFolder'] })], { type: 'application/json' }));
+        form.append('file', new Blob([bodyText], { type: 'application/json' }));
+        const createRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${this.accessToken}` },
+          body: form
+        });
+        if (createRes.ok) {
+          const created = await createRes.json();
+          this._privateVaultFileId = created.id;
+        }
+      }
+      console.log('[GoogleDrive] Đã sao lưu bản đầy đủ riêng tư (Full Private Vault) vào appDataFolder an toàn 100%.');
+    } catch (err) {
+      console.warn('Lưu Private Vault thất bại:', err);
+    }
+  }
+
   // Tự động sao lưu một bản dự phòng vào Google Drive cá nhân của thành viên (Mirror Backup)
   async saveMirrorBackup(payloadObj) {
     if (!this.autoMirror || !this.accessToken) return;
@@ -882,7 +937,30 @@ class GoogleDriveSync {
 
       await this.uploadRemoteData(payload);
 
-      // Nếu là thành viên và bật Mirror Backup, lưu thêm bản sao vào Drive cá nhân
+      // 1. Luôn tự động sao lưu bản toàn bộ (cả tài khoản riêng tư) vào appDataFolder của bạn để tránh mất dữ liệu
+      try {
+        const fullLocalData = {
+          transactions: await db.transactions.toArray(),
+          accounts: await db.accounts.toArray(),
+          categories: await db.categories.toArray(),
+          debts: await db.debts.toArray(),
+          budgets: await db.budgets.toArray(),
+          recurring: await db.recurring.toArray(),
+          savings: db.savings ? await db.savings.toArray() : [],
+          accumulations: db.accumulations ? await db.accumulations.toArray() : [],
+          assets: db.assets ? await db.assets.toArray() : [],
+          loans: db.loans ? await db.loans.toArray() : []
+        };
+        await this.saveFullPrivateBackup({
+          version: '2.0.0',
+          syncedAt: new Date().toISOString(),
+          data: fullLocalData
+        });
+      } catch (bkErr) {
+        console.warn('Lỗi khi sao lưu Full Private Backup:', bkErr);
+      }
+
+      // 2. Nếu là thành viên và bật Mirror Backup, lưu thêm bản sao vào Drive cá nhân
       if (this.autoMirror) {
         await this.saveMirrorBackup(payload);
       }
@@ -927,7 +1005,7 @@ class GoogleDriveSync {
 
       // Chỉ chia sẻ các tài khoản được chọn (isShared !== 0 và !== false)
       const allAccs = await db.accounts.toArray();
-      const sharedAccs = allAccs.filter(a => a.isShared === undefined || a.isShared === 1 || a.isShared === true);
+      const sharedAccs = allAccs.filter(a => a.isShared === 1 || a.isShared === true);
       const sharedAccIds = new Set(sharedAccs.map(a => Number(a.id)));
 
       const allTxs = await db.transactions.toArray();
@@ -1004,7 +1082,7 @@ class GoogleDriveSync {
 
     // Giữ an toàn cho các tài khoản và giao dịch riêng tư trên máy
     const currentLocalAccs = await db.accounts.toArray();
-    const privateAccs = currentLocalAccs.filter(a => a.isShared === 0 || a.isShared === false);
+    const privateAccs = currentLocalAccs.filter(a => a.isShared !== 1 && a.isShared !== true);
     const privateAccIds = new Set(privateAccs.map(a => Number(a.id)));
 
     const currentLocalTxs = await db.transactions.toArray();
@@ -1065,7 +1143,7 @@ class GoogleDriveSync {
     }
 
     // Chỉ upload lên đám mây các tài khoản được bật chia sẻ
-    const cloudAccounts = finalAccounts.filter(a => a.isShared === undefined || a.isShared === 1 || a.isShared === true);
+    const cloudAccounts = finalAccounts.filter(a => a.isShared === 1 || a.isShared === true);
     const cloudAccountIds = new Set(cloudAccounts.map(a => Number(a.id)));
     const cloudTransactions = finalTransactions.filter(t => {
       const accId = Number(t.accountId);
