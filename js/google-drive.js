@@ -597,8 +597,24 @@ class GoogleDriveSync {
 
   // Thuật toán Merge: Last-Write-Wins dựa vào updatedAt
   async mergeDatabases(remoteData) {
+    const SYNCABLE_SETTINGS_KEYS = [
+      'budget_mode',
+      'budget_applicable_accounts',
+      'budget_rollover_enabled',
+      'budget_auto_rollover',
+      'theme',
+      'currency',
+      'privacyMode'
+    ];
+
     if (!remoteData) {
       // Lần đầu sync: dữ liệu máy trở thành master
+      const localSettings = [];
+      for (const k of SYNCABLE_SETTINGS_KEYS) {
+        const s = await db.settings.get(k);
+        if (s) localSettings.push(s);
+      }
+
       const local = {
         transactions: await db.transactions.toArray(),
         accounts: await db.accounts.toArray(),
@@ -609,7 +625,8 @@ class GoogleDriveSync {
         savings: db.savings ? await db.savings.toArray() : [],
         accumulations: db.accumulations ? await db.accumulations.toArray() : [],
         assets: db.assets ? await db.assets.toArray() : [],
-        loans: db.loans ? await db.loans.toArray() : []
+        loans: db.loans ? await db.loans.toArray() : [],
+        settings: localSettings
       };
       return local;
     }
@@ -641,11 +658,16 @@ class GoogleDriveSync {
             // Mới từ remote
             itemMap.set(rItem.id, rItem);
           } else {
-            // Giải quyết xung đột: lấy bản ghi có updatedAt mới hơn
-            const rTime = rItem.updatedAt || 0;
-            const lTime = lItem.updatedAt || 0;
-            if (rTime > lTime) {
+            // Đối với tài khoản: nếu remote có số dư mà local là tài khoản trắng (balance: 0), ưu tiên remote
+            if (table === db.accounts && (rItem.balance !== 0 || rItem.initialBalance !== 0) && (lItem.balance === 0 && (lItem.initialBalance || 0) === 0)) {
               itemMap.set(lItem.id, { ...rItem, id: lItem.id });
+            } else {
+              // Giải quyết xung đột: lấy bản ghi có updatedAt mới hơn
+              const rTime = rItem.updatedAt || 0;
+              const lTime = lItem.updatedAt || 0;
+              if (rTime > lTime) {
+                itemMap.set(lItem.id, { ...rItem, id: lItem.id });
+              }
             }
           }
         }
@@ -669,6 +691,31 @@ class GoogleDriveSync {
     const finalAssets = db.assets ? await mergeTable(db.assets, await db.assets.toArray(), remoteData.assets) : [];
     const finalLoans = db.loans ? await mergeTable(db.loans, await db.loans.toArray(), remoteData.loans) : [];
 
+    // Hợp nhất cài đặt ứng dụng (Chế độ ngân sách, tài khoản áp dụng, theme...)
+    const finalSettings = [];
+    for (const k of SYNCABLE_SETTINGS_KEYS) {
+      const l = await db.settings.get(k);
+      if (l) finalSettings.push(l);
+    }
+    if (remoteData.settings && Array.isArray(remoteData.settings)) {
+      for (const rSetting of remoteData.settings) {
+        if (SYNCABLE_SETTINGS_KEYS.includes(rSetting.key)) {
+          const idx = finalSettings.findIndex(s => s.key === rSetting.key);
+          const lSetting = idx >= 0 ? finalSettings[idx] : null;
+          if (!lSetting || (rSetting.updatedAt || 0) >= (lSetting.updatedAt || 0)) {
+            await db.settings.put(rSetting);
+            if (idx >= 0) finalSettings[idx] = rSetting;
+            else finalSettings.push(rSetting);
+          }
+        }
+      }
+    }
+
+    // Tự động đối soát và tính lại số dư sau khi gộp dữ liệu
+    if (typeof window.recalculateAccountBalances === 'function') {
+      await window.recalculateAccountBalances();
+    }
+
     return {
       transactions: finalTransactions,
       accounts: finalAccounts,
@@ -679,7 +726,8 @@ class GoogleDriveSync {
       savings: finalSavings,
       accumulations: finalAccumulations,
       assets: finalAssets,
-      loans: finalLoans
+      loans: finalLoans,
+      settings: finalSettings
     };
   }
 }

@@ -4716,7 +4716,13 @@ const UIAccounts = {
       await deduplicateAccounts();
     }
 
-    const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    let accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    const totalBal = accounts.reduce((sum, a) => sum + Math.abs(a.balance || 0), 0);
+    const txCount = await db.transactions.count();
+    if (totalBal === 0 && txCount > 0 && typeof recalculateAccountBalances === 'function') {
+      await recalculateAccountBalances();
+      accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    }
     accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
 
     const activeAccounts = accounts.filter(a => !a.isArchived);

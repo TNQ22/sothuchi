@@ -85,9 +85,12 @@ async function deduplicateAccounts() {
         const existingTxCount = await db.transactions.where('accountId').equals(existing.id).count();
         const currentTxCount = await db.transactions.where('accountId').equals(acc.id).count();
 
+        const existingBal = Math.abs(existing.balance || 0) + Math.abs(existing.initialBalance || 0);
+        const currentBal = Math.abs(acc.balance || 0) + Math.abs(acc.initialBalance || 0);
+
         let keep = existing;
         let remove = acc;
-        if (currentTxCount > existingTxCount || (currentTxCount === existingTxCount && (acc.updatedAt || 0) > (existing.updatedAt || 0))) {
+        if (currentTxCount > existingTxCount || (currentTxCount === existingTxCount && currentBal > existingBal)) {
           keep = acc;
           remove = existing;
           seen.set(key, keep);
@@ -98,10 +101,29 @@ async function deduplicateAccounts() {
         for (const tx of removeTxs) {
           await db.transactions.update(tx.id, { accountId: keep.id });
         }
-        const removeDebts = await db.debts.where('accountId').equals(remove.id).toArray();
-        for (const d of removeDebts) {
-          await db.debts.update(d.id, { accountId: keep.id });
+        const removeToTxs = await db.transactions.where('toAccountId').equals(remove.id).toArray();
+        for (const tx of removeToTxs) {
+          await db.transactions.update(tx.id, { toAccountId: keep.id });
         }
+        if (db.debts) {
+          const removeDebts = await db.debts.where('accountId').equals(remove.id).toArray();
+          for (const d of removeDebts) {
+            await db.debts.update(d.id, { accountId: keep.id });
+          }
+        }
+
+        // Chuyển giao số dư nếu tài khoản giữ lại đang bằng 0
+        if ((keep.balance || 0) === 0 && (remove.balance || 0) !== 0) {
+          keep.balance = remove.balance;
+        }
+        if ((keep.initialBalance || 0) === 0 && (remove.initialBalance || 0) !== 0) {
+          keep.initialBalance = remove.initialBalance;
+        }
+        await db.accounts.update(keep.id, {
+          balance: keep.balance,
+          initialBalance: keep.initialBalance,
+          updatedAt: Date.now()
+        });
 
         // Đánh dấu tài khoản trùng là đã xóa
         await db.accounts.update(remove.id, { isDeleted: 1, updatedAt: Date.now() });
@@ -113,6 +135,113 @@ async function deduplicateAccounts() {
   }
 }
 
+// Tự động đối soát và tính lại số dư chính xác cho toàn bộ tài khoản từ lịch sử giao dịch
+async function recalculateAccountBalances() {
+  try {
+    const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    if (!accounts || accounts.length === 0) return;
+
+    const txs = await db.transactions.toArray();
+    const debts = db.debts ? await db.debts.toArray() : [];
+    const savings = db.savings ? await db.savings.toArray() : [];
+    const accumulations = db.accumulations ? await db.accumulations.toArray() : [];
+    const assets = db.assets ? await db.assets.toArray() : [];
+
+    for (const acc of accounts) {
+      const accId = Number(acc.id);
+      
+      const accTxs = txs.filter(t => !t.isDeleted && (Number(t.accountId) === accId || Number(t.toAccountId) === accId));
+      const accDebts = debts.filter(d => !d.isDeleted && (Number(d.accountId) === accId || (d.records && d.records.some(r => Number(r.accountId) === accId))));
+      const accSavings = savings.filter(s => !s.isDeleted && (Number(s.sourceAccountId) === accId || Number(s.targetAccountId) === accId));
+      const accAccum = accumulations.filter(a => !a.isDeleted && Number(a.sourceAccountId) === accId);
+      const accAssets = assets.filter(x => !x.isDeleted && (Number(x.sourceAccountId) === accId || Number(x.targetAccountId) === accId));
+
+      const hasHistory = (accTxs.length + accDebts.length + accSavings.length + accAccum.length + accAssets.length) > 0;
+      
+      // Nếu tài khoản hoàn toàn không có lịch sử biến động nào và đã có số dư khác 0, giữ nguyên
+      if (!hasHistory) {
+        continue;
+      }
+
+      let bal = Number(acc.initialBalance || 0);
+
+      // 1. Giao dịch thu, chi, chuyển tiền
+      for (const tx of accTxs) {
+        const amt = Number(tx.amount || 0);
+        const fee = Number(tx.fee || 0);
+
+        if (Number(tx.accountId) === accId) {
+          if (tx.type === 'income') {
+            bal += (amt - fee);
+          } else if (tx.type === 'expense') {
+            bal -= (amt + fee);
+          } else if (tx.type === 'transfer') {
+            bal -= (amt + fee);
+          }
+        }
+        if (tx.type === 'transfer' && Number(tx.toAccountId) === accId) {
+          bal += amt;
+        }
+      }
+
+      // 2. Sổ nợ độc lập (debts)
+      for (const d of accDebts) {
+        const dAmt = Number(d.originalAmount || 0);
+        if (Number(d.accountId) === accId) {
+          if (d.type === 'borrow') bal += dAmt;
+          else if (d.type === 'lend') bal -= dAmt;
+        }
+        if (d.records && Array.isArray(d.records)) {
+          for (const r of d.records) {
+            const rAmt = Number(r.amount || 0);
+            if (Number(r.accountId) === accId) {
+              if (d.type === 'borrow') bal -= rAmt;
+              else if (d.type === 'lend') bal += rAmt;
+            }
+          }
+        }
+      }
+
+      // 3. Tiết kiệm (savings)
+      for (const s of accSavings) {
+        const sAmt = Number(s.initialBalance || s.balance || 0);
+        if (Number(s.sourceAccountId) === accId) {
+          bal -= sAmt;
+        }
+        if (s.status === 'settled' && Number(s.targetAccountId) === accId) {
+          bal += Number(s.settleAmount || s.balance || 0);
+        }
+      }
+
+      // 4. Tích lũy (accumulations)
+      for (const a of accAccum) {
+        const aAmt = Number(a.initialAmount || 0);
+        if (Number(a.sourceAccountId) === accId) {
+          bal -= aAmt;
+        }
+      }
+
+      // 5. Tài sản (assets)
+      for (const x of accAssets) {
+        if (Number(x.sourceAccountId) === accId) {
+          bal -= Number(x.totalBuyValue || 0);
+        }
+        if (x.status === 'sold' && Number(x.targetAccountId) === accId) {
+          bal += Number(x.salePrice || 0);
+        }
+      }
+
+      // Cập nhật lại số dư nếu có chênh lệch
+      if (acc.balance !== bal) {
+        await db.accounts.update(acc.id, { balance: bal, updatedAt: Date.now() });
+        console.log(`[BalanceRecalc] Đã khôi phục số dư cho "${acc.name}": ${acc.balance} -> ${bal}đ`);
+      }
+    }
+  } catch (err) {
+    console.warn('Lỗi khi tính lại số dư tài khoản:', err);
+  }
+}
+window.recalculateAccountBalances = recalculateAccountBalances;
 
 // Tự động kiểm tra và khắc phục lỗi bảng mã tiếng Việt (Mojibake UTF-8) nếu cơ sở dữ liệu từng bị lỗi font
 async function repairCorruptedVietnameseData() {
@@ -218,7 +347,7 @@ async function initDatabase() {
   const accountCount = await db.accounts.count();
   if (accountCount === 0) {
     const now = Date.now();
-    await db.accounts.bulkAdd(DEFAULT_ACCOUNTS.map((a, index) => ({ ...a, order: a.order ?? index, isDeleted: 0, updatedAt: now })));
+    await db.accounts.bulkAdd(DEFAULT_ACCOUNTS.map((a, index) => ({ ...a, order: a.order ?? index, isDeleted: 0, updatedAt: 1 })));
   } else {
     // Tự động kiểm tra và khởi tạo order tuần tự nếu có tài khoản thiếu order
     try {
@@ -326,6 +455,7 @@ async function initDatabase() {
   // Tự động gộp và loại bỏ tài khoản bị nhân đôi (do PWA khởi tạo nhiều lần hoặc do sync)
   await deduplicateAccounts();
   await repairCorruptedVietnameseData();
+  await recalculateAccountBalances();
 
   // Seed default settings if empty
   const theme = await db.settings.get('theme');

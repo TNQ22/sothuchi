@@ -197,7 +197,7 @@ const BackupService = {
             throw new Error('Định dạng tệp sao lưu không hợp lệ.');
           }
 
-          const { transactions, accounts, categories, debts, budgets, recurring, savings, accumulations, assets, loans } = parsed.data;
+          const { transactions, accounts, categories, debts, budgets, recurring, savings, accumulations, assets, loans, settings } = parsed.data;
 
           const storesToLock = [db.transactions, db.accounts, db.categories, db.debts, db.budgets, db.recurring];
           if (db.savings) storesToLock.push(db.savings);
@@ -247,6 +247,21 @@ const BackupService = {
               await db.loans.bulkAdd(loans);
             }
           });
+
+          // Khôi phục cài đặt đồng bộ (Ngân sách, Theme...)
+          if (settings && Array.isArray(settings)) {
+            const SYNCABLE_SETTINGS_KEYS = ['budget_mode', 'budget_applicable_accounts', 'budget_rollover_enabled', 'budget_auto_rollover', 'theme', 'currency', 'privacyMode'];
+            for (const s of settings) {
+              if (SYNCABLE_SETTINGS_KEYS.includes(s.key)) {
+                await db.settings.put(s);
+              }
+            }
+          }
+
+          // Đối soát lại số dư tài khoản sau khi import
+          if (typeof window.recalculateAccountBalances === 'function') {
+            await window.recalculateAccountBalances();
+          }
 
           resolve({ success: true, count: (transactions || []).length });
         } catch (err) {
