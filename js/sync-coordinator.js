@@ -66,7 +66,21 @@ class SyncCoordinator {
       this.setStatus('error', this.lastSyncTarget, this.lastError);
     });
 
-    // Lắng nghe click ngoài popover để tự đóng
+    // Đóng popover khi click/chạm vào lớp nền backdrop
+    const backdrop = document.getElementById('sync-popover-backdrop');
+    if (backdrop) {
+      const handleBackdropDismiss = (e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        this.closePopover();
+      };
+      backdrop.addEventListener('click', handleBackdropDismiss);
+      backdrop.addEventListener('touchstart', handleBackdropDismiss, { passive: false });
+    }
+
+    // Đóng popover khi click ngoài (dành cho desktop hoặc khi backdrop chưa render)
     document.addEventListener('click', (e) => {
       const popover = document.getElementById('sync-status-popover');
       if (this.isPopoverOpen && popover) {
@@ -281,7 +295,9 @@ class SyncCoordinator {
     const backdrop = document.getElementById('sync-popover-backdrop');
     if (!popover) return;
     this.updatePopoverContent();
-    if (backdrop) backdrop.style.display = 'block';
+    if (backdrop) {
+      backdrop.style.display = 'block';
+    }
     popover.style.display = 'block';
     this.isPopoverOpen = true;
 
@@ -312,7 +328,9 @@ class SyncCoordinator {
   closePopover() {
     const popover = document.getElementById('sync-status-popover');
     const backdrop = document.getElementById('sync-popover-backdrop');
-    if (backdrop) backdrop.style.display = 'none';
+    if (backdrop) {
+      backdrop.style.display = 'none';
+    }
     if (!popover) return;
     popover.style.display = 'none';
     this.isPopoverOpen = false;
