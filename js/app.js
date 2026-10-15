@@ -1011,6 +1011,17 @@ class App {
 
       page.addEventListener('touchstart', (e) => {
         if (e.touches.length !== 1) return;
+
+        // Reset toàn bộ thông số cử chỉ vuốt ngay khi chạm tay vào màn hình
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        currentX = startX;
+        deltaX = 0;
+        deltaY = 0;
+        startTime = Date.now();
+        isSwiping = false;
+        canSwipe = false;
+
         // ONLY allow swipe on the currently ACTIVE page
         if (!page.classList.contains('active')) return;
 
@@ -1023,7 +1034,7 @@ class App {
           }
         }
 
-        // Trang Cài đặt (settings): chỉ vuốt khi đang ở sub-page chi tiết
+        // Trang Cài đặt (settings): CHỈ cho phép vuốt trở về khi đang ở màn hình con (sub-page)
         if (page.id === 'view-settings') {
           if (!window.UISettings || !window.UISettings.currentSection) {
             canSwipe = false;
@@ -1060,14 +1071,6 @@ class App {
           canSwipe = false;
           return;
         }
-
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        currentX = startX;
-        deltaX = 0;
-        deltaY = 0;
-        startTime = Date.now();
-        isSwiping = false;
 
         // Allow swipe starting from left area of screen
         canSwipe = (startX <= window.innerWidth * 0.65 || startX <= 250);
@@ -1106,10 +1109,16 @@ class App {
         const duration = Date.now() - startTime;
         const velocity = deltaX / Math.max(duration, 1);
         const threshold = Math.min(window.innerWidth * 0.25, 80);
-        const swipedView = page.id.replace('view-', '');
+        const swipedDeltaX = deltaX;
+
+        // Reset deltaX sau 150ms để ngăn chặn việc click nhầm ngay sau khi vuốt,
+        // nhưng bảo đảm không gây nghẽn các click bình thường sau đó
+        setTimeout(() => {
+          deltaX = 0;
+        }, 150);
 
         // Trigger back if past threshold or quick flick
-        if (deltaX > threshold || (deltaX > 35 && velocity > 0.3)) {
+        if (swipedDeltaX > threshold || (swipedDeltaX > 35 && velocity > 0.3)) {
           page.style.transition = 'transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease';
           page.style.transform = 'translateX(100%)';
           page.style.opacity = '0';
@@ -1137,11 +1146,12 @@ class App {
       page.addEventListener('touchend', handleTouchEnd, { passive: true });
       page.addEventListener('touchcancel', handleTouchEnd, { passive: true });
 
-      // Ngăn chặn mở nhầm chi tiết giao dịch khi người dùng đang thực hiện cử chỉ vuốt trở về
+      // Ngăn chặn mở nhầm chi tiết khi người dùng vừa thực hiện cử chỉ vuốt trở về
       page.addEventListener('click', (e) => {
         if (deltaX > 12) {
           e.stopPropagation();
           e.preventDefault();
+          deltaX = 0;
         }
       }, true);
     });

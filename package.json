@@ -1,6 +1,6 @@
 {
   "name": "sothuchi",
-  "version": "2.5.2",
+  "version": "2.5.3",
   "description": "Offline-First Personal Finance PWA & Dedicated Sync Server with Google Login & Multi-user Sharing",
   "main": "server.js",
   "scripts": {
