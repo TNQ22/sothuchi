@@ -47,9 +47,30 @@ const JWT_SECRET = process.env.JWT_SECRET || 'sothuchi_vault_secret_' + crypto.r
 const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || '').trim();
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 
-// Đảm bảo thư mục lưu trữ dữ liệu tồn tại
+// Đảm bảo thư mục lưu trữ dữ liệu tồn tại và kiểm tra quyền ghi
 if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch (err) {
+    console.error(`[Storage Error] Không thể tạo thư mục DATA_DIR (${DATA_DIR}):`, err.message);
+  }
+}
+
+// Kiểm tra quyền ghi vào DATA_DIR để cảnh báo sớm nếu bị lỗi phân quyền volume
+try {
+  const writeTestFile = path.join(DATA_DIR, '.write_test_' + Date.now());
+  fs.writeFileSync(writeTestFile, 'test');
+  fs.unlinkSync(writeTestFile);
+} catch (permErr) {
+  console.error('================================================================');
+  console.error(' [CẢNH BÁO NGUY HIỂM] THƯ MỤC DỮ LIỆU BỊ LỖI QUYỀN GHI (PERMISSION DENIED)!');
+  console.error(` Thư mục: ${DATA_DIR}`);
+  console.error(` Chi tiết lỗi: ${permErr.message}`);
+  console.error(' SQLite không thể ghi file xuống đĩa. DỮ LIỆU SẼ BỊ MẤT KHI RESTART CONTAINER!');
+  console.error(' Hướng dẫn khắc phục trên máy chủ host:');
+  console.error('   sudo chown -R 1000:1000 <thư_mục_data_trên_host>');
+  console.error('   sudo chmod -R 777 <thư_mục_data_trên_host>');
+  console.error('================================================================');
 }
 
 // ==============================================================================

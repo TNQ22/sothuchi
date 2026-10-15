@@ -10,6 +10,9 @@ services:
       - PORT=8081
       - HOST=0.0.0.0
       - DATA_DIR=/app/data
+      # User ID & Group ID của máy chủ host (mặc định 1000, giúp tự động khớp quyền thư mục volume)
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
       # Khóa bí mật JWT (Đọc JWT_SECRET từ .env nếu có)
       - JWT_SECRET=${JWT_SECRET:-sothuchi_super_secure_vault_secret_key_change_me_12345}
       # Google Client ID cho Backend Máy chủ
@@ -26,4 +29,5 @@ services:
       - VITE_AUTO_SYNC_ENABLED=${VITE_AUTO_SYNC_ENABLED:-true}
     volumes:
       # Lưu trữ cơ sở dữ liệu SQLite và bản sao lưu bền vững trên máy chủ
-      - ./data:/app/data
+      # Lưu ý: Nếu dùng biến môi trường, hãy đảm bảo đúng chính tả CONTAINER_DATA (với chữ N)
+      - ${CONTAINER_DATA:-.}/SoThuChi/data:/app/data
