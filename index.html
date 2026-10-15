@@ -22,13 +22,431 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.4.7">
+  <link rel="stylesheet" href="./css/style.css?v=2.5.1">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
 
   <!-- Google Identity Services (GIS) for Google Drive Auth -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style id="settings-redesign-styles">
+
+/* ==========================================================================
+   SETTINGS HUB & SUB-VIEWS REDESIGN (INLINE CRITICAL CSS)
+   ========================================================================== */
+.settings-container {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 12px 14px 48px;
+}
+
+/* Hub Header */
+.settings-hub-header {
+  margin-bottom: 16px;
+  padding: 2px 4px;
+}
+
+.settings-hub-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.settings-hub-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.settings-app-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--primary-light, rgba(13, 148, 136, 0.15));
+  color: var(--primary, #0d9488);
+  border: 1px solid rgba(20, 184, 166, 0.3);
+}
+
+.settings-hub-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Settings Group */
+.settings-group {
+  margin-bottom: 18px;
+}
+
+.settings-group-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted, #64748b);
+  margin-bottom: 8px;
+  padding-left: 6px;
+}
+
+.settings-nav-card {
+  background: var(--bg-card, #1e293b);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-lg, 16px);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+/* Settings Nav Item */
+.settings-nav-item {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 12px 14px !important;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  transition: all 0.15s ease;
+  user-select: none;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.settings-nav-item:last-child {
+  border-bottom: none !important;
+}
+
+.settings-nav-item:hover {
+  background: var(--bg-card-hover, #26354a);
+}
+
+.settings-nav-item:active {
+  background: rgba(255, 255, 255, 0.06);
+  transform: scale(0.995);
+}
+
+/* Icon Boxes */
+.settings-item-icon-box {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.2s ease;
+}
+
+.settings-item-icon-box svg,
+.settings-item-icon-box i {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+.settings-nav-item:hover .settings-item-icon-box {
+  transform: scale(1.05);
+}
+
+.settings-item-icon-box.icon-gdrive {
+  background: rgba(13, 148, 136, 0.14) !important;
+  color: #14b8a6 !important;
+}
+
+.settings-item-icon-box.icon-dropbox {
+  background: rgba(0, 97, 255, 0.14) !important;
+  color: #0061ff !important;
+}
+
+.settings-item-icon-box.icon-server {
+  background: rgba(139, 92, 246, 0.14) !important;
+  color: #a855f7 !important;
+}
+
+.settings-item-icon-box.icon-folder {
+  background: rgba(245, 158, 11, 0.14) !important;
+  color: #f59e0b !important;
+}
+
+.settings-item-icon-box.icon-database {
+  background: rgba(236, 72, 153, 0.14) !important;
+  color: #ec4899 !important;
+}
+
+.settings-item-icon-box.icon-csv {
+  background: rgba(16, 185, 129, 0.14) !important;
+  color: #10b981 !important;
+}
+
+.settings-item-icon-box.icon-palette {
+  background: rgba(99, 102, 241, 0.14) !important;
+  color: #6366f1 !important;
+}
+
+/* Item Content */
+.settings-item-content {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.settings-item-title-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+}
+
+.settings-item-title {
+  font-size: 0.92rem !important;
+  font-weight: 600 !important;
+  color: var(--text-primary, #f8fafc) !important;
+}
+
+.settings-item-desc {
+  font-size: 0.76rem !important;
+  color: var(--text-muted, #64748b) !important;
+  margin-top: 2px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.settings-item-arrow {
+  width: 16px !important;
+  height: 16px !important;
+  color: var(--text-muted, #64748b) !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.settings-nav-item:hover .settings-item-arrow {
+  transform: translateX(3px);
+  color: var(--text-secondary, #94a3b8);
+}
+
+/* Status Pills */
+.settings-status-pill {
+  font-size: 0.68rem !important;
+  font-weight: 600 !important;
+  padding: 2px 7px !important;
+  border-radius: 9999px !important;
+  white-space: nowrap !important;
+  border: 1px solid transparent !important;
+  line-height: 1.2 !important;
+}
+
+.settings-status-pill.pill-green {
+  background: rgba(16, 185, 129, 0.14) !important;
+  color: #10b981 !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+}
+
+.settings-status-pill.pill-gray {
+  background: rgba(148, 163, 184, 0.12) !important;
+  color: var(--text-muted, #64748b) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+.settings-status-pill.pill-blue {
+  background: rgba(59, 130, 246, 0.14) !important;
+  color: #3b82f6 !important;
+  border-color: rgba(59, 130, 246, 0.25) !important;
+}
+
+.settings-status-pill.pill-amber {
+  background: rgba(245, 158, 11, 0.14) !important;
+  color: #f59e0b !important;
+  border-color: rgba(245, 158, 11, 0.25) !important;
+}
+
+/* Hub Footer */
+.settings-hub-footer {
+  text-align: center;
+  padding: 20px 12px 10px;
+  color: var(--text-muted, #64748b);
+}
+
+.settings-footer-logo {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 6px;
+  opacity: 0.8;
+}
+
+.settings-footer-text {
+  font-size: 0.8rem;
+  margin-bottom: 3px;
+}
+
+.settings-footer-sub {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+/* Sub-page Detail View */
+.settings-detail-view {
+  animation: settingsFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes settingsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-detail-topbar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 14px !important;
+  padding: 4px 0 10px !important;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08)) !important;
+}
+
+.settings-back-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: transparent !important;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1)) !important;
+  color: var(--text-primary, #f8fafc) !important;
+  font-size: 0.84rem !important;
+  font-weight: 600 !important;
+  padding: 6px 12px !important;
+  border-radius: var(--radius-sm, 8px) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.settings-back-btn:hover {
+  background: var(--bg-card-hover, #26354a) !important;
+  border-color: var(--primary, #0d9488) !important;
+  color: var(--primary, #0d9488) !important;
+}
+
+.settings-detail-header-title {
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  color: var(--text-primary, #f8fafc) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.settings-detail-panel {
+  display: none !important;
+}
+
+.settings-detail-panel.active {
+  display: block !important;
+}
+
+/* Section Cards & Panels */
+.settings-card-clean {
+  background: var(--bg-card, #1e293b);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-lg, 16px);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+.settings-lead-text {
+  font-size: 0.84rem;
+  color: var(--text-secondary, #94a3b8);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+/* Accordion for Advanced Settings */
+.settings-accordion {
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-lg, 16px);
+  background: var(--bg-card, #1e293b);
+  margin-top: 14px;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.settings-accordion.expanded {
+  border-color: rgba(20, 184, 166, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.settings-accordion-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 13px 16px !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  transition: background 0.15s ease !important;
+}
+
+.settings-accordion-header:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.05)) !important;
+}
+
+.settings-accordion-title {
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  color: var(--text-primary, #f8fafc) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.settings-accordion-title svg,
+.settings-accordion-title i {
+  color: var(--primary, #0d9488) !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.settings-accordion-arrow {
+  width: 18px !important;
+  height: 18px !important;
+  color: var(--text-muted, #64748b) !important;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease !important;
+}
+
+.settings-accordion.expanded .settings-accordion-arrow {
+  transform: rotate(180deg) !important;
+  color: var(--primary, #0d9488) !important;
+}
+
+.settings-accordion-content {
+  display: none !important;
+  padding: 16px 16px 18px !important;
+  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08)) !important;
+  background: var(--bg-surface, #111827) !important;
+}
+
+.settings-accordion.expanded .settings-accordion-content {
+  display: block !important;
+  animation: accordionOpen 0.2s ease-out !important;
+}
+
+@keyframes accordionOpen {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+  </style>
 </head>
 <body class="view-new-transaction">
 
@@ -764,10 +1182,9 @@
           <div id="settings-hub-view" class="settings-hub-view">
             <div class="settings-hub-header">
               <div class="settings-hub-title-row">
-                <h2 class="settings-hub-title">Cài Đặt & Đồng Bộ</h2>
-                <span class="settings-app-badge">v2.5.0</span>
+                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Trung Tâm Cài Đặt & Đồng Bộ</span>
+                <span class="settings-app-badge">v2.5.1</span>
               </div>
-              <p class="settings-hub-subtitle">Tùy biến ứng dụng, kết nối lưu trữ đám mây & sao lưu dữ liệu</p>
             </div>
 
             <!-- Nhóm 1: ĐỒNG BỘ ĐÁM MÂY & MÁY CHỦ -->
@@ -4616,26 +5033,26 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./vendor/lucide.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=2.4.7"></script>
+  <script src="./js/config.js?v=2.5.1"></script>
   <script src="./js/crypto.js"></script>
   <script src="./js/db.js?v=2.2.8"></script>
-  <script src="./js/google-drive.js?v=2.4.7"></script>
-  <script src="./js/dropbox.js?v=2.4.7"></script>
-  <script src="./js/server-sync.js?v=2.5.0"></script>
+  <script src="./js/google-drive.js?v=2.5.1"></script>
+  <script src="./js/dropbox.js?v=2.5.1"></script>
+  <script src="./js/server-sync.js?v=2.5.1"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
-  <script src="./js/sync-coordinator.js?v=2.4.7"></script>
+  <script src="./js/sync-coordinator.js?v=2.5.1"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
   <script src="./js/ui-transactions.js?v=2.2.4"></script>
   <script src="./js/ui-debts.js?v=2.0.9"></script>
-  <script src="./js/ui-accounts.js?v=2.4.7"></script>
+  <script src="./js/ui-accounts.js?v=2.5.1"></script>
   <script src="./js/ui-budgets.js?v=2.2.8"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
-  <script src="./js/ui-settings.js?v=2.4.7"></script>
+  <script src="./js/ui-settings.js?v=2.5.1"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.4.7"></script>
+  <script src="./js/app.js?v=2.5.1"></script>
 </body>
 </html>
