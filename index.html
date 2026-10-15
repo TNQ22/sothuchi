@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.5.6">
+  <link rel="stylesheet" href="./css/style.css?v=2.5.7">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1160,7 +1160,22 @@
             <div class="settings-group">
               <div class="settings-group-label">ĐỒNG BỘ ĐÁM MÂY & MÁY CHỦ</div>
               <div class="settings-nav-card">
-                <!-- Mục 1: Google Drive -->
+                <!-- Mục 1: Máy Chủ Riêng (Docker) -->
+                <div class="settings-nav-item" onclick="UISettings.openSection('server')">
+                  <div class="settings-item-icon-box icon-server">
+                    <i data-lucide="server"></i>
+                  </div>
+                  <div class="settings-item-content">
+                    <div class="settings-item-title-row">
+                      <span class="settings-item-title">Máy Chủ Riêng (Docker)</span>
+                      <span id="hub-server-badge" class="settings-status-pill pill-gray">Chưa kết nối</span>
+                    </div>
+                    <div id="hub-server-desc" class="settings-item-desc">Máy chủ tự lưu trữ Self-Hosted tốc độ cao & đa sổ</div>
+                  </div>
+                  <i data-lucide="chevron-right" class="settings-item-arrow"></i>
+                </div>
+
+                <!-- Mục 2: Google Drive -->
                 <div class="settings-nav-item" onclick="UISettings.openSection('google-drive')">
                   <div class="settings-item-icon-box icon-gdrive">
                     <svg viewBox="0 0 87.3 78" width="19" height="17">
@@ -1182,7 +1197,7 @@
                   <i data-lucide="chevron-right" class="settings-item-arrow"></i>
                 </div>
 
-                <!-- Mục 2: Dropbox -->
+                <!-- Mục 3: Dropbox -->
                 <div class="settings-nav-item" onclick="UISettings.openSection('dropbox')">
                   <div class="settings-item-icon-box icon-dropbox">
                     <i data-lucide="box"></i>
@@ -1193,21 +1208,6 @@
                       <span id="hub-dropbox-badge" class="settings-status-pill pill-gray">Chưa kết nối</span>
                     </div>
                     <div id="hub-dropbox-desc" class="settings-item-desc">Đồng bộ chuẩn PKCE mượt mà trên iPhone</div>
-                  </div>
-                  <i data-lucide="chevron-right" class="settings-item-arrow"></i>
-                </div>
-
-                <!-- Mục 3: Máy Chủ Riêng (Docker) -->
-                <div class="settings-nav-item" onclick="UISettings.openSection('server')">
-                  <div class="settings-item-icon-box icon-server">
-                    <i data-lucide="server"></i>
-                  </div>
-                  <div class="settings-item-content">
-                    <div class="settings-item-title-row">
-                      <span class="settings-item-title">Máy Chủ Riêng (Docker)</span>
-                      <span id="hub-server-badge" class="settings-status-pill pill-gray">Chưa kết nối</span>
-                    </div>
-                    <div id="hub-server-desc" class="settings-item-desc">Máy chủ tự lưu trữ Self-Hosted tốc độ cao & đa sổ</div>
                   </div>
                   <i data-lucide="chevron-right" class="settings-item-arrow"></i>
                 </div>
@@ -5080,10 +5080,10 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/db.js?v=2.5.5"></script>
   <script src="./js/google-drive.js?v=2.5.5"></script>
   <script src="./js/dropbox.js?v=2.5.5"></script>
-  <script src="./js/server-sync.js?v=2.5.4"></script>
+  <script src="./js/server-sync.js?v=2.5.7"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
-  <script src="./js/sync-coordinator.js?v=2.5.6"></script>
+  <script src="./js/sync-coordinator.js?v=2.5.7"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>

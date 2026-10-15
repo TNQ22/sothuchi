@@ -2073,7 +2073,7 @@ body.dark .header-brand-logo-btn .sync-status-dot,
   }
 }
 
-/* Desktop Scroll Restoration: Đảm bảo body và view luôn cuộn chuột bình thường trên màn hình máy tính (> 768px) */
+/* Desktop Scroll Restoration: Đảm bảo body và mọi view luôn cuộn chuột bằng con lăn bình thường trên màn hình máy tính (> 768px) */
 @media (min-width: 769px) {
   html, body {
     height: auto !important;
@@ -2081,6 +2081,8 @@ body.dark .header-brand-logo-btn .sync-status-dot,
     overflow-y: auto !important;
     overflow-x: clip !important;
     position: static !important;
+    touch-action: auto !important;
+    overscroll-behavior: auto !important;
   }
 
   body.view-new-transaction,
@@ -2096,17 +2098,59 @@ body.dark .header-brand-logo-btn .sync-status-dot,
     width: 100% !important;
     top: auto !important;
     left: auto !important;
+    touch-action: auto !important;
   }
 
   #app-container {
     height: auto !important;
     min-height: 100vh !important;
     overflow: visible !important;
+    position: static !important;
   }
 
   .main-wrapper {
     height: auto !important;
     min-height: 100vh !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+
+  .page-view {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    touch-action: auto !important;
+  }
+
+  .page-view.active:not(.tx-page-view) {
+    height: auto !important;
+    overflow: visible !important;
+    touch-action: auto !important;
+  }
+
+  .tx-page-view {
+    height: auto !important;
+    overflow: visible !important;
+    touch-action: auto !important;
+  }
+
+  #view-new-transaction.page-view.active {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  #view-new-transaction .tx-page-card-wrapper {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  #view-new-transaction #transaction-form {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  #view-new-transaction .tx-page-body {
+    height: auto !important;
     overflow: visible !important;
   }
 }

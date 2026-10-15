@@ -197,8 +197,34 @@ class ServerSyncService {
       throw new Error('Vui lòng nhập địa chỉ Máy Chủ Riêng trước khi đăng nhập.');
     }
 
-    // 1. Lấy Google Client ID (Ưu tiên từ server, settings, hoặc EnvConfig)
-    let clientId = this.serverGoogleClientId;
+    // A. Nếu Google Drive đã có Access Token hợp lệ, gửi xác thực ngay lập tức không cần mở popup lại
+    const gDrive = window.googleDriveService;
+    if (gDrive && gDrive.hasValidToken && gDrive.hasValidToken() && gDrive.accessToken) {
+      try {
+        const authRes = await fetch(`${this.serverUrl}/api/auth/google`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: gDrive.accessToken })
+        });
+        if (authRes.ok) {
+          const authData = await authRes.json();
+          this.token = authData.token;
+          this.userProfile = authData.user;
+          await db.settings.put({ key: 'syncServerToken', value: this.token });
+          await db.settings.put({ key: 'syncServerUserProfile', value: this.userProfile });
+          await this.fetchVaults();
+          window.dispatchEvent(new CustomEvent('server-auth-changed', {
+            detail: { user: this.userProfile, vaults: this.vaults, activeVaultId: this.activeVaultId }
+          }));
+          return { user: this.userProfile, vaults: this.vaults };
+        }
+      } catch (reuseErr) {
+        console.warn('[ServerSync] Không tái sử dụng được token Google Drive hiện tại, chuyển sang đăng nhập mới:', reuseErr);
+      }
+    }
+
+    // B. Lấy Google Client ID (từ cache serverGoogleClientId, settings, hoặc EnvConfig)
+    let clientId = this.serverGoogleClientId || gDrive?.clientId;
     if (!clientId) {
       const dbClientId = await db.settings.get('googleClientId');
       if (dbClientId && dbClientId.value) clientId = dbClientId.value;
@@ -206,7 +232,6 @@ class ServerSyncService {
     }
 
     if (!clientId) {
-      // Thử lấy từ server config
       try {
         const cfgRes = await fetch(`${this.serverUrl}/api/auth/config`);
         if (cfgRes.ok) {
@@ -220,6 +245,7 @@ class ServerSyncService {
       throw new Error('Chưa có Google Client ID. Vui lòng nhập Google Client ID trong phần Cài đặt.');
     }
 
+    // C. Sử dụng GIS token client với scope đầy đủ và xử lý liên tục
     if (!window.google?.accounts?.oauth2) {
       throw new Error('Thư viện Google Identity chưa tải xong. Vui lòng thử lại sau 3 giây.');
     }
@@ -236,7 +262,7 @@ class ServerSyncService {
       try {
         const tokenClient = google.accounts.oauth2.initTokenClient({
           client_id: clientId,
-          scope: 'email profile openid',
+          scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
           callback: async (resp) => {
             if (settled) return;
             settled = true;
