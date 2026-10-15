@@ -66,7 +66,7 @@ const UISettings = {
 
     // Cập nhật tiêu đề trang con
     const titleMap = {
-      'google-drive': '<i data-lucide="cloud" style="color: #14b8a6; width: 20px; height: 20px;"></i> Google Drive',
+      'google-drive': '<svg viewBox="0 0 87.3 78" style="width: 20px; height: 18px; vertical-align: middle;"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg> Google Drive',
       'dropbox': '<i data-lucide="box" style="color: #0061ff; width: 20px; height: 20px;"></i> Dropbox',
       'server': '<i data-lucide="server" style="color: #a855f7; width: 20px; height: 20px;"></i> Máy Chủ Riêng (Docker)',
       'local-folder': '<i data-lucide="folder-sync" style="color: #f59e0b; width: 20px; height: 20px;"></i> Sao Lưu Thư Mục PC',
@@ -356,7 +356,7 @@ const UISettings = {
 
     if (profile && profile.email) {
       card.style.display = 'flex';
-      if (avatar) avatar.src = profile.picture || './assets/icons/icon.svg';
+      if (avatar) avatar.src = profile.picture || './assets/icons/google-drive.svg';
       if (nameEl) nameEl.textContent = profile.name || 'Người dùng Google';
       if (emailEl) emailEl.textContent = profile.email;
 
@@ -577,6 +577,115 @@ const UISettings = {
     if (window.lucide) lucide.createIcons();
   },
 
+  // Mở modal Lịch sử Snapshot của Sổ trên Máy chủ riêng
+  async openVaultHistoryModal() {
+    const sService = window.serverSyncService;
+    if (!sService || !sService.activeVaultId) return;
+
+    const modal = document.getElementById('modal-server-vault-history');
+    if (!modal) return;
+
+    const currentVault = sService.getActiveVault ? sService.getActiveVault() : null;
+    const vaultNameEl = document.getElementById('server-history-vault-name');
+    if (vaultNameEl) {
+      vaultNameEl.textContent = `Sổ: ${currentVault ? currentVault.name : 'Hiện tại'}`;
+    }
+
+    const loadingEl = document.getElementById('server-history-loading');
+    const emptyEl = document.getElementById('server-history-empty');
+    const listEl = document.getElementById('server-history-list');
+
+    if (loadingEl) loadingEl.style.display = 'block';
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (listEl) listEl.innerHTML = '';
+
+    modal.classList.add('open');
+    if (window.lucide) lucide.createIcons();
+
+    try {
+      const history = await sService.getVaultHistory();
+      if (loadingEl) loadingEl.style.display = 'none';
+
+      if (!history || history.length === 0) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+      }
+
+      const isViewer = currentVault && currentVault.role === 'viewer';
+
+      listEl.innerHTML = history.map((item, idx) => {
+        const dateStr = item.synced_at ? new Date(item.synced_at).toLocaleString('vi-VN') : 'Không rõ thời gian';
+        const user = item.updated_by || 'Hệ thống';
+        const sizeKb = item.data_size ? (item.data_size / 1024).toFixed(1) + ' KB' : '';
+        const isLatest = idx === 0;
+
+        return `
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div style="min-width: 0; flex: 1;">
+              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px; flex-wrap: wrap;">
+                <span class="badge" style="font-size: 0.72rem; padding: 2px 7px; background: rgba(168, 85, 247, 0.15); color: #a855f7; font-weight: 700; border-radius: 6px;">
+                  v${item.version}
+                </span>
+                ${isLatest ? '<span class="badge" style="font-size: 0.68rem; padding: 2px 6px; background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600; border-radius: 6px;">Bản hiện tại</span>' : ''}
+                <span style="font-size: 0.84rem; font-weight: 600; color: var(--text-primary);">${dateStr}</span>
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 10px; flex-wrap: wrap;">
+                <span><i data-lucide="user" style="width: 12px; height: 12px; vertical-align: middle;"></i> ${user}</span>
+                ${sizeKb ? `<span><i data-lucide="database" style="width: 12px; height: 12px; vertical-align: middle;"></i> ${sizeKb}</span>` : ''}
+              </div>
+            </div>
+            <div>
+              <button type="button" class="btn-secondary btn-sm btn-restore-snapshot" data-history-id="${item.id}" data-time="${dateStr}" ${isViewer ? 'disabled' : ''} style="font-size: 0.78rem; padding: 5px 10px; display: inline-flex; align-items: center; gap: 4px;" title="Khôi phục dữ liệu sổ về mốc này">
+                <i data-lucide="rotate-ccw" style="width: 13px; height: 13px;"></i>
+                <span>Khôi phục</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (window.lucide) lucide.createIcons();
+
+      // Gắn sự kiện khôi phục cho từng nút
+      listEl.querySelectorAll('.btn-restore-snapshot').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const histId = btn.getAttribute('data-history-id');
+          const time = btn.getAttribute('data-time');
+          if (!histId) return;
+
+          if (!confirm(`Bạn có chắc chắn muốn khôi phục Sổ về bản snapshot lúc:\n${time}?\n\nToàn bộ dữ liệu hiện tại của Sổ trên máy chủ sẽ được thay thế bằng bản này và đồng bộ về máy bạn!`)) {
+            return;
+          }
+
+          btn.disabled = true;
+          btn.innerHTML = '<i data-lucide="loader" class="spin" style="width: 13px; height: 13px;"></i> Đang phục hồi...';
+          if (window.lucide) lucide.createIcons();
+
+          try {
+            await sService.restoreVaultSnapshot(histId);
+            showToast('Đã khôi phục dữ liệu snapshot thành công!', 'success');
+            if (window.app && window.app.refreshAll) await window.app.refreshAll();
+            this.closeVaultHistoryModal();
+          } catch (err) {
+            showToast('Khôi phục snapshot thất bại: ' + err.message, 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="rotate-ccw" style="width: 13px; height: 13px;"></i> Khôi phục';
+            if (window.lucide) lucide.createIcons();
+          }
+        });
+      });
+
+    } catch (err) {
+      if (loadingEl) loadingEl.style.display = 'none';
+      showToast('Lỗi tải lịch sử snapshot: ' + err.message, 'error');
+    }
+  },
+
+  closeVaultHistoryModal() {
+    const modal = document.getElementById('modal-server-vault-history');
+    if (modal) modal.classList.remove('open');
+  },
+
   bindEvents() {
     // --- DEDICATED SYNC SERVER EVENTS ---
     const sService = window.serverSyncService;
@@ -712,6 +821,27 @@ const UISettings = {
           if (window.app && window.app.refreshAll) await window.app.refreshAll();
         } catch (err) {
           showToast('Tạo sổ thất bại: ' + err.message, 'error');
+        }
+      });
+    }
+
+    // Xem Lịch sử Snapshot & Khôi phục
+    const historyVaultBtn = document.getElementById('btn-server-history-vault');
+    if (historyVaultBtn) {
+      historyVaultBtn.addEventListener('click', () => {
+        if (!sService || !sService.activeVaultId) {
+          showToast('Vui lòng kết nối và chọn Sổ trước', 'warning');
+          return;
+        }
+        this.openVaultHistoryModal();
+      });
+    }
+
+    const historyModalOverlay = document.getElementById('modal-server-vault-history');
+    if (historyModalOverlay) {
+      historyModalOverlay.addEventListener('click', (e) => {
+        if (e.target === historyModalOverlay) {
+          this.closeVaultHistoryModal();
         }
       });
     }
@@ -1383,6 +1513,26 @@ const UISettings = {
         const file = e.target.files[0];
         if (!file) return;
 
+        const overwriteServerCheckbox = document.getElementById('checkbox-restore-overwrite-server');
+        const shouldOverwriteServer = overwriteServerCheckbox && overwriteServerCheckbox.checked;
+
+        if (shouldOverwriteServer) {
+          const sService = window.serverSyncService;
+          if (!sService || sService.connectionStatus !== 'connected' || !sService.activeVaultId) {
+            showToast('Bạn đã chọn ghi đè máy chủ nhưng chưa kết nối hoặc chưa đăng nhập vào Máy Chủ Riêng!', 'warning');
+            e.target.value = '';
+            return;
+          }
+
+          const currentVault = sService.getActiveVault ? sService.getActiveVault() : null;
+          const vaultName = currentVault ? currentVault.name : 'hiện tại';
+          const ok = confirm(`CẢNH BÁO GHI ĐÈ MÁY CHỦ RIÊNG:\n\nBạn đang bật tùy chọn ghi đè toàn bộ lên máy chủ.\nDữ liệu của Sổ "${vaultName}" trên máy chủ sẽ bị THAY THẾ 100% bằng tệp sao lưu này!\n\nBạn có chắc chắn muốn thực hiện không?`);
+          if (!ok) {
+            e.target.value = '';
+            return;
+          }
+        }
+
         let password = null;
         if (file.name.endsWith('.stc') || file.name.includes('Encrypted')) {
           password = prompt('Tệp sao lưu này yêu cầu mật khẩu giải mã:');
@@ -1390,7 +1540,15 @@ const UISettings = {
 
         try {
           const res = await window.BackupService.importBackup(file, password);
-          showToast(`Khôi phục dữ liệu thành công (${res.count} giao dịch)!`, 'success');
+
+          if (shouldOverwriteServer && window.serverSyncService) {
+            showToast(`Đã khôi phục file (${res.count} giao dịch). Đang ghi đè toàn bộ lên máy chủ...`, 'info');
+            await window.serverSyncService.forceOverwriteServer();
+            showToast(`Khôi phục và ghi đè toàn bộ lên Máy Chủ Riêng thành công!`, 'success');
+          } else {
+            showToast(`Khôi phục dữ liệu thành công (${res.count} giao dịch)!`, 'success');
+          }
+
           if (window.app && window.app.refreshAll) window.app.refreshAll();
         } catch (err) {
           showToast('Khôi phục thất bại: ' + err.message, 'error');

@@ -505,6 +505,215 @@ class ServerSyncService {
     return true;
   }
 
+  // Lấy lịch sử 20 snapshot gần nhất của Sổ
+  async getVaultHistory(vaultId = null) {
+    const targetVaultId = vaultId || this.activeVaultId;
+    if (!this.serverUrl || !this.token || !targetVaultId) return [];
+    try {
+      const res = await fetch(`${this.serverUrl}/api/vaults/${targetVaultId}/history`, {
+        headers: { Authorization: `Bearer ${this.token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.history || [];
+      }
+    } catch (e) {
+      console.warn('[ServerSync] getVaultHistory error:', e);
+    }
+    return [];
+  }
+
+  // Khôi phục Sổ về một bản snapshot cụ thể (Rollback)
+  async restoreVaultSnapshot(historyId, vaultId = null) {
+    const targetVaultId = vaultId || this.activeVaultId;
+    if (!this.serverUrl || !this.token || !targetVaultId) {
+      throw new Error('Chưa kết nối hoặc chưa chọn Sổ trên Máy Chủ Riêng.');
+    }
+    if (!historyId) {
+      throw new Error('Chưa chọn bản snapshot cần khôi phục.');
+    }
+
+    const res = await fetch(`${this.serverUrl}/api/vaults/${targetVaultId}/history/${historyId}/restore`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Khôi phục bản snapshot thất bại.');
+    }
+
+    const result = await res.json();
+    if (result.data) {
+      // Thay thế hoàn toàn dữ liệu dùng chung cục bộ bằng bản snapshot vừa khôi phục
+      await this.replaceLocalWithSnapshotData(result.data);
+    }
+
+    this.lastSyncTime = new Date().toISOString();
+    await db.settings.put({ key: 'syncServerLastSyncTime', value: this.lastSyncTime });
+    await db.settings.put({ key: 'lastSyncTime', value: this.lastSyncTime });
+
+    window.dispatchEvent(new CustomEvent('sync-success', {
+      detail: { time: this.lastSyncTime, target: this.getTargetLabel() }
+    }));
+
+    return result;
+  }
+
+  // Thay thế toàn bộ dữ liệu dùng chung cục bộ bằng dữ liệu Snapshot
+  async replaceLocalWithSnapshotData(remoteData) {
+    if (!remoteData) return;
+
+    // Giữ an toàn cho các tài khoản và giao dịch riêng tư cục bộ
+    const localAccs = await db.accounts.toArray();
+    const privateAccs = localAccs.filter(a => a.isShared !== 1 && a.isShared !== true);
+    const privateAccIds = new Set(privateAccs.map(a => Number(a.id)));
+
+    const localTxs = await db.transactions.toArray();
+    const privateTxs = localTxs.filter(t => {
+      const accId = Number(t.accountId);
+      const toAccId = t.toAccountId ? Number(t.toAccountId) : null;
+      return privateAccIds.has(accId) && (!toAccId || privateAccIds.has(toAccId));
+    });
+
+    const newAccs = [...privateAccs, ...(remoteData.accounts || [])];
+    const newTxs = [...privateTxs, ...(remoteData.transactions || [])];
+
+    await db.accounts.clear();
+    await db.accounts.bulkAdd(newAccs);
+
+    await db.transactions.clear();
+    await db.transactions.bulkAdd(newTxs);
+
+    if (remoteData.categories) {
+      await db.categories.clear();
+      await db.categories.bulkAdd(remoteData.categories);
+    }
+    if (remoteData.debts) {
+      await db.debts.clear();
+      await db.debts.bulkAdd(remoteData.debts);
+    }
+    if (remoteData.budgets) {
+      await db.budgets.clear();
+      await db.budgets.bulkAdd(remoteData.budgets);
+    }
+    if (remoteData.recurring) {
+      await db.recurring.clear();
+      await db.recurring.bulkAdd(remoteData.recurring);
+    }
+    if (remoteData.savings && db.savings) {
+      await db.savings.clear();
+      await db.savings.bulkAdd(remoteData.savings);
+    }
+    if (remoteData.accumulations && db.accumulations) {
+      await db.accumulations.clear();
+      await db.accumulations.bulkAdd(remoteData.accumulations);
+    }
+    if (remoteData.assets && db.assets) {
+      await db.assets.clear();
+      await db.assets.bulkAdd(remoteData.assets);
+    }
+    if (remoteData.loans && db.loans) {
+      await db.loans.clear();
+      await db.loans.bulkAdd(remoteData.loans);
+    }
+
+    if (remoteData.settings && Array.isArray(remoteData.settings)) {
+      for (const rSetting of remoteData.settings) {
+        await db.settings.put(rSetting);
+      }
+    }
+
+    if (typeof window.recalculateAccountBalances === 'function') {
+      await window.recalculateAccountBalances();
+    }
+  }
+
+  // Ép ghi đè toàn bộ dữ liệu cục bộ lên Máy chủ riêng (Force Overwrite)
+  async forceOverwriteServer() {
+    if (!this.serverUrl || !this.token || !this.activeVaultId) {
+      throw new Error('Chưa kết nối hoặc chưa chọn Sổ trên Máy Chủ Riêng.');
+    }
+
+    const currentVault = this.getActiveVault();
+    if (currentVault && currentVault.role === 'viewer') {
+      throw new Error('Bạn chỉ có quyền xem, không thể ghi đè dữ liệu lên sổ này.');
+    }
+
+    // Đánh dấu tất cả tài khoản cục bộ thành isShared = 1 để cùng đồng bộ với Vault
+    const allAccs = await db.accounts.toArray();
+    for (const a of allAccs) {
+      if (a.isShared !== 1) {
+        a.isShared = 1;
+        await db.accounts.put(a);
+      }
+    }
+
+    const allTxs = await db.transactions.toArray();
+
+    const SYNCABLE_SETTINGS_KEYS = [
+      'budget_mode',
+      'budget_applicable_accounts',
+      'budget_rollover_enabled',
+      'budget_auto_rollover',
+      'theme',
+      'currency',
+      'privacyMode'
+    ];
+    const localSettings = [];
+    for (const k of SYNCABLE_SETTINGS_KEYS) {
+      const s = await db.settings.get(k);
+      if (s) localSettings.push(s);
+    }
+
+    const payload = {
+      transactions: allTxs,
+      accounts: allAccs,
+      categories: await db.categories.toArray(),
+      debts: await db.debts.toArray(),
+      budgets: await db.budgets.toArray(),
+      recurring: await db.recurring.toArray(),
+      savings: db.savings ? await db.savings.toArray() : [],
+      accumulations: db.accumulations ? await db.accumulations.toArray() : [],
+      assets: db.assets ? await db.assets.toArray() : [],
+      loans: db.loans ? await db.loans.toArray() : [],
+      settings: localSettings
+    };
+
+    const res = await fetch(`${this.serverUrl}/api/vaults/${this.activeVaultId}/overwrite`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ data: payload, forceOverwrite: true })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Ghi đè dữ liệu lên máy chủ thất bại.');
+    }
+
+    const pushResult = await res.json();
+
+    if (typeof window.recalculateAccountBalances === 'function') {
+      await window.recalculateAccountBalances();
+    }
+
+    this.lastSyncTime = new Date().toISOString();
+    await db.settings.put({ key: 'syncServerLastSyncTime', value: this.lastSyncTime });
+    await db.settings.put({ key: 'lastSyncTime', value: this.lastSyncTime });
+
+    window.dispatchEvent(new CustomEvent('sync-success', {
+      detail: { time: this.lastSyncTime, target: this.getTargetLabel() }
+    }));
+
+    return pushResult;
+  }
+
   // Bật/tắt tự động đồng bộ
   setAutoSync(enabled) {
     this.autoSync = !!enabled;

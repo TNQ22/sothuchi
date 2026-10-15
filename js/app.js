@@ -1357,6 +1357,9 @@ class App {
         case 'modal-source-account-picker':
           if (window.UIAccounts) window.UIAccounts.closeSourceAccountPicker();
           break;
+        case 'modal-server-vault-history':
+          if (window.UISettings) window.UISettings.closeVaultHistoryModal();
+          break;
         case 'modal-account-actions':
           if (window.UIAccounts) window.UIAccounts.closeActionSheet();
           break;

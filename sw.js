@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v2.5.3';
+const CACHE_NAME = 'sothuchi-pwa-v2.5.4';
 
 const PRECACHE_ASSETS = [
   './',
@@ -30,6 +30,7 @@ const PRECACHE_ASSETS = [
   './assets/icons/icon-maskable.png',
   './assets/icons/icon.svg',
   './assets/icons/dropbox.svg',
+  './assets/icons/google-drive.svg',
   './assets/logos/acb.png',
   './assets/logos/bidv.png',
   './assets/logos/cake.png',
@@ -77,8 +78,7 @@ self.addEventListener('activate', (event) => {
             return caches.delete(name);
           })
       );
-    }).then(() => self.clients.claim())
-  );
+    }).then(() => self.clients.claim())\n  );
 });
 
 // Fetch: Chiến lược Network-First cho HTML/API, Stale-While-Revalidate cho assets tĩnh

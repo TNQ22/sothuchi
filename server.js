@@ -623,6 +623,30 @@ class DatabaseManager {
     };
   }
 
+  getVaultHistoryEntry(vaultId, historyId) {
+    if (this.isSqlite) {
+      const stmt = this.sqliteDb.prepare(`
+        SELECT * FROM vault_history
+        WHERE vault_id = ? AND id = ?
+      `);
+      return stmt.get(vaultId, historyId) || null;
+    } else {
+      return this.jsonStore.vault_history.find(h => h.vault_id === vaultId && h.id === historyId) || null;
+    }
+  }
+
+  restoreVaultHistory(vaultId, historyId, updatedBy) {
+    const entry = this.getVaultHistoryEntry(vaultId, historyId);
+    if (!entry) return null;
+    let dataObj = {};
+    try {
+      dataObj = JSON.parse(entry.data_json || '{}');
+    } catch (e) {
+      console.warn('Lỗi phân tích JSON snapshot:', e);
+    }
+    return this.saveVaultData(vaultId, dataObj, updatedBy);
+  }
+
   getVaultHistory(vaultId) {
     if (this.isSqlite) {
       const stmt = this.sqliteDb.prepare(`
@@ -1108,8 +1132,8 @@ async function handleApiRequest(req, res, pathname) {
       });
     }
 
-    // 14. Đồng bộ dữ liệu hai chiều (Data Push & Merge)
-    if (req.method === 'POST' && subPath === '/sync') {
+    // 14. Đồng bộ dữ liệu hai chiều (Data Push & Merge) hoặc Ghi đè toàn bộ (Force Overwrite)
+    if (req.method === 'POST' && (subPath === '/sync' || subPath === '/overwrite')) {
       if (role === 'viewer') {
         return sendJson(res, 403, {
           error: 'Bạn chỉ có quyền Xem (Viewer), không có quyền chỉnh sửa hay đẩy dữ liệu mới lên sổ này'
@@ -1119,16 +1143,22 @@ async function handleApiRequest(req, res, pathname) {
       try {
         const body = await parseJsonBody(req);
         const incomingData = body.data || {};
+        const forceOverwrite = body.forceOverwrite === true || subPath === '/overwrite';
 
-        // Lấy dữ liệu hiện có trên Server
-        const serverCurrent = dbManager.getVaultData(vaultId);
-        const serverData = serverCurrent?.data || {};
+        let targetData;
+        if (forceOverwrite) {
+          targetData = incomingData;
+        } else {
+          // Lấy dữ liệu hiện có trên Server
+          const serverCurrent = dbManager.getVaultData(vaultId);
+          const serverData = serverCurrent?.data || {};
 
-        // Thực hiện gộp dữ liệu Last-Write-Wins
-        const mergedData = mergeFullVaultData(serverData, incomingData);
+          // Thực hiện gộp dữ liệu Last-Write-Wins
+          targetData = mergeFullVaultData(serverData, incomingData);
+        }
 
         // Lưu vào cơ sở dữ liệu
-        const saved = dbManager.saveVaultData(vaultId, mergedData, currentUser.email);
+        const saved = dbManager.saveVaultData(vaultId, targetData, currentUser.email);
 
         return sendJson(res, 200, {
           success: true,
@@ -1148,6 +1178,27 @@ async function handleApiRequest(req, res, pathname) {
     if (req.method === 'GET' && subPath === '/history') {
       const history = dbManager.getVaultHistory(vaultId);
       return sendJson(res, 200, { history });
+    }
+
+    // 16. Khôi phục Sổ từ một Snapshot (Restore Snapshot)
+    const restoreMatch = subPath.match(/^\/history\/([^/]+)\/restore$/);
+    if (req.method === 'POST' && restoreMatch) {
+      if (role === 'viewer') {
+        return sendJson(res, 403, { error: 'Bạn chỉ có quyền xem, không thể khôi phục dữ liệu sổ' });
+      }
+      const historyId = restoreMatch[1];
+      const restored = dbManager.restoreVaultHistory(vaultId, historyId, currentUser.email);
+      if (!restored) {
+        return sendJson(res, 404, { error: 'Không tìm thấy bản snapshot này hoặc dữ liệu bị lỗi' });
+      }
+      return sendJson(res, 200, {
+        success: true,
+        message: 'Khôi phục bản snapshot thành công',
+        vault_id: vaultId,
+        version: restored.version,
+        updated_at: restored.updated_at,
+        data: restored.data
+      });
     }
   }
 
