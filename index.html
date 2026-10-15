@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.5.1">
+  <link rel="stylesheet" href="./css/style.css?v=2.5.2">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -32,54 +32,25 @@
   <style id="settings-redesign-styles">
 
 /* ==========================================================================
-   SETTINGS HUB & SUB-VIEWS REDESIGN (INLINE CRITICAL CSS)
+   SETTINGS HUB & SUB-VIEWS REDESIGN (EDGE-TO-EDGE EXPANDED)
    ========================================================================== */
+#view-settings.page-view {
+  padding: 6px 4px 28px 4px !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
 .settings-container {
-  max-width: 680px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: 12px 14px 48px;
-}
-
-/* Hub Header */
-.settings-hub-header {
-  margin-bottom: 16px;
-  padding: 2px 4px;
-}
-
-.settings-hub-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 2px;
-}
-
-.settings-hub-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.settings-app-badge {
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  background: var(--primary-light, rgba(13, 148, 136, 0.15));
-  color: var(--primary, #0d9488);
-  border: 1px solid rgba(20, 184, 166, 0.3);
-}
-
-.settings-hub-subtitle {
-  font-size: 0.8rem;
-  color: var(--text-muted, #64748b);
-  margin: 0;
-  line-height: 1.4;
+  padding: 2px 2px 32px 2px !important;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Settings Group */
 .settings-group {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .settings-group-label {
@@ -88,7 +59,7 @@
   text-transform: uppercase;
   letter-spacing: 0.6px;
   color: var(--text-muted, #64748b);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   padding-left: 6px;
 }
 
@@ -100,19 +71,21 @@
   box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.2));
 }
 
-/* Settings Nav Item */
+/* Settings Nav Item - Maximized width & edge-to-edge content */
 .settings-nav-item {
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
-  gap: 12px !important;
-  padding: 12px 14px !important;
+  gap: 10px !important;
+  padding: 12px 8px 12px 8px !important;
   cursor: pointer;
   border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
   transition: all 0.15s ease;
   user-select: none;
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .settings-nav-item:last-child {
@@ -128,22 +101,23 @@
   transform: scale(0.995);
 }
 
-/* Icon Boxes */
+/* Icon Boxes - Push tight to left edge */
 .settings-item-icon-box {
-  width: 38px !important;
-  height: 38px !important;
-  border-radius: 10px !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 9px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   flex-shrink: 0 !important;
+  margin-left: 0 !important;
   transition: transform 0.2s ease;
 }
 
 .settings-item-icon-box svg,
 .settings-item-icon-box i {
-  width: 20px !important;
-  height: 20px !important;
+  width: 19px !important;
+  height: 19px !important;
 }
 
 .settings-nav-item:hover .settings-item-icon-box {
@@ -185,9 +159,9 @@
   color: #6366f1 !important;
 }
 
-/* Item Content */
+/* Item Content - Maximized middle area */
 .settings-item-content {
-  flex: 1 !important;
+  flex: 1 1 auto !important;
   min-width: 0 !important;
 }
 
@@ -195,17 +169,20 @@
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  gap: 8px !important;
+  gap: 6px !important;
 }
 
 .settings-item-title {
   font-size: 0.92rem !important;
   font-weight: 600 !important;
   color: var(--text-primary, #f8fafc) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 .settings-item-desc {
-  font-size: 0.76rem !important;
+  font-size: 0.75rem !important;
   color: var(--text-muted, #64748b) !important;
   margin-top: 2px !important;
   white-space: nowrap !important;
@@ -213,11 +190,14 @@
   text-overflow: ellipsis !important;
 }
 
+/* Arrow - Push tight to right edge */
 .settings-item-arrow {
   width: 16px !important;
   height: 16px !important;
   color: var(--text-muted, #64748b) !important;
   flex-shrink: 0 !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
   transition: transform 0.2s ease, color 0.2s ease;
 }
 
@@ -235,6 +215,7 @@
   white-space: nowrap !important;
   border: 1px solid transparent !important;
   line-height: 1.2 !important;
+  flex-shrink: 0 !important;
 }
 
 .settings-status-pill.pill-green {
@@ -261,28 +242,32 @@
   border-color: rgba(245, 158, 11, 0.25) !important;
 }
 
-/* Hub Footer */
+/* Minimal Hub Footer - Version with GitHub link only */
 .settings-hub-footer {
   text-align: center;
-  padding: 20px 12px 10px;
+  padding: 24px 8px 16px;
   color: var(--text-muted, #64748b);
 }
 
-.settings-footer-logo {
-  width: 28px;
-  height: 28px;
-  margin-bottom: 6px;
-  opacity: 0.8;
+.settings-version-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted, #64748b);
+  text-decoration: none;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  transition: all 0.2s ease;
+  user-select: none;
 }
 
-.settings-footer-text {
-  font-size: 0.8rem;
-  margin-bottom: 3px;
-}
-
-.settings-footer-sub {
-  font-size: 0.72rem;
-  opacity: 0.7;
+.settings-version-link:hover {
+  color: var(--primary, #0d9488);
+  border-color: rgba(20, 184, 166, 0.4);
+  background: rgba(20, 184, 166, 0.08);
 }
 
 /* Sub-page Detail View */
@@ -305,8 +290,8 @@
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  margin-bottom: 14px !important;
-  padding: 4px 0 10px !important;
+  margin-bottom: 12px !important;
+  padding: 2px 2px 8px !important;
   border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08)) !important;
 }
 
@@ -319,7 +304,7 @@
   color: var(--text-primary, #f8fafc) !important;
   font-size: 0.84rem !important;
   font-weight: 600 !important;
-  padding: 6px 12px !important;
+  padding: 5px 10px !important;
   border-radius: var(--radius-sm, 8px) !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;
@@ -332,12 +317,12 @@
 }
 
 .settings-detail-header-title {
-  font-size: 1rem !important;
+  font-size: 0.96rem !important;
   font-weight: 700 !important;
   color: var(--text-primary, #f8fafc) !important;
   display: flex !important;
   align-items: center !important;
-  gap: 8px !important;
+  gap: 6px !important;
 }
 
 .settings-detail-panel {
@@ -353,16 +338,16 @@
   background: var(--bg-card, #1e293b);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
   border-radius: var(--radius-lg, 16px);
-  padding: 16px 18px;
-  margin-bottom: 16px;
+  padding: 14px 12px;
+  margin-bottom: 14px;
   box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.2));
 }
 
 .settings-lead-text {
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   color: var(--text-secondary, #94a3b8);
   line-height: 1.5;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 /* Accordion for Advanced Settings */
@@ -370,7 +355,7 @@
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
   border-radius: var(--radius-lg, 16px);
   background: var(--bg-card, #1e293b);
-  margin-top: 14px;
+  margin-top: 12px;
   overflow: hidden;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -384,7 +369,7 @@
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  padding: 13px 16px !important;
+  padding: 12px 10px !important;
   cursor: pointer !important;
   user-select: none !important;
   background: rgba(255, 255, 255, 0.02) !important;
@@ -396,7 +381,7 @@
 }
 
 .settings-accordion-title {
-  font-size: 0.88rem !important;
+  font-size: 0.86rem !important;
   font-weight: 600 !important;
   color: var(--text-primary, #f8fafc) !important;
   display: flex !important;
@@ -425,7 +410,7 @@
 
 .settings-accordion-content {
   display: none !important;
-  padding: 16px 16px 18px !important;
+  padding: 14px 10px 16px !important;
   border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08)) !important;
   background: var(--bg-surface, #111827) !important;
 }
@@ -433,17 +418,6 @@
 .settings-accordion.expanded .settings-accordion-content {
   display: block !important;
   animation: accordionOpen 0.2s ease-out !important;
-}
-
-@keyframes accordionOpen {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
   </style>
@@ -1180,12 +1154,7 @@
           
           <!-- 1. SETTINGS HUB (Màn hình chính Cài đặt: Menu đề mục dạng thẻ sạch sẽ, gọn gàng) -->
           <div id="settings-hub-view" class="settings-hub-view">
-            <div class="settings-hub-header">
-              <div class="settings-hub-title-row">
-                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Trung Tâm Cài Đặt & Đồng Bộ</span>
-                <span class="settings-app-badge">v2.5.1</span>
-              </div>
-            </div>
+            
 
             <!-- Nhóm 1: ĐỒNG BỘ ĐÁM MÂY & MÁY CHỦ -->
             <div class="settings-group">
@@ -1308,14 +1277,14 @@
               </div>
             </div>
 
-            <!-- Hub Footer -->
+            <!-- Hub Footer (Chỉ thông tin phiên bản & link GitHub) -->
             <div class="settings-hub-footer">
-              <img src="./assets/icons/icon.svg" alt="Logo" class="settings-footer-logo">
-              <div class="settings-footer-text">
-                <strong>Sổ Thu Chi PWA</strong> &bull; Quản lý tài chính an toàn Offline-First
-              </div>
-              <div class="settings-footer-sub">Phiên bản v2.5.0 &bull; Dữ liệu riêng tư hoàn toàn thuộc về bạn</div>
+              <a href="https://github.com/TNQ22/sothuchi" target="_blank" rel="noopener noreferrer" class="settings-version-link">
+                <i data-lucide="github" style="width: 14px; height: 14px;"></i>
+                <span>Phiên bản v2.5.2</span>
+              </a>
             </div>
+              
           </div>
 
           <!-- 2. SETTINGS DETAIL CONTAINER (Trang chi tiết của từng đề mục khi chọn) -->
@@ -5033,26 +5002,26 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./vendor/lucide.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=2.5.1"></script>
+  <script src="./js/config.js?v=2.5.2"></script>
   <script src="./js/crypto.js"></script>
   <script src="./js/db.js?v=2.2.8"></script>
-  <script src="./js/google-drive.js?v=2.5.1"></script>
-  <script src="./js/dropbox.js?v=2.5.1"></script>
-  <script src="./js/server-sync.js?v=2.5.1"></script>
+  <script src="./js/google-drive.js?v=2.5.2"></script>
+  <script src="./js/dropbox.js?v=2.5.2"></script>
+  <script src="./js/server-sync.js?v=2.5.2"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
-  <script src="./js/sync-coordinator.js?v=2.5.1"></script>
+  <script src="./js/sync-coordinator.js?v=2.5.2"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
   <script src="./js/ui-transactions.js?v=2.2.4"></script>
   <script src="./js/ui-debts.js?v=2.0.9"></script>
-  <script src="./js/ui-accounts.js?v=2.5.1"></script>
+  <script src="./js/ui-accounts.js?v=2.5.2"></script>
   <script src="./js/ui-budgets.js?v=2.2.8"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
-  <script src="./js/ui-settings.js?v=2.5.1"></script>
+  <script src="./js/ui-settings.js?v=2.5.2"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.5.1"></script>
+  <script src="./js/app.js?v=2.5.2"></script>
 </body>
 </html>
