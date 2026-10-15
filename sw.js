@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v2.5.5';
+const CACHE_NAME = 'sothuchi-pwa-v2.5.6';
 
 const PRECACHE_ASSETS = [
   './',
@@ -10,11 +10,9 @@ const PRECACHE_ASSETS = [
   './vendor/lucide.min.js',
   './js/config.js',
   './js/db.js',
-  './js/crypto.js',
   './js/google-drive.js',
   './js/dropbox.js',
   './js/server-sync.js',
-  './js/csv-export.js',
   './js/backup.js',
   './js/sync-coordinator.js',
   './js/ui-calendar.js',
@@ -25,100 +23,101 @@ const PRECACHE_ASSETS = [
   './js/ui-analytics.js',
   './js/ui-settings.js',
   './js/app.js',
-  './assets/icons/icon-192.png',
-  './assets/icons/icon-512.png',
-  './assets/icons/icon-maskable.png',
-  './assets/icons/icon.svg',
-  './assets/icons/dropbox.svg',
-  './assets/icons/google-drive.svg',
-  './assets/logos/acb.png',
-  './assets/logos/bidv.png',
-  './assets/logos/cake.png',
-  './assets/logos/ctg.png',
-  './assets/logos/eib.png',
-  './assets/logos/hdb.png',
-  './assets/logos/lpb.png',
-  './assets/logos/mb.png',
-  './assets/logos/momo.png',
-  './assets/logos/msb.png',
-  './assets/logos/nab.png',
-  './assets/logos/ocb.png',
-  './assets/logos/seab.png',
-  './assets/logos/shb.png',
-  './assets/logos/shopeepay.png',
-  './assets/logos/stb.png',
-  './assets/logos/tcb.png',
-  './assets/logos/timo.png',
-  './assets/logos/tpb.png',
-  './assets/logos/vcb.png',
-  './assets/logos/vib.png',
-  './assets/logos/vpb.png',
-  './assets/logos/zalopay.png'
+  './icons/icon-192.png',
+  './icons/icon-512.png'
 ];
 
-// Install: Tải và lưu trước toàn bộ tài nguyên cốt lõi vào Cache
+// 1. Cài đặt Service Worker và Cache tĩnh các tài nguyên cốt lõi
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Pre-caching offline assets...');
+      console.log('[SW] Đang tải trước tài nguyên ngoại tuyến...');
       return cache.addAll(PRECACHE_ASSETS);
-    }).then(() => self.skipWaiting())
+    }).then(() => {
+      return self.skipWaiting();
+    })
   );
 });
 
-// Activate: Xóa các Cache phiên bản cũ
+// 2. Kích hoạt và dọn dẹp các bản Cache cũ
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then((keys) => {
       return Promise.all(
-        cacheNames
+        keys
           .filter((name) => name.startsWith('sothuchi-pwa-') && name !== CACHE_NAME)
           .map((name) => {
-            console.log('[SW] Deleting old cache:', name);
+            console.log('[SW] Xóa bộ nhớ đệm phiên bản cũ:', name);
             return caches.delete(name);
           })
       );
-    }).then(() => self.clients.claim())\n  );
+    }).then(() => {
+      return self.clients.claim();
+    })
+  );
 });
 
-// Fetch: Chiến lược Network-First cho HTML/API, Stale-While-Revalidate cho assets tĩnh
+// 3. Chiến lược Network-First cho CSS/JS ứng dụng, Cache-First cho CDN/Fonts/Icons
 self.addEventListener('fetch', (event) => {
+  // Bỏ qua các yêu cầu không phải GET hoặc chrome-extension/Google API
+  if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
-  // Không cache các yêu cầu Google API, Dropbox API, máy chủ REST API hoặc script bên ngoài
+  // Không cache các lệnh gọi API Google/Dropbox/Cloudflare/Sync Server
   if (
-    url.hostname.includes('googleapis.com') ||
-    url.hostname.includes('google.com') ||
-    url.hostname.includes('dropboxapi.com') ||
-    url.hostname.includes('dropbox.com') ||
-    url.pathname.startsWith('/api/') ||
-    event.request.method !== 'GET'
+    url.origin !== self.location.origin &&
+    (url.hostname.includes('googleapis.com') ||
+     url.hostname.includes('google.com') ||
+     url.hostname.includes('dropbox.com') ||
+     url.hostname.includes('dropboxapi.com') ||
+     url.pathname.startsWith('/api/'))
   ) {
     return;
   }
 
-  // Đối với điều hướng trang HTML (Network-First, fallback về Cache)
-  if (event.request.mode === 'navigate') {
+  // Đối với file trong cùng domain (HTML, CSS, JS, hình ảnh nội bộ):
+  // Chiến lược: Network-First (Ưu tiên mạng để lấy bản mới nhất, rớt mạng thì fallback về Cache)
+  if (url.origin === self.location.origin) {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match('./index.html'))
+      fetch(event.request)
+        .then((networkResponse) => {
+          // Chỉ lưu vào cache nếu response hợp lệ (status 200)
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // Ngoại tuyến (Offline): Lấy từ cache
+          return caches.match(event.request).then((cachedResponse) => {
+            if (cachedResponse) return cachedResponse;
+            // Nếu là yêu cầu trang (HTML) mà không có trong cache, trả về trang chủ index.html
+            if (event.request.mode === 'navigate') {
+              return caches.match('./index.html');
+            }
+          });
+        })
     );
     return;
   }
 
-  // Đối với tài nguyên tĩnh (Stale-While-Revalidate)
+  // Đối với tài nguyên thư viện bên thứ 3 (Font, CDN Lucide, Google GIS script):
+  // Chiến lược: Stale-While-Revalidate hoặc Cache-First
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      }).catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
+      if (cachedResponse) {
+        // Trả về cache ngay và fetch ngầm để cập nhật cache cho lần sau
+        fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
+          }
+        }).catch(() => {});
+        return cachedResponse;
+      }
+      return fetch(event.request);
     })
   );
 });

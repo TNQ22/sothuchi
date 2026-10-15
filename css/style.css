@@ -2073,6 +2073,44 @@ body.dark .header-brand-logo-btn .sync-status-dot,
   }
 }
 
+/* Desktop Scroll Restoration: Đảm bảo body và view luôn cuộn chuột bình thường trên màn hình máy tính (> 768px) */
+@media (min-width: 769px) {
+  html, body {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: clip !important;
+    position: static !important;
+  }
+
+  body.view-new-transaction,
+  body.view-category-picker,
+  body.view-borrow-select,
+  body.view-budget-form,
+  body.view-budget-category-form,
+  body.view-budget-cat-history {
+    height: auto !important;
+    overflow-y: auto !important;
+    overflow-x: clip !important;
+    position: static !important;
+    width: 100% !important;
+    top: auto !important;
+    left: auto !important;
+  }
+
+  #app-container {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+  }
+
+  .main-wrapper {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+  }
+}
+
 /* Scrollbar Customization */
 ::-webkit-scrollbar {
   width: 6px;
@@ -5501,7 +5539,7 @@ body.dark .header-brand-logo-btn .sync-status-dot,
 html, body {
   width: 100% !important;
   max-width: 100% !important;
-  overflow-x: hidden !important;
+  overflow-x: clip !important;
   box-sizing: border-box !important;
 }
 

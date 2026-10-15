@@ -1,142 +1,109 @@
 /**
- * SỔ THU CHI - SYNC COORDINATOR & ADAPTER ARCHITECTURE
- * Module điều phối trung tâm quản lý:
- * - Trạng thái đồng bộ: idle, pending, syncing, synced, error
- * - Các bộ chuyển đổi (Adapters): GoogleDriveAdapter, LocalFolderAdapter, (Sẵn sàng cho Cloudflare/Supabase sau này)
- * - Micro Status Indicator trên Header & Sidebar
- * - Popover xem nhanh trạng thái
+ * SyncCoordinator - Trung tâm điều phối đồng bộ hợp nhất
+ * Hỗ trợ: Dedicated Sync Server (Self-Hosted), Google Drive, Dropbox, Local Folder
+ * Quản lý trạng thái, Micro Popover và kích hoạt đồng bộ thông minh
  */
-
 class SyncCoordinator {
   constructor() {
-    this.status = 'idle'; // 'idle' | 'pending' | 'syncing' | 'synced' | 'error'
-    this.lastSyncTime = null;
-    this.lastSyncTarget = 'Bộ nhớ trình duyệt (IndexedDB)';
-    this.lastError = null;
-    this.isDirty = false;
-    this.debounceTimer = null;
     this.adapters = new Map();
+    this.status = 'idle'; // 'idle' | 'syncing' | 'synced' | 'pending' | 'error'
+    this.lastSyncTime = null;
+    this.lastSyncTarget = null;
+    this.lastError = null;
+    this.debounceTimer = null;
     this.isPopoverOpen = false;
+
+    this.init();
   }
 
-  // Khởi tạo coordinator
   async init() {
-    // Đọc trạng thái đã lưu
+    // Tải cấu hình và lịch sử đồng bộ gần nhất từ database
     try {
-      const savedTime = await db.settings.get('lastSyncTime');
-      if (savedTime && savedTime.value) {
-        this.lastSyncTime = savedTime.value;
-      }
-
-      const savedTarget = await db.settings.get('lastSyncTarget');
-      if (savedTarget && savedTarget.value) {
-        this.lastSyncTarget = savedTarget.value;
+      if (window.db && window.db.settings) {
+        const lastTime = await db.settings.get('lastSyncSuccessTime');
+        const lastTarget = await db.settings.get('lastSyncTargetName');
+        if (lastTime && lastTime.value) {
+          this.lastSyncTime = lastTime.value;
+          this.lastSyncTarget = lastTarget ? lastTarget.value : 'Đám mây';
+          this.status = 'synced';
+        }
       }
     } catch (e) {
-      console.warn('SyncCoordinator init read error:', e);
+      console.warn('SyncCoordinator init error:', e);
     }
 
-    // Đăng ký adapter mặc định nếu có
-    if (window.serverSyncService) {
-      this.registerAdapter('custom-server', window.serverSyncService);
-    }
-    if (window.googleDriveService) {
-      this.registerAdapter('google-drive', window.googleDriveService);
-    }
-    if (window.BackupService) {
-      this.registerAdapter('local-folder', window.BackupService);
-    }
-
-    // Lắng nghe sự kiện đồng bộ từ các adapter
-    window.addEventListener('sync-start', (e) => {
-      this.setStatus('syncing', e.detail?.target || this.lastSyncTarget);
-    });
-
-    window.addEventListener('sync-success', (e) => {
-      this.lastSyncTime = e.detail?.time || new Date().toISOString();
-      this.lastSyncTarget = e.detail?.target || this.lastSyncTarget;
-      this.lastError = null;
-      this.isDirty = false;
-      this.setStatus('synced', this.lastSyncTarget);
-      if (db.settings) {
-        db.settings.put({ key: 'lastSyncTime', value: this.lastSyncTime });
-        db.settings.put({ key: 'lastSyncTarget', value: this.lastSyncTarget });
-      }
-    });
-
-    window.addEventListener('sync-error', (e) => {
-      this.lastError = e.detail?.error || 'Lỗi không xác định khi đồng bộ';
-      this.setStatus('error', this.lastSyncTarget, this.lastError);
-    });
-
-    // Đóng popover khi click/chạm vào lớp nền backdrop
-    const backdrop = document.getElementById('sync-popover-backdrop');
-    if (backdrop) {
-      const handleBackdropDismiss = (e) => {
-        if (e) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-        this.closePopover();
-      };
-      backdrop.addEventListener('pointerdown', handleBackdropDismiss);
-      backdrop.addEventListener('touchstart', handleBackdropDismiss, { passive: false });
-      backdrop.addEventListener('click', handleBackdropDismiss);
-    }
-
-    // Đóng popover khi click ngoài (dành cho desktop hoặc dự phòng)
-    document.addEventListener('pointerdown', (e) => {
-      const popover = document.getElementById('sync-status-popover');
-      if (this.isPopoverOpen && popover) {
-        const isClickOnAnyTrigger = e.target.closest('#header-brand-logo-btn') || 
-                                    e.target.closest('#tx-brand-logo-btn') || 
-                                    e.target.closest('#header-sync-btn');
-        if (!popover.contains(e.target) && !isClickOnAnyTrigger) {
-          this.closePopover();
-        }
-      }
-    }, { passive: true });
-
-    document.addEventListener('click', (e) => {
-      const popover = document.getElementById('sync-status-popover');
-      if (this.isPopoverOpen && popover) {
-        const isClickOnAnyTrigger = e.target.closest('#header-brand-logo-btn') || 
-                                    e.target.closest('#tx-brand-logo-btn') || 
-                                    e.target.closest('#header-sync-btn');
-        if (!popover.contains(e.target) && !isClickOnAnyTrigger) {
-          this.closePopover();
-        }
-      }
-    });
-
-    // Cập nhật giao diện lần đầu
+    this.setupEventListeners();
     this.updateUI();
   }
 
-  // Đăng ký một Adapter (sẵn sàng mở rộng sau này)
   registerAdapter(name, adapter) {
     this.adapters.set(name, adapter);
   }
 
-  // Cập nhật trạng thái và thông báo UI
-  setStatus(status, target = null, error = null) {
+  setupEventListeners() {
+    // Lắng nghe sự kiện bắt đầu đồng bộ
+    window.addEventListener('sync-start', (e) => {
+      this.setStatus('syncing', e.detail?.target || 'Đám mây');
+    });
+
+    // Lắng nghe sự kiện đồng bộ thành công
+    window.addEventListener('sync-success', (e) => {
+      this.lastSyncTime = new Date().toISOString();
+      this.lastSyncTarget = e.detail?.target || this.lastSyncTarget || 'Đám mây';
+      this.lastError = null;
+      this.setStatus('synced', this.lastSyncTarget);
+
+      // Lưu lại vào DB để giữ trạng thái sau khi F5/tải lại trang
+      if (window.db && window.db.settings) {
+        db.settings.put({ key: 'lastSyncSuccessTime', value: this.lastSyncTime });
+        db.settings.put({ key: 'lastSyncTargetName', value: this.lastSyncTarget });
+      }
+    });
+
+    // Lắng nghe sự kiện đồng bộ thất bại
+    window.addEventListener('sync-error', (e) => {
+      this.lastError = e.detail?.error || 'Không thể kết nối đến máy chủ sao lưu';
+      this.setStatus('error', e.detail?.target || 'Đám mây');
+    });
+
+    // Lắng nghe click bên ngoài để đóng popover
+    document.addEventListener('click', (e) => {
+      if (!this.isPopoverOpen) return;
+      const popover = document.getElementById('sync-status-popover');
+      const headerBtn = document.getElementById('header-brand-logo-btn');
+      const txBtn = document.getElementById('tx-brand-logo-btn');
+      const syncBtn = document.getElementById('header-sync-btn');
+      
+      if (popover && !popover.contains(e.target) && 
+          (!headerBtn || !headerBtn.contains(e.target)) && 
+          (!txBtn || !txBtn.contains(e.target)) &&
+          (!syncBtn || !syncBtn.contains(e.target))) {
+        this.closePopover();
+      }
+    });
+  }
+
+  setStatus(status, target = null) {
     this.status = status;
     if (target) this.lastSyncTarget = target;
-    if (error !== undefined) this.lastError = error;
     this.updateUI();
   }
 
-  // Hook được gọi khi có thay đổi dữ liệu trong CSDL IndexedDB
-  notifyDataChange() {
-    this.isDirty = true;
+  // Báo hiệu có dữ liệu mới thay đổi (gọi từ db.js hoặc các hàm CRUD)
+  notifyDataChanged() {
     if (this.status !== 'syncing') {
       this.setStatus('pending');
     }
 
-    // Debounce trigger sync (3 giây)
-    if (this.debounceTimer) clearTimeout(this.debounceTimer);
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+    }
+
+    // Tự động kích hoạt đồng bộ sau 2.5s không có thêm thay đổi
     this.debounceTimer = setTimeout(() => {
-      this.syncAll(true); // auto sync
+      this.syncAll(true).catch(err => {
+        console.warn('Debounced auto-sync error:', err);
+      });
     }, 2500);
   }
 
@@ -158,11 +125,17 @@ class SyncCoordinator {
 
     // 1. Google Drive Adapter
     const driveAdapter = this.adapters.get('google-drive') || window.googleDriveService;
-    if (driveAdapter && (isAuto ? driveAdapter.isAutoSyncEnabled() : true)) {
-      if (driveAdapter.clientId) {
+    if (driveAdapter) {
+      const isDriveReady = driveAdapter.clientId && (
+        driveAdapter.hasValidToken() ||
+        (driveAdapter.workerUrl && driveAdapter.refreshToken) ||
+        (driveAdapter.userProfile && driveAdapter.userProfile.email)
+      );
+
+      if (isAuto ? driveAdapter.isAutoSyncEnabled() : isDriveReady) {
         performedSync = true;
         try {
-          await driveAdapter.sync({ interactive: !isAuto });
+          await driveAdapter.sync({ interactive: false });
         } catch (err) {
           console.warn('Google Drive sync failed during syncAll:', err);
           if (!isAuto) throw err;
@@ -172,8 +145,13 @@ class SyncCoordinator {
 
     // 2. Dropbox Adapter (Tự động đồng bộ vĩnh viễn trên iPhone)
     const dropboxAdapter = this.adapters.get('dropbox') || window.dropboxService;
-    if (dropboxAdapter && (isAuto ? dropboxAdapter.isAutoSyncEnabled() : true)) {
-      if (dropboxAdapter.appKey && (dropboxAdapter.refreshToken || dropboxAdapter.accessToken)) {
+    if (dropboxAdapter) {
+      const isDropboxReady = dropboxAdapter.appKey && (
+        dropboxAdapter.hasValidToken() ||
+        dropboxAdapter.refreshToken
+      );
+
+      if (isAuto ? dropboxAdapter.isAutoSyncEnabled() : isDropboxReady) {
         performedSync = true;
         try {
           await dropboxAdapter.sync();
@@ -199,8 +177,9 @@ class SyncCoordinator {
     }
 
     if (!performedSync && !isAuto) {
-      // Không có dịch vụ nào kích hoạt
+      // Không có dịch vụ đám mây/máy chủ nào được kết nối
       this.setStatus('idle', 'Bộ nhớ trình duyệt (IndexedDB)');
+      showToast('Chưa có dịch vụ đám mây nào được kết nối. Hãy vào Cài đặt để đăng nhập.', 'info');
     }
   }
 
@@ -401,7 +380,7 @@ class SyncCoordinator {
 
     if (targetEl) {
       if (isOnlyLocalDB) {
-        targetEl.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.8rem;">Bộ nhớ trình duyệt (IndexedDB)</span>';
+        targetEl.innerHTML = '<span style=\"color: var(--text-secondary); font-size: 0.8rem;\">Bộ nhớ trình duyệt (IndexedDB)</span>';
       } else {
         targetEl.textContent = this.lastSyncTarget;
       }
@@ -432,26 +411,37 @@ class SyncCoordinator {
     }
 
     try {
+      // 1. Google Drive: Nếu người dùng ĐÃ ĐĂNG NHẬP trước đó (có userProfile.email hoặc refreshToken)
       const drive = window.googleDriveService;
-      if (drive && drive.clientId && !drive.hasValidToken()) {
-        let ok = false;
-        if (drive.workerUrl && drive.refreshToken) {
-          ok = await drive.refreshViaWorker();
-        }
-        if (!ok) {
-          showToast('Đang kết nối lại Google...', 'info');
-          await drive.requestToken({ interactive: true });
+      if (drive && drive.clientId && (drive.userProfile?.email || drive.refreshToken)) {
+        if (!drive.hasValidToken()) {
+          let refreshed = false;
+          if (drive.workerUrl && drive.refreshToken) {
+            refreshed = await drive.refreshViaWorker();
+          }
+          // Nếu không có Worker hoặc refresh thất bại: Bật popup gia hạn trực tiếp vì đây là thao tác chủ động của người dùng
+          if (!refreshed && !drive.hasValidToken()) {
+            showToast('Đang kết nối lại Google Drive...', 'info');
+            await drive.requestToken({ interactive: true });
+          }
         }
       }
 
+      // 2. Dropbox: Nếu người dùng ĐÃ ĐĂNG NHẬP trước đó (có refreshToken hoặc userProfile)
       const dropbox = window.dropboxService;
-      if (dropbox && dropbox.appKey && !dropbox.hasValidToken() && !dropbox.refreshToken) {
-        showToast('Đang mở đăng nhập Dropbox...', 'info');
-        await dropbox.requestAuth();
+      if (dropbox && dropbox.appKey && (dropbox.refreshToken || dropbox.userProfile?.email)) {
+        if (!dropbox.hasValidToken()) {
+          if (dropbox.refreshToken) {
+            await dropbox.refreshAccessToken();
+          } else {
+            showToast('Đang kết nối lại Dropbox...', 'info');
+            await dropbox.requestAuth();
+          }
+        }
       }
 
       await this.syncAll(false);
-      showToast('Đồng bộ thành công!', 'success');
+      showToast('Đã kiểm tra đồng bộ thành công!', 'success');
       if (window.app && window.app.refreshAll) await window.app.refreshAll();
     } catch (err) {
       showToast('Đồng bộ thất bại: ' + err.message, 'error');
