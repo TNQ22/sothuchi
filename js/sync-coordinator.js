@@ -90,6 +90,10 @@ class SyncCoordinator {
   }
 
   // Báo hiệu có dữ liệu mới thay đổi (gọi từ db.js hoặc các hàm CRUD)
+  notifyDataChange() {
+    this.notifyDataChanged();
+  }
+
   notifyDataChanged() {
     if (this.status !== 'syncing') {
       this.setStatus('pending');

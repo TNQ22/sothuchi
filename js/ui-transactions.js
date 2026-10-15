@@ -3098,7 +3098,20 @@ const UITransactions = {
       return;
     }
 
-    // 0. Adjust Account Balance
+    this.isSubmitting = true;
+    const submitBtn = document.querySelector('.tx-submit-bottom-btn');
+    const headerDoneBtn = document.querySelector('.tx-header-done-btn');
+    if (submitBtn) {
+      submitBtn.style.pointerEvents = 'none';
+      submitBtn.style.opacity = '0.7';
+    }
+    if (headerDoneBtn) {
+      headerDoneBtn.style.pointerEvents = 'none';
+      headerDoneBtn.style.opacity = '0.7';
+    }
+
+    try {
+      // 0. Adjust Account Balance
     if (type === 'adjust') {
       const acc = await db.accounts.get(Number(accountId));
       if (acc) {
@@ -3292,8 +3305,27 @@ const UITransactions = {
       // Thêm mới: KHÔNG thoát về trang trước, chỉ làm mới form để người dùng tiếp tục ghi chép
       await this.resetForm(type);
       showToast('Đã thêm ghi chép mới', 'success');
+      try {
+        const pageBody = document.querySelector('#view-new-transaction .tx-page-body');
+        if (pageBody) pageBody.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (_) {}
     }
     await window.app.refreshAll();
+    } catch (err) {
+      console.error('Lỗi khi lưu giao dịch:', err);
+      showToast('Lỗi khi lưu: ' + (err.message || err), 'error');
+    } finally {
+      this.isSubmitting = false;
+      if (submitBtn) {
+        submitBtn.style.pointerEvents = '';
+        submitBtn.style.opacity = '';
+      }
+      if (headerDoneBtn) {
+        headerDoneBtn.style.pointerEvents = '';
+        headerDoneBtn.style.opacity = '';
+      }
+    }
   },
 
   renderTxCardHtml(t, catMap, accMap) {

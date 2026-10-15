@@ -1440,15 +1440,27 @@ async function getNetWorth() {
 // Auto-sync debouncer hook
 let autoSyncTimeout = null;
 function triggerAutoSync() {
-  if (window.SyncCoordinator) {
-    window.SyncCoordinator.notifyDataChange();
-  } else {
-    if (autoSyncTimeout) clearTimeout(autoSyncTimeout);
-    autoSyncTimeout = setTimeout(() => {
-      if (window.googleDriveService && window.googleDriveService.isAutoSyncEnabled()) {
-        window.googleDriveService.sync();
+  try {
+    if (window.SyncCoordinator) {
+      if (typeof window.SyncCoordinator.notifyDataChanged === 'function') {
+        window.SyncCoordinator.notifyDataChanged();
+      } else if (typeof window.SyncCoordinator.notifyDataChange === 'function') {
+        window.SyncCoordinator.notifyDataChange();
       }
-    }, 3000);
+    } else {
+      if (autoSyncTimeout) clearTimeout(autoSyncTimeout);
+      autoSyncTimeout = setTimeout(() => {
+        try {
+          if (window.googleDriveService && window.googleDriveService.isAutoSyncEnabled()) {
+            window.googleDriveService.sync();
+          }
+        } catch (e) {
+          console.warn('[AutoSync] Error:', e);
+        }
+      }, 3000);
+    }
+  } catch (err) {
+    console.warn('[AutoSync] triggerAutoSync error:', err);
   }
 }
 window.triggerAutoSync = triggerAutoSync;
