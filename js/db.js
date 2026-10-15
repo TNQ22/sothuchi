@@ -65,9 +65,9 @@ const DEFAULT_CATEGORIES = [
 
 // Default Seed Accounts
 const DEFAULT_ACCOUNTS = [
-  { name: 'Tiền mặt', type: 'cash', balance: 0, initialBalance: 0, icon: 'wallet', color: '#10b981', order: 0 },
-  { name: 'Ngân hàng', type: 'bank', balance: 0, initialBalance: 0, icon: 'landmark', color: '#4f46e5', order: 1 },
-  { name: 'Ví điện tử', type: 'ewallet', balance: 0, initialBalance: 0, icon: 'smartphone', color: '#ec4899', order: 2 }
+  { name: 'Tiền mặt', type: 'cash', balance: 0, initialBalance: 0, icon: 'wallet', color: '#10b981', order: 0, isShared: 0 },
+  { name: 'Ngân hàng', type: 'bank', balance: 0, initialBalance: 0, icon: 'landmark', color: '#4f46e5', order: 1, isShared: 0 },
+  { name: 'Ví điện tử', type: 'ewallet', balance: 0, initialBalance: 0, icon: 'smartphone', color: '#ec4899', order: 2, isShared: 0 }
 ];
 
 // Tự động kiểm tra và gộp tài khoản bị trùng lặp tên & loại (khắc phục nhân đôi trên PWA/Sync)
@@ -388,6 +388,18 @@ async function initDatabase() {
           }
         }
       }
+    }
+
+    // Chuẩn hóa cờ isShared cho các tài khoản cũ chưa có giá trị
+    try {
+      const allAccs = await db.accounts.where('isDeleted').equals(0).toArray();
+      for (const a of allAccs) {
+        if (a.isShared === undefined || a.isShared === null) {
+          await db.accounts.update(a.id, { isShared: 0, updatedAt: Date.now() });
+        }
+      }
+    } catch (e) {
+      console.warn('Init accounts isShared error:', e);
     }
   }
 
@@ -1439,3 +1451,4 @@ function triggerAutoSync() {
     }, 3000);
   }
 }
+window.triggerAutoSync = triggerAutoSync;

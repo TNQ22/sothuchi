@@ -1003,21 +1003,10 @@ class GoogleDriveSync {
         if (s) localSettings.push(s);
       }
 
-      // Chỉ chia sẻ các tài khoản được chọn (isShared !== 0 và !== false)
-      const allAccs = await db.accounts.toArray();
-      const sharedAccs = allAccs.filter(a => a.isShared === 1 || a.isShared === true);
-      const sharedAccIds = new Set(sharedAccs.map(a => Number(a.id)));
-
-      const allTxs = await db.transactions.toArray();
-      const sharedTxs = allTxs.filter(t => {
-        const accId = Number(t.accountId);
-        const toAccId = t.toAccountId ? Number(t.toAccountId) : null;
-        return sharedAccIds.has(accId) || (toAccId && sharedAccIds.has(toAccId));
-      });
-
+      // Đồng bộ toàn bộ tài khoản và giao dịch lên Drive cá nhân (giữ nguyên cờ isShared)
       const local = {
-        transactions: sharedTxs,
-        accounts: sharedAccs,
+        transactions: await db.transactions.toArray(),
+        accounts: await db.accounts.toArray(),
         categories: await db.categories.toArray(),
         debts: await db.debts.toArray(),
         budgets: await db.budgets.toArray(),
@@ -1080,34 +1069,9 @@ class GoogleDriveSync {
       return mergedArray;
     };
 
-    // Giữ an toàn cho các tài khoản và giao dịch riêng tư trên máy
-    const currentLocalAccs = await db.accounts.toArray();
-    const privateAccs = currentLocalAccs.filter(a => a.isShared !== 1 && a.isShared !== true);
-    const privateAccIds = new Set(privateAccs.map(a => Number(a.id)));
-
-    const currentLocalTxs = await db.transactions.toArray();
-    const privateTxs = currentLocalTxs.filter(t => {
-      const accId = Number(t.accountId);
-      const toAccId = t.toAccountId ? Number(t.toAccountId) : null;
-      return privateAccIds.has(accId) && (!toAccId || privateAccIds.has(toAccId));
-    });
-
+    // Gộp hai chiều tất cả tài khoản và giao dịch (bảo toàn trạng thái isShared)
     const finalTransactions = await mergeTable(db.transactions, await db.transactions.toArray(), remoteData.transactions);
     const finalAccounts = await mergeTable(db.accounts, await db.accounts.toArray(), remoteData.accounts);
-
-    // Đảm bảo các tài khoản & giao dịch riêng tư trên máy luôn được giữ nguyên vẹn
-    for (const pAcc of privateAccs) {
-      if (!finalAccounts.some(a => a.id === pAcc.id)) {
-        finalAccounts.push(pAcc);
-        await db.accounts.put(pAcc);
-      }
-    }
-    for (const pTx of privateTxs) {
-      if (!finalTransactions.some(t => t.id === pTx.id)) {
-        finalTransactions.push(pTx);
-        await db.transactions.put(pTx);
-      }
-    }
     const finalCategories = await mergeTable(db.categories, await db.categories.toArray(), remoteData.categories);
     const finalDebts = await mergeTable(db.debts, await db.debts.toArray(), remoteData.debts);
     const finalBudgets = await mergeTable(db.budgets, await db.budgets.toArray(), remoteData.budgets);
@@ -1142,18 +1106,10 @@ class GoogleDriveSync {
       await window.recalculateAccountBalances();
     }
 
-    // Chỉ upload lên đám mây các tài khoản được bật chia sẻ
-    const cloudAccounts = finalAccounts.filter(a => a.isShared === 1 || a.isShared === true);
-    const cloudAccountIds = new Set(cloudAccounts.map(a => Number(a.id)));
-    const cloudTransactions = finalTransactions.filter(t => {
-      const accId = Number(t.accountId);
-      const toAccId = t.toAccountId ? Number(t.toAccountId) : null;
-      return cloudAccountIds.has(accId) || (toAccId && cloudAccountIds.has(toAccId));
-    });
-
+    // Đồng bộ đầy đủ tất cả tài khoản và giao dịch lên đám mây
     return {
-      transactions: cloudTransactions,
-      accounts: cloudAccounts,
+      transactions: finalTransactions,
+      accounts: finalAccounts,
       categories: finalCategories,
       debts: finalDebts,
       budgets: finalBudgets,

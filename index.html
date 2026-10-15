@@ -1288,7 +1288,7 @@
             <div class="settings-hub-footer">
               <a href="https://github.com/TNQ22/sothuchi" target="_blank" rel="noopener noreferrer" class="settings-version-link">
                 <i data-lucide="github" style="width: 14px; height: 14px;"></i>
-                <span>Phiên bản v2.5.3</span>
+                <span>Phiên bản v2.5.5</span>
               </a>
             </div>
               
@@ -2572,6 +2572,23 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </div>
                   <label class="app-switch" style="flex-shrink: 0;">
                     <input type="checkbox" id="acc-apply-budget-check" checked>
+                    <span class="app-switch-slider"></span>
+                  </label>
+                </div>
+
+                <!-- Hàng 7: Chia sẻ với thành viên -->
+                <div class="tx-info-row acc-share-info-row" style="align-items: center; padding: 12px 0;">
+                  <div class="tx-info-icon-bubble" style="background: rgba(14, 165, 233, 0.15); color: #0284c7; flex-shrink: 0;">
+                    <i data-lucide="share-2"></i>
+                  </div>
+                  <div class="tx-info-content" style="padding-right: 8px;">
+                    <div style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3;">Chia sẻ với thành viên</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.35; margin-top: 3px;">
+                      Cho phép thành viên khác xem tài khoản này khi chia sẻ sổ (tất cả tài khoản vẫn luôn được đồng bộ sao lưu lên Drive cá nhân của bạn)
+                    </div>
+                  </div>
+                  <label class="app-switch" style="flex-shrink: 0;">
+                    <input type="checkbox" id="acc-is-shared-check">
                     <span class="app-switch-slider"></span>
                   </label>
                 </div>
@@ -5060,9 +5077,9 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <!-- App Core Modules -->
   <script src="./js/config.js?v=2.5.3"></script>
   <script src="./js/crypto.js"></script>
-  <script src="./js/db.js?v=2.2.8"></script>
-  <script src="./js/google-drive.js?v=2.5.3"></script>
-  <script src="./js/dropbox.js?v=2.5.3"></script>
+  <script src="./js/db.js?v=2.5.5"></script>
+  <script src="./js/google-drive.js?v=2.5.5"></script>
+  <script src="./js/dropbox.js?v=2.5.5"></script>
   <script src="./js/server-sync.js?v=2.5.4"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
@@ -5070,14 +5087,14 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
-  <script src="./js/ui-transactions.js?v=2.2.4"></script>
+  <script src="./js/ui-transactions.js?v=2.5.5"></script>
   <script src="./js/ui-debts.js?v=2.0.9"></script>
-  <script src="./js/ui-accounts.js?v=2.5.3"></script>
-  <script src="./js/ui-budgets.js?v=2.2.8"></script>
+  <script src="./js/ui-accounts.js?v=2.5.5"></script>
+  <script src="./js/ui-budgets.js?v=2.5.5"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
   <script src="./js/ui-settings.js?v=2.5.4"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.5.4"></script>
+  <script src="./js/app.js?v=2.5.5"></script>
 </body>
 </html>

@@ -450,7 +450,7 @@ const UIAccounts = {
       budgetDesc.textContent = hasBudget ? 'Đang tính chi tiêu vào ngân sách tháng' : 'Không tính chi tiêu vào ngân sách tháng';
     }
 
-    // Update Sharing setting display (Mặc định: TẮT chia sẻ / Riêng tư, chỉ bật khi isShared === 1 || isShared === true)
+    // Update Sharing setting display (Chia sẻ với thành viên khác khi dùng chung sổ)
     const isShared = (acc.isShared === 1 || acc.isShared === true);
     const shareBadge = document.getElementById('action-sheet-share-badge');
     const shareDesc = document.getElementById('action-sheet-share-desc');
@@ -459,7 +459,7 @@ const UIAccounts = {
       shareBadge.className = 'action-sheet-share-badge ' + (isShared ? 'active' : 'inactive');
     }
     if (shareDesc) {
-      shareDesc.textContent = isShared ? 'Đang chia sẻ vào tệp dùng chung với thành viên' : 'Chỉ lưu trong bản sao lưu riêng tư của bạn';
+      shareDesc.textContent = isShared ? 'Đang cho phép thành viên khác xem khi dùng chung sổ' : 'Riêng tư: Ẩn với thành viên khác khi dùng chung sổ';
     }
 
     // Toggle archive button text & icon
@@ -489,6 +489,7 @@ const UIAccounts = {
     this.closeActionSheet();
     await window.app.refreshAll();
     showToast((nextBudget ? 'Đã bật' : 'Đã tắt') + ' tính vào ngân sách cho ví "' + acc.name + '"', 'success');
+    if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
   async toggleAccountSharingAction() {
@@ -496,15 +497,13 @@ const UIAccounts = {
     if (!accId) return;
     const acc = await db.accounts.get(Number(accId));
     if (!acc) return;
-    const currentShared = (acc.isShared === 1 || acc.isShared === true);
+    const currentShared = (acc.isShared !== 0 && acc.isShared !== false);
     const nextShared = currentShared ? 0 : 1;
     await db.accounts.update(Number(accId), { isShared: nextShared, updatedAt: Date.now() });
     this.closeActionSheet();
     await window.app.refreshAll();
-    showToast((nextShared ? 'Đã bật chia sẻ' : 'Đã tắt chia sẻ (chỉ lưu trong bản sao lưu riêng tư)') + ' cho tài khoản "' + acc.name + '"', 'success');
-    if (window.SyncCoordinator && window.SyncCoordinator.syncAll) {
-      window.SyncCoordinator.syncAll(false).catch(err => console.warn('Auto sync after toggle share error:', err));
-    }
+    showToast((nextShared ? 'Đã bật chia sẻ với thành viên' : 'Đã đặt riêng tư (ẩn với thành viên)') + ' cho tài khoản "' + acc.name + '"', 'success');
+    if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
   closeActionSheet() {
@@ -593,6 +592,7 @@ const UIAccounts = {
     await db.accounts.update(Number(accId), { isDeleted: 1, updatedAt: Date.now() });
     await window.app.refreshAll();
     showToast(`Đã xóa tài khoản "${acc.name}"`, 'info');
+    if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
   async toggleArchiveAccount(accId) {
@@ -608,6 +608,7 @@ const UIAccounts = {
     }
 
     showToast(isArchived ? `Đã tạm ngừng sử dụng tài khoản "${acc.name}"` : `Đã kích hoạt lại tài khoản "${acc.name}"`, 'info');
+    if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
   /* ==================== THÔNG MINH NHẬP SAO KÊ NGÂN HÀNG (CSV) ==================== */
@@ -1032,6 +1033,7 @@ const UIAccounts = {
       this.cancelStatementPreview();
       await this.renderStatementHistory(accId);
       await window.app.refreshAll();
+      if (typeof triggerAutoSync === 'function') triggerAutoSync();
     } catch (err) {
       console.error(err);
       showToast('Lỗi khi nhập giao dịch: ' + err.message, 'error');
@@ -1246,6 +1248,9 @@ const UIAccounts = {
     const budgetCheck = document.getElementById('acc-apply-budget-check');
     if (budgetCheck) budgetCheck.checked = true;
 
+    const shareCheck = document.getElementById('acc-is-shared-check');
+    if (shareCheck) shareCheck.checked = false;
+
     const delBtn = document.getElementById('btn-delete-account');
     if (delBtn) delBtn.style.display = 'none';
 
@@ -1328,6 +1333,9 @@ const UIAccounts = {
     const budgetCheck = document.getElementById('acc-apply-budget-check');
     if (budgetCheck) budgetCheck.checked = acc.includeInBudget !== undefined ? (acc.includeInBudget === 1 || acc.includeInBudget === true) : (!acc.excludeFromReport);
 
+    const shareCheck = document.getElementById('acc-is-shared-check');
+    if (shareCheck) shareCheck.checked = (acc.isShared === 1 || acc.isShared === true);
+
     const delBtn = document.getElementById('btn-delete-account');
     if (delBtn) delBtn.style.display = 'flex';
 
@@ -1355,6 +1363,7 @@ const UIAccounts = {
     const description = document.getElementById('acc-desc-input')?.value.trim() || '';
     const excludeFromReport = document.getElementById('acc-exclude-report-check')?.checked ? 1 : 0;
     const includeInBudget = document.getElementById('acc-apply-budget-check')?.checked ? 1 : 0;
+    const isShared = document.getElementById('acc-is-shared-check')?.checked ? 1 : 0;
     const bankCode = (document.getElementById('acc-bank-code-input')?.value || '').trim();
 
     if (!name) {
@@ -1400,6 +1409,7 @@ const UIAccounts = {
         description,
         excludeFromReport,
         includeInBudget,
+        isShared,
         icon,
         bankCode,
         color: accColor,
@@ -1437,7 +1447,7 @@ const UIAccounts = {
         order: newOrder,
         isDeleted: 0,
         isArchived: 0,
-        isShared: 0,
+        isShared,
         updatedAt: now
       });
       showToast('Đã tạo tài khoản mới', 'success');
@@ -1445,6 +1455,7 @@ const UIAccounts = {
 
     this.closeAccountFormView();
     await window.app.refreshAll();
+    if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
   async handleDeleteAccount() {
@@ -1458,6 +1469,7 @@ const UIAccounts = {
     this.closeAccountFormView();
     await window.app.refreshAll();
     showToast(`Đã xóa tài khoản "${accName}"`, 'info');
+    if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
   async moveAccount(id, direction) {
@@ -1489,6 +1501,7 @@ const UIAccounts = {
       }
     }
     showToast('Đã cập nhật vị trí tài khoản', 'success');
+    if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
   async reorderAccounts(fromId, toId) {
@@ -1518,6 +1531,7 @@ const UIAccounts = {
       }
     }
     showToast('Đã sắp xếp lại thứ tự tài khoản', 'success');
+    if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
   setupDragAndDrop(container) {

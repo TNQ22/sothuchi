@@ -3130,6 +3130,7 @@ const UITransactions = {
         }
         showToast('Đã điều chỉnh số dư thành công', 'success');
         window.app.refreshAll();
+        if (typeof triggerAutoSync === 'function') triggerAutoSync();
         return;
       }
     }

@@ -1395,7 +1395,8 @@ const UIBudgets = {
     } catch (_) {}
 
     this.closeBudgetForm();
-    window.app.refreshAll();
+    await window.app.refreshAll();
+    if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
   async deleteFormBudget() {
@@ -1412,7 +1413,8 @@ const UIBudgets = {
       } catch (_) {}
       showToast('Đã xóa ngân sách tổng của tháng', 'info');
       this.closeBudgetForm();
-      window.app.refreshAll();
+      await window.app.refreshAll();
+      if (typeof triggerAutoSync === 'function') triggerAutoSync();
     }
   },
 
@@ -1886,7 +1888,8 @@ const UIBudgets = {
     } catch (_) {}
 
     this.closeBudgetCategoryForm();
-    window.app.refreshAll();
+    await window.app.refreshAll();
+    if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
   async deleteCatFormBudget() {
@@ -1905,7 +1908,8 @@ const UIBudgets = {
         showToast('Đã xóa hạn mức danh mục', 'info');
       }
       this.closeBudgetCategoryForm();
-      window.app.refreshAll();
+      await window.app.refreshAll();
+      if (typeof triggerAutoSync === 'function') triggerAutoSync();
     }
   },
 

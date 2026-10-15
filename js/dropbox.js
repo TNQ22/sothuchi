@@ -566,19 +566,10 @@ class DropboxSync {
   }
 
   async exportLocalData() {
-    const allAccs = await db.accounts.toArray();
-    const sharedAccs = allAccs.filter(a => a.isShared === 1 || a.isShared === true);
-    const sharedAccIds = new Set(sharedAccs.map(a => Number(a.id)));
-
-    const allTxs = await db.transactions.toArray();
-    const sharedTxs = allTxs.filter(t => {
-      const accId = Number(t.accountId);
-      const toAccId = t.toAccountId ? Number(t.toAccountId) : null;
-      return sharedAccIds.has(accId) || (toAccId && sharedAccIds.has(toAccId));
-    });
-
+    const txs = await db.transactions.toArray();
+    const accs = await db.accounts.toArray();
     const cats = await db.categories.toArray();
-    return { transactions: sharedTxs, accounts: sharedAccs, categories: cats };
+    return { transactions: txs, accounts: accs, categories: cats };
   }
 
   async disconnect() {
