@@ -435,11 +435,25 @@ const UIBudgets = {
       }
     } catch (e) {}
 
+    // 1. Tính tổng số dư ban đầu của tất cả các tài khoản áp dụng ngân sách
+    let totalInitialBalance = 0;
+    try {
+      const allAccounts = await db.accounts.where('isDeleted').equals(0).toArray();
+      const allowedAccounts = allAccounts.filter(a => allowedAccountIds.has(a.id));
+      totalInitialBalance = allowedAccounts.reduce((sum, a) => {
+        const init = (a.initialBalance !== undefined && a.initialBalance !== null) ? Number(a.initialBalance) : Number(a.balance);
+        return sum + (isNaN(init) ? 0 : init);
+      }, 0);
+    } catch (e) {
+      console.warn('Lỗi tính số dư ban đầu tài khoản:', e);
+    }
+
     if (!rolloverEnabled) {
       return {
-        prevToBudget: 0,
+        prevToBudget: totalInitialBalance,
         categoryCarryover: {},
-        rolloverEnabled: false
+        rolloverEnabled: false,
+        hasInitialBalanceOnly: true
       };
     }
 
@@ -448,16 +462,36 @@ const UIBudgets = {
         .filter(b => b.month < currentMonth && b.categoryId !== 'TOTAL' && b.categoryId !== 0 && !b.isOverall)
         .toArray();
 
-      if (allPastBudgets.length === 0) {
-        return {
-          prevToBudget: 0,
-          categoryCarryover: {},
-          rolloverEnabled: true
-        };
+      let earliestMonth = null;
+      if (allPastBudgets.length > 0) {
+        const pastMonths = Array.from(new Set(allPastBudgets.map(b => b.month))).sort();
+        earliestMonth = pastMonths[0];
       }
 
-      const pastMonths = Array.from(new Set(allPastBudgets.map(b => b.month))).sort();
-      const earliestMonth = pastMonths[0];
+      // Tìm giao dịch sớm nhất trước tháng hiện tại của các tài khoản ngân sách
+      const pastTxsForEarliest = await db.transactions
+        .where('date')
+        .below(currentMonth + '-01')
+        .and(t => (!t.isDeleted || t.isDeleted === 0) && (allowedAccountIds.has(t.accountId) || (t.type === 'transfer' && allowedAccountIds.has(t.toAccountId))))
+        .limit(1)
+        .toArray();
+
+      if (pastTxsForEarliest.length > 0 && pastTxsForEarliest[0].date) {
+        const txMonth = pastTxsForEarliest[0].date.slice(0, 7);
+        if (!earliestMonth || txMonth < earliestMonth) {
+          earliestMonth = txMonth;
+        }
+      }
+
+      // Nếu không có ngân sách quá khứ và không có giao dịch trước tháng này: bắt đầu với số dư ban đầu
+      if (!earliestMonth || earliestMonth >= currentMonth) {
+        return {
+          prevToBudget: totalInitialBalance,
+          categoryCarryover: {},
+          rolloverEnabled: true,
+          hasInitialBalanceOnly: true
+        };
+      }
 
       const [curY, curM] = currentMonth.split('-').map(Number);
       const prevEndDateObj = new Date(curY, curM - 1, 0);
@@ -472,20 +506,30 @@ const UIBudgets = {
         .and(t => (!t.isDeleted || t.isDeleted === 0))
         .toArray();
 
-      const allowedTxs = pastTxs.filter(t => allowedAccountIds.has(t.accountId));
-
       const txByMonth = {};
-      for (const t of allowedTxs) {
+      for (const t of pastTxs) {
         const m = (t.date || '').slice(0, 7);
         if (!m) continue;
         if (!txByMonth[m]) {
-          txByMonth[m] = { income: 0, expenseByCat: {} };
+          txByMonth[m] = { income: 0, expenseByCat: {}, uncategorizedExpense: 0 };
         }
-        if (t.type === 'income') {
+        if (t.type === 'income' && allowedAccountIds.has(t.accountId)) {
           txByMonth[m].income += (t.amount || 0);
-        } else if (t.type === 'expense' && t.categoryId) {
-          const catKey = String(t.categoryId);
-          txByMonth[m].expenseByCat[catKey] = (txByMonth[m].expenseByCat[catKey] || 0) + (t.amount || 0);
+        } else if (t.type === 'expense' && allowedAccountIds.has(t.accountId)) {
+          if (t.categoryId) {
+            const catKey = String(t.categoryId);
+            txByMonth[m].expenseByCat[catKey] = (txByMonth[m].expenseByCat[catKey] || 0) + (t.amount || 0);
+          } else {
+            txByMonth[m].uncategorizedExpense += (t.amount || 0);
+          }
+        } else if (t.type === 'transfer') {
+          if (!allowedAccountIds.has(t.accountId) && allowedAccountIds.has(t.toAccountId)) {
+            txByMonth[m].income += (t.amount || 0);
+          } else if (allowedAccountIds.has(t.accountId) && !allowedAccountIds.has(t.toAccountId)) {
+            txByMonth[m].uncategorizedExpense += ((t.amount || 0) + (t.fee || 0));
+          } else if (allowedAccountIds.has(t.accountId) && allowedAccountIds.has(t.toAccountId) && t.fee) {
+            txByMonth[m].uncategorizedExpense += (t.fee || 0);
+          }
         }
       }
 
@@ -498,7 +542,7 @@ const UIBudgets = {
         };
       }
 
-      let runningToBudget = 0;
+      let runningToBudget = totalInitialBalance;
       const categoryBalances = {};
 
       const allMonthsRange = [];
@@ -512,11 +556,11 @@ const UIBudgets = {
       }
 
       for (const m of allMonthsRange) {
-        const mTx = txByMonth[m] || { income: 0, expenseByCat: {} };
+        const mTx = txByMonth[m] || { income: 0, expenseByCat: {}, uncategorizedExpense: 0 };
         const mBudgets = budgetsByMonth[m] || {};
 
         let mTotalBudgeted = 0;
-        let mUnshiftedOverspent = 0;
+        let mUnshiftedOverspent = mTx.uncategorizedExpense || 0;
 
         const allCatKeys = new Set([
           ...Object.keys(mBudgets),
@@ -536,10 +580,8 @@ const UIBudgets = {
           if (avail < 0) {
             const isShifted = bInfo && bInfo.shiftToNextMonth === true;
             if (isShifted) {
-              // Chuyển sang tháng sau: giữ số âm ở danh mục
               categoryBalances[catIdStr] = avail;
             } else {
-              // Mặc định: không tự động chuyển sang cho tháng sau, mà tính vào ngân sách tháng
               categoryBalances[catIdStr] = 0;
               mUnshiftedOverspent += Math.abs(avail);
             }
@@ -548,21 +590,22 @@ const UIBudgets = {
           }
         }
 
-        // Ngân sách tháng cộng thu nhập, trừ hạn mức đã phân bổ, trừ các khoản chi vượt không chuyển tháng sau (có thể âm)
         runningToBudget = runningToBudget + mTx.income - mTotalBudgeted - mUnshiftedOverspent;
       }
 
       return {
         prevToBudget: runningToBudget,
         categoryCarryover: categoryBalances,
-        rolloverEnabled: true
+        rolloverEnabled: true,
+        hasInitialBalanceOnly: false
       };
     } catch (err) {
       console.warn('calculateDetailedRollover error:', err);
       return {
-        prevToBudget: 0,
+        prevToBudget: totalInitialBalance,
         categoryCarryover: {},
-        rolloverEnabled: true
+        rolloverEnabled: true,
+        hasInitialBalanceOnly: true
       };
     }
   },
@@ -620,12 +663,13 @@ const UIBudgets = {
       .and(t => t.isDeleted === 0)
       .toArray();
 
-    const txs = allTxs.filter(t => allowedAccountIds.has(t.accountId));
-    const expenseTxs = txs.filter(t => t.type === 'expense');
-    const incomeTxs = txs.filter(t => t.type === 'income');
+    const txs = allTxs.filter(t => allowedAccountIds.has(t.accountId) || (t.type === 'transfer' && allowedAccountIds.has(t.toAccountId)));
+    const expenseTxs = txs.filter(t => t.type === 'expense' && allowedAccountIds.has(t.accountId));
+    const incomeTxs = txs.filter(t => t.type === 'income' && allowedAccountIds.has(t.accountId));
+    const transferInTxs = txs.filter(t => t.type === 'transfer' && !allowedAccountIds.has(t.accountId) && allowedAccountIds.has(t.toAccountId));
 
     const totalSpent = expenseTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
-    const totalIncome = incomeTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
+    const totalIncome = incomeTxs.reduce((sum, t) => sum + (t.amount || 0), 0) + transferInTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
 
     const spentByCat = {};
     for (const t of expenseTxs) {
@@ -863,11 +907,11 @@ const UIBudgets = {
     if (toBudget === 0) {
       iconClass = 'zero';
       iconName = 'check-circle-2';
-      captionText = '🎯 Đã phân bổ toàn bộ thu nhập';
+      captionText = '🎯 Đã phân bổ toàn bộ ngân sách';
     } else if (toBudget < 0) {
       iconClass = 'negative';
       iconName = 'alert-triangle';
-      captionText = '⚠️ Đã phân bổ vượt quá thu nhập tháng!';
+      captionText = '⚠️ Đã phân bổ vượt quá ngân sách sẵn có!';
     }
 
     const topBannerHtml = `
@@ -886,7 +930,7 @@ const UIBudgets = {
           </div>
           ${prevToBudget !== 0 ? `
             <div class="actual-to-budget-rollover-sub">
-              <span>Từ tháng trước:</span>
+              <span>${rolloverData && rolloverData.hasInitialBalanceOnly ? 'Từ số dư ví ban đầu:' : 'Từ tháng trước / Số dư ví:'}</span>
               <span style="font-weight: 600; color: ${prevToBudget > 0 ? 'var(--income)' : 'var(--expense)'};">
                 ${prevToBudget > 0 ? `+${this.formatMoney(prevToBudget)}` : `-${this.formatMoney(Math.abs(prevToBudget))}`}
               </span>
@@ -3022,7 +3066,9 @@ const UIBudgets = {
       const allowedAccountIds = new Set();
       const allAccounts = await db.accounts.toArray();
       allAccounts.forEach(a => {
-        const isBudgetEnabled = a.includeInBudget === undefined ? (!a.excludeFromBudget) : a.includeInBudget;
+        const isBudgetEnabled = a.includeInBudget !== undefined
+          ? (a.includeInBudget === 1 || a.includeInBudget === true)
+          : !a.excludeFromReport;
         if (isBudgetEnabled && !a.isArchived) allowedAccountIds.add(a.id);
       });
 
@@ -3032,11 +3078,12 @@ const UIBudgets = {
         .and(t => (!t.isDeleted || t.isDeleted === 0))
         .toArray();
 
-      const allowedTxs = txs.filter(t => allowedAccountIds.has(t.accountId));
-      const incomeTxs = allowedTxs.filter(t => t.type === 'income');
-      const expenseTxs = allowedTxs.filter(t => t.type === 'expense');
+      const allowedTxs = txs.filter(t => allowedAccountIds.has(t.accountId) || (t.type === 'transfer' && allowedAccountIds.has(t.toAccountId)));
+      const incomeTxs = allowedTxs.filter(t => t.type === 'income' && allowedAccountIds.has(t.accountId));
+      const expenseTxs = allowedTxs.filter(t => t.type === 'expense' && allowedAccountIds.has(t.accountId));
+      const transferInTxs = allowedTxs.filter(t => t.type === 'transfer' && !allowedAccountIds.has(t.accountId) && allowedAccountIds.has(t.toAccountId));
 
-      const totalIncome = incomeTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
+      const totalIncome = incomeTxs.reduce((sum, t) => sum + (t.amount || 0), 0) + transferInTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
       const spentByCat = {};
       for (const t of expenseTxs) {
         if (t.categoryId) {
