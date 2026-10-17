@@ -115,29 +115,32 @@ class SyncCoordinator {
   async syncAll(isAuto = false) {
     let performedSync = false;
 
-    // 0. Dedicated Sync Server Adapter (Máy chủ riêng - Ưu tiên hàng đầu)
+    // 0. Dedicated Sync Server Adapter (Máy chủ riêng)
+    // Nếu công tắc Kích Hoạt bị TẮT (autoSync === false), loại trừ 100% khỏi cả đồng bộ ngầm lẫn đồng bộ Header
     const serverAdapter = this.adapters.get('custom-server') || window.serverSyncService;
-    if (serverAdapter && (isAuto ? serverAdapter.isAutoSyncEnabled() : (serverAdapter.serverUrl && serverAdapter.token && serverAdapter.autoSync !== false))) {
-      performedSync = true;
-      try {
-        await serverAdapter.sync();
-      } catch (err) {
-        console.warn('Dedicated Server sync failed during syncAll:', err);
-        if (!isAuto) throw err;
+    if (serverAdapter && serverAdapter.autoSync !== false) {
+      if (isAuto ? serverAdapter.isAutoSyncEnabled() : (serverAdapter.serverUrl && serverAdapter.token)) {
+        performedSync = true;
+        try {
+          await serverAdapter.sync();
+        } catch (err) {
+          console.warn('Dedicated Server sync failed during syncAll:', err);
+          if (!isAuto) throw err;
+        }
       }
     }
 
     // 1. Google Drive Adapter
+    // Nếu công tắc Kích Hoạt bị TẮT (autoSync === false), loại trừ 100% khỏi cả đồng bộ ngầm lẫn đồng bộ Header
     const driveAdapter = this.adapters.get('google-drive') || window.googleDriveService;
-    if (driveAdapter) {
+    if (driveAdapter && driveAdapter.autoSync !== false) {
       const isDriveReady = driveAdapter.clientId && (
         driveAdapter.hasValidToken() ||
         (driveAdapter.workerUrl && driveAdapter.refreshToken) ||
         (driveAdapter.userProfile && driveAdapter.userProfile.email)
       );
 
-      // Nếu tắt công tắc Tự Động Đồng Bộ thì loại trừ khỏi đồng bộ chung để người dùng test riêng biệt
-      if (isAuto ? driveAdapter.isAutoSyncEnabled() : (isDriveReady && driveAdapter.autoSync !== false)) {
+      if (isAuto ? driveAdapter.isAutoSyncEnabled() : isDriveReady) {
         performedSync = true;
         try {
           await driveAdapter.sync({ interactive: false });
@@ -148,15 +151,16 @@ class SyncCoordinator {
       }
     }
 
-    // 2. Dropbox Adapter (Tự động đồng bộ vĩnh viễn trên iPhone)
+    // 2. Dropbox Adapter
+    // Nếu công tắc Kích Hoạt bị TẮT (autoSync === false), loại trừ 100% khỏi cả đồng bộ ngầm lẫn đồng bộ Header
     const dropboxAdapter = this.adapters.get('dropbox') || window.dropboxService;
-    if (dropboxAdapter) {
+    if (dropboxAdapter && dropboxAdapter.autoSync !== false) {
       const isDropboxReady = dropboxAdapter.appKey && (
         dropboxAdapter.hasValidToken() ||
         dropboxAdapter.refreshToken
       );
 
-      if (isAuto ? dropboxAdapter.isAutoSyncEnabled() : (isDropboxReady && dropboxAdapter.autoSync !== false)) {
+      if (isAuto ? dropboxAdapter.isAutoSyncEnabled() : isDropboxReady) {
         performedSync = true;
         try {
           await dropboxAdapter.sync();

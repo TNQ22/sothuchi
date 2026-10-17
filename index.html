@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.6.2">
+  <link rel="stylesheet" href="./css/style.css?v=2.6.3">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1334,7 +1334,7 @@
                 </div>
 
                 <!-- Nút Kết nối & Đồng bộ ngay -->
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
                   <button id="btn-dropbox-connect" class="btn-primary" style="background: #0061ff; border-color: #0061ff; flex: 1; min-width: 160px;">
                     <i data-lucide="box" style="width: 16px; height: 16px;"></i>
                     <span>Kết Nối Dropbox</span>
@@ -1343,6 +1343,21 @@
                     <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
                     <span>Đồng Bộ Ngay</span>
                   </button>
+                </div>
+
+                <!-- Kích Hoạt Đồng Bộ Dropbox Switch -->
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--border-color); margin-top: 8px;">
+                  <div>
+                    <div style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
+                      <span>Kích Hoạt</span>
+                      <span class="badge" style="font-size: 0.68rem; padding: 1px 6px; background: rgba(0, 97, 255, 0.12); color: #0061ff; border-radius: 9999px;">Dropbox</span>
+                    </div>
+                    <div style="font-size: 0.76rem; color: var(--text-muted);">Bật để tự động đồng bộ và đồng bộ tổng; tắt để vô hiệu hóa hoàn toàn</div>
+                  </div>
+                  <label class="app-switch switch" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; vertical-align: middle;">
+                    <input type="checkbox" id="settings-dropbox-auto-sync" checked style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;">
+                    <span class="app-switch-slider slider round"></span>
+                  </label>
                 </div>
               </div>
 
@@ -1480,11 +1495,14 @@
                   </button>
                 </div>
 
-                <!-- Tự động đồng bộ & Thời gian -->
+                <!-- Kích Hoạt Đồng Bộ Google Drive Switch -->
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
                   <div>
-                    <div style="font-weight: 600; font-size: 0.9rem;">Tự Động Đồng Bộ Khi Có Thay Đổi</div>
-                    <div style="font-size: 0.78rem; color: var(--text-muted);">Tự động tải lên Google Drive sau mỗi lần ghi chép</div>
+                    <div style="font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">
+                      <span>Kích Hoạt</span>
+                      <span class="badge" style="font-size: 0.68rem; padding: 1px 6px; background: rgba(16, 185, 129, 0.12); color: #10b981; border-radius: 9999px;">Google Drive</span>
+                    </div>
+                    <div style="font-size: 0.76rem; color: var(--text-muted);">Bật để tự động đồng bộ và đồng bộ tổng; tắt để vô hiệu hóa hoàn toàn</div>
                   </div>
                   <label class="app-switch switch" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; vertical-align: middle;">
                     <input type="checkbox" id="settings-auto-sync" checked style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;">
@@ -1683,11 +1701,14 @@
                   </button>
                 </div>
 
-                <!-- Thao tác đồng bộ -->
+                <!-- Kích Hoạt Đồng Bộ Máy Chủ Switch -->
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
                   <div>
-                    <div style="font-weight: 600; font-size: 0.88rem;">Tự Động Đồng Bộ Với Máy Chủ</div>
-                    <div style="font-size: 0.76rem; color: var(--text-muted);">Gửi và nhận dữ liệu ngầm khi có phát sinh giao dịch</div>
+                    <div style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
+                      <span>Kích Hoạt</span>
+                      <span class="badge" style="font-size: 0.68rem; padding: 1px 6px; background: rgba(59, 130, 246, 0.12); color: #3b82f6; border-radius: 9999px;">Máy Chủ Riêng</span>
+                    </div>
+                    <div style="font-size: 0.76rem; color: var(--text-muted);">Bật để tự động đồng bộ và đồng bộ tổng; tắt để vô hiệu hóa hoàn toàn</div>
                   </div>
                   <label class="app-switch switch" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; vertical-align: middle;">
                     <input type="checkbox" id="settings-server-auto-sync" checked style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;">
@@ -5079,15 +5100,15 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./vendor/lucide.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=2.6.2"></script>
+  <script src="./js/config.js?v=2.6.3"></script>
   <script src="./js/crypto.js"></script>
-  <script src="./js/db.js?v=2.6.2"></script>
-  <script src="./js/google-drive.js?v=2.6.2"></script>
-  <script src="./js/dropbox.js?v=2.6.2"></script>
-  <script src="./js/server-sync.js?v=2.6.2"></script>
+  <script src="./js/db.js?v=2.6.3"></script>
+  <script src="./js/google-drive.js?v=2.6.3"></script>
+  <script src="./js/dropbox.js?v=2.6.3"></script>
+  <script src="./js/server-sync.js?v=2.6.3"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
-  <script src="./js/sync-coordinator.js?v=2.6.2"></script>
+  <script src="./js/sync-coordinator.js?v=2.6.3"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
@@ -5096,9 +5117,9 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/ui-accounts.js?v=2.5.5"></script>
   <script src="./js/ui-budgets.js?v=2.5.5"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
-  <script src="./js/ui-settings.js?v=2.6.2"></script>
+  <script src="./js/ui-settings.js?v=2.6.3"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.6.2"></script>
+  <script src="./js/app.js?v=2.6.3"></script>
 </body>
 </html>

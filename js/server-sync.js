@@ -99,6 +99,8 @@ class ServerSyncService {
       const savedAutoSync = await db.settings.get('syncServerAutoSync');
       if (savedAutoSync !== undefined) {
         this.autoSync = !!savedAutoSync.value;
+      } else {
+        this.autoSync = true;
       }
 
       // 6. Đọc Last Sync Time

@@ -89,6 +89,11 @@ class DropboxSync {
     return !!(this.accessToken && (!this.tokenExpiresAt || Date.now() < this.tokenExpiresAt));
   }
 
+  setAutoSync(enabled) {
+    this.autoSync = !!enabled;
+    db.settings.put({ key: 'dropboxAutoSync', value: this.autoSync });
+  }
+
   isAutoSyncEnabled() {
     // Có AppKey, bật autoSync và có Refresh Token hoặc Access Token
     return !!(this.autoSync && this.appKey && (this.refreshToken || this.hasValidToken()));

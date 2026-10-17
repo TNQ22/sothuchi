@@ -934,13 +934,13 @@ const UISettings = {
       });
     }
 
-    // Toggle Tự động đồng bộ máy chủ
+    // Toggle Kích Hoạt Máy Chủ Riêng
     const serverAutoSyncToggle = document.getElementById('settings-server-auto-sync');
     if (serverAutoSyncToggle) {
       serverAutoSyncToggle.addEventListener('change', (e) => {
         if (sService) {
           sService.setAutoSync(e.target.checked);
-          showToast(e.target.checked ? 'Đã bật tự động đồng bộ Máy Chủ Riêng' : 'Đã tắt tự động đồng bộ Máy Chủ Riêng', 'info');
+          showToast(e.target.checked ? 'Đã kích hoạt đồng bộ Máy Chủ Riêng' : 'Đã vô hiệu hóa Máy Chủ Riêng', 'info');
         }
       });
     }
@@ -1278,6 +1278,13 @@ const UISettings = {
       });
     }
 
+    // Dropbox Kích Hoạt Toggle
+    const dbxAutoSyncSetting = await db.settings.get('dropboxAutoSync');
+    const dbxAutoSyncToggle = document.getElementById('settings-dropbox-auto-sync');
+    if (dbxAutoSyncToggle) {
+      dbxAutoSyncToggle.checked = dbxAutoSyncSetting !== undefined ? !!dbxAutoSyncSetting.value : true;
+    }
+
     // 3. Storage Location Selector (Radio)
     const locRadios = document.querySelectorAll('input[name="drive-storage-location"]');
     locRadios.forEach(radio => {
@@ -1474,13 +1481,29 @@ const UISettings = {
       });
     }
 
-    // 10. Auto Sync Toggle
+    // 10. Auto Sync Toggle (Kích Hoạt Google Drive)
     const autoSyncToggle = document.getElementById('settings-auto-sync');
     if (autoSyncToggle) {
       autoSyncToggle.addEventListener('change', async (e) => {
-        await db.settings.put({ key: 'autoSyncEnabled', value: e.target.checked });
-        if (window.googleDriveService) window.googleDriveService.autoSync = e.target.checked;
-        showToast(e.target.checked ? 'Đã bật tự động đồng bộ' : 'Đã tắt tự động đồng bộ', 'info');
+        if (window.googleDriveService) {
+          window.googleDriveService.setAutoSync(e.target.checked);
+        } else {
+          await db.settings.put({ key: 'autoSyncEnabled', value: e.target.checked });
+        }
+        showToast(e.target.checked ? 'Đã kích hoạt đồng bộ Google Drive' : 'Đã vô hiệu hóa Google Drive', 'info');
+      });
+    }
+
+    // Toggle Kích Hoạt Dropbox
+    const dbxAutoSyncToggle = document.getElementById('settings-dropbox-auto-sync');
+    if (dbxAutoSyncToggle) {
+      dbxAutoSyncToggle.addEventListener('change', async (e) => {
+        if (window.dropboxService) {
+          window.dropboxService.setAutoSync(e.target.checked);
+        } else {
+          await db.settings.put({ key: 'dropboxAutoSync', value: e.target.checked });
+        }
+        showToast(e.target.checked ? 'Đã kích hoạt đồng bộ Dropbox' : 'Đã vô hiệu hóa Dropbox', 'info');
       });
     }
 

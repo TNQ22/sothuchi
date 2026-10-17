@@ -205,6 +205,11 @@ class GoogleDriveSync {
     return false;
   }
 
+  setAutoSync(enabled) {
+    this.autoSync = !!enabled;
+    db.settings.put({ key: 'autoSyncEnabled', value: this.autoSync });
+  }
+
   isAutoSyncEnabled() {
     if (this.autoSync && this.clientId && this.hasValidToken()) {
       return true;
