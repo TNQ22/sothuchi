@@ -215,9 +215,11 @@ class ServerSyncService {
     let accessToken = null;
     let idToken = null;
 
-    // 1. Lấy Client ID đồng bộ để kích hoạt popup tức thì trong cử chỉ click của người dùng
-    const gDrive = window.googleDriveService;
-    let clientId = (gDrive && gDrive.clientId) ? gDrive.clientId : (this.serverGoogleClientId || '');
+    // 1. Lấy Client ID đồng bộ trong tick click của người dùng
+    let clientId = this.serverGoogleClientId;
+    if (!clientId && window.googleDriveService?.clientId) {
+      clientId = window.googleDriveService.clientId;
+    }
     if (!clientId) {
       const inputEl = document.getElementById('settings-client-id');
       if (inputEl && inputEl.value) clientId = inputEl.value.trim();
@@ -225,68 +227,54 @@ class ServerSyncService {
     if (!clientId && window.EnvConfig) {
       clientId = window.EnvConfig.get('GOOGLE_CLIENT_ID', '');
     }
-
-    if (gDrive && (gDrive.clientId || clientId) && typeof gDrive.requestToken === 'function') {
-      if (!gDrive.clientId && clientId) gDrive.clientId = clientId;
-      try {
-        accessToken = await gDrive.requestToken({ prompt: 'select_account', interactive: true });
-      } catch (gErr) {
-        if (gErr.message && (gErr.message.includes('popup_closed') || gErr.message.includes('Đã đóng') || gErr.message.includes('hủy'))) {
-          throw new Error('popup_closed_by_user');
-        }
-        throw gErr;
-      }
-    } else {
-      // 2. Nếu không có gDrive service, tự khởi tạo Google Identity Services
-      let clientId = this.serverGoogleClientId;
-      if (!clientId && window.EnvConfig) clientId = window.EnvConfig.get('GOOGLE_CLIENT_ID', '');
-      if (!clientId) {
-        const dbClientId = await db.settings.get('googleClientId');
-        if (dbClientId && dbClientId.value) clientId = dbClientId.value;
-      }
-
-      if (!clientId) {
-        throw new Error('Chưa có Google Client ID. Vui lòng nhập Google Client ID trong phần Cài đặt.');
-      }
-
-      if (!window.google?.accounts?.oauth2) {
-        throw new Error('Thư viện Google Identity chưa tải xong. Vui lòng kiểm tra kết nối mạng và thử lại.');
-      }
-
-      accessToken = await new Promise((resolve, reject) => {
-        let settled = false;
-        const timer = setTimeout(() => {
-          if (!settled) {
-            settled = true;
-            reject(new Error('Hết thời gian chờ đăng nhập Google'));
-          }
-        }, 60000);
-
-        try {
-          const tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: clientId,
-            scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
-            prompt: 'select_account',
-            callback: (resp) => {
-              if (settled) return;
-              settled = true;
-              clearTimeout(timer);
-              if (resp.error) {
-                if (resp.error === 'popup_closed_by_user') {
-                  return reject(new Error('popup_closed_by_user'));
-                }
-                return reject(new Error(resp.error_description || resp.error));
-              }
-              resolve(resp.access_token);
-            }
-          });
-          tokenClient.requestAccessToken({ prompt: 'select_account' });
-        } catch (e) {
-          clearTimeout(timer);
-          reject(e);
-        }
-      });
+    if (!clientId) {
+      const dbClientId = await db.settings.get('googleClientId');
+      if (dbClientId && dbClientId.value) clientId = dbClientId.value;
     }
+
+    if (!clientId) {
+      throw new Error('Chưa có Google Client ID. Vui lòng nhập Google Client ID trong phần Cài đặt.');
+    }
+
+    if (!window.google?.accounts?.oauth2) {
+      throw new Error('Thư viện Google Identity chưa tải xong. Vui lòng kiểm tra kết nối mạng và thử lại.');
+    }
+
+    // 2. Mở popup đăng nhập Google ĐỘC LẬP cho Máy Chủ Riêng
+    // CHÚ Ý: Chỉ xin quyền userinfo (email/profile/openid), TUYỆT ĐỐI KHÔNG chạm vào GoogleDriveService để tránh tự động kích hoạt Google Drive
+    accessToken = await new Promise((resolve, reject) => {
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          reject(new Error('Hết thời gian chờ đăng nhập Google'));
+        }
+      }, 60000);
+
+      try {
+        const tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
+          prompt: 'select_account',
+          callback: (resp) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            if (resp.error) {
+              if (resp.error === 'popup_closed_by_user') {
+                return reject(new Error('popup_closed_by_user'));
+              }
+              return reject(new Error(resp.error_description || resp.error));
+            }
+            resolve(resp.access_token);
+          }
+        });
+        tokenClient.requestAccessToken({ prompt: 'select_account' });
+      } catch (e) {
+        clearTimeout(timer);
+        reject(e);
+      }
+    });
 
     if (!accessToken && !idToken) {
       throw new Error('Không nhận được token xác thực từ Google');

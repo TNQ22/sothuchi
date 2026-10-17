@@ -318,7 +318,7 @@ const UISettings = {
     const autoSyncSetting = await db.settings.get('autoSyncEnabled');
     const autoSyncToggle = document.getElementById('settings-auto-sync');
     if (autoSyncToggle) {
-      autoSyncToggle.checked = !!autoSyncSetting.value;
+      autoSyncToggle.checked = autoSyncSetting ? !!autoSyncSetting.value : true;
     }
 
     const privacySetting = await db.settings.get('privacyMode');
@@ -1260,10 +1260,17 @@ const UISettings = {
         try {
           if (!window.googleDriveService) return;
           await window.googleDriveService.disconnect();
-          showToast('Đã ngắt kết nối Google Drive', 'info');
+          showToast('Đã đăng xuất khỏi Google Drive', 'info');
           await this.loadSettings();
           if (window.SyncCoordinator) {
-            window.SyncCoordinator.setStatus('offline', 'Chưa kết nối');
+            const sService = window.serverSyncService;
+            if (sService && sService.token && sService.activeVaultId) {
+              window.SyncCoordinator.setStatus('synced', sService.getTargetLabel());
+            } else if (window.dropboxService && window.dropboxService.hasValidToken()) {
+              window.SyncCoordinator.setStatus('synced', window.dropboxService.getTargetLabel());
+            } else {
+              window.SyncCoordinator.setStatus('idle', 'Bộ nhớ trình duyệt (IndexedDB)');
+            }
           }
         } catch (err) {
           showToast('Lỗi khi đăng xuất: ' + err.message, 'error');
@@ -1441,7 +1448,7 @@ const UISettings = {
       });
     }
 
-    // 9. Sync Now Button
+    // 9. Sync Now Button (Chỉ đồng bộ riêng cho Google Drive để người dùng test độc lập)
     const syncNowBtn = document.getElementById('btn-sync-now');
     if (syncNowBtn) {
       syncNowBtn.addEventListener('click', async () => {
@@ -1450,13 +1457,11 @@ const UISettings = {
           syncNowBtn.innerHTML = '<i data-lucide="loader-2" class="spin-animation"></i> Đang đồng bộ...';
           if (window.lucide) lucide.createIcons();
 
-          if (window.SyncCoordinator) {
-            await window.SyncCoordinator.syncAll(false);
-          } else if (window.googleDriveService) {
-            await window.googleDriveService.sync();
+          if (window.googleDriveService) {
+            await window.googleDriveService.sync({ interactive: true });
           }
 
-          showToast('Đồng bộ dữ liệu thành công!', 'success');
+          showToast('Đồng bộ Google Drive thành công!', 'success');
           this.loadSettings();
           if (window.app && window.app.refreshAll) window.app.refreshAll();
         } catch (err) {

@@ -117,7 +117,7 @@ class SyncCoordinator {
 
     // 0. Dedicated Sync Server Adapter (Máy chủ riêng - Ưu tiên hàng đầu)
     const serverAdapter = this.adapters.get('custom-server') || window.serverSyncService;
-    if (serverAdapter && (isAuto ? serverAdapter.isAutoSyncEnabled() : (serverAdapter.serverUrl && serverAdapter.token))) {
+    if (serverAdapter && (isAuto ? serverAdapter.isAutoSyncEnabled() : (serverAdapter.serverUrl && serverAdapter.token && serverAdapter.autoSync !== false))) {
       performedSync = true;
       try {
         await serverAdapter.sync();
@@ -136,7 +136,8 @@ class SyncCoordinator {
         (driveAdapter.userProfile && driveAdapter.userProfile.email)
       );
 
-      if (isAuto ? driveAdapter.isAutoSyncEnabled() : isDriveReady) {
+      // Nếu tắt công tắc Tự Động Đồng Bộ thì loại trừ khỏi đồng bộ chung để người dùng test riêng biệt
+      if (isAuto ? driveAdapter.isAutoSyncEnabled() : (isDriveReady && driveAdapter.autoSync !== false)) {
         performedSync = true;
         try {
           await driveAdapter.sync({ interactive: false });
@@ -155,7 +156,7 @@ class SyncCoordinator {
         dropboxAdapter.refreshToken
       );
 
-      if (isAuto ? dropboxAdapter.isAutoSyncEnabled() : isDropboxReady) {
+      if (isAuto ? dropboxAdapter.isAutoSyncEnabled() : (isDropboxReady && dropboxAdapter.autoSync !== false)) {
         performedSync = true;
         try {
           await dropboxAdapter.sync();
