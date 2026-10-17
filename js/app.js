@@ -145,7 +145,6 @@ class App {
     this.isBackTransitioning = false;
     this.lastAddTabClickTime = 0;
     this.lastBudgetTabClickTime = 0;
-    this.lastSettingsTabClickTime = 0;
   }
 
   async init() {
@@ -384,46 +383,58 @@ class App {
   }
 
   setupNavigation() {
+    const handleNavClick = (link, e) => {
+      e.preventDefault();
+      const view = link.dataset.view;
+      if (!view) return;
+
+      // 1. Nếu đang ở sẵn view này:
+      if (this.currentView === view) {
+        if (view === 'settings') {
+          this.handleSettingsTabClick();
+          return;
+        }
+        if (view === 'budgets') {
+          this.handleBudgetTabClick();
+          return;
+        }
+        if (view === 'dashboard' || view === 'accounts') {
+          this.scrollToTopView(view);
+          return;
+        }
+        // Riêng trang thêm ghi chú ('new-transaction') và các trang khác không thêm cuộn
+        return;
+      }
+
+      // 2. Chuyển sang view khác:
+      if (view === 'budgets') {
+        this.handleBudgetTabClick();
+        return;
+      }
+      if (view === 'settings') {
+        this.handleSettingsTabClick();
+        return;
+      }
+      if (view === 'transactions') {
+        this.txHistorySource = null;
+        this.previousView = null;
+        if (window.UITransactions && typeof window.UITransactions.resetAllFilters === 'function') {
+          window.UITransactions.resetAllFilters(false);
+        }
+      }
+      this.activePrimaryView = view; // Track which primary tab is active
+      this.switchView(view);
+    };
+
     // Desktop Nav Items
     document.querySelectorAll('.nav-item a').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const view = link.dataset.view;
-        if (view) {
-          if (view === 'budgets') {
-            this.handleBudgetTabClick();
-            return;
-          }
-          if (view === 'settings') {
-            this.handleSettingsTabClick();
-            return;
-          }
-          if (view === 'transactions') {
-            this.txHistorySource = null;
-            this.previousView = null;
-            if (window.UITransactions && typeof window.UITransactions.resetAllFilters === 'function') {
-              window.UITransactions.resetAllFilters(false);
-            }
-          }
-          this.activePrimaryView = view; // Track which primary tab is active
-          this.switchView(view);
-        }
-      });
+      link.addEventListener('click', (e) => handleNavClick(link, e));
       if (link.dataset.view === 'budgets') {
         link.addEventListener('dblclick', (e) => {
           e.preventDefault();
           this.lastBudgetTabClickTime = 0;
           if (window.UIBudgets && typeof window.UIBudgets.goToCurrentMonth === 'function') {
             window.UIBudgets.goToCurrentMonth();
-          }
-        });
-      }
-      if (link.dataset.view === 'settings') {
-        link.addEventListener('dblclick', (e) => {
-          e.preventDefault();
-          this.lastSettingsTabClickTime = 0;
-          if (window.UISettings && typeof window.UISettings.backToHub === 'function') {
-            window.UISettings.backToHub();
           }
         });
       }
@@ -431,44 +442,13 @@ class App {
 
     // Mobile Bottom Nav Items (Chỉ các tab điều hướng, KHÔNG bao gồm nút FAB thêm giao dịch)
     document.querySelectorAll('.mobile-bottom-nav .mobile-nav-item:not(.fab-item)').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const view = link.dataset.view;
-        if (view) {
-          if (view === 'budgets') {
-            this.handleBudgetTabClick();
-            return;
-          }
-          if (view === 'settings') {
-            this.handleSettingsTabClick();
-            return;
-          }
-          if (view === 'transactions') {
-            this.txHistorySource = null;
-            this.previousView = null;
-            if (window.UITransactions && typeof window.UITransactions.resetAllFilters === 'function') {
-              window.UITransactions.resetAllFilters(false);
-            }
-          }
-          this.activePrimaryView = view; // Track which primary tab is active
-          this.switchView(view);
-        }
-      });
+      link.addEventListener('click', (e) => handleNavClick(link, e));
       if (link.dataset.view === 'budgets') {
         link.addEventListener('dblclick', (e) => {
           e.preventDefault();
           this.lastBudgetTabClickTime = 0;
           if (window.UIBudgets && typeof window.UIBudgets.goToCurrentMonth === 'function') {
             window.UIBudgets.goToCurrentMonth();
-          }
-        });
-      }
-      if (link.dataset.view === 'settings') {
-        link.addEventListener('dblclick', (e) => {
-          e.preventDefault();
-          this.lastSettingsTabClickTime = 0;
-          if (window.UISettings && typeof window.UISettings.backToHub === 'function') {
-            window.UISettings.backToHub();
           }
         });
       }
@@ -528,35 +508,28 @@ class App {
     }
   }
 
-  handleSettingsTabClick() {
-    const now = Date.now();
-    const timeSinceLastClick = now - (this.lastSettingsTabClickTime || 0);
+  scrollToTopView(viewId) {
+    const el = document.getElementById(`view-${viewId}`);
+    if (el) {
+      el.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
-    // Kích 2 lần nhanh (< 400ms) hoặc khi đã đang ở trong trang Cài đặt -> Trở về màn hình Cài Đặt chính (Hub)
+  handleSettingsTabClick() {
+    // Nếu đang ở sẵn trang Cài đặt:
     if (this.currentView === 'settings') {
       if (window.UISettings) {
         if (window.UISettings.currentSection) {
+          // 1 chạm khi đang ở trang con -> Quay lại màn hình Cài Đặt chính
           window.UISettings.backToHub();
         } else {
-          const settingsView = document.getElementById('view-settings');
-          if (settingsView) settingsView.scrollTo({ top: 0, behavior: 'smooth' });
+          // 1 chạm khi đang ở màn hình Cài Đặt chính -> Cuộn mượt lên đầu trang
+          this.scrollToTopView('settings');
         }
       }
-      this.lastSettingsTabClickTime = 0;
       return;
     }
-
-    if (this.lastSettingsTabClickTime > 0 && timeSinceLastClick < 400) {
-      this.lastSettingsTabClickTime = 0;
-      this.activePrimaryView = 'settings';
-      this.switchView('settings');
-      if (window.UISettings && typeof window.UISettings.backToHub === 'function') {
-        window.UISettings.backToHub();
-      }
-      return;
-    }
-
-    this.lastSettingsTabClickTime = now;
 
     // Chuyển vào trang Cài Đặt
     this.activePrimaryView = 'settings';
@@ -578,11 +551,15 @@ class App {
 
     this.lastBudgetTabClickTime = now;
 
-    // Nếu đang ở màn hình khác -> chuyển vào trang Ngân sách
-    if (this.currentView !== 'budgets') {
-      this.activePrimaryView = 'budgets';
-      this.switchView('budgets');
+    // Nếu đang ở sẵn trang Ngân sách -> Cuộn mượt lên đầu trang
+    if (this.currentView === 'budgets') {
+      this.scrollToTopView('budgets');
+      return;
     }
+
+    // Nếu đang ở màn hình khác -> chuyển vào trang Ngân sách
+    this.activePrimaryView = 'budgets';
+    this.switchView('budgets');
   }
 
   async handleInputTabClick() {
@@ -652,9 +629,6 @@ class App {
     this.lastAddTabClickTime = 0;
     if (viewId !== 'budgets') {
       this.lastBudgetTabClickTime = 0;
-    }
-    if (viewId !== 'settings') {
-      this.lastSettingsTabClickTime = 0;
     }
     const primaryViews = ['dashboard', 'accounts', 'budgets', 'settings', 'transactions', 'debts', 'analytics'];
     const isPrimary = primaryViews.includes(viewId);
