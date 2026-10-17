@@ -760,7 +760,7 @@ const UISettings = {
         db.settings.put({ key: 'syncServerUrl', value: enteredUrl }).catch(() => {});
 
         try {
-          serverGoogleLoginBtn.disabled = true;
+          // KHÔNG disable button ở đây để tránh làm mất quyền User Activation trên iOS Safari
           showToast('Đang mở màn hình xác thực Google...', 'info');
           const result = await sService.loginWithGoogle();
           showToast(`Đăng nhập máy chủ thành công! Xin chào ${result.user.name}`, 'success');

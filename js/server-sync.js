@@ -215,9 +215,19 @@ class ServerSyncService {
     let accessToken = null;
     let idToken = null;
 
-    // 1. Tận dụng Google Drive Service đã được cấu hình sẵn để mở màn hình đăng nhập Google mượt mà trên iPhone
+    // 1. Lấy Client ID đồng bộ để kích hoạt popup tức thì trong cử chỉ click của người dùng
     const gDrive = window.googleDriveService;
-    if (gDrive && gDrive.clientId && typeof gDrive.requestToken === 'function') {
+    let clientId = (gDrive && gDrive.clientId) ? gDrive.clientId : (this.serverGoogleClientId || '');
+    if (!clientId) {
+      const inputEl = document.getElementById('settings-client-id');
+      if (inputEl && inputEl.value) clientId = inputEl.value.trim();
+    }
+    if (!clientId && window.EnvConfig) {
+      clientId = window.EnvConfig.get('GOOGLE_CLIENT_ID', '');
+    }
+
+    if (gDrive && (gDrive.clientId || clientId) && typeof gDrive.requestToken === 'function') {
+      if (!gDrive.clientId && clientId) gDrive.clientId = clientId;
       try {
         accessToken = await gDrive.requestToken({ prompt: 'select_account', interactive: true });
       } catch (gErr) {

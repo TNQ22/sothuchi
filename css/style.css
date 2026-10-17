@@ -4085,51 +4085,89 @@ body.dark .header-brand-logo-btn .sync-status-dot,
   line-height: 1.35;
 }
 
-.app-switch {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-  flex-shrink: 0;
-  cursor: pointer;
+/* Modern Toggle Switch (Đồng bộ app-switch và switch trên mọi thiết bị và nền) */
+.app-switch,
+.switch {
+  position: relative !important;
+  display: inline-block !important;
+  width: 44px !important;
+  height: 24px !important;
+  flex-shrink: 0 !important;
+  cursor: pointer !important;
+  -webkit-tap-highlight-color: transparent !important;
+  user-select: none !important;
+  vertical-align: middle !important;
 }
 
-.app-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
+.app-switch input,
+.switch input {
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  pointer-events: none !important;
 }
 
-.app-switch-slider {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--border-color);
-  transition: all 0.25s ease;
-  border-radius: 24px;
+.app-switch-slider,
+.switch .slider {
+  position: absolute !important;
+  cursor: pointer !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background-color: #cbd5e1 !important;
+  border: 2px solid #94a3b8 !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 24px !important;
+  box-sizing: border-box !important;
 }
 
-.app-switch-slider::before {
-  position: absolute;
-  content: "";
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background-color: #ffffff;
-  transition: all 0.25s ease;
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+[data-theme="dark"] .app-switch-slider,
+[data-theme="dark"] .switch .slider,
+.dark-theme .app-switch-slider,
+.dark-theme .switch .slider,
+body.dark .app-switch-slider,
+body.dark .switch .slider {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
 }
 
-.app-switch input:checked + .app-switch-slider {
-  background-color: var(--primary);
+.app-switch-slider.round,
+.switch .slider.round {
+  border-radius: 24px !important;
 }
 
-.app-switch input:checked + .app-switch-slider::before {
-  transform: translateX(20px);
+.app-switch-slider::before,
+.app-switch-slider:before,
+.switch .slider::before,
+.switch .slider:before {
+  position: absolute !important;
+  content: "" !important;
+  height: 16px !important;
+  width: 16px !important;
+  left: 2px !important;
+  top: 2px !important;
+  background-color: #ffffff !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 50% !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+.app-switch input:checked + .app-switch-slider,
+.app-switch input:checked + .slider,
+.switch input:checked + .app-switch-slider,
+.switch input:checked + .slider {
+  background-color: var(--primary, #10b981) !important;
+  border-color: var(--primary, #10b981) !important;
+}
+
+.app-switch input:checked + .app-switch-slider::before,
+.app-switch input:checked + .app-switch-slider:before,
+.switch input:checked + .slider::before,
+.switch input:checked + .slider:before {
+  transform: translateX(20px) !important;
+  background-color: #ffffff !important;
 }
 
 .account-badge.exclude {
@@ -8472,70 +8510,7 @@ html, body {
   font-style: italic;
 }
 
-/* Modern Switch Toggle - Rõ ràng cả Light & Dark Theme */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 48px;
-  height: 26px;
-  flex-shrink: 0;
-  vertical-align: middle;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-}
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-  position: absolute;
-  pointer-events: none;
-}
-.switch .slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #cbd5e1; /* Màu xám track rõ ràng khi TẮT (OFF) */
-  border: 2px solid #94a3b8; /* Viền bao quanh cực rõ nét */
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 26px;
-  box-sizing: border-box;
-}
-[data-theme="dark"] .switch .slider,
-.dark-theme .switch .slider {
-  background-color: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.35);
-}
-.switch .slider.round {
-  border-radius: 26px;
-}
-.switch .slider:before {
-  position: absolute;
-  content: "";
-  height: 18px;
-  width: 18px;
-  left: 2px;
-  top: 2px;
-  background-color: #ffffff;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 50%;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
-}
-
-/* Khi BẬT (ON): Nền xanh sáng, viền cùng màu, nút trượt sang phải */
-.switch input:checked + .slider {
-  background-color: var(--primary, #10b981) !important;
-  border-color: var(--primary, #10b981) !important;
-}
-.switch input:checked + .slider:before {
-  transform: translateX(22px);
-  background-color: #ffffff;
-}
-
-
+/* Switch toggle unified in .app-switch, .switch */
 /* Thanh cảnh báo vượt ngân sách phía trên bảng chi tiết */
 .budget-overspent-banner {
   display: flex;

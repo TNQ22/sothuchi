@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.5.8">
+  <link rel="stylesheet" href="./css/style.css?v=2.6.1">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1485,9 +1485,9 @@
                     <div style="font-weight: 600; font-size: 0.9rem;">Tự Động Đồng Bộ Khi Có Thay Đổi</div>
                     <div style="font-size: 0.78rem; color: var(--text-muted);">Tự động tải lên Google Drive sau mỗi lần ghi chép</div>
                   </div>
-                  <label class="switch">
-                    <input type="checkbox" id="settings-auto-sync" checked>
-                    <span class="slider round"></span>
+                  <label class="app-switch switch" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; vertical-align: middle;">
+                    <input type="checkbox" id="settings-auto-sync" checked style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;">
+                    <span class="app-switch-slider slider round"></span>
                   </label>
                 </div>
 
@@ -1688,9 +1688,9 @@
                     <div style="font-weight: 600; font-size: 0.88rem;">Tự Động Đồng Bộ Với Máy Chủ</div>
                     <div style="font-size: 0.76rem; color: var(--text-muted);">Gửi và nhận dữ liệu ngầm khi có phát sinh giao dịch</div>
                   </div>
-                  <label class="switch">
-                    <input type="checkbox" id="settings-server-auto-sync" checked>
-                    <span class="slider round"></span>
+                  <label class="app-switch switch" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; vertical-align: middle;">
+                    <input type="checkbox" id="settings-server-auto-sync" checked style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;">
+                    <span class="app-switch-slider slider round"></span>
                   </label>
                 </div>
 
@@ -4049,9 +4049,9 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   Cộng dồn số dư khả dụng và tiền chưa phân bổ từ tháng trước sang tháng sau ở Ngân sách chi tiết.
                 </div>
               </div>
-              <label class="switch" style="flex-shrink: 0; position: relative; display: inline-block; width: 44px; height: 24px;">
-                <input type="checkbox" id="budget-setting-rollover-toggle" checked style="opacity: 0; width: 0; height: 0;">
-                <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.2); transition: .2s; border-radius: 24px;"></span>
+              <label class="app-switch switch" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; vertical-align: middle;">
+                <input type="checkbox" id="budget-setting-rollover-toggle" checked style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;">
+                <span class="app-switch-slider slider round"></span>
               </label>
             </div>
           </div>
@@ -5078,15 +5078,15 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./vendor/lucide.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=2.5.3"></script>
+  <script src="./js/config.js?v=2.6.1"></script>
   <script src="./js/crypto.js"></script>
-  <script src="./js/db.js?v=2.5.8"></script>
-  <script src="./js/google-drive.js?v=2.5.5"></script>
-  <script src="./js/dropbox.js?v=2.5.5"></script>
-  <script src="./js/server-sync.js?v=2.5.7"></script>
+  <script src="./js/db.js?v=2.6.1"></script>
+  <script src="./js/google-drive.js?v=2.6.1"></script>
+  <script src="./js/dropbox.js?v=2.6.1"></script>
+  <script src="./js/server-sync.js?v=2.6.1"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
-  <script src="./js/sync-coordinator.js?v=2.5.8"></script>
+  <script src="./js/sync-coordinator.js?v=2.6.1"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
@@ -5095,9 +5095,9 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/ui-accounts.js?v=2.5.5"></script>
   <script src="./js/ui-budgets.js?v=2.5.5"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
-  <script src="./js/ui-settings.js?v=2.5.4"></script>
+  <script src="./js/ui-settings.js?v=2.6.1"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.5.5"></script>
+  <script src="./js/app.js?v=2.6.1"></script>
 </body>
 </html>
