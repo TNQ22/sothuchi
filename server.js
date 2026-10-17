@@ -1254,6 +1254,49 @@ async function handleApiRequest(req, res, pathname, url) {
     }
   }
 
+  // 3b. Quick Login / Xác thực nhanh máy chủ (Dành cho mạng nội bộ / Docker / LAN không cần cấu hình Google OAuth)
+  if (req.method === 'POST' && pathname === '/api/auth/quick') {
+    try {
+      const body = await parseJsonBody(req);
+      const email = (body.email || '').trim().toLowerCase();
+      const name = (body.name || email.split('@')[0] || 'Người dùng').trim();
+      if (!email) {
+        return sendJson(res, 400, { error: 'Vui lòng cung cấp email tài khoản' });
+      }
+
+      const quickId = 'quick_' + crypto.createHash('md5').update(email).digest('hex');
+      const user = dbManager.upsertUser({
+        googleId: quickId,
+        email,
+        name,
+        picture: body.avatar || null
+      });
+
+      // Đảm bảo người dùng luôn có ít nhất 1 Sổ Cá Nhân ban đầu
+      const vaults = dbManager.getUserVaults(user.id, user.email);
+      if (vaults.length === 0) {
+        dbManager.createVault('Sổ của ' + user.name, user.id);
+      }
+
+      const session = dbManager.createSession(user.id, 90);
+
+      return sendJson(res, 200, {
+        success: true,
+        token: session.token,
+        expiresAt: session.expiresAt,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          picture: user.picture
+        }
+      });
+    } catch (err) {
+      console.warn('[API] Đăng nhập nhanh lỗi:', err.message);
+      return sendJson(res, 500, { error: err.message || 'Xác thực máy chủ thất bại' });
+    }
+  }
+
   // --- PUBLIC ENDPOINTS CHO CHIA SẺ & PHÂN QUYỀN ---
   // A. Danh sách các dịch vụ sao lưu khả dụng
   if (req.method === 'GET' && pathname === '/api/shares/services') {

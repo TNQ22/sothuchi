@@ -116,35 +116,51 @@ const UniversalShareModal = {
     const container = document.getElementById('universal-share-services-list');
     if (!container) return;
 
-    const isServerConnected = window.serverSyncService?.isConnected;
+    const sService = window.serverSyncService;
+    const isServerReachable = Boolean(sService && (sService.connectionStatus === 'connected' || sService.serverUrl));
+    const isServerLoggedIn = Boolean(sService && sService.token && sService.userProfile);
+
+    let serverStatusText = 'Chưa kết nối';
+    let serverStatusClass = 'not-connected';
+    if (isServerLoggedIn) {
+      serverStatusText = 'Đã kết nối';
+      serverStatusClass = 'connected';
+    } else if (isServerReachable) {
+      serverStatusText = 'Sẵn sàng';
+      serverStatusClass = 'ready';
+    }
 
     const services = [
       {
         id: 'server',
         name: 'Máy Chủ Riêng (Self-Hosted)',
-        statusText: isServerConnected ? 'Đang kết nối' : 'Chưa kết nối',
-        isConnected: isServerConnected,
+        statusText: serverStatusText,
+        statusClass: serverStatusClass,
+        isConnected: isServerReachable,
+        isLoggedIn: isServerLoggedIn,
         supported: true,
         icon: 'server',
-        desc: 'Hỗ trợ chia sẻ độc lập qua Email Google và Liên kết (Link) với phân quyền Chỉ xem / Chỉnh sửa.'
+        desc: 'Đồng bộ tức thì 2 chiều. Chia sẻ ví & sổ độc lập qua Email hoặc Liên kết với phân quyền Xem/Sửa.'
       },
       {
         id: 'google-drive',
         name: 'Google Drive',
         statusText: 'Sắp hỗ trợ',
+        statusClass: 'planned',
         isConnected: false,
         supported: false,
         icon: 'cloud',
-        desc: 'Sao lưu toàn bộ sổ vào Google Drive cá nhân. Chia sẻ độc lập từng tài khoản qua Drive đang hoàn thiện.'
+        desc: 'Sao lưu dự phòng toàn bộ sổ vào Google Drive cá nhân. Chia sẻ độc lập từng tài khoản qua Drive đang hoàn thiện.'
       },
       {
         id: 'dropbox',
         name: 'Dropbox',
         statusText: 'Sắp hỗ trợ',
+        statusClass: 'planned',
         isConnected: false,
         supported: false,
         icon: 'box',
-        desc: 'Đồng bộ thư mục Dropbox chung. Chia sẻ độc lập từng tài khoản qua Dropbox đang hoàn thiện.'
+        desc: 'Sao lưu đám mây Dropbox. Chia sẻ độc lập từng tài khoản/sổ qua Dropbox đang hoàn thiện.'
       }
     ];
 
@@ -160,7 +176,7 @@ const UniversalShareModal = {
           <div class="share-service-body">
             <div class="share-service-top-row">
               <span class="share-service-name">${s.name}</span>
-              <span class="share-service-status-badge ${s.supported && s.isConnected ? 'connected' : (s.supported ? 'not-connected' : 'planned')}">
+              <span class="share-service-status-badge ${s.statusClass}">
                 ${s.statusText}
               </span>
             </div>
@@ -223,13 +239,85 @@ const UniversalShareModal = {
 
     const notConnectedBox = document.getElementById('share-server-not-connected-msg');
     const mainBox = document.getElementById('share-server-main-controls');
+    const sService = window.serverSyncService;
 
-    if (!window.serverSyncService?.isConnected || !window.serverSyncService?.token) {
-      if (notConnectedBox) notConnectedBox.style.display = 'block';
+    // 1. Nếu chưa có serverUrl
+    if (!sService || !sService.serverUrl) {
+      if (notConnectedBox) {
+        notConnectedBox.style.display = 'block';
+        notConnectedBox.innerHTML = `
+          <div class="share-auth-prompt-card not-configured">
+            <div class="share-auth-icon-wrap warn" style="margin: 0 auto 8px;">
+              <i data-lucide="server-off" style="width: 32px; height: 32px; color: #f59e0b;"></i>
+            </div>
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-bottom: 4px;">Chưa Cấu Hình Máy Chủ Riêng</h4>
+            <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 14px; line-height: 1.45;">Vui lòng vào mục Cài đặt > Máy Chủ Riêng để thiết lập địa chỉ máy chủ trước khi chia sẻ.</p>
+            <button type="button" class="btn-primary btn-sm" onclick="UniversalShareModal.close(); UISettings.openSection('server');">
+              <i data-lucide="settings" style="width: 14px; height: 14px;"></i> Cài Đặt Máy Chủ Riêng
+            </button>
+          </div>
+        `;
+      }
       if (mainBox) mainBox.style.display = 'none';
+      if (window.lucide) lucide.createIcons();
       return;
     }
 
+    // 2. Nếu đã có serverUrl nhưng chưa có token -> thử kiểm tra refresh session
+    if (!sService.token || !sService.userProfile) {
+      if (typeof sService.refreshSession === 'function') {
+        try {
+          await sService.refreshSession();
+        } catch (_) {}
+      }
+    }
+
+    // 3. Nếu vẫn chưa đăng nhập: Hiển thị form xác nhận tài khoản / Đăng nhập nhanh
+    if (!sService.token || !sService.userProfile) {
+      if (notConnectedBox) {
+        notConnectedBox.style.display = 'block';
+        let suggestedEmail = '';
+        if (window.googleDriveService?.userProfile?.email) {
+          suggestedEmail = window.googleDriveService.userProfile.email;
+        }
+
+        notConnectedBox.innerHTML = `
+          <div class="share-auth-prompt-card ready">
+            <div class="share-server-status-pill">
+              <span class="status-dot"></span>
+              <span>Máy chủ đã kết nối: <strong>${escapeHTML(sService.serverUrl)}</strong></span>
+            </div>
+            <h4 style="margin: 12px 0 6px 0; font-size: 0.98rem; font-weight: 700; color: #f8fafc;">Xác Nhận Tài Khoản Chia Sẻ</h4>
+            <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.45; margin-bottom: 14px;">
+              Để chia sẻ độc lập và phân quyền ví này cho người khác, bạn chỉ cần xác nhận email tài khoản của mình.
+            </p>
+
+            <div class="share-quick-login-box">
+              <label style="display: block; font-size: 0.78rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-align: left;">Email tài khoản của bạn:</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="email" id="share-quick-login-email" class="form-control" placeholder="nhap-email@gmail.com" value="${escapeHTML(suggestedEmail)}" style="flex: 1; font-size: 0.85rem; padding: 8px 12px;">
+                <button type="button" class="btn-primary" style="padding: 8px 14px; font-size: 0.82rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;" onclick="UniversalShareModal.handleQuickLogin()">
+                  <i data-lucide="zap" style="width: 14px; height: 14px;"></i> Xác nhận
+                </button>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px;">
+              <span style="font-size: 0.75rem; color: #64748b;">hoặc</span>
+              <button type="button" class="btn-secondary btn-sm" style="font-size: 0.78rem; padding: 6px 14px; display: inline-flex; align-items: center; gap: 6px;" onclick="UniversalShareModal.handleGoogleLogin()">
+                <svg width="14" height="14" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                Đăng nhập Google
+              </button>
+            </div>
+          </div>
+        `;
+      }
+      if (mainBox) mainBox.style.display = 'none';
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    // 4. Đã kết nối và đăng nhập thành công
     if (notConnectedBox) notConnectedBox.style.display = 'none';
     if (mainBox) mainBox.style.display = 'block';
 
@@ -251,6 +339,37 @@ const UniversalShareModal = {
       console.warn('Lỗi tải dữ liệu chia sẻ:', err);
       if (emailListEl) emailListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
       if (linkListEl) linkListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
+    }
+  },
+
+  async handleQuickLogin() {
+    const input = document.getElementById('share-quick-login-email');
+    const email = (input ? input.value : '').trim();
+    if (!email) {
+      if (typeof showToast === 'function') showToast('Vui lòng nhập email của bạn', 'warning');
+      return;
+    }
+
+    if (typeof showToast === 'function') showToast('Đang xác nhận tài khoản trên máy chủ...', 'info');
+    try {
+      await window.serverSyncService.quickLogin(email);
+      if (typeof showToast === 'function') showToast('Xác thực tài khoản thành công!', 'success');
+      this.renderServices();
+      await this.loadShareData();
+    } catch (e) {
+      if (typeof showToast === 'function') showToast('Lỗi: ' + e.message, 'error');
+    }
+  },
+
+  async handleGoogleLogin() {
+    if (typeof showToast === 'function') showToast('Đang mở màn hình xác thực Google...', 'info');
+    try {
+      await window.serverSyncService.loginWithGoogle();
+      if (typeof showToast === 'function') showToast('Đăng nhập Google thành công!', 'success');
+      this.renderServices();
+      await this.loadShareData();
+    } catch (e) {
+      if (typeof showToast === 'function') showToast(e.message, 'warning');
     }
   },
 

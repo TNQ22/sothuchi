@@ -24,6 +24,14 @@ class ServerSyncService {
     this.connectionStatus = 'disconnected'; // 'connected' | 'checking' | 'disconnected'
   }
 
+  get isConnected() {
+    return !!(this.serverUrl && (this.token || this.connectionStatus === 'connected'));
+  }
+
+  get isLoggedIn() {
+    return !!(this.serverUrl && this.token && this.userProfile);
+  }
+
   // Khởi tạo service khi tải app
   async init() {
     try {
@@ -206,6 +214,38 @@ class ServerSyncService {
       console.warn('[ServerSync] refreshSession error:', e);
       return false;
     }
+  }
+
+  // Đăng nhập nhanh máy chủ không cần Google OAuth (Mạng nội bộ / Docker)
+  async quickLogin(email, name) {
+    if (!this.serverUrl) throw new Error('Vui lòng nhập địa chỉ Máy Chủ Riêng trước.');
+    const targetEmail = (email || '').trim().toLowerCase();
+    if (!targetEmail) throw new Error('Vui lòng cung cấp email tài khoản.');
+
+    const res = await fetch(`${this.serverUrl}/api/auth/quick`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: targetEmail, name: name || targetEmail.split('@')[0] })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Đăng nhập máy chủ thất bại');
+    }
+
+    this.token = data.token;
+    this.userProfile = data.user;
+    this.connectionStatus = 'connected';
+
+    await db.settings.put({ key: 'syncServerToken', value: this.token });
+    await db.settings.put({ key: 'syncServerUserProfile', value: this.userProfile });
+
+    await this.fetchVaults();
+
+    window.dispatchEvent(new CustomEvent('server-auth-changed', {
+      detail: { user: this.userProfile, vaults: this.vaults, activeVaultId: this.activeVaultId }
+    }));
+
+    return data;
   }
 
   // Đăng nhập máy chủ bằng tài khoản Google

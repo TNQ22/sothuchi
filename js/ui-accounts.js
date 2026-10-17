@@ -452,18 +452,6 @@ const UIAccounts = {
       budgetDesc.textContent = hasBudget ? 'Đang tính chi tiêu vào ngân sách tháng' : 'Không tính chi tiêu vào ngân sách tháng';
     }
 
-    // Update Sharing setting display (Chia sẻ với thành viên khác khi dùng chung sổ)
-    const isShared = (acc.isShared === 1 || acc.isShared === true);
-    const shareBadge = document.getElementById('action-sheet-share-badge');
-    const shareDesc = document.getElementById('action-sheet-share-desc');
-    if (shareBadge) {
-      shareBadge.textContent = isShared ? 'Chia sẻ' : 'Riêng tư';
-      shareBadge.className = 'action-sheet-share-badge ' + (isShared ? 'active' : 'inactive');
-    }
-    if (shareDesc) {
-      shareDesc.textContent = isShared ? 'Đang cho phép thành viên khác xem khi dùng chung sổ' : 'Riêng tư: Ẩn với thành viên khác khi dùng chung sổ';
-    }
-
     // Toggle archive button text & icon
     const isArchived = !!acc.isArchived;
     const archTitle = document.getElementById('action-sheet-archive-title');
@@ -499,20 +487,6 @@ const UIAccounts = {
     this.closeActionSheet();
     await window.app.refreshAll();
     showToast((nextBudget ? 'Đã bật' : 'Đã tắt') + ' tính vào ngân sách cho ví "' + acc.name + '"', 'success');
-    if (typeof triggerAutoSync === 'function') triggerAutoSync();
-  },
-
-  async toggleAccountSharingAction() {
-    const accId = this.currentActionAccountId;
-    if (!accId) return;
-    const acc = await db.accounts.get(Number(accId));
-    if (!acc) return;
-    const currentShared = (acc.isShared !== 0 && acc.isShared !== false);
-    const nextShared = currentShared ? 0 : 1;
-    await db.accounts.update(Number(accId), { isShared: nextShared, updatedAt: Date.now() });
-    this.closeActionSheet();
-    await window.app.refreshAll();
-    showToast((nextShared ? 'Đã bật chia sẻ với thành viên' : 'Đã đặt riêng tư (ẩn với thành viên)') + ' cho tài khoản "' + acc.name + '"', 'success');
     if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 

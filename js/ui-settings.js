@@ -788,7 +788,43 @@ const UISettings = {
     }
 
     // Đăng xuất Máy chủ
-    const serverLogoutBtn = document.getElementById('btn-server-logout');
+        // Đăng nhập nhanh Máy chủ bằng Email (Không cần Google GIS)
+    const serverQuickLoginBtn = document.getElementById('btn-server-quick-login');
+    if (serverQuickLoginBtn) {
+      serverQuickLoginBtn.addEventListener('click', async () => {
+        if (!sService) return;
+        const urlInput = document.getElementById('settings-server-url');
+        const enteredUrl = (urlInput ? urlInput.value : sService.serverUrl || '').trim().replace(/\/+$/, '');
+        if (!enteredUrl) {
+          showToast('Vui lòng nhập địa chỉ Máy Chủ Riêng trước khi đăng nhập', 'warning');
+          return;
+        }
+        sService.serverUrl = enteredUrl;
+        await db.settings.put({ key: 'syncServerUrl', value: enteredUrl }).catch(() => {});
+
+        const emailInput = document.getElementById('settings-server-quick-email');
+        const email = (emailInput ? emailInput.value : '').trim();
+        if (!email) {
+          showToast('Vui lòng nhập email tài khoản của bạn', 'warning');
+          return;
+        }
+
+        serverQuickLoginBtn.disabled = true;
+        showToast('Đang đăng nhập vào máy chủ...', 'info');
+        try {
+          const result = await sService.quickLogin(email);
+          showToast(`Đăng nhập máy chủ thành công! Xin chào ${result.user.name}`, 'success');
+          if (window.app && window.app.refreshAll) await window.app.refreshAll();
+          await sService.sync({ interactive: true }).catch(() => {});
+        } catch (err) {
+          showToast('Lỗi đăng nhập: ' + err.message, 'error');
+        } finally {
+          serverQuickLoginBtn.disabled = false;
+        }
+      });
+    }
+
+const serverLogoutBtn = document.getElementById('btn-server-logout');
     if (serverLogoutBtn) {
       serverLogoutBtn.addEventListener('click', async () => {
         if (confirm('Bạn có chắc muốn đăng xuất khỏi Máy Chủ Riêng?')) {

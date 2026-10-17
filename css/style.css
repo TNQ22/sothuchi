@@ -10624,3 +10624,315 @@ html, body {
 .shared-group-category-title:first-child {
   margin-top: 4px;
 }
+
+
+/* ==========================================================================
+   ACCOUNTS FILTER & SHARED ITEMS - DARK THEME DESIGN
+   ========================================================================== */
+.accounts-filter-bar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  margin: 14px 0 16px 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.accounts-segmented-tabs {
+  display: inline-flex !important;
+  align-items: center !important;
+  background: rgba(17, 24, 39, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  padding: 3px !important;
+  gap: 3px !important;
+  box-sizing: border-box !important;
+}
+
+.accounts-seg-tab {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: #94a3b8 !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  padding: 6px 12px !important;
+  border-radius: 9px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
+  font-family: inherit !important;
+}
+
+.accounts-seg-tab:hover {
+  color: #f8fafc !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.accounts-seg-tab.active {
+  background: var(--primary, #0d9488) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.4) !important;
+}
+
+.accounts-seg-tab .seg-count-badge {
+  background: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  padding: 1px 6px !important;
+  border-radius: 9999px !important;
+  line-height: 1.2 !important;
+}
+
+.accounts-display-mode-wrap {
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.btn-toggle-view-mode {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: rgba(17, 24, 39, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  outline: none !important;
+  color: #94a3b8 !important;
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+  padding: 7px 11px !important;
+  border-radius: 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  white-space: nowrap !important;
+  font-family: inherit !important;
+}
+
+.btn-toggle-view-mode:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.btn-toggle-view-mode.mode-grouped {
+  color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.1) !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
+}
+
+.btn-toggle-view-mode.mode-unified {
+  color: #a78bfa !important;
+  background: rgba(167, 139, 250, 0.1) !important;
+  border-color: rgba(167, 139, 250, 0.3) !important;
+}
+
+/* UNIVERSAL SHARE SERVICES & CARDS - DARK THEME */
+.share-item-preview-card {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  background: rgba(30, 41, 59, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+  margin-bottom: 16px !important;
+}
+
+.share-item-icon-bubble {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 12px !important;
+  background: rgba(13, 148, 136, 0.15) !important;
+  color: var(--primary, #0d9488) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+.share-services-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  margin-bottom: 16px !important;
+}
+
+.share-service-card {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  background: rgba(30, 41, 59, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  padding: 11px 13px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-sizing: border-box !important;
+}
+
+.share-service-card:hover {
+  background: rgba(30, 41, 59, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.share-service-card.selected {
+  background: rgba(13, 148, 136, 0.1) !important;
+  border-color: var(--primary, #0d9488) !important;
+  box-shadow: 0 0 0 1px var(--primary, #0d9488) !important;
+}
+
+.share-service-card.disabled {
+  opacity: 0.65 !important;
+}
+
+.share-service-icon-wrap {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 9px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+.share-service-icon-wrap.server {
+  background: rgba(168, 85, 247, 0.15) !important;
+  color: #c084fc !important;
+}
+
+.share-service-icon-wrap.google-drive {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #60a5fa !important;
+}
+
+.share-service-icon-wrap.dropbox {
+  background: rgba(0, 97, 255, 0.15) !important;
+  color: #38bdf8 !important;
+}
+
+.share-service-body {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.share-service-top-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  margin-bottom: 2px !important;
+}
+
+.share-service-name {
+  font-size: 0.86rem !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+}
+
+.share-service-desc {
+  font-size: 0.75rem !important;
+  color: #94a3b8 !important;
+  line-height: 1.4 !important;
+  margin: 0 !important;
+}
+
+.share-service-status-badge {
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  padding: 2px 8px !important;
+  border-radius: 9999px !important;
+  white-space: nowrap !important;
+}
+
+.share-service-status-badge.connected {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+}
+
+.share-service-status-badge.ready {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #60a5fa !important;
+}
+
+.share-service-status-badge.not-connected {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+}
+
+.share-service-status-badge.planned {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #64748b !important;
+}
+
+/* SMART AUTH PROMPT CARD IN SHARE MODAL */
+.share-auth-prompt-card {
+  background: rgba(30, 41, 59, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 14px !important;
+  padding: 16px !important;
+  text-align: center !important;
+}
+
+.share-server-status-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+  border: 1px solid rgba(16, 185, 129, 0.25) !important;
+  color: #34d399 !important;
+  font-size: 0.74rem !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+  border-radius: 9999px !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.share-server-status-pill .status-dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  background: #10b981 !important;
+  box-shadow: 0 0 6px #10b981 !important;
+  flex-shrink: 0 !important;
+}
+
+.share-quick-login-box {
+  background: rgba(15, 23, 42, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 12px !important;
+  margin-top: 10px !important;
+}
+
+.share-active-user-banner {
+  background: rgba(30, 41, 59, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 8px 12px !important;
+  margin-bottom: 12px !important;
+}
+
+.user-avatar-mini {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  background: var(--primary, #0d9488) !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0.76rem !important;
+  font-weight: 700 !important;
+  flex-shrink: 0 !important;
+}
