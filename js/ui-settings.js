@@ -752,7 +752,9 @@ const UISettings = {
         if (!sService) return;
         const urlInput = document.getElementById('settings-server-url');
         if (urlInput && urlInput.value) {
-          await sService.setServerUrl(urlInput.value);
+          const trimmed = urlInput.value.trim().replace(/\/+$/, '');
+          sService.serverUrl = trimmed;
+          db.settings.put({ key: 'syncServerUrl', value: trimmed }).catch(() => {});
         }
 
         if (!sService.serverUrl) {
@@ -769,8 +771,10 @@ const UISettings = {
           // Tự động kéo dữ liệu về
           await sService.sync({ interactive: true });
         } catch (err) {
-          if (err.message && err.message.includes('popup_closed_by_user')) {
+          if (err.message && (err.message.includes('popup_closed_by_user') || err.message.includes('Đã hủy'))) {
             showToast('Đã hủy đăng nhập Google', 'info');
+          } else if (err.message && err.message.includes('popup_blocked')) {
+            showToast('Safari đã chặn cửa sổ bật lên. Vui lòng vào Cài đặt iPhone > Safari > Tắt "Chặn cửa sổ bật lên" rồi bấm lại.', 'warning', 7000);
           } else {
             showToast('Đăng nhập máy chủ thất bại: ' + err.message, 'error');
           }

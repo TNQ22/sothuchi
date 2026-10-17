@@ -942,6 +942,7 @@ async function handleApiRequest(req, res, pathname) {
       version: '2.5.0',
       storage: dbManager.isSqlite ? 'sqlite' : 'json_store',
       googleAuth: true,
+      googleClientId: GOOGLE_CLIENT_ID || null,
       multiVault: true,
       sharing: true,
       uptime: process.uptime(),
