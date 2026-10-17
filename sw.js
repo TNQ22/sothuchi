@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v2.6.6';
+const CACHE_NAME = 'sothuchi-pwa-v2.7.0';
 
 const PRECACHE_ASSETS = [
   './',
@@ -19,6 +19,7 @@ const PRECACHE_ASSETS = [
   './js/ui-transactions.js',
   './js/ui-debts.js',
   './js/ui-accounts.js',
+  './js/ui-share.js',
   './js/ui-budgets.js',
   './js/ui-analytics.js',
   './js/ui-settings.js',
@@ -109,15 +110,23 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Trả về cache ngay và fetch ngầm để cập nhật cache cho lần sau
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
-          }
-        }).catch(() => {});
         return cachedResponse;
       }
-      return fetch(event.request);
+      return fetch(event.request).then((networkResponse) => {
+        if (
+          networkResponse &&
+          networkResponse.status === 200 &&
+          (event.request.url.includes('lucide') ||
+           event.request.url.includes('fonts.gstatic.com') ||
+           event.request.url.includes('fonts.googleapis.com'))
+        ) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      });
     })
   );
 });

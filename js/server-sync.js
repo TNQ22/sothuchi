@@ -797,15 +797,19 @@ class ServerSyncService {
       // 3. Nếu là Editor hoặc Owner: Chuẩn bị dữ liệu để đẩy (Push) lên Server
       if (!isViewer) {
         // Lấy các tài khoản và giao dịch chia sẻ để đẩy lên server
+        // 100% dữ liệu tài khoản và giao dịch (kể cả sổ tiết kiệm, tích luỹ, vay, tài sản)
+        // đều được đẩy lên Server Vault để đảm bảo sao lưu dự phòng an toàn tuyệt đối.
         const allAccs = await db.accounts.toArray();
-        const sharedAccs = allAccs.filter(a => a.isShared === 1 || a.isShared === true);
-        const sharedAccIds = new Set(sharedAccs.map(a => Number(a.id)));
-
         const allTxs = await db.transactions.toArray();
-        const sharedTxs = allTxs.filter(t => {
+
+        // Không sao lưu ngược các mục do người khác chia sẻ vào Vault cá nhân của mình
+        const personalAccs = allAccs.filter(a => !a._isSharedItem);
+        const personalAccIds = new Set(personalAccs.map(a => Number(a.id)));
+        const personalTxs = allTxs.filter(t => {
+          if (t._isSharedItem) return false;
           const accId = Number(t.accountId);
           const toAccId = t.toAccountId ? Number(t.toAccountId) : null;
-          return sharedAccIds.has(accId) || (toAccId && sharedAccIds.has(toAccId));
+          return personalAccIds.has(accId) || (toAccId && personalAccIds.has(toAccId));
         });
 
         const SYNCABLE_SETTINGS_KEYS = [
@@ -824,16 +828,16 @@ class ServerSyncService {
         }
 
         const localPayload = {
-          transactions: sharedTxs,
-          accounts: sharedAccs,
+          transactions: personalTxs,
+          accounts: personalAccs,
           categories: await db.categories.toArray(),
           debts: await db.debts.toArray(),
           budgets: await db.budgets.toArray(),
           recurring: await db.recurring.toArray(),
-          savings: db.savings ? await db.savings.toArray() : [],
-          accumulations: db.accumulations ? await db.accumulations.toArray() : [],
-          assets: db.assets ? await db.assets.toArray() : [],
-          loans: db.loans ? await db.loans.toArray() : [],
+          savings: db.savings ? (await db.savings.toArray()).filter(s => !s._isSharedItem) : [],
+          accumulations: db.accumulations ? (await db.accumulations.toArray()).filter(a => !a._isSharedItem) : [],
+          assets: db.assets ? (await db.assets.toArray()).filter(a => !a._isSharedItem) : [],
+          loans: db.loans ? (await db.loans.toArray()).filter(l => !l._isSharedItem) : [],
           settings: localSettings
         };
 
@@ -856,6 +860,13 @@ class ServerSyncService {
         // Cập nhật lại IndexedDB với kết quả đã gộp từ server
         if (pushResult.data) {
           await this.mergeServerDataIntoLocal(pushResult.data);
+        }
+
+        // Tự động đồng bộ các mục được người khác chia sẻ (Received Shared Items)
+        try {
+          await this.syncReceivedSharedItems();
+        } catch (shareSyncErr) {
+          console.warn('[ServerSync] Đồng bộ mục chia sẻ nhận được:', shareSyncErr.message);
         }
       }
 
@@ -931,27 +942,19 @@ class ServerSyncService {
       await table.bulkAdd(mergedList);
     };
 
-    // Giữ an toàn cho các tài khoản và giao dịch riêng tư cục bộ
-    const localAccs = await db.accounts.toArray();
-    const privateAccs = localAccs.filter(a => a.isShared !== 1 && a.isShared !== true);
-    const privateAccIds = new Set(privateAccs.map(a => Number(a.id)));
+    // Lưu lại các item được người khác chia sẻ để không bị ghi đè bởi vault cá nhân
+    const sharedReceivedAccs = (await db.accounts.toArray()).filter(a => a._isSharedItem);
+    const sharedReceivedTxs = (await db.transactions.toArray()).filter(t => t._isSharedItem);
 
-    const localTxs = await db.transactions.toArray();
-    const privateTxs = localTxs.filter(t => {
-      const accId = Number(t.accountId);
-      const toAccId = t.toAccountId ? Number(t.toAccountId) : null;
-      return privateAccIds.has(accId) && (!toAccId || privateAccIds.has(toAccId));
-    });
+    if (remoteData.transactions) await mergeTable(db.transactions, await db.transactions.toArray(), remoteData.transactions);
+    if (remoteData.accounts) await mergeTable(db.accounts, await db.accounts.toArray(), remoteData.accounts);
 
-    if (remoteData.transactions) await mergeTable(db.transactions, localTxs, remoteData.transactions);
-    if (remoteData.accounts) await mergeTable(db.accounts, localAccs, remoteData.accounts);
-
-    // Phục hồi lại các bản ghi riêng tư nếu bị ảnh hưởng
-    for (const pAcc of privateAccs) {
-      await db.accounts.put(pAcc);
+    // Phục hồi lại các item chia sẻ nhận được
+    for (const sAcc of sharedReceivedAccs) {
+      await db.accounts.put(sAcc);
     }
-    for (const pTx of privateTxs) {
-      await db.transactions.put(pTx);
+    for (const sTx of sharedReceivedTxs) {
+      await db.transactions.put(sTx);
     }
 
     if (remoteData.categories) await mergeTable(db.categories, await db.categories.toArray(), remoteData.categories);
@@ -974,6 +977,337 @@ class ServerSyncService {
         }
       }
     }
+  }
+
+  // ===========================================================================
+  // GRANULAR PER-ITEM SHARING (TÀI KHOẢN, SỔ TIẾT KIỆM, TÍCH LUỸ, VAY, TÀI SẢN)
+  // ===========================================================================
+
+  async getAvailableServices() {
+    try {
+      const res = await fetch(`${this.serverUrl}/api/shares/services`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.services || [];
+      }
+    } catch (e) {
+      console.warn('[ServerSync] Không thể lấy danh sách dịch vụ:', e.message);
+    }
+    return [
+      { id: 'server', name: 'Máy Chủ Riêng (Self-Hosted)', status: this.isConnected ? 'connected' : 'not_connected', supported: true, badge: 'Sẵn sàng' },
+      { id: 'google-drive', name: 'Google Drive', status: 'available', supported: false, badge: 'Sắp hỗ trợ' },
+      { id: 'dropbox', name: 'Dropbox', status: 'available', supported: false, badge: 'Sắp hỗ trợ' }
+    ];
+  }
+
+  async getItemShares(itemType, itemId) {
+    if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
+    const res = await fetch(`${this.serverUrl}/api/shares/item?itemType=${encodeURIComponent(itemType)}&itemId=${encodeURIComponent(itemId)}`, {
+      headers: { Authorization: `Bearer ${this.token}` }
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Lấy danh sách chia sẻ thất bại.');
+    }
+    return res.json();
+  }
+
+  async shareItemWithEmail(itemType, itemId, itemName, email, role = 'viewer') {
+    if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
+    const res = await fetch(`${this.serverUrl}/api/shares/item/email`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ itemType, itemId, itemName, email, role })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Cấp quyền chia sẻ thất bại.');
+    }
+    return res.json();
+  }
+
+  async revokeItemEmailShare(shareId) {
+    if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
+    const res = await fetch(`${this.serverUrl}/api/shares/item/email/${shareId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${this.token}` }
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Thu hồi quyền thất bại.');
+    }
+    return res.json();
+  }
+
+  async createItemShareLink(itemType, itemId, itemName, role = 'viewer') {
+    if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
+    const res = await fetch(`${this.serverUrl}/api/shares/item/link`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ itemType, itemId, itemName, role })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Tạo liên kết chia sẻ thất bại.');
+    }
+    return res.json();
+  }
+
+  async revokeItemShareLink(linkId) {
+    if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
+    const res = await fetch(`${this.serverUrl}/api/shares/item/link/${linkId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${this.token}` }
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Thu hồi liên kết thất bại.');
+    }
+    return res.json();
+  }
+
+  async getShareLinkInfo(token) {
+    const res = await fetch(`${this.serverUrl}/api/shares/link/info?token=${encodeURIComponent(token)}`);
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Liên kết không hợp lệ hoặc đã bị thu hồi.');
+    }
+    return res.json();
+  }
+
+  async getShareLinkData(token) {
+    const res = await fetch(`${this.serverUrl}/api/shares/link/data?token=${encodeURIComponent(token)}`);
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Không thể tải dữ liệu liên kết chia sẻ.');
+    }
+    return res.json();
+  }
+
+  async acceptShareLink(token) {
+    if (!this.token) throw new Error('Vui lòng kết nối máy chủ riêng để nhận tài khoản được chia sẻ.');
+    const res = await fetch(`${this.serverUrl}/api/shares/link/accept`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ token })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Chấp nhận liên kết thất bại.');
+    }
+    return res.json();
+  }
+
+  async syncReceivedSharedItems() {
+    if (!this.token) return;
+
+    try {
+      const res = await fetch(`${this.serverUrl}/api/shares/my-received`, {
+        headers: { Authorization: `Bearer ${this.token}` }
+      });
+      if (!res.ok) return;
+
+      const { items } = await res.json();
+      if (!Array.isArray(items)) return;
+
+      const activeReceivedShareIds = new Set(items.map(i => i.shareId));
+
+      // 1. Xóa các item đã bị thu hồi khỏi local IndexedDB
+      const localAccs = await db.accounts.toArray();
+      for (const acc of localAccs) {
+        if (acc._isSharedItem && acc._shareId && !activeReceivedShareIds.has(acc._shareId)) {
+          console.log('[ServerSync] Quyền chia sẻ đã bị thu hồi, xóa tài khoản:', acc.name);
+          await db.accounts.delete(acc.id);
+          // Xóa giao dịch kèm theo
+          const relatedTxs = await db.transactions.where('accountId').equals(acc.id).toArray();
+          for (const tx of relatedTxs) {
+            await db.transactions.delete(tx.id);
+          }
+        }
+      }
+
+      if (db.savings) {
+        const localSavings = await db.savings.toArray();
+        for (const s of localSavings) {
+          if (s._isSharedItem && s._shareId && !activeReceivedShareIds.has(s._shareId)) {
+            await db.savings.delete(s.id);
+          }
+        }
+      }
+
+      if (db.accumulations) {
+        const localAccums = await db.accumulations.toArray();
+        for (const a of localAccums) {
+          if (a._isSharedItem && a._shareId && !activeReceivedShareIds.has(a._shareId)) {
+            await db.accumulations.delete(a.id);
+          }
+        }
+      }
+
+      if (db.loans) {
+        const localLoans = await db.loans.toArray();
+        for (const l of localLoans) {
+          if (l._isSharedItem && l._shareId && !activeReceivedShareIds.has(l._shareId)) {
+            await db.loans.delete(l.id);
+          }
+        }
+      }
+
+      if (db.assets) {
+        const localAssets = await db.assets.toArray();
+        for (const ast of localAssets) {
+          if (ast._isSharedItem && ast._shareId && !activeReceivedShareIds.has(ast._shareId)) {
+            await db.assets.delete(ast.id);
+          }
+        }
+      }
+
+      // 2. Thêm hoặc cập nhật các item được chia sẻ vào local IndexedDB
+      for (const shareItem of items) {
+        const { itemType, itemId, shareId, role, ownerName, ownerEmail, vaultId, item, transactions } = shareItem;
+        if (!item) continue;
+
+        if (itemType === 'account') {
+          // Tìm tài khoản cục bộ tương ứng theo _shareId hoặc _remoteId
+          let localAcc = (await db.accounts.toArray()).find(a => a._shareId === shareId || (a._remoteId === itemId && a._remoteVaultId === vaultId));
+          const accData = {
+            ...item,
+            _isSharedItem: true,
+            _sharedRole: role,
+            _shareId: shareId,
+            _remoteId: itemId,
+            _remoteVaultId: vaultId,
+            _sharedFrom: ownerName || ownerEmail
+          };
+
+          let localAccId;
+          if (localAcc) {
+            localAccId = localAcc.id;
+            await db.accounts.update(localAccId, { ...accData, id: localAccId });
+          } else {
+            delete accData.id;
+            localAccId = await db.accounts.add(accData);
+          }
+
+          // Cập nhật giao dịch cho tài khoản này
+          if (Array.isArray(transactions)) {
+            for (const tx of transactions) {
+              const txRemoteId = tx.id;
+              const localTx = (await db.transactions.toArray()).find(t => t._remoteTxId === txRemoteId && t._shareId === shareId);
+              const txData = {
+                ...tx,
+                accountId: localAccId,
+                _isSharedItem: true,
+                _shareId: shareId,
+                _remoteTxId: txRemoteId
+              };
+              if (localTx) {
+                await db.transactions.update(localTx.id, { ...txData, id: localTx.id });
+              } else {
+                delete txData.id;
+                await db.transactions.add(txData);
+              }
+            }
+          }
+        } else if (itemType === 'savings' && db.savings) {
+          let localSav = (await db.savings.toArray()).find(s => s._shareId === shareId);
+          const savData = {
+            ...item,
+            _isSharedItem: true,
+            _sharedRole: role,
+            _shareId: shareId,
+            _remoteId: itemId,
+            _remoteVaultId: vaultId,
+            _sharedFrom: ownerName || ownerEmail
+          };
+          if (localSav) {
+            await db.savings.update(localSav.id, { ...savData, id: localSav.id });
+          } else {
+            delete savData.id;
+            await db.savings.add(savData);
+          }
+        } else if (itemType === 'accumulation' && db.accumulations) {
+          let localAcc = (await db.accumulations.toArray()).find(a => a._shareId === shareId);
+          const accData = {
+            ...item,
+            _isSharedItem: true,
+            _sharedRole: role,
+            _shareId: shareId,
+            _remoteId: itemId,
+            _remoteVaultId: vaultId,
+            _sharedFrom: ownerName || ownerEmail
+          };
+          if (localAcc) {
+            await db.accumulations.update(localAcc.id, { ...accData, id: localAcc.id });
+          } else {
+            delete accData.id;
+            await db.accumulations.add(accData);
+          }
+        } else if (itemType === 'loan' && db.loans) {
+          let localLoan = (await db.loans.toArray()).find(l => l._shareId === shareId);
+          const loanData = {
+            ...item,
+            _isSharedItem: true,
+            _sharedRole: role,
+            _shareId: shareId,
+            _remoteId: itemId,
+            _remoteVaultId: vaultId,
+            _sharedFrom: ownerName || ownerEmail
+          };
+          if (localLoan) {
+            await db.loans.update(localLoan.id, { ...loanData, id: localLoan.id });
+          } else {
+            delete loanData.id;
+            await db.loans.add(loanData);
+          }
+        } else if (itemType === 'asset' && db.assets) {
+          let localAsset = (await db.assets.toArray()).find(a => a._shareId === shareId);
+          const assetData = {
+            ...item,
+            _isSharedItem: true,
+            _sharedRole: role,
+            _shareId: shareId,
+            _remoteId: itemId,
+            _remoteVaultId: vaultId,
+            _sharedFrom: ownerName || ownerEmail
+          };
+          if (localAsset) {
+            await db.assets.update(localAsset.id, { ...assetData, id: localAsset.id });
+          } else {
+            delete assetData.id;
+            await db.assets.add(assetData);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[ServerSync] Lỗi tải các mục được chia sẻ:', err.message);
+    }
+  }
+
+  async syncSharedTransactions(shareId, transactions) {
+    if (!this.token) throw new Error('Vui lòng kết nối máy chủ riêng.');
+    const res = await fetch(`${this.serverUrl}/api/shares/received/sync`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ shareId, transactions })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Đồng bộ giao dịch chia sẻ thất bại.');
+    }
+    return res.json();
   }
 }
 

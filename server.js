@@ -160,6 +160,36 @@ class DatabaseManager {
           updated_by TEXT,
           FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS item_shares (
+          id TEXT PRIMARY KEY,
+          vault_id TEXT NOT NULL,
+          item_type TEXT NOT NULL,
+          item_id TEXT NOT NULL,
+          item_name TEXT,
+          user_email TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'viewer',
+          created_by TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_item_shares_lookup ON item_shares(vault_id, item_type, item_id);
+        CREATE INDEX IF NOT EXISTS idx_item_shares_user ON item_shares(user_email);
+
+        CREATE TABLE IF NOT EXISTS item_share_links (
+          id TEXT PRIMARY KEY,
+          token TEXT UNIQUE NOT NULL,
+          vault_id TEXT NOT NULL,
+          item_type TEXT NOT NULL,
+          item_id TEXT NOT NULL,
+          item_name TEXT,
+          role TEXT NOT NULL DEFAULT 'viewer',
+          created_by TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          expires_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_share_links_token ON item_share_links(token);
+        CREATE INDEX IF NOT EXISTS idx_share_links_lookup ON item_share_links(vault_id, item_type, item_id);
       `);
 
       this.isSqlite = true;
@@ -176,6 +206,8 @@ class DatabaseManager {
       try {
         const content = fs.readFileSync(this.jsonFilePath, 'utf8');
         this.jsonStore = JSON.parse(content);
+        this.jsonStore.item_shares = this.jsonStore.item_shares || {};
+        this.jsonStore.item_share_links = this.jsonStore.item_share_links || {};
       } catch (e) {
         console.warn('[Storage] Không thể đọc JSON store, khởi tạo mới:', e.message);
       }
@@ -668,6 +700,221 @@ class DatabaseManager {
     return this.saveVaultData(vaultId, dataObj, updatedBy);
   }
 
+  // --- Per-Item Sharing Methods (Granular Sharing) ---
+  getItemShares(vaultId, itemType, itemId) {
+    if (this.isSqlite) {
+      const stmt = this.sqliteDb.prepare(`
+        SELECT s.*, u.name as user_name, u.picture as user_picture
+        FROM item_shares s
+        LEFT JOIN users u ON LOWER(u.email) = LOWER(s.user_email)
+        WHERE s.vault_id = ? AND s.item_type = ? AND s.item_id = ?
+        ORDER BY s.created_at DESC
+      `);
+      return stmt.all(vaultId, itemType, String(itemId));
+    } else {
+      return (this.jsonStore.item_shares || [])
+        .filter(s => s.vault_id === vaultId && s.item_type === itemType && String(s.item_id) === String(itemId))
+        .map(s => {
+          const u = (this.jsonStore.users || []).find(u => u.email.toLowerCase() === s.user_email.toLowerCase());
+          return { ...s, user_name: u?.name || null, user_picture: u?.picture || null };
+        });
+    }
+  }
+
+  getItemShareLinks(vaultId, itemType, itemId) {
+    if (this.isSqlite) {
+      const stmt = this.sqliteDb.prepare(`
+        SELECT * FROM item_share_links
+        WHERE vault_id = ? AND item_type = ? AND item_id = ?
+        ORDER BY created_at DESC
+      `);
+      return stmt.all(vaultId, itemType, String(itemId));
+    } else {
+      return (this.jsonStore.item_share_links || [])
+        .filter(l => l.vault_id === vaultId && l.item_type === itemType && String(l.item_id) === String(itemId));
+    }
+  }
+
+  addItemShare(vaultId, itemType, itemId, itemName, email, role, createdBy) {
+    const id = generateId();
+    const now = new Date().toISOString();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (this.isSqlite) {
+      const checkStmt = this.sqliteDb.prepare(`
+        SELECT id FROM item_shares
+        WHERE vault_id = ? AND item_type = ? AND item_id = ? AND LOWER(user_email) = ?
+      `);
+      const existing = checkStmt.get(vaultId, itemType, String(itemId), cleanEmail);
+      if (existing) {
+        const updateStmt = this.sqliteDb.prepare(`
+          UPDATE item_shares
+          SET role = ?, updated_at = ?
+          WHERE id = ?
+        `);
+        updateStmt.run(role, now, existing.id);
+        return { id: existing.id, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, user_email: cleanEmail, role, updated_at: now };
+      }
+
+      const insertStmt = this.sqliteDb.prepare(`
+        INSERT INTO item_shares (id, vault_id, item_type, item_id, item_name, user_email, role, created_by, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      insertStmt.run(id, vaultId, itemType, String(itemId), itemName || '', cleanEmail, role, createdBy, now, now);
+      return { id, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, user_email: cleanEmail, role, created_by: createdBy, created_at: now, updated_at: now };
+    } else {
+      this.jsonStore.item_shares = this.jsonStore.item_shares || [];
+      const idx = this.jsonStore.item_shares.findIndex(s => s.vault_id === vaultId && s.item_type === itemType && String(s.item_id) === String(itemId) && s.user_email.toLowerCase() === cleanEmail);
+      if (idx >= 0) {
+        this.jsonStore.item_shares[idx].role = role;
+        this.jsonStore.item_shares[idx].updated_at = now;
+        this.saveJsonStore();
+        return this.jsonStore.item_shares[idx];
+      }
+      const record = { id, vault_id: vaultId, item_type: itemType, item_id: String(itemId), item_name: itemName || '', user_email: cleanEmail, role, created_by: createdBy, created_at: now, updated_at: now };
+      this.jsonStore.item_shares.push(record);
+      this.saveJsonStore();
+      return record;
+    }
+  }
+
+  removeItemShare(shareId, userEmail) {
+    if (this.isSqlite) {
+      const stmt = this.sqliteDb.prepare('DELETE FROM item_shares WHERE id = ?');
+      stmt.run(shareId);
+    } else {
+      this.jsonStore.item_shares = (this.jsonStore.item_shares || []).filter(s => s.id !== shareId);
+      this.saveJsonStore();
+    }
+    return true;
+  }
+
+  createItemShareLink(vaultId, itemType, itemId, itemName, role, createdBy) {
+    const id = generateId();
+    const token = crypto.randomBytes(16).toString('hex');
+    const now = new Date().toISOString();
+
+    if (this.isSqlite) {
+      const stmt = this.sqliteDb.prepare(`
+        INSERT INTO item_share_links (id, token, vault_id, item_type, item_id, item_name, role, created_by, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      stmt.run(id, token, vaultId, itemType, String(itemId), itemName || '', role, createdBy, now);
+    } else {
+      this.jsonStore.item_share_links = this.jsonStore.item_share_links || [];
+      this.jsonStore.item_share_links.push({ id, token, vault_id: vaultId, item_type: itemType, item_id: String(itemId), item_name: itemName || '', role, created_by: createdBy, created_at: now });
+      this.saveJsonStore();
+    }
+    return { id, token, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, role, created_at: now };
+  }
+
+  revokeItemShareLink(linkId) {
+    if (this.isSqlite) {
+      const stmt = this.sqliteDb.prepare('DELETE FROM item_share_links WHERE id = ?');
+      stmt.run(linkId);
+    } else {
+      this.jsonStore.item_share_links = (this.jsonStore.item_share_links || []).filter(l => l.id !== linkId);
+      this.saveJsonStore();
+    }
+    return true;
+  }
+
+  getShareLinkByToken(token) {
+    if (this.isSqlite) {
+      const stmt = this.sqliteDb.prepare(`
+        SELECT l.*, u.name as owner_name, u.email as owner_email
+        FROM item_share_links l
+        LEFT JOIN users u ON u.id = l.created_by
+        WHERE l.token = ?
+      `);
+      return stmt.get(token) || null;
+    } else {
+      const l = (this.jsonStore.item_share_links || []).find(x => x.token === token);
+      if (!l) return null;
+      const u = (this.jsonStore.users || []).find(u => u.id === l.created_by);
+      return { ...l, owner_name: u?.name || 'Chủ sở hữu', owner_email: u?.email || '' };
+    }
+  }
+
+  getReceivedSharesForEmail(email) {
+    const cleanEmail = email.trim().toLowerCase();
+    if (this.isSqlite) {
+      const stmt = this.sqliteDb.prepare(`
+        SELECT s.*, v.name as vault_name, u.name as owner_name, u.email as owner_email
+        FROM item_shares s
+        JOIN vaults v ON v.id = s.vault_id
+        JOIN users u ON u.id = v.owner_id
+        WHERE LOWER(s.user_email) = ?
+      `);
+      return stmt.all(cleanEmail);
+    } else {
+      return (this.jsonStore.item_shares || [])
+        .filter(s => s.user_email.toLowerCase() === cleanEmail)
+        .map(s => {
+          const v = (this.jsonStore.vaults || []).find(x => x.id === s.vault_id);
+          const u = v ? (this.jsonStore.users || []).find(x => x.id === v.owner_id) : null;
+          return { ...s, vault_name: v?.name || '', owner_name: u?.name || '', owner_email: u?.email || '' };
+        });
+    }
+  }
+
+  getReceivedItemData(vaultId, itemType, itemId) {
+    const vault = this.getVaultData(vaultId);
+    if (!vault || !vault.data) return null;
+    const data = vault.data;
+
+    let targetItem = null;
+    let transactions = [];
+
+    if (itemType === 'account') {
+      const accs = Array.isArray(data.accounts) ? data.accounts : [];
+      targetItem = accs.find(a => String(a.id) === String(itemId)) || null;
+
+      const txs = Array.isArray(data.transactions) ? data.transactions : [];
+      transactions = txs.filter(t => String(t.accountId) === String(itemId) || String(t.toAccountId) === String(itemId));
+    } else if (itemType === 'savings' || itemType === 'saving') {
+      const savings = Array.isArray(data.savings) ? data.savings : [];
+      targetItem = savings.find(s => String(s.id) === String(itemId)) || null;
+    } else if (itemType === 'accumulation' || itemType === 'accumulations') {
+      const accs = Array.isArray(data.accumulations) ? data.accumulations : [];
+      targetItem = accs.find(a => String(a.id) === String(itemId)) || null;
+    } else if (itemType === 'loan' || itemType === 'loans') {
+      const loans = Array.isArray(data.loans) ? data.loans : [];
+      targetItem = loans.find(l => String(l.id) === String(itemId)) || null;
+    } else if (itemType === 'asset' || itemType === 'assets') {
+      const assets = Array.isArray(data.assets) ? data.assets : [];
+      targetItem = assets.find(a => String(a.id) === String(itemId)) || null;
+    }
+
+    return {
+      item: targetItem,
+      transactions,
+      categories: Array.isArray(data.categories) ? data.categories : []
+    };
+  }
+
+  saveSharedItemTransactions(shareId, email, incomingTxs) {
+    let share = null;
+    if (this.isSqlite) {
+      share = this.sqliteDb.prepare('SELECT * FROM item_shares WHERE id = ?').get(shareId);
+    } else {
+      share = (this.jsonStore.item_shares || []).find(s => s.id === shareId);
+    }
+
+    if (!share) throw new Error('Không tìm thấy thông tin chia sẻ.');
+    if (share.role !== 'editor') throw new Error('Bạn không có quyền chỉnh sửa tài khoản này.');
+
+    const vault = this.getVaultData(share.vault_id);
+    if (!vault || !vault.data) throw new Error('Dữ liệu sổ chủ sở hữu không khả dụng.');
+
+    const currentTxs = Array.isArray(vault.data.transactions) ? vault.data.transactions : [];
+    const mergedTxs = mergeTableData(currentTxs, incomingTxs, false);
+
+    vault.data.transactions = mergedTxs;
+    this.saveVaultData(share.vault_id, vault.data, email);
+    return { success: true, count: mergedTxs.length };
+  }
+
   getVaultHistory(vaultId) {
     if (this.isSqlite) {
       const stmt = this.sqliteDb.prepare(`
@@ -922,7 +1169,8 @@ function getAuthUser(req) {
 // ==============================================================================
 // 5. REST API ROUTER & CONTROLLER
 // ==============================================================================
-async function handleApiRequest(req, res, pathname) {
+async function handleApiRequest(req, res, pathname, url) {
+  const searchParams = url ? url.searchParams : new URL(req.url, 'http://localhost').searchParams;
   // CORS Preflight
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
@@ -1004,6 +1252,78 @@ async function handleApiRequest(req, res, pathname) {
       console.warn('[API] Đăng nhập Google lỗi:', err.message);
       return sendJson(res, 401, { error: err.message || 'Xác thực Google thất bại' });
     }
+  }
+
+  // --- PUBLIC ENDPOINTS CHO CHIA SẺ & PHÂN QUYỀN ---
+  // A. Danh sách các dịch vụ sao lưu khả dụng
+  if (req.method === 'GET' && pathname === '/api/shares/services') {
+    return sendJson(res, 200, {
+      services: [
+        {
+          id: 'server',
+          name: 'Máy Chủ Riêng (Self-Hosted)',
+          status: 'connected',
+          supported: true,
+          badge: 'Sẵn sàng'
+        },
+        {
+          id: 'google-drive',
+          name: 'Google Drive',
+          status: 'available',
+          supported: false,
+          badge: 'Sắp hỗ trợ'
+        },
+        {
+          id: 'dropbox',
+          name: 'Dropbox',
+          status: 'available',
+          supported: false,
+          badge: 'Sắp hỗ trợ'
+        }
+      ]
+    });
+  }
+
+  // B. Xem thông tin liên kết chia sẻ (Public Info)
+  if (req.method === 'GET' && pathname === '/api/shares/link/info') {
+    const token = searchParams.get('token');
+    if (!token) return sendJson(res, 400, { error: 'Thiếu token chia sẻ' });
+
+    const link = dbManager.getShareLinkByToken(token);
+    if (!link) return sendJson(res, 404, { error: 'Liên kết không tồn tại hoặc đã bị thu hồi' });
+
+    return sendJson(res, 200, {
+      token: link.token,
+      itemType: link.item_type,
+      itemId: link.item_id,
+      itemName: link.item_name,
+      role: link.role,
+      ownerName: link.owner_name,
+      ownerEmail: link.owner_email,
+      createdAt: link.created_at
+    });
+  }
+
+  // C. Lấy dữ liệu mục chia sẻ bằng Link Token (Dành cho truy cập qua liên kết)
+  if (req.method === 'GET' && pathname === '/api/shares/link/data') {
+    const token = searchParams.get('token');
+    if (!token) return sendJson(res, 400, { error: 'Thiếu token chia sẻ' });
+
+    const link = dbManager.getShareLinkByToken(token);
+    if (!link) return sendJson(res, 404, { error: 'Liên kết không tồn tại hoặc đã bị thu hồi' });
+
+    const itemData = dbManager.getReceivedItemData(link.vault_id, link.item_type, link.item_id);
+    if (!itemData || !itemData.item) return sendJson(res, 404, { error: 'Mục chia sẻ không còn tồn tại trên máy chủ' });
+
+    return sendJson(res, 200, {
+      itemType: link.item_type,
+      itemId: link.item_id,
+      itemName: link.item_name,
+      role: link.role,
+      ownerName: link.owner_name,
+      ownerEmail: link.owner_email,
+      ...itemData
+    });
   }
 
   // Yêu cầu xác thực Token từ đây trở xuống
@@ -1224,6 +1544,158 @@ async function handleApiRequest(req, res, pathname) {
     }
   }
 
+  // --- AUTHENTICATED ENDPOINTS CHO CHIA SẺ & PHÂN QUYỀN MỤC (GRANULAR PER-ITEM) ---
+
+  // 17. Lấy danh sách thành viên và liên kết chia sẻ cho một mục
+  if (req.method === 'GET' && pathname === '/api/shares/item') {
+    const itemType = searchParams.get('itemType');
+    const itemId = searchParams.get('itemId');
+    if (!itemType || !itemId) return sendJson(res, 400, { error: 'Thiếu itemType hoặc itemId' });
+
+    // Lấy vault của người dùng hiện tại
+    const userVaults = dbManager.getUserVaults(currentUser.id, currentUser.email);
+    if (userVaults.length === 0) return sendJson(res, 404, { error: 'Không tìm thấy sổ' });
+    const vaultId = userVaults[0].id;
+
+    const shares = dbManager.getItemShares(vaultId, itemType, itemId);
+    const links = dbManager.getItemShareLinks(vaultId, itemType, itemId);
+    return sendJson(res, 200, { shares, links });
+  }
+
+  // 18. Thêm thành viên chia sẻ qua Email Google
+  if (req.method === 'POST' && pathname === '/api/shares/item/email') {
+    try {
+      const body = await parseJsonBody(req);
+      const { itemType, itemId, itemName, email, role } = body;
+      if (!itemType || !itemId || !email) {
+        return sendJson(res, 400, { error: 'Thiếu thông tin itemType, itemId hoặc email' });
+      }
+
+      const userVaults = dbManager.getUserVaults(currentUser.id, currentUser.email);
+      if (userVaults.length === 0) return sendJson(res, 404, { error: 'Không tìm thấy sổ của bạn' });
+      const vaultId = userVaults[0].id;
+
+      const shareRole = role === 'editor' ? 'editor' : 'viewer';
+      const result = dbManager.addItemShare(vaultId, itemType, itemId, itemName, email, shareRole, currentUser.id);
+
+      return sendJson(res, 200, { success: true, share: result });
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
+  // 19. Thu hồi quyền chia sẻ email
+  const revokeEmailMatch = pathname.match(/^\/api\/shares\/item\/email\/([^/]+)$/);
+  if (req.method === 'DELETE' && revokeEmailMatch) {
+    const shareId = revokeEmailMatch[1];
+    dbManager.removeItemShare(shareId, currentUser.email);
+    return sendJson(res, 200, { success: true, message: 'Đã thu hồi quyền chia sẻ' });
+  }
+
+  // 20. Tạo liên kết chia sẻ mới (Link)
+  if (req.method === 'POST' && pathname === '/api/shares/item/link') {
+    try {
+      const body = await parseJsonBody(req);
+      const { itemType, itemId, itemName, role } = body;
+      if (!itemType || !itemId) {
+        return sendJson(res, 400, { error: 'Thiếu itemType hoặc itemId' });
+      }
+
+      const userVaults = dbManager.getUserVaults(currentUser.id, currentUser.email);
+      if (userVaults.length === 0) return sendJson(res, 404, { error: 'Không tìm thấy sổ của bạn' });
+      const vaultId = userVaults[0].id;
+
+      const linkRole = role === 'editor' ? 'editor' : 'viewer';
+      const link = dbManager.createItemShareLink(vaultId, itemType, itemId, itemName, linkRole, currentUser.id);
+
+      return sendJson(res, 200, { success: true, link });
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
+  // 21. Thu hồi liên kết chia sẻ
+  const revokeLinkMatch = pathname.match(/^\/api\/shares\/item\/link\/([^/]+)$/);
+  if (req.method === 'DELETE' && revokeLinkMatch) {
+    const linkId = revokeLinkMatch[1];
+    dbManager.revokeItemShareLink(linkId);
+    return sendJson(res, 200, { success: true, message: 'Đã thu hồi liên kết' });
+  }
+
+  // 22. Người nhận chấp nhận liên kết chia sẻ
+  if (req.method === 'POST' && pathname === '/api/shares/link/accept') {
+    try {
+      const body = await parseJsonBody(req);
+      const { token } = body;
+      if (!token) return sendJson(res, 400, { error: 'Thiếu token' });
+
+      const link = dbManager.getShareLinkByToken(token);
+      if (!link) return sendJson(res, 404, { error: 'Liên kết không tồn tại hoặc đã hết hạn' });
+
+      // Tự động thêm quyền cho email của currentUser
+      const share = dbManager.addItemShare(link.vault_id, link.item_type, link.item_id, link.item_name, currentUser.email, link.role, link.created_by);
+
+      const itemData = dbManager.getReceivedItemData(link.vault_id, link.item_type, link.item_id);
+
+      return sendJson(res, 200, {
+        success: true,
+        shareId: share.id,
+        vaultId: link.vault_id,
+        itemType: link.item_type,
+        itemId: link.item_id,
+        itemName: link.item_name,
+        role: link.role,
+        ownerName: link.owner_name,
+        ownerEmail: link.owner_email,
+        ...itemData
+      });
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
+  // 23. Danh sách tất cả các mục được người khác chia sẻ cho tôi
+  if (req.method === 'GET' && pathname === '/api/shares/my-received') {
+    const shares = dbManager.getReceivedSharesForEmail(currentUser.email);
+    const results = [];
+
+    for (const s of shares) {
+      const data = dbManager.getReceivedItemData(s.vault_id, s.item_type, s.item_id);
+      if (data && data.item) {
+        results.push({
+          shareId: s.id,
+          vaultId: s.vault_id,
+          vaultName: s.vault_name,
+          ownerName: s.owner_name,
+          ownerEmail: s.owner_email,
+          itemType: s.item_type,
+          itemId: s.item_id,
+          itemName: s.item_name,
+          role: s.role,
+          ...data
+        });
+      }
+    }
+
+    return sendJson(res, 200, { items: results });
+  }
+
+  // 24. Đẩy cập nhật giao dịch từ thành viên (Editor) lên mục được chia sẻ
+  if (req.method === 'POST' && pathname === '/api/shares/received/sync') {
+    try {
+      const body = await parseJsonBody(req);
+      const { shareId, transactions } = body;
+      if (!shareId || !Array.isArray(transactions)) {
+        return sendJson(res, 400, { error: 'Thiếu shareId hoặc danh sách transactions' });
+      }
+
+      const result = dbManager.saveSharedItemTransactions(shareId, currentUser.email, transactions);
+      return sendJson(res, 200, result);
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
   // 404 cho API không xác định
   return sendJson(res, 404, { error: 'API endpoint không tồn tại: ' + pathname });
 }
@@ -1286,7 +1758,7 @@ const server = http.createServer(async (req, res) => {
   // Xử lý các yêu cầu REST API
   if (pathname.startsWith('/api/') || pathname === '/health') {
     try {
-      await handleApiRequest(req, res, pathname);
+      await handleApiRequest(req, res, pathname, url);
     } catch (err) {
       console.error('[Server] Unhandled API error:', err);
       sendJson(res, 500, { error: 'Lỗi máy chủ nội bộ: ' + err.message });

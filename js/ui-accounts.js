@@ -11,6 +11,8 @@ const UIAccounts = {
   isArchivedExpanded: false,
   currentProviderTab: 'all',
   currentProviderQuery: '',
+  currentFilterTab: 'all',
+  sharedViewMode: localStorage.getItem('sothuchi_shared_view_mode') || 'grouped',
 
   /* Danh mục Ngân hàng & Ví điện tử phổ biến tại Việt Nam */
   PROVIDERS: [
@@ -473,6 +475,14 @@ const UIAccounts = {
     if (archIcon) {
       archIcon.setAttribute('data-lucide', isArchived ? 'rotate-ccw' : 'power');
     }
+
+    const isReceivedShare = !!acc._isSharedItem;
+    const leaveBtn = document.getElementById('action-sheet-leave-shared-btn');
+    const uniShareBtn = document.getElementById('action-sheet-universal-share-btn');
+    const archiveBtn = document.getElementById('action-sheet-archive-btn');
+    if (leaveBtn) leaveBtn.style.display = isReceivedShare ? 'flex' : 'none';
+    if (uniShareBtn) uniShareBtn.style.display = isReceivedShare ? 'none' : 'flex';
+    if (archiveBtn) archiveBtn.style.display = isReceivedShare ? 'none' : 'flex';
 
     sheet.classList.add('open');
     if (window.lucide) lucide.createIcons();
@@ -3641,7 +3651,16 @@ const UIAccounts = {
         }
 
         let btns = '';
-        if (l.status === 'active') {
+        if (l._isSharedItem) {
+          btns += `
+            <div style="padding: 10px 14px; background: rgba(59, 130, 246, 0.08); border-radius: var(--radius-md); margin-bottom: 8px; font-size: 0.82rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="share-2" style="color: #3b82f6; width: 16px; height: 16px; flex-shrink: 0;"></i>
+              <span>Được chia sẻ bởi <b>${escapeHTML(l._sharedFrom || '')}</b> (Quyền: <b>${l._sharedRole === 'editor' ? 'Chỉnh sửa' : 'Chỉ xem'}</b>)</span>
+            </div>
+          `;
+        }
+
+        if (l.status === 'active' && (!l._isSharedItem || l._sharedRole === 'editor')) {
           btns += `
             <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openPayLoanModal(${l.id})">
               <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
@@ -3654,26 +3673,57 @@ const UIAccounts = {
             </button>
           `;
         }
-        btns += `
-          <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openLoanForm(${l.id})">
-            <div class="action-sheet-item-icon" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
-              <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
-            </div>
-            <div class="action-sheet-item-text">
-              <span class="action-sheet-item-title">Sửa thông tin sổ vay</span>
-              <span class="action-sheet-item-desc">Thay đổi lãi suất, kỳ hạn, ngân hàng...</span>
-            </div>
-          </button>
-          <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.deleteLoanItem(${l.id})">
-            <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
-              <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
-            </div>
-            <div class="action-sheet-item-text">
-              <span class="action-sheet-item-title">Xóa sổ vay</span>
-              <span class="action-sheet-item-desc">Xóa hoàn toàn khỏi ứng dụng</span>
-            </div>
-          </button>
-        `;
+
+        if (!l._isSharedItem || l._sharedRole === 'editor') {
+          btns += `
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openLoanForm(${l.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+                <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Sửa thông tin sổ vay</span>
+                <span class="action-sheet-item-desc">Thay đổi lãi suất, kỳ hạn, ngân hàng...</span>
+              </div>
+            </button>
+          `;
+        }
+
+        if (l._isSharedItem) {
+          btns += `
+            <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('loan', ${l.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
+                <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Rời khỏi sổ vay được chia sẻ</span>
+                <span class="action-sheet-item-desc">Ngừng nhận và gỡ bỏ khỏi thiết bị này</span>
+              </div>
+            </button>
+          `;
+        } else {
+          btns += `
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UniversalShareModal.open('loan', ${l.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+                <i data-lucide="share-2" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Chia sẻ & Phân quyền</span>
+                <span class="action-sheet-item-desc">Chia sẻ sổ vay độc lập qua Email Google hoặc Link</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
+            <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.deleteLoanItem(${l.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+                <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Xóa sổ vay</span>
+                <span class="action-sheet-item-desc">Xóa hoàn toàn khỏi ứng dụng</span>
+              </div>
+            </button>
+          `;
+        }
+
         bodyEl.innerHTML = btns;
         modal.classList.add('open');
         if (window.lucide) lucide.createIcons();
@@ -3693,7 +3743,16 @@ const UIAccounts = {
         }
 
         let btns = '';
-        if (s.status === 'active') {
+        if (s._isSharedItem) {
+          btns += `
+            <div style="padding: 10px 14px; background: rgba(59, 130, 246, 0.08); border-radius: var(--radius-md); margin-bottom: 8px; font-size: 0.82rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="share-2" style="color: #3b82f6; width: 16px; height: 16px; flex-shrink: 0;"></i>
+              <span>Được chia sẻ bởi <b>${escapeHTML(s._sharedFrom || '')}</b> (Quyền: <b>${s._sharedRole === 'editor' ? 'Chỉnh sửa' : 'Chỉ xem'}</b>)</span>
+            </div>
+          `;
+        }
+
+        if (s.status === 'active' && (!s._isSharedItem || s._sharedRole === 'editor')) {
           btns += `
             <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openSettleSavingModal(${s.id})">
               <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
@@ -3706,26 +3765,57 @@ const UIAccounts = {
             </button>
           `;
         }
-        btns += `
-          <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openSavingsForm(${s.id})">
-            <div class="action-sheet-item-icon" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
-              <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
-            </div>
-            <div class="action-sheet-item-text">
-              <span class="action-sheet-item-title">Sửa thông tin sổ</span>
-              <span class="action-sheet-item-desc">Thay đổi kỳ hạn, lãi suất, ngân hàng...</span>
-            </div>
-          </button>
-          <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.deleteSavingItem(${s.id})">
-            <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
-              <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
-            </div>
-            <div class="action-sheet-item-text">
-              <span class="action-sheet-item-title">Xóa sổ tiết kiệm</span>
-              <span class="action-sheet-item-desc">Xóa hoàn toàn khỏi ứng dụng</span>
-            </div>
-          </button>
-        `;
+
+        if (!s._isSharedItem || s._sharedRole === 'editor') {
+          btns += `
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openSavingsForm(${s.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+                <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Sửa thông tin sổ</span>
+                <span class="action-sheet-item-desc">Thay đổi kỳ hạn, lãi suất, ngân hàng...</span>
+              </div>
+            </button>
+          `;
+        }
+
+        if (s._isSharedItem) {
+          btns += `
+            <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('savings', ${s.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
+                <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Rời khỏi sổ tiết kiệm được chia sẻ</span>
+                <span class="action-sheet-item-desc">Ngừng nhận và gỡ bỏ khỏi thiết bị này</span>
+              </div>
+            </button>
+          `;
+        } else {
+          btns += `
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UniversalShareModal.open('savings', ${s.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+                <i data-lucide="share-2" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Chia sẻ & Phân quyền</span>
+                <span class="action-sheet-item-desc">Chia sẻ sổ tiết kiệm độc lập qua Email Google hoặc Link</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
+            <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.deleteSavingItem(${s.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+                <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Xóa sổ tiết kiệm</span>
+                <span class="action-sheet-item-desc">Xóa hoàn toàn khỏi ứng dụng</span>
+              </div>
+            </button>
+          `;
+        }
+
         bodyEl.innerHTML = btns;
         modal.classList.add('open');
         if (window.lucide) lucide.createIcons();
@@ -3741,44 +3831,85 @@ const UIAccounts = {
           iconEl.style.color = '#f59e0b';
         }
 
-        bodyEl.innerHTML = `
-          <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openDepositAccModal(${acc.id}, 'deposit')">
-            <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
-              <i data-lucide="plus-circle" style="width: 20px; height: 20px;"></i>
+        let btns = '';
+        if (acc._isSharedItem) {
+          btns += `
+            <div style="padding: 10px 14px; background: rgba(59, 130, 246, 0.08); border-radius: var(--radius-md); margin-bottom: 8px; font-size: 0.82rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="share-2" style="color: #3b82f6; width: 16px; height: 16px; flex-shrink: 0;"></i>
+              <span>Được chia sẻ bởi <b>${escapeHTML(acc._sharedFrom || '')}</b> (Quyền: <b>${acc._sharedRole === 'editor' ? 'Chỉnh sửa' : 'Chỉ xem'}</b>)</span>
             </div>
-            <div class="action-sheet-item-text">
-              <span class="action-sheet-item-title">Nạp thêm tiền tích lũy</span>
-              <span class="action-sheet-item-desc">Trích tiền từ ví vào mục tiêu này</span>
-            </div>
-          </button>
-          <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openDepositAccModal(${acc.id}, 'withdraw')">
-            <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
-              <i data-lucide="minus-circle" style="width: 20px; height: 20px;"></i>
-            </div>
-            <div class="action-sheet-item-text">
-              <span class="action-sheet-item-title">Rút bớt tiền tích lũy</span>
-              <span class="action-sheet-item-desc">Rút tiền chuyển lại vào ví</span>
-            </div>
-          </button>
-          <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openAccumulationForm(${acc.id})">
-            <div class="action-sheet-item-icon" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
-              <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
-            </div>
-            <div class="action-sheet-item-text">
-              <span class="action-sheet-item-title">Sửa mục tiêu tích lũy</span>
-              <span class="action-sheet-item-desc">Đổi hạn chót, số tiền mục tiêu...</span>
-            </div>
-          </button>
-          <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.deleteAccumulationItem(${acc.id})">
-            <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
-              <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
-            </div>
-            <div class="action-sheet-item-text">
-              <span class="action-sheet-item-title">Xóa sổ tích lũy</span>
-              <span class="action-sheet-item-desc">Xóa hoàn toàn khỏi ứng dụng</span>
-            </div>
-          </button>
-        `;
+          `;
+        }
+
+        if (!acc._isSharedItem || acc._sharedRole === 'editor') {
+          btns += `
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openDepositAccModal(${acc.id}, 'deposit')">
+              <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                <i data-lucide="plus-circle" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Nạp thêm tiền tích lũy</span>
+                <span class="action-sheet-item-desc">Trích tiền từ ví vào mục tiêu này</span>
+              </div>
+            </button>
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openDepositAccModal(${acc.id}, 'withdraw')">
+              <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                <i data-lucide="minus-circle" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Rút bớt tiền tích lũy</span>
+                <span class="action-sheet-item-desc">Rút tiền chuyển lại vào ví</span>
+              </div>
+            </button>
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openAccumulationForm(${acc.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+                <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Sửa mục tiêu tích lũy</span>
+                <span class="action-sheet-item-desc">Đổi hạn chót, số tiền mục tiêu...</span>
+              </div>
+            </button>
+          `;
+        }
+
+        if (acc._isSharedItem) {
+          btns += `
+            <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('accumulation', ${acc.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
+                <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Rời khỏi sổ tích luỹ được chia sẻ</span>
+                <span class="action-sheet-item-desc">Ngừng nhận và gỡ bỏ khỏi thiết bị này</span>
+              </div>
+            </button>
+          `;
+        } else {
+          btns += `
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UniversalShareModal.open('accumulation', ${acc.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+                <i data-lucide="share-2" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Chia sẻ & Phân quyền</span>
+                <span class="action-sheet-item-desc">Chia sẻ sổ tích luỹ độc lập qua Email Google hoặc Link</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
+            <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.deleteAccumulationItem(${acc.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+                <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Xóa sổ tích lũy</span>
+                <span class="action-sheet-item-desc">Xóa hoàn toàn khỏi ứng dụng</span>
+              </div>
+            </button>
+          `;
+        }
+
+        bodyEl.innerHTML = btns;
         modal.classList.add('open');
         if (window.lucide) lucide.createIcons();
       });
@@ -3794,42 +3925,83 @@ const UIAccounts = {
           iconEl.style.color = '#a855f7';
         }
 
-        bodyEl.innerHTML = `
-          <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openLiquidateModal(${asset.id})">
-            <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
-              <i data-lucide="dollar-sign" style="width: 20px; height: 20px;"></i>
+        let btns = '';
+        if (asset._isSharedItem) {
+          btns += `
+            <div style="padding: 10px 14px; background: rgba(59, 130, 246, 0.08); border-radius: var(--radius-md); margin-bottom: 8px; font-size: 0.82rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="share-2" style="color: #3b82f6; width: 16px; height: 16px; flex-shrink: 0;"></i>
+              <span>Được chia sẻ bởi <b>${escapeHTML(asset._sharedFrom || '')}</b> (Quyền: <b>${asset._sharedRole === 'editor' ? 'Chỉnh sửa' : 'Chỉ xem'}</b>)</span>
             </div>
-            <div class="action-sheet-item-text">
-              <span class="action-sheet-item-title">Bán / Thanh lý tài sản</span>
-              <span class="action-sheet-item-desc">Ghi nhận tiền bán và chuyển vào ví chi tiêu</span>
-            </div>
-          </button>
-          <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openAssetForm('${asset.assetType || 'real_estate'}', ${asset.id})">
-            <div class="action-sheet-item-icon" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
-              <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
-            </div>
-            <div class="action-sheet-item-text">
-              <span class="action-sheet-item-title">Cập nhật giá & thông tin</span>
-              <span class="action-sheet-item-desc">Định giá lại theo thị trường hiện tại</span>
-            </div>
-          </button>
-          <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.deleteAssetItem(${asset.id})">
-            <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
-              <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
-            </div>
-            <div class="action-sheet-item-text">
-              <span class="action-sheet-item-title">Xóa tài sản</span>
-              <span class="action-sheet-item-desc">Xóa hoàn toàn khỏi ứng dụng</span>
-            </div>
-          </button>
-        `;
+          `;
+        }
+
+        if (!asset._isSharedItem || asset._sharedRole === 'editor') {
+          btns += `
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openLiquidateModal(${asset.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                <i data-lucide="dollar-sign" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Bán / Thanh lý tài sản</span>
+                <span class="action-sheet-item-desc">Ghi nhận tiền bán và chuyển vào ví chi tiêu</span>
+              </div>
+            </button>
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.openAssetForm('${asset.assetType || 'real_estate'}', ${asset.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
+                <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Cập nhật giá & thông tin</span>
+                <span class="action-sheet-item-desc">Định giá lại theo thị trường hiện tại</span>
+              </div>
+            </button>
+          `;
+        }
+
+        if (asset._isSharedItem) {
+          btns += `
+            <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('asset', ${asset.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
+                <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Rời khỏi tài sản được chia sẻ</span>
+                <span class="action-sheet-item-desc">Ngừng nhận và gỡ bỏ khỏi thiết bị này</span>
+              </div>
+            </button>
+          `;
+        } else {
+          btns += `
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UniversalShareModal.open('asset', ${asset.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+                <i data-lucide="share-2" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Chia sẻ & Phân quyền</span>
+                <span class="action-sheet-item-desc">Chia sẻ tài sản độc lập qua Email Google hoặc Link</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
+            <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.deleteAssetItem(${asset.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+                <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Xóa tài sản</span>
+                <span class="action-sheet-item-desc">Xóa hoàn toàn khỏi ứng dụng</span>
+              </div>
+            </button>
+          `;
+        }
+
+        bodyEl.innerHTML = btns;
         modal.classList.add('open');
         if (window.lucide) lucide.createIcons();
       });
     }
   },
 
-  closeItemActionSheet() {
+    closeItemActionSheet() {
     const modal = document.getElementById('modal-item-actions');
     if (modal) modal.classList.remove('open');
     this.currentItemAction = null;
@@ -4113,8 +4285,12 @@ const UIAccounts = {
     if (!container || !db.loans) return;
 
     const allLoans = await db.loans.where('isDeleted').equals(0).toArray();
-    const activeLoans = allLoans.filter(l => l.status !== 'settled');
-    const settledLoans = allLoans.filter(l => l.status === 'settled');
+    let activeLoans = allLoans.filter(l => l.status !== 'settled');
+    let settledLoans = allLoans.filter(l => l.status === 'settled');
+    if (this.currentFilterTab === 'personal' || (this.currentFilterTab === 'all' && this.sharedViewMode === 'grouped')) {
+      activeLoans = activeLoans.filter(l => !l._isSharedItem);
+      settledLoans = settledLoans.filter(l => !l._isSharedItem);
+    }
 
     if (badgeCount) badgeCount.textContent = activeLoans.length;
 
@@ -4132,7 +4308,8 @@ const UIAccounts = {
         const dueDayText = l.dueDay ? `Trả ngày ${l.dueDay} hàng tháng` : '';
 
         return `
-          <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('loan', ${l.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
+          <div class="group-item-card ${l._isSharedItem ? 'shared-item-card' : ''}" onclick="UIAccounts.openItemActionSheet('loan', ${l.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
+            ${l._isSharedItem ? this.renderSharedItemBanner(l) : ''}
             <div class="group-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0;">
               <div class="group-card-title-row" style="display: flex; align-items: center; gap: 8px; flex: 1 1 0%; min-width: 0; max-width: calc(100% - 36px); overflow: hidden;">
                 <div class="group-card-icon-wrap" style="background: transparent; flex-shrink: 0;">
@@ -4354,54 +4531,510 @@ const UIAccounts = {
     }
   },
 
+
+  /* ==================== BỘ LỌC TÀI KHOẢN & CHẾ ĐỘ HIỂN THỊ CHIA SẺ ==================== */
+  setFilterTab(tab) {
+    this.currentFilterTab = tab;
+    const tabBtns = document.querySelectorAll('.accounts-seg-tab');
+    tabBtns.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.filter === tab);
+    });
+
+    const modeWrap = document.querySelector('.accounts-display-mode-wrap');
+    if (modeWrap) {
+      modeWrap.style.display = tab === 'all' ? 'inline-flex' : 'none';
+    }
+
+    this.render();
+  },
+
+  toggleSharedViewMode() {
+    this.sharedViewMode = this.sharedViewMode === 'grouped' ? 'unified' : 'grouped';
+    localStorage.setItem('sothuchi_shared_view_mode', this.sharedViewMode);
+    this.updateSharedViewModeUI();
+    this.render();
+  },
+
+  updateSharedViewModeUI() {
+    const btn = document.getElementById('btn-toggle-shared-view-mode');
+    const label = document.getElementById('label-shared-view-mode');
+    const icon = document.getElementById('icon-shared-view-mode');
+    if (!btn) return;
+
+    if (this.sharedViewMode === 'grouped') {
+      if (label) label.textContent = 'Tách trường riêng';
+      if (icon) icon.setAttribute('data-lucide', 'split');
+      btn.title = 'Đang ở chế độ: Tách trường riêng. Bấm để chuyển sang Hiển thị chung.';
+      btn.classList.add('mode-grouped');
+      btn.classList.remove('mode-unified');
+    } else {
+      if (label) label.textContent = 'Hiển thị chung (Nổi bật)';
+      if (icon) icon.setAttribute('data-lucide', 'layers');
+      btn.title = 'Đang ở chế độ: Hiển thị chung. Bấm để chuyển sang Tách trường riêng.';
+      btn.classList.add('mode-unified');
+      btn.classList.remove('mode-grouped');
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  renderSharedItemBanner(item) {
+    if (!item || !item._isSharedItem) return '';
+    const roleText = item._sharedRole === 'editor' ? 'Chỉnh sửa' : 'Chỉ xem';
+    const roleIcon = item._sharedRole === 'editor' ? 'edit-3' : 'eye';
+    const roleClass = item._sharedRole === 'editor' ? 'editor' : 'viewer';
+    const owner = item._sharedFrom || 'Thành viên';
+    return `
+      <div class="shared-item-highlight-ribbon" onclick="event.stopPropagation();">
+        <span class="shared-from-pill" title="Được chia sẻ bởi ${escapeHTML(owner)}">
+          <i data-lucide="share-2" style="width: 12px; height: 12px;"></i>
+          <span>Chia sẻ bởi: <strong>${escapeHTML(owner)}</strong></span>
+        </span>
+        <span class="shared-role-pill ${roleClass}" title="Quyền: ${roleText}">
+          <i data-lucide="${roleIcon}" style="width: 11px; height: 11px;"></i>
+          <span>${roleText}</span>
+        </span>
+      </div>
+    `;
+  },
+
+  async leaveSharedItem(type, id) {
+    if (!confirm('Bạn có chắc chắn muốn rời khỏi và xóa mục được chia sẻ này khỏi thiết bị của bạn?\n(Mục gốc của chủ sở hữu vẫn an toàn)')) return;
+    try {
+      const numId = Number(id);
+      if (type === 'account') {
+        await db.accounts.delete(numId);
+        const relatedTxs = await db.transactions.where('accountId').equals(numId).toArray();
+        for (const tx of relatedTxs) {
+          await db.transactions.delete(tx.id);
+        }
+      } else if (type === 'savings') {
+        if (db.savings) await db.savings.delete(numId);
+      } else if (type === 'accumulation') {
+        if (db.accumulations) await db.accumulations.delete(numId);
+      } else if (type === 'loan') {
+        if (db.loans) await db.loans.delete(numId);
+      } else if (type === 'asset') {
+        if (db.assets) await db.assets.delete(numId);
+      }
+      showToast('Đã rời khỏi và gỡ bỏ mục chia sẻ thành công', 'success');
+      this.closeActionSheet();
+      this.closeItemActionSheet();
+      await this.render();
+      if (window.app && typeof window.app.refreshAll === 'function') {
+        await window.app.refreshAll();
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Lỗi: ' + e.message, 'error');
+    }
+  },
+
+  renderSingleAccountItem(a, isSharedSection = false) {
+    const iconMap = {
+      cash: { icon: 'wallet', color: '#10b981', label: 'Tiền mặt' },
+      bank: { icon: 'landmark', color: '#4f46e5', label: 'Ngân hàng' },
+      ewallet: { icon: 'smartphone', color: '#ec4899', label: 'Ví điện tử' },
+      credit: { icon: 'credit-card', color: '#f59e0b', label: 'Thẻ tín dụng' },
+      saving: { icon: 'piggy-bank', color: '#0ea5e9', label: 'Sổ tiết kiệm' }
+    };
+    const info = iconMap[a.type] || { icon: a.icon || 'wallet', color: a.color || '#4f46e5', label: 'Tài khoản' };
+    const isShared = !!a._isSharedItem;
+
+    return `
+      <div class="account-list-item ${isShared ? 'shared-item-card' : ''}" data-id="${a.id}" style="width: 100%; box-sizing: border-box; margin-bottom: 8px;">
+        ${isShared ? this.renderSharedItemBanner(a) : ''}
+        
+        <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản">
+          <div class="account-icon-bubble ${isShared ? 'with-share-badge' : ''}" style="background: transparent;">
+            ${this.renderLogoBadge(a, 36)}
+            ${isShared ? '<div class="mini-share-indicator" title="Được chia sẻ"><i data-lucide="share-2"></i></div>' : ''}
+          </div>
+          <div class="account-info">
+            <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
+              <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; flex: 1 1 0%; min-width: 0; max-width: 100%; font-weight: 700;">${escapeHTML(a.name)}</span>
+              ${a.excludeFromReport ? '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn</span>' : ''}
+            </div>
+            <div class="account-sub-row">
+              <span class="account-type-label">${info.label}</span>
+              ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
+              ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
+              ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
+            </div>
+          </div>
+          <div class="account-balance-wrapper">
+            <span class="account-balance stat-amount ${a.balance < 0 ? 'expense-text' : ''}">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
+          </div>
+        </div>
+
+        <div class="account-menu-wrapper" onclick="event.stopPropagation();">
+          <button type="button" class="account-menu-btn" onclick="UIAccounts.openAccountActions(${a.id})" title="Tùy chọn tài khoản" aria-label="Tùy chọn tài khoản">
+            <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  },
+
+  renderSingleSavingsItem(s, isSharedSection = false) {
+    const prov = s.bankCode ? this.PROVIDERS.find(x => x.code === s.bankCode) : null;
+    const dueText = s.dueDate ? `Đáo hạn: ${s.dueDate.split('-').reverse().join('/')}` : 'Không kỳ hạn';
+    const expectedProfit = s.expectedInterest ? `+Lãi dự kiến: ${new Intl.NumberFormat('vi-VN').format(s.expectedInterest)}đ` : '';
+    const isShared = !!s._isSharedItem;
+
+    return `
+      <div class="group-item-card ${isShared ? 'shared-item-card' : ''}" onclick="UIAccounts.openItemActionSheet('savings', ${s.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; margin-bottom: 8px;">
+        ${isShared ? this.renderSharedItemBanner(s) : ''}
+        <div class="group-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0;">
+          <div class="group-card-title-row" style="display: flex; align-items: center; gap: 8px; flex: 1 1 0%; min-width: 0; max-width: calc(100% - 36px); overflow: hidden;">
+            <div class="group-card-icon-wrap" style="background: transparent; flex-shrink: 0;">
+              ${this.renderLogoBadge(prov || s.bankCode || { icon: 'piggy-bank', color: '#0ea5e9' }, 38)}
+            </div>
+            <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
+              <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; font-weight: 700;" title="${escapeHTML(s.name)}">${escapeHTML(s.name)}</div>
+              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <span class="rate-badge">${s.interestRate || 0}%/năm</span>
+                <span class="term-badge">${s.termMonths ? s.termMonths + ' tháng' : 'Không kỳ hạn'}</span>
+                ${s.excludeFromReport ? '<span class="account-badge exclude"><i data-lucide="eye-off" style="width:10px;height:10px;"></i> Ẩn</span>' : ''}
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn-icon group-card-more-btn" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('savings', ${s.id})" title="Tùy chọn" style="flex-shrink: 0; width: 28px; height: 28px; min-width: 28px; border: none; background: transparent; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
+            <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
+          </button>
+        </div>
+
+        <div class="group-card-body">
+          <div>
+            <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Tiền gửi ban đầu</span>
+            <span class="group-card-amount stat-amount">${new Intl.NumberFormat('vi-VN').format(s.balance || s.depositAmount || 0)}đ</span>
+          </div>
+          <div class="group-card-stat">
+            <span style="color: var(--text-secondary); font-size: 0.75rem;">${dueText}</span>
+            <span class="group-card-stat-val stat-amount" style="color: var(--income); font-size: 0.78rem;">${expectedProfit}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderSingleAccumulationItem(item, isSharedSection = false) {
+    const cur = item.currentAmount || 0;
+    const target = item.targetAmount || 1;
+    const percent = Math.min(Math.round((cur / target) * 100), 100);
+    const targetDateStr = item.targetDate ? `Hạn chót: ${item.targetDate.split('-').reverse().join('/')}` : 'Không giới hạn';
+    const isShared = !!item._isSharedItem;
+
+    return `
+      <div class="group-item-card ${isShared ? 'shared-item-card' : ''}" onclick="UIAccounts.openItemActionSheet('accumulation', ${item.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; margin-bottom: 8px;">
+        ${isShared ? this.renderSharedItemBanner(item) : ''}
+        <div class="group-card-header">
+          <div class="group-card-title-row">
+            <div class="group-card-icon-wrap" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
+              <i data-lucide="target" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
+              <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; font-weight: 700;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
+              <div class="group-card-sub">
+                <span>${targetDateStr}</span>
+                ${item.hasRecurring ? '<span class="term-badge"><i data-lucide="repeat" style="width:10px;height:10px;"></i> Định kỳ</span>' : ''}
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn-icon" onclick="event.stopPropagation(); UIAccounts.openDepositAccModal(${item.id}, 'deposit')" title="Nạp thêm tiền">
+            <i data-lucide="plus-circle" style="width: 19px; height: 19px; color: #10b981;"></i>
+          </button>
+        </div>
+
+        <div class="acc-progress-wrap">
+          <div class="acc-progress-header">
+            <span style="color: var(--text-muted); font-size: 0.74rem;">Tiến độ tích lũy</span>
+            <span class="acc-progress-percent">${percent}%</span>
+          </div>
+          <div class="acc-progress-track">
+            <div class="acc-progress-bar" style="width: ${percent}%;"></div>
+          </div>
+        </div>
+
+        <div class="group-card-body" style="margin-top: 4px;">
+          <div>
+            <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Hiện có</span>
+            <span class="group-card-amount stat-amount" style="color: #f59e0b;">${new Intl.NumberFormat('vi-VN').format(cur)}đ</span>
+          </div>
+          <div class="group-card-stat">
+            <span style="color: var(--text-muted); font-size: 0.72rem;">Mục tiêu</span>
+            <span class="group-card-stat-val stat-amount" style="color: var(--text-primary); font-size: 0.86rem;">${new Intl.NumberFormat('vi-VN').format(target)}đ</span>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderSingleLoanItem(l, isSharedSection = false) {
+    const prov = l.bankCode ? this.PROVIDERS.find(x => x.code === l.bankCode) : null;
+    const remaining = l.remainingAmount !== undefined ? l.remainingAmount : (l.loanAmount || 0);
+    const percentPaid = l.loanAmount > 0 ? Math.round(((l.loanAmount - remaining) / l.loanAmount) * 100) : 0;
+    const dueDayText = l.dueDay ? `Trả ngày ${l.dueDay} hàng tháng` : '';
+    const isShared = !!l._isSharedItem;
+
+    return `
+      <div class="group-item-card ${isShared ? 'shared-item-card' : ''}" onclick="UIAccounts.openItemActionSheet('loan', ${l.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; margin-bottom: 8px;">
+        ${isShared ? this.renderSharedItemBanner(l) : ''}
+        <div class="group-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0;">
+          <div class="group-card-title-row" style="display: flex; align-items: center; gap: 8px; flex: 1 1 0%; min-width: 0; max-width: calc(100% - 36px); overflow: hidden;">
+            <div class="group-card-icon-wrap" style="background: transparent; flex-shrink: 0;">
+              ${this.renderLogoBadge(prov || l.bankCode || { icon: 'badge-percent', color: '#ef4444' }, 38)}
+            </div>
+            <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
+              <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; font-weight: 700;" title="${escapeHTML(l.name)}">${escapeHTML(l.name)}</div>
+              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <span class="rate-badge" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">${l.interestRate || 0}%/năm</span>
+                <span class="term-badge">${l.termMonths ? l.termMonths + ' tháng' : 'Vay linh hoạt'}</span>
+                ${dueDayText ? `<span style="color: var(--text-muted); font-size: 0.72rem;">• ${dueDayText}</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn-icon group-card-more-btn" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('loan', ${l.id})" title="Tùy chọn" style="flex-shrink: 0; width: 28px; height: 28px; min-width: 28px; border: none; background: transparent; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
+            <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
+          </button>
+        </div>
+
+        <div class="acc-progress-wrap">
+          <div class="acc-progress-header">
+            <span style="color: var(--text-muted); font-size: 0.74rem;">Đã trả được</span>
+            <span class="acc-progress-percent" style="color: #ef4444;">${percentPaid}%</span>
+          </div>
+          <div class="acc-progress-track">
+            <div class="acc-progress-bar" style="width: ${percentPaid}%; background: linear-gradient(90deg, #f87171, #ef4444);"></div>
+          </div>
+        </div>
+
+        <div class="group-card-body" style="margin-top: 4px;">
+          <div>
+            <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Dư nợ còn lại</span>
+            <span class="group-card-amount stat-amount" style="color: #ef4444;">${new Intl.NumberFormat('vi-VN').format(remaining)}đ</span>
+          </div>
+          <div class="group-card-stat">
+            <span style="color: var(--text-muted); font-size: 0.72rem;">Gói vay ban đầu</span>
+            <span class="group-card-stat-val stat-amount" style="color: var(--text-primary); font-size: 0.86rem;">${new Intl.NumberFormat('vi-VN').format(l.loanAmount || 0)}đ</span>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderSingleAssetItem(item, isSharedSection = false) {
+    const typeMeta = {
+      real_estate: { icon: 'home', color: '#10b981', label: 'Bất động sản' },
+      precious_metal: { icon: 'sparkles', color: '#f59e0b', label: 'Kim loại quý' },
+      foreign_currency: { icon: 'dollar-sign', color: '#0ea5e9', label: 'Ngoại tệ' },
+      crypto: { icon: 'coins', color: '#f59e0b', label: 'Tiền điện tử (Crypto)' },
+      other: { icon: 'package', color: '#8b5cf6', label: 'Tài sản khác' }
+    };
+    const meta = typeMeta[item.assetType] || typeMeta.other;
+    const qty = item.quantity || 1;
+    const totalCur = Math.round(qty * (item.currentPrice || 0));
+    const totalBuy = Math.round((qty * (item.buyPrice || 0)) + (item.extraCosts || 0));
+    const pnl = Math.round(totalCur - totalBuy);
+    const pnlPct = totalBuy > 0 ? ((pnl / totalBuy) * 100).toFixed(1) : 0;
+    const isProf = pnl >= 0;
+    const sign = isProf ? '+' : '';
+    const isShared = !!item._isSharedItem;
+
+    return `
+      <div class="group-item-card ${isShared ? 'shared-item-card' : ''}" onclick="UIAccounts.openItemActionSheet('asset', ${item.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; margin-bottom: 8px;">
+        ${isShared ? this.renderSharedItemBanner(item) : ''}
+        <div class="group-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
+          <div class="group-card-title-row" style="display: flex; align-items: center; gap: 8px; flex: 1 1 0%; min-width: 0; max-width: calc(100% - 36px); overflow: hidden; box-sizing: border-box;">
+            <div class="group-card-icon-wrap" style="background: ${meta.color}22; color: ${meta.color}; flex-shrink: 0;">
+              <i data-lucide="${meta.icon}" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
+              <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; min-width: 0; font-weight: 700;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
+              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0;">
+                <span class="term-badge" style="flex-shrink: 0;">${meta.label}</span>
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${qty} ${escapeHTML(item.unit || '')}</span>
+                ${item.location ? `<span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">• ${escapeHTML(item.location)}</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn-icon group-card-more-btn" onclick="event.stopPropagation(); UIAccounts.openItemActionSheet('asset', ${item.id})" title="Tùy chọn" style="flex-shrink: 0; width: 28px; height: 28px; min-width: 28px; border: none; background: transparent; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
+            <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
+          </button>
+        </div>
+
+        <div class="group-card-body" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 6px; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; overflow: hidden;">
+          <div style="min-width: 0; flex: 1 1 auto; overflow: hidden;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Giá trị thị trường</span>
+            <span class="group-card-amount stat-amount" style="color: #a855f7; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${new Intl.NumberFormat('vi-VN').format(totalCur)}đ</span>
+          </div>
+          <div class="group-card-stat" style="min-width: 0; flex-shrink: 0; max-width: 55%; overflow: hidden; text-align: right;">
+            <span class="pnl-badge ${isProf ? 'profit' : 'loss'} stat-amount" style="display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${sign}${new Intl.NumberFormat('vi-VN').format(pnl)}đ (${sign}${pnlPct}%)</span>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  async renderSharedDedicatedSection(sharedAccounts, sharedSavings, sharedAccums, sharedLoans, sharedAssets) {
+    const container = document.getElementById('shared-items-list-container');
+    const totalCountBadge = document.getElementById('badge-shared-items-count');
+    const totalCountSeg = document.getElementById('badge-total-shared-count');
+    const totalValEl = document.getElementById('label-shared-items-total');
+
+    const totalCount = sharedAccounts.length + sharedSavings.length + sharedAccums.length + sharedLoans.length + sharedAssets.length;
+
+    if (totalCountSeg) {
+      totalCountSeg.textContent = totalCount;
+      totalCountSeg.style.display = totalCount > 0 ? 'inline-block' : 'none';
+    }
+    if (totalCountBadge) {
+      totalCountBadge.textContent = totalCount;
+    }
+
+    if (!container) return;
+
+    if (totalCount === 0) {
+      container.innerHTML = `
+        <div class="accounts-empty-card" style="padding: 24px 16px; text-align: center;">
+          <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(59, 130, 246, 0.12); color: #3b82f6; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+            <i data-lucide="share-2" style="width: 22px; height: 22px;"></i>
+          </div>
+          <p class="empty-text" style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Chưa có mục nào được chia sẻ với bạn</p>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Khi người thân hoặc đối tác chia sẻ tài khoản, sổ tiết kiệm, tích luỹ hoặc tài sản qua Email Google hoặc Liên kết, các mục sẽ hiển thị tại đây.</p>
+        </div>
+      `;
+      if (totalValEl) totalValEl.textContent = '0đ';
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    let totalSharedVal = 0;
+    let html = '';
+
+    // 1. Shared Accounts
+    if (sharedAccounts.length > 0) {
+      html += `<div class="shared-group-category-title"><i data-lucide="wallet" style="width:14px;height:14px;color:#10b981;"></i> Ví & Tài khoản chi tiêu (${sharedAccounts.length})</div>`;
+      sharedAccounts.forEach(a => {
+        totalSharedVal += (a.balance || 0);
+        html += this.renderSingleAccountItem(a, true);
+      });
+    }
+
+    // 2. Shared Savings
+    if (sharedSavings.length > 0) {
+      html += `<div class="shared-group-category-title"><i data-lucide="piggy-bank" style="width:14px;height:14px;color:#0ea5e9;"></i> Sổ tiết kiệm (${sharedSavings.length})</div>`;
+      sharedSavings.forEach(s => {
+        totalSharedVal += (s.balance || s.depositAmount || 0);
+        html += this.renderSingleSavingsItem(s, true);
+      });
+    }
+
+    // 3. Shared Accumulations
+    if (sharedAccums.length > 0) {
+      html += `<div class="shared-group-category-title"><i data-lucide="target" style="width:14px;height:14px;color:#f59e0b;"></i> Sổ tích luỹ (${sharedAccums.length})</div>`;
+      sharedAccums.forEach(acc => {
+        totalSharedVal += (acc.currentAmount || 0);
+        html += this.renderSingleAccumulationItem(acc, true);
+      });
+    }
+
+    // 4. Shared Loans
+    if (sharedLoans.length > 0) {
+      html += `<div class="shared-group-category-title"><i data-lucide="badge-percent" style="width:14px;height:14px;color:#ef4444;"></i> Sổ vay ngân hàng (${sharedLoans.length})</div>`;
+      sharedLoans.forEach(l => {
+        const rem = l.remainingAmount !== undefined ? l.remainingAmount : (l.loanAmount || 0);
+        totalSharedVal -= rem;
+        html += this.renderSingleLoanItem(l, true);
+      });
+    }
+
+    // 5. Shared Assets
+    if (sharedAssets.length > 0) {
+      html += `<div class="shared-group-category-title"><i data-lucide="gem" style="width:14px;height:14px;color:#a855f7;"></i> Quản lý tài sản (${sharedAssets.length})</div>`;
+      sharedAssets.forEach(ast => {
+        const cur = Math.round((ast.quantity || 1) * (ast.currentPrice || 0));
+        totalSharedVal += cur;
+        html += this.renderSingleAssetItem(ast, true);
+      });
+    }
+
+    container.innerHTML = html;
+    if (totalValEl) totalValEl.textContent = `${new Intl.NumberFormat('vi-VN').format(totalSharedVal)}đ`;
+    if (window.lucide) lucide.createIcons();
+  },
+
   /* ==================== RENDER NET WORTH & 4 SECTIONS ==================== */
   async renderNetWorthHeader() {
-    const netWorthData = await getNetWorth();
+    let accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    let savings = db.savings ? await db.savings.where('isDeleted').equals(0).toArray() : [];
+    let accumulations = db.accumulations ? await db.accumulations.where('isDeleted').equals(0).toArray() : [];
+    let loans = db.loans ? await db.loans.where('isDeleted').equals(0).toArray() : [];
+    let assets = db.assets ? await db.assets.where('isDeleted').equals(0).toArray() : [];
+
+    if (this.currentFilterTab === 'personal') {
+      accounts = accounts.filter(a => !a._isSharedItem);
+      savings = savings.filter(s => !s._isSharedItem);
+      accumulations = accumulations.filter(a => !a._isSharedItem);
+      loans = loans.filter(l => !l._isSharedItem);
+      assets = assets.filter(a => !a._isSharedItem);
+    } else if (this.currentFilterTab === 'shared') {
+      accounts = accounts.filter(a => !!a._isSharedItem);
+      savings = savings.filter(s => !!s._isSharedItem);
+      accumulations = accumulations.filter(a => !!a._isSharedItem);
+      loans = loans.filter(l => !!l._isSharedItem);
+      assets = assets.filter(a => !!a._isSharedItem);
+    }
+
+    const totalAccountBalance = accounts.filter(a => !a.isArchived).reduce((s, a) => s + (a.balance || 0), 0);
+    const totalSavings = savings.filter(s => s.status === 'active').reduce((s, x) => s + (x.balance || x.depositAmount || 0), 0);
+    const totalAccumulations = accumulations.reduce((s, x) => s + (x.currentAmount || 0), 0);
+    const totalLoans = loans.filter(l => l.status !== 'settled').reduce((s, x) => s + (x.remainingAmount !== undefined ? x.remainingAmount : (x.loanAmount || 0)), 0);
+    const totalAssets = assets.reduce((s, x) => s + Math.round((x.quantity || 1) * (x.currentPrice || 0)), 0);
+
+    const netWorth = totalAccountBalance + totalSavings + totalAccumulations + totalAssets - totalLoans;
 
     const netWorthEl = document.getElementById('account-total-networth');
-    if (netWorthEl) netWorthEl.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.netWorth)}đ`;
+    if (netWorthEl) netWorthEl.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorth)}đ`;
 
     const expEl = document.getElementById('networth-mini-expense');
-    if (expEl) expEl.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalAccountBalance)}đ`;
+    if (expEl) expEl.textContent = `${new Intl.NumberFormat('vi-VN').format(totalAccountBalance)}đ`;
 
     const savEl = document.getElementById('networth-mini-savings');
-    if (savEl) savEl.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalSavings)}đ`;
+    if (savEl) savEl.textContent = `${new Intl.NumberFormat('vi-VN').format(totalSavings)}đ`;
 
     const accEl = document.getElementById('networth-mini-accumulations');
-    if (accEl) accEl.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalAccumulations)}đ`;
+    if (accEl) accEl.textContent = `${new Intl.NumberFormat('vi-VN').format(totalAccumulations)}đ`;
 
     const astEl = document.getElementById('networth-mini-assets');
-    if (astEl) astEl.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalAssets)}đ`;
+    if (astEl) astEl.textContent = `${new Intl.NumberFormat('vi-VN').format(totalAssets)}đ`;
 
     const loanEl = document.getElementById('networth-mini-loans');
-    if (loanEl) loanEl.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalLoans || 0)}đ`;
+    if (loanEl) loanEl.textContent = `${new Intl.NumberFormat('vi-VN').format(totalLoans)}đ`;
 
     const labelLoan = document.getElementById('label-loans-total');
-    if (labelLoan) labelLoan.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalLoans || 0)}đ`;
+    if (labelLoan) labelLoan.textContent = `${new Intl.NumberFormat('vi-VN').format(totalLoans)}đ`;
 
     const badgeLoan = document.getElementById('badge-loans-count');
-    if (badgeLoan && db.loans) {
-      const activeLoanCount = await db.loans.where('isDeleted').equals(0).and(l => l.status !== 'settled').count();
-      badgeLoan.textContent = activeLoanCount;
+    if (badgeLoan) {
+      badgeLoan.textContent = loans.filter(l => l.status !== 'settled').length;
     }
 
     // Section subtotal labels
     const labelExp = document.getElementById('label-expense-acc-total');
-    if (labelExp) labelExp.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalAccountBalance)}đ`;
+    if (labelExp) labelExp.textContent = `${new Intl.NumberFormat('vi-VN').format(totalAccountBalance)}đ`;
 
     const labelSav = document.getElementById('label-savings-total');
-    if (labelSav) labelSav.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalSavings)}đ`;
+    if (labelSav) labelSav.textContent = `${new Intl.NumberFormat('vi-VN').format(totalSavings)}đ`;
 
     const labelAcc = document.getElementById('label-accumulations-total');
-    if (labelAcc) labelAcc.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalAccumulations)}đ`;
+    if (labelAcc) labelAcc.textContent = `${new Intl.NumberFormat('vi-VN').format(totalAccumulations)}đ`;
 
     const labelAst = document.getElementById('label-assets-total');
-    if (labelAst) labelAst.textContent = `${new Intl.NumberFormat('vi-VN').format(netWorthData.totalAssets)}đ`;
+    if (labelAst) labelAst.textContent = `${new Intl.NumberFormat('vi-VN').format(totalAssets)}đ`;
 
     const badgeAst = document.getElementById('badge-assets-count');
     if (badgeAst) {
-      const astCount = await db.assets.where('isDeleted').equals(0).count();
-      badgeAst.textContent = astCount;
+      badgeAst.textContent = assets.length;
     }
 
     this.adjustMiniPillFontSizes();
@@ -4454,8 +5087,12 @@ const UIAccounts = {
     if (!container) return;
 
     const allSavings = await db.savings.where('isDeleted').equals(0).toArray();
-    const activeSavings = allSavings.filter(s => s.status === 'active');
-    const settledSavings = allSavings.filter(s => s.status === 'settled');
+    let activeSavings = allSavings.filter(s => s.status === 'active');
+    let settledSavings = allSavings.filter(s => s.status === 'settled');
+    if (this.currentFilterTab === 'personal' || (this.currentFilterTab === 'all' && this.sharedViewMode === 'grouped')) {
+      activeSavings = activeSavings.filter(s => !s._isSharedItem);
+      settledSavings = settledSavings.filter(s => !s._isSharedItem);
+    }
 
     if (badgeCount) badgeCount.textContent = activeSavings.length;
 
@@ -4472,7 +5109,8 @@ const UIAccounts = {
         const expectedProfit = s.expectedInterest ? `+Lãi dự kiến: ${new Intl.NumberFormat('vi-VN').format(s.expectedInterest)}đ` : '';
 
         return `
-          <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('savings', ${s.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
+          <div class="group-item-card ${s._isSharedItem ? 'shared-item-card' : ''}" onclick="UIAccounts.openItemActionSheet('savings', ${s.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
+            ${s._isSharedItem ? this.renderSharedItemBanner(s) : ''}
             <div class="group-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0;">
               <div class="group-card-title-row" style="display: flex; align-items: center; gap: 8px; flex: 1 1 0%; min-width: 0; max-width: calc(100% - 36px); overflow: hidden;">
                 <div class="group-card-icon-wrap" style="background: transparent; flex-shrink: 0;">
@@ -4559,7 +5197,10 @@ const UIAccounts = {
     const badgeCount = document.getElementById('badge-accumulations-count');
     if (!container) return;
 
-    const list = await db.accumulations.where('isDeleted').equals(0).toArray();
+    let list = await db.accumulations.where('isDeleted').equals(0).toArray();
+    if (this.currentFilterTab === 'personal' || (this.currentFilterTab === 'all' && this.sharedViewMode === 'grouped')) {
+      list = list.filter(a => !a._isSharedItem);
+    }
     if (badgeCount) badgeCount.textContent = list.length;
 
     if (list.length === 0) {
@@ -4576,7 +5217,8 @@ const UIAccounts = {
         const targetDateStr = item.targetDate ? `Hạn chót: ${item.targetDate.split('-').reverse().join('/')}` : 'Không giới hạn';
 
         return `
-          <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('accumulation', ${item.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
+          <div class="group-item-card ${item._isSharedItem ? 'shared-item-card' : ''}" onclick="UIAccounts.openItemActionSheet('accumulation', ${item.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
+            ${item._isSharedItem ? this.renderSharedItemBanner(item) : ''}
             <div class="group-card-header">
               <div class="group-card-title-row">
                 <div class="group-card-icon-wrap" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
@@ -4627,7 +5269,10 @@ const UIAccounts = {
     const badgeAst = document.getElementById('badge-assets-count');
     if (!container) return;
 
-    const list = await db.assets.where('isDeleted').equals(0).toArray();
+    let list = await db.assets.where('isDeleted').equals(0).toArray();
+    if (this.currentFilterTab === 'personal' || (this.currentFilterTab === 'all' && this.sharedViewMode === 'grouped')) {
+      list = list.filter(a => !a._isSharedItem);
+    }
     if (badgeAst) badgeAst.textContent = list.length;
 
     if (list.length === 0) {
@@ -4680,7 +5325,8 @@ const UIAccounts = {
         groupBuyTotal += totalBuy;
 
         return `
-          <div class="group-item-card" onclick="UIAccounts.openItemActionSheet('asset', ${item.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
+          <div class="group-item-card ${item._isSharedItem ? 'shared-item-card' : ''}" onclick="UIAccounts.openItemActionSheet('asset', ${item.id})" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
+            ${item._isSharedItem ? this.renderSharedItemBanner(item) : ''}
             <div class="group-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden;">
               <div class="group-card-title-row" style="display: flex; align-items: center; gap: 8px; flex: 1 1 0%; min-width: 0; max-width: calc(100% - 36px); overflow: hidden; box-sizing: border-box;">
                 <div class="group-card-icon-wrap" style="background: ${meta.color}22; color: ${meta.color}; flex-shrink: 0;">
@@ -4752,6 +5398,8 @@ const UIAccounts = {
 
     /* ==================== RENDER DANH SÁCH TÀI KHOẢN ==================== */
   async render() {
+    this.updateSharedViewModeUI();
+
     const container = document.getElementById('accounts-list-container');
     if (!container) return;
 
@@ -4768,10 +5416,68 @@ const UIAccounts = {
     }
     accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
 
-    const activeAccounts = accounts.filter(a => !a.isArchived);
+    // Retrieve shared items across all categories for total badge count
+    const allSavings = db.savings ? await db.savings.where('isDeleted').equals(0).toArray() : [];
+    const allAccums = db.accumulations ? await db.accumulations.where('isDeleted').equals(0).toArray() : [];
+    const allLoans = db.loans ? await db.loans.where('isDeleted').equals(0).toArray() : [];
+    const allAssets = db.assets ? await db.assets.where('isDeleted').equals(0).toArray() : [];
+
+    const sharedAccounts = accounts.filter(a => !!a._isSharedItem && !a.isArchived);
+    const sharedSavings = allSavings.filter(s => !!s._isSharedItem && s.status === 'active');
+    const sharedAccums = allAccums.filter(a => !!a._isSharedItem);
+    const sharedLoans = allLoans.filter(l => !!l._isSharedItem && l.status !== 'settled');
+    const sharedAssets = allAssets.filter(a => !!a._isSharedItem);
+
+    const totalSharedCount = sharedAccounts.length + sharedSavings.length + sharedAccums.length + sharedLoans.length + sharedAssets.length;
+    const badgeTotalShared = document.getElementById('badge-total-shared-count');
+    if (badgeTotalShared) {
+      badgeTotalShared.textContent = totalSharedCount;
+      badgeTotalShared.style.display = totalSharedCount > 0 ? 'inline-block' : 'none';
+    }
+
+    const secShared = document.getElementById('accounts-shared-group-container');
+    const secExpense = document.getElementById('accounts-expense-group-container');
+    const secSavings = document.getElementById('accounts-savings-group-container');
+    const secAccums = document.getElementById('accounts-accumulations-group-container');
+    const secLoans = document.getElementById('accounts-loans-group-container');
+    const secAssets = document.getElementById('accounts-assets-group-container');
+
+    // Tab visibility handling
+    if (this.currentFilterTab === 'shared') {
+      if (secShared) secShared.style.display = 'block';
+      if (secExpense) secExpense.style.display = 'none';
+      if (secSavings) secSavings.style.display = 'none';
+      if (secAccums) secAccums.style.display = 'none';
+      if (secLoans) secLoans.style.display = 'none';
+      if (secAssets) secAssets.style.display = 'none';
+      await this.renderSharedDedicatedSection(sharedAccounts, sharedSavings, sharedAccums, sharedLoans, sharedAssets);
+    } else {
+      if (secExpense) secExpense.style.display = 'block';
+      if (secSavings) secSavings.style.display = 'block';
+      if (secAccums) secAccums.style.display = 'block';
+      if (secLoans) secLoans.style.display = 'block';
+      if (secAssets) secAssets.style.display = 'block';
+
+      if (this.currentFilterTab === 'all' && this.sharedViewMode === 'grouped' && totalSharedCount > 0) {
+        if (secShared) secShared.style.display = 'block';
+        await this.renderSharedDedicatedSection(sharedAccounts, sharedSavings, sharedAccums, sharedLoans, sharedAssets);
+      } else {
+        if (secShared) secShared.style.display = 'none';
+      }
+    }
+
+    // Determine which expense accounts to show in Section 1
+    let activeAccounts = accounts.filter(a => !a.isArchived);
+    if (this.currentFilterTab === 'personal' || (this.currentFilterTab === 'all' && this.sharedViewMode === 'grouped')) {
+      activeAccounts = activeAccounts.filter(a => !a._isSharedItem);
+    }
     const badgeExpenseCount = document.getElementById('badge-expense-acc-count');
     if (badgeExpenseCount) badgeExpenseCount.textContent = activeAccounts.length;
-    const archivedAccounts = accounts.filter(a => !!a.isArchived);
+
+    let archivedAccounts = accounts.filter(a => !!a.isArchived);
+    if (this.currentFilterTab === 'personal' || (this.currentFilterTab === 'all' && this.sharedViewMode === 'grouped')) {
+      archivedAccounts = archivedAccounts.filter(a => !a._isSharedItem);
+    }
 
     const iconMap = {
       cash: { icon: 'wallet', color: '#10b981', label: 'Tiền mặt' },
@@ -4795,14 +5501,16 @@ const UIAccounts = {
         const iconName = a.icon || info.icon;
 
         html += `
-          <div class="account-list-item" draggable="true" data-id="${a.id}" data-index="${index}">
+          <div class="account-list-item ${a._isSharedItem ? 'shared-item-card' : ''}" draggable="true" data-id="${a.id}" data-index="${index}">
+            ${a._isSharedItem ? this.renderSharedItemBanner(a) : ''}
             <div class="account-drag-handle" title="Kéo để sắp xếp vị trí">
               <i data-lucide="grip-vertical" style="width: 16px; height: 16px;"></i>
             </div>
             
             <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản">
-              <div class="account-icon-bubble" style="background: transparent;">
+              <div class="account-icon-bubble ${a._isSharedItem ? 'with-share-badge' : ''}" style="background: transparent;">
                 ${this.renderLogoBadge(a, 36)}
+                ${a._isSharedItem ? '<div class="mini-share-indicator" title="Được chia sẻ"><i data-lucide="share-2"></i></div>' : ''}
               </div>
               <div class="account-info">
                 <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
@@ -4892,12 +5600,14 @@ const UIAccounts = {
       }
     }
 
-    // 3. Render Net Worth Header & 3 New Groups
+    // 3. Render Net Worth Header & 4 Sub-groups
     await this.renderNetWorthHeader();
-    await this.renderSavings();
-    await this.renderAccumulations();
-    await this.renderLoans();
-    await this.renderAssets();
+    if (this.currentFilterTab !== 'shared') {
+      await this.renderSavings();
+      await this.renderAccumulations();
+      await this.renderLoans();
+      await this.renderAssets();
+    }
 
     if (window.app && typeof window.app.applyPrivacyMode === 'function') {
       window.app.applyPrivacyMode(window.app.isPrivacyMode);

@@ -9956,3 +9956,671 @@ html, body {
   display: block !important;
   animation: accordionOpen 0.2s ease-out !important;
 }
+
+
+/* ==========================================================================
+   UNIVERSAL SHARE & PERMISSION MANAGER MODAL STYLES
+   ========================================================================== */
+.share-item-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.share-item-icon-bubble {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.share-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.share-item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.share-item-name {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.share-item-type-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--primary);
+}
+
+.share-section-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 14px 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.share-services-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.share-service-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.share-service-card:hover {
+  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.03);
+}
+
+.share-service-card.selected {
+  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.08);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.share-service-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.share-service-icon-wrap.server {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.share-service-icon-wrap.google-drive {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+.share-service-icon-wrap.dropbox {
+  background: rgba(14, 165, 233, 0.15);
+  color: #0ea5e9;
+}
+
+.share-service-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.share-service-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.share-service-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.share-service-status-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.share-service-status-badge.connected {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.share-service-status-badge.not-connected {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-muted);
+}
+
+.share-service-status-badge.planned {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.share-service-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.share-tabs-nav {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 14px;
+}
+
+.share-tab-btn {
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.share-tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.share-tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.share-form-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.share-form-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.share-role-select {
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.share-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  gap: 8px;
+}
+
+.share-member-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.share-member-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.share-member-avatar-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.share-member-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.share-member-email {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.share-member-name {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.share-member-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.share-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.share-role-badge.editor {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--primary);
+}
+
+.share-role-badge.viewer {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0ea5e9;
+}
+
+.btn-revoke-share {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-revoke-share:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.share-link-row {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.share-link-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.share-link-date {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.share-link-input-group {
+  display: flex;
+  gap: 6px;
+}
+
+.share-link-url-input {
+  flex: 1;
+  font-size: 0.78rem;
+  padding: 6px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.btn-copy-link {
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.btn-copy-link:hover {
+  filter: brightness(1.1);
+}
+
+.share-empty-box {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.share-cloud-notice-box {
+  background: var(--bg-card);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+}
+
+.share-cloud-notice-box .share-notice-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+}
+
+.share-cloud-notice-box h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.share-cloud-notice-box p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ==========================================================================
+   ACCOUNTS FILTER & SHARED ITEMS DISPLAY HIGHLIGHTS
+   ========================================================================== */
+
+.accounts-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.accounts-segmented-tabs {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 4px;
+  gap: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.accounts-seg-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.accounts-seg-tab:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.accounts-seg-tab.active {
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.35);
+}
+
+.accounts-seg-tab .seg-count-badge {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 10px;
+  line-height: 1.2;
+}
+
+.accounts-seg-tab.active .seg-count-badge {
+  background: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.accounts-display-mode-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-toggle-view-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.btn-toggle-view-mode:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-toggle-view-mode.mode-grouped {
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #3b82f6;
+}
+
+/* TRƯỜNG RIÊNG: Nhóm tài khoản & sổ được chia sẻ */
+.shared-highlight-section {
+  border: 1.5px solid rgba(59, 130, 246, 0.45) !important;
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.06) 0%, rgba(99, 102, 241, 0.02) 100%) !important;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1) !important;
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+}
+
+[data-theme="dark"] .shared-highlight-section {
+  border-color: rgba(96, 165, 250, 0.45) !important;
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.14) 0%, rgba(99, 102, 241, 0.05) 100%) !important;
+  box-shadow: 0 4px 24px rgba(37, 99, 235, 0.2) !important;
+}
+
+/* THẺ TÀI KHOẢN/SỔ ĐƯỢC CHIA SẺ - LÀM NỔI BẬT ĐẶC BIỆT KHI HIỂN THỊ CHUNG & RIÊNG */
+.account-list-item.shared-item-card,
+.group-item-card.shared-item-card {
+  border: 1.5px solid #3b82f6 !important;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, var(--bg-card) 100%) !important;
+  box-shadow: 0 3px 12px rgba(59, 130, 246, 0.16) !important;
+  position: relative;
+  overflow: visible;
+}
+
+[data-theme="dark"] .account-list-item.shared-item-card,
+[data-theme="dark"] .group-item-card.shared-item-card {
+  border-color: #60a5fa !important;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.18) 0%, var(--bg-card) 100%) !important;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.25) !important;
+}
+
+/* Dải Ribbon/Banner hiển thị thông tin chia sẻ trên từng thẻ */
+.shared-item-highlight-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  box-sizing: border-box;
+}
+
+.shared-from-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.73rem;
+  color: #2563eb;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+[data-theme="dark"] .shared-from-pill {
+  color: #93c5fd;
+}
+
+.shared-from-pill strong {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.shared-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.69rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.shared-role-pill.viewer {
+  background: rgba(59, 130, 246, 0.18);
+  color: #2563eb;
+}
+
+[data-theme="dark"] .shared-role-pill.viewer {
+  background: rgba(96, 165, 250, 0.22);
+  color: #60a5fa;
+}
+
+.shared-role-pill.editor {
+  background: rgba(16, 185, 129, 0.18);
+  color: #10b981;
+}
+
+[data-theme="dark"] .shared-role-pill.editor {
+  background: rgba(52, 211, 153, 0.22);
+  color: #34d399;
+}
+
+/* Mini indicator icon on account avatar */
+.account-icon-bubble.with-share-badge {
+  position: relative;
+}
+
+.mini-share-indicator {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #3b82f6;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--bg-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+/* Category header inside Shared Group */
+.shared-group-category-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 14px 0 8px 4px;
+}
+
+.shared-group-category-title:first-child {
+  margin-top: 4px;
+}

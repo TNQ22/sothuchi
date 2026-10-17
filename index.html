@@ -779,8 +779,60 @@
           </div>
         </div>
 
+        <!-- Thanh chuyển đổi chế độ lọc & cách hiển thị tài khoản chia sẻ -->
+        <div class="accounts-filter-bar">
+          <div class="accounts-segmented-tabs" role="tablist">
+            <button type="button" class="accounts-seg-tab active" data-filter="all" onclick="UIAccounts.setFilterTab('all')" title="Tất cả tài khoản & sổ">
+              <i data-lucide="layout-grid" style="width: 14px; height: 14px;"></i>
+              <span>Tất cả</span>
+            </button>
+            <button type="button" class="accounts-seg-tab" data-filter="personal" onclick="UIAccounts.setFilterTab('personal')" title="Chỉ tài khoản cá nhân của bạn">
+              <i data-lucide="user" style="width: 14px; height: 14px;"></i>
+              <span>Cá nhân</span>
+            </button>
+            <button type="button" class="accounts-seg-tab" data-filter="shared" onclick="UIAccounts.setFilterTab('shared')" title="Trường riêng: Tài khoản & sổ được người khác chia sẻ cho bạn">
+              <i data-lucide="share-2" style="width: 14px; height: 14px;"></i>
+              <span>Được chia sẻ</span>
+              <span id="badge-total-shared-count" class="seg-count-badge" style="display: none;">0</span>
+            </button>
+          </div>
+
+          <div class="accounts-display-mode-wrap">
+            <button type="button" id="btn-toggle-shared-view-mode" class="btn-toggle-view-mode" onclick="UIAccounts.toggleSharedViewMode()" title="Chuyển đổi giữa Tách khu vực riêng và Hiển thị chung">
+              <i data-lucide="split" id="icon-shared-view-mode" style="width: 14px; height: 14px;"></i>
+              <span id="label-shared-view-mode">Tách trường riêng</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Section Trường Riêng: TÀI KHOẢN & SỔ ĐƯỢC CHIA SẺ VỚI BẠN -->
+        <div id="accounts-shared-group-container" class="accounts-group-container shared-highlight-section" style="display: none;">
+          <div class="accounts-group-header">
+            <div class="accounts-group-title-wrap">
+              <div class="accounts-group-icon" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%); color: #3b82f6;">
+                <i data-lucide="share-2"></i>
+              </div>
+              <div>
+                <h3 class="accounts-group-title">
+                  Mục được chia sẻ với bạn
+                  <span id="badge-shared-items-count" class="group-count-badge" style="background: rgba(59, 130, 246, 0.18); color: #3b82f6;">0</span>
+                </h3>
+                <span class="accounts-group-subtitle stat-amount" id="label-shared-items-total" style="color: #3b82f6;">0đ</span>
+              </div>
+            </div>
+            <div class="accounts-group-actions">
+              <button type="button" class="btn-group-circle-add" style="color: #3b82f6;" onclick="window.ReceiveShareModal && ReceiveShareModal.promptManual()" title="Nhập link nhận chia sẻ" aria-label="Nhận chia sẻ">
+                <i data-lucide="link"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Danh sách các mục được chia sẻ -->
+          <div id="shared-items-list-container" class="accounts-list"></div>
+        </div>
+
         <!-- Section 1: Tài khoản chi tiêu -->
-        <div class="accounts-group-container">
+        <div class="accounts-group-container" id="accounts-expense-group-container">
           <div class="accounts-group-header">
             <div class="accounts-group-title-wrap">
               <div class="accounts-group-icon" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
@@ -814,7 +866,7 @@
         </div>
 
         <!-- Section 2: Quản lý sổ tiết kiệm -->
-        <div class="accounts-group-container">
+        <div class="accounts-group-container" id="accounts-savings-group-container">
           <div class="accounts-group-header">
             <div class="accounts-group-title-wrap">
               <div class="accounts-group-icon" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9;">
@@ -870,7 +922,7 @@
         </div>
 
         <!-- Section 3.5: Sổ vay ngân hàng -->
-        <div class="accounts-group-container">
+        <div class="accounts-group-container" id="accounts-loans-group-container">
           <div class="accounts-group-header">
             <div class="accounts-group-title-wrap">
               <div class="accounts-group-icon" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">
@@ -904,7 +956,7 @@
         </div>
 
         <!-- Section 4: Quản lý tài sản (Beta) -->
-        <div class="accounts-group-container">
+        <div class="accounts-group-container" id="accounts-assets-group-container">
           <div class="accounts-group-header">
             <div class="accounts-group-title-wrap">
               <div class="accounts-group-icon" style="background: rgba(168, 85, 247, 0.12); color: #a855f7;">
@@ -3908,6 +3960,30 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
         </button>
 
+        <!-- Nút Chia sẻ Độc lập (Chủ sở hữu) -->
+        <button type="button" class="action-sheet-item" id="action-sheet-universal-share-btn" onclick="UIAccounts.closeActionSheet(); UniversalShareModal.open('account', UIAccounts.currentActionAccountId)">
+          <div class="action-sheet-item-icon" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
+            <i data-lucide="share-2" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Chia sẻ & Phân quyền</span>
+            <span class="action-sheet-item-desc">Chia sẻ ví độc lập qua Email Google hoặc Liên kết</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
+        <!-- Nút Rời khỏi mục chia sẻ (Người nhận) -->
+        <button type="button" class="action-sheet-item text-danger" id="action-sheet-leave-shared-btn" style="display: none;" onclick="UIAccounts.leaveSharedItem('account', UIAccounts.currentActionAccountId)">
+          <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">
+            <i data-lucide="log-out" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Rời khỏi ví được chia sẻ</span>
+            <span class="action-sheet-item-desc">Ngừng nhận và gỡ bỏ khỏi thiết bị này</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
         <button type="button" class="action-sheet-item danger" onclick="UIAccounts.handleActionSheetSelect('delete')">
           <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.12); color: #f43f5e;">
             <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
@@ -5091,6 +5167,183 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
     </div>
   </div>
 
+  <!-- Modal: Universal Share & Permissions Manager -->
+  <div id="modal-universal-share" class="modal-overlay">
+    <div class="modal-dialog" style="max-width: 540px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(59, 130, 246, 0.15); display: flex; align-items: center; justify-content: center; color: #3b82f6;">
+            <i data-lucide="share-2" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div>
+            <h3 class="modal-title" style="font-size: 1.05rem; margin-bottom: 2px;">Chia Sẻ & Phân Quyền</h3>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0;">Quản lý quyền truy cập độc lập từng tài khoản/sổ</p>
+          </div>
+        </div>
+        <button class="btn-icon" onclick="UniversalShareModal.close()"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="modal-body" style="padding: 16px 18px; max-height: 75vh; overflow-y: auto;">
+        <!-- Card xem mục đang chọn -->
+        <div class="share-item-preview-card">
+          <div class="share-item-icon-bubble" id="universal-share-item-icon">
+            <i data-lucide="wallet"></i>
+          </div>
+          <div class="share-item-info">
+            <div class="share-item-title-row">
+              <span class="share-item-name" id="universal-share-item-title">Tên tài khoản</span>
+              <span class="share-item-type-badge" id="universal-share-item-badge">Tài khoản thanh toán</span>
+            </div>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">Chia sẻ độc lập - Không chia sẻ toàn bộ sổ</span>
+          </div>
+        </div>
+
+        <!-- Bước 1: Chọn dịch vụ sao lưu / chia sẻ -->
+        <div class="share-section-title">
+          <i data-lucide="layers" style="width: 15px; height: 15px;"></i>
+          <span>Dịch Vụ Sao Lưu & Chia Sẻ</span>
+        </div>
+        <div class="share-services-grid" id="universal-share-services-list">
+          <!-- Dynamically populated services -->
+        </div>
+
+        <!-- Khung chia sẻ qua Server -->
+        <div id="universal-share-server-section">
+          <!-- Nếu chưa kết nối server -->
+          <div id="share-server-not-connected-msg" style="display: none; background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.4); border-radius: var(--radius-md); padding: 16px; text-align: center;">
+            <i data-lucide="server-off" style="width: 32px; height: 32px; color: #f59e0b; margin: 0 auto 8px;"></i>
+            <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Chưa kết nối Máy Chủ Riêng</h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.45;">Vui lòng kết nối và đăng nhập tài khoản Google vào Máy Chủ Riêng trong mục Cài đặt để sử dụng tính năng chia sẻ và phân quyền theo email & liên kết.</p>
+            <button type="button" class="btn-primary btn-sm" onclick="UniversalShareModal.close(); UISettings.openServerConfigModal();">
+              <i data-lucide="settings" style="width: 14px; height: 14px;"></i> Kết Nối Máy Chủ Riêng
+            </button>
+          </div>
+
+          <!-- Nếu đã kết nối server: Giao diện tabs -->
+          <div id="share-server-main-controls">
+            <div class="share-tabs-nav">
+              <button type="button" class="share-tab-btn active" id="tab-share-email-btn" onclick="UniversalShareModal.switchTab('email')">
+                <i data-lucide="mail" style="width: 15px; height: 15px;"></i> Chia sẻ qua Email Google
+              </button>
+              <button type="button" class="share-tab-btn" id="tab-share-link-btn" onclick="UniversalShareModal.switchTab('link')">
+                <i data-lucide="link" style="width: 15px; height: 15px;"></i> Chia sẻ bằng Liên kết (Link)
+              </button>
+            </div>
+
+            <!-- Tab Email -->
+            <div id="tab-share-email-content">
+              <div class="share-form-box">
+                <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">Thêm thành viên theo Email Google</label>
+                <div class="share-form-row">
+                  <input type="email" id="share-email-input" class="form-control" placeholder="example@gmail.com" style="flex: 1; min-width: 180px; font-size: 0.85rem;">
+                  <select id="share-email-role" class="share-role-select">
+                    <option value="viewer">Chỉ xem (Viewer)</option>
+                    <option value="editor">Chỉnh sửa (Editor)</option>
+                  </select>
+                  <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 7px 14px; white-space: nowrap;" onclick="UniversalShareModal.handleAddEmailShare()">
+                    <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i> Mời
+                  </button>
+                </div>
+              </div>
+
+              <div class="share-section-title">
+                <i data-lucide="users" style="width: 15px; height: 15px;"></i>
+                <span>Thành Viên Có Quyền Truy Cập</span>
+              </div>
+              <div id="share-email-members-list">
+                <!-- Dynamically loaded members -->
+              </div>
+            </div>
+
+            <!-- Tab Link -->
+            <div id="tab-share-link-content" style="display: none;">
+              <div class="share-form-box">
+                <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">Tạo liên kết chia sẻ mới</label>
+                <div class="share-form-row">
+                  <select id="share-link-role" class="share-role-select" style="flex: 1;">
+                    <option value="viewer">Bất kỳ ai có link: Chỉ xem (Viewer)</option>
+                    <option value="editor">Bất kỳ ai có link: Toàn quyền chỉnh sửa (Editor)</option>
+                  </select>
+                  <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 7px 14px; white-space: nowrap;" onclick="UniversalShareModal.handleCreateLink()">
+                    <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Tạo Link
+                  </button>
+                </div>
+                <span style="display: block; font-size: 0.74rem; color: var(--text-muted); margin-top: 6px;">Người nhận khi mở liên kết sẽ nhận tài khoản này vào sổ thu chi của họ. Bạn có thể thu hồi bất cứ lúc nào.</span>
+              </div>
+
+              <div class="share-section-title">
+                <i data-lucide="link-2" style="width: 15px; height: 15px;"></i>
+                <span>Các Liên Kết Đang Hoạt Động</span>
+              </div>
+              <div id="share-active-links-list">
+                <!-- Dynamically loaded links -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Khung thông báo đám mây (Drive / Dropbox) -->
+        <div id="universal-share-cloud-notice" style="display: none;">
+          <!-- Dynamically populated notice -->
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 10px 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; background: var(--bg-card);">
+        <button type="button" class="btn-secondary btn-sm" onclick="UniversalShareModal.close()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Nhận Tài Khoản Chia Sẻ (Receive Share Modal) -->
+  <div id="modal-receive-share" class="modal-overlay">
+    <div class="modal-dialog" style="max-width: 460px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); display: flex; align-items: center; justify-content: center; color: #10b981;">
+            <i data-lucide="gift" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div>
+            <h3 class="modal-title" style="font-size: 1.05rem; margin-bottom: 2px;">Nhận Tài Khoản Chia Sẻ</h3>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0;">Bạn vừa nhận được một tài khoản được chia sẻ</p>
+          </div>
+        </div>
+        <button class="btn-icon" onclick="ReceiveShareModal.close()"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="modal-body" style="padding: 18px;">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(59, 130, 246, 0.12); color: #3b82f6; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+            <i data-lucide="share-2" style="width: 28px; height: 28px;"></i>
+          </div>
+          <h4 id="receive-share-item-name" style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">Tài khoản</h4>
+          <span id="receive-share-item-type" class="badge" style="background: rgba(99, 102, 241, 0.12); color: var(--primary); font-size: 0.75rem; padding: 3px 10px; border-radius: 20px;">Tài khoản thanh toán</span>
+        </div>
+
+        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.85rem;">
+            <span style="color: var(--text-muted);">Người chia sẻ:</span>
+            <span id="receive-share-owner-info" style="font-weight: 600; color: var(--text-primary); text-align: right;">--</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+            <span style="color: var(--text-muted);">Quyền hạn:</span>
+            <div id="receive-share-role-info">--</div>
+          </div>
+        </div>
+
+        <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.45; text-align: center; margin: 0;">
+          Sau khi nhận, tài khoản này sẽ xuất hiện trong danh sách tài khoản của bạn và tự động đồng bộ hai chiều với người chia sẻ.
+        </p>
+      </div>
+
+      <div class="modal-footer" style="padding: 12px 18px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 8px; background: var(--bg-card);">
+        <button type="button" class="btn-secondary" onclick="ReceiveShareModal.close()">Từ Chối</button>
+        <button type="button" class="btn-primary" onclick="ReceiveShareModal.accept()">
+          <i data-lucide="check" style="width: 15px; height: 15px;"></i> Chấp Nhận & Thêm Vào Sổ
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div id="toast-container"></div>
 
@@ -5105,7 +5358,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/db.js?v=2.6.6"></script>
   <script src="./js/google-drive.js?v=2.6.6"></script>
   <script src="./js/dropbox.js?v=2.6.6"></script>
-  <script src="./js/server-sync.js?v=2.6.6"></script>
+  <script src="./js/server-sync.js?v=2.7.0"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.2.8"></script>
   <script src="./js/sync-coordinator.js?v=2.6.6"></script>
@@ -5114,7 +5367,8 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/ui-calendar.js?v=2.0.9"></script>
   <script src="./js/ui-transactions.js?v=2.5.8"></script>
   <script src="./js/ui-debts.js?v=2.0.9"></script>
-  <script src="./js/ui-accounts.js?v=2.5.5"></script>
+  <script src="./js/ui-accounts.js?v=2.7.0"></script>
+  <script src="./js/ui-share.js?v=2.7.0"></script>
   <script src="./js/ui-budgets.js?v=2.5.5"></script>
   <script src="./js/ui-analytics.js?v=2.2.3"></script>
   <script src="./js/ui-settings.js?v=2.6.6"></script>
