@@ -321,6 +321,12 @@ const UISettings = {
       autoSyncToggle.checked = autoSyncSetting ? !!autoSyncSetting.value : true;
     }
 
+    const dbxAutoSyncSetting = await db.settings.get('dropboxAutoSync');
+    const dbxAutoSyncToggle = document.getElementById('settings-dropbox-auto-sync');
+    if (dbxAutoSyncToggle) {
+      dbxAutoSyncToggle.checked = dbxAutoSyncSetting !== undefined ? !!dbxAutoSyncSetting.value : true;
+    }
+
     const privacySetting = await db.settings.get('privacyMode');
     const privacyToggle = document.getElementById('settings-privacy-mode');
     if (privacySetting && privacyToggle) {
@@ -1278,12 +1284,7 @@ const UISettings = {
       });
     }
 
-    // Dropbox Kích Hoạt Toggle
-    const dbxAutoSyncSetting = await db.settings.get('dropboxAutoSync');
-    const dbxAutoSyncToggle = document.getElementById('settings-dropbox-auto-sync');
-    if (dbxAutoSyncToggle) {
-      dbxAutoSyncToggle.checked = dbxAutoSyncSetting !== undefined ? !!dbxAutoSyncSetting.value : true;
-    }
+
 
     // 3. Storage Location Selector (Radio)
     const locRadios = document.querySelectorAll('input[name="drive-storage-location"]');
