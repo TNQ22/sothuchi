@@ -644,6 +644,9 @@ async function addCategory(data) {
     isDeleted: 0,
     updatedAt: now
   });
+  if (window.UITransactions && typeof window.UITransactions.invalidateCategoriesCache === 'function') {
+    window.UITransactions.invalidateCategoriesCache();
+  }
   triggerAutoSync();
   return id;
 }
@@ -664,6 +667,9 @@ async function updateCategory(id, data) {
     ...data,
     updatedAt: now
   });
+  if (window.UITransactions && typeof window.UITransactions.invalidateCategoriesCache === 'function') {
+    window.UITransactions.invalidateCategoriesCache();
+  }
   triggerAutoSync();
 }
 
@@ -677,6 +683,9 @@ async function deleteCategory(id) {
     isDeleted: 1,
     updatedAt: now
   });
+  if (window.UITransactions && typeof window.UITransactions.invalidateCategoriesCache === 'function') {
+    window.UITransactions.invalidateCategoriesCache();
+  }
   triggerAutoSync();
 }
 

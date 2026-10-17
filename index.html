@@ -22,10 +22,60 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.7.2">
+  <link rel="stylesheet" href="./css/style.css?v=2.7.3">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
+  <script>
+    // Tối ưu hóa hiệu năng Lucide: Chỉ render các thẻ icon chưa được thay thế (i[data-lucide], span[data-lucide])
+    // Ngăn chặn việc quét và dựng lại hàng trăm icon SVG đã có sẵn trên toàn bộ DOM mỗi khi gọi createIcons()
+    (function() {
+      if (!window.lucide || !window.lucide.createIcons) return;
+      var _origCreateIcons = window.lucide.createIcons;
+      window.lucide.createIcons = function(options) {
+        options = options || {};
+        try {
+          var root = options.root || document;
+          var unrendered = root.querySelectorAll ? root.querySelectorAll('i[data-lucide], span[data-lucide], [data-lucide]:not(svg)') : [];
+          if (unrendered.length === 0) return;
+
+          if (window.lucide.icons && typeof window.lucide.createElement === 'function') {
+            var icons = window.lucide.icons;
+            Array.prototype.forEach.call(unrendered, function(el) {
+              var name = el.getAttribute('data-lucide');
+              if (!name) return;
+              var pascal = name.replace(/(\w)(\w*)(_|-|\s*)/g, function(d, c, M) { return c.toUpperCase() + M.toLowerCase(); });
+              var iconDef = icons[pascal] || icons[name];
+              if (iconDef) {
+                try {
+                  var svg = window.lucide.createElement(iconDef);
+                  Array.prototype.forEach.call(el.attributes, function(attr) {
+                    if (attr.name !== 'data-lucide') {
+                      if (attr.name === 'class') {
+                        var clsList = attr.value.split(' ');
+                        for (var i = 0; i < clsList.length; i++) {
+                          if (clsList[i]) svg.classList.add(clsList[i]);
+                        }
+                      } else {
+                        svg.setAttribute(attr.name, attr.value);
+                      }
+                    }
+                  });
+                  svg.setAttribute('data-lucide', name);
+                  svg.classList.add('lucide', 'lucide-' + name);
+                  if (el.parentNode) el.parentNode.replaceChild(svg, el);
+                } catch (e) {}
+              }
+            });
+            return;
+          }
+          _origCreateIcons.call(window.lucide, options);
+        } catch (err) {
+          _origCreateIcons.call(window.lucide, options);
+        }
+      };
+    })();
+  </script>
 
   <!-- Google Identity Services (GIS) for Google Drive Auth -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -2874,7 +2924,54 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                     </button>
                   </div>
                   <div id="tx-quick-category-grid" class="quick-category-grid">
-                    <!-- Rendered dynamically (2x4 fixed: 6 cats + Cho Vay + Đi Vay) -->
+                    <div class="quick-cat-chip active" onclick="UITransactions.selectCategoryById(1)" title="Ăn uống & Cà phê">
+                      <div class="quick-cat-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+                        <i data-lucide="utensils" style="width: 16px; height: 16px;"></i>
+                      </div>
+                      <span class="quick-cat-name">Ăn uống & Cà phê</span>
+                    </div>
+                    <div class="quick-cat-chip" onclick="UITransactions.selectCategoryById(2)" title="Đi chợ & Siêu thị">
+                      <div class="quick-cat-icon" style="background: rgba(251, 113, 133, 0.15); color: #fb7185;">
+                        <i data-lucide="shopping-cart" style="width: 16px; height: 16px;"></i>
+                      </div>
+                      <span class="quick-cat-name">Đi chợ & Siêu thị</span>
+                    </div>
+                    <div class="quick-cat-chip" onclick="UITransactions.selectCategoryById(3)" title="Di chuyển & Xăng">
+                      <div class="quick-cat-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                        <i data-lucide="car" style="width: 16px; height: 16px;"></i>
+                      </div>
+                      <span class="quick-cat-name">Di chuyển & Xăng</span>
+                    </div>
+                    <div class="quick-cat-chip" onclick="UITransactions.selectCategoryById(4)" title="Hóa đơn & Điện nước">
+                      <div class="quick-cat-icon" style="background: rgba(234, 179, 8, 0.15); color: #eab308;">
+                        <i data-lucide="zap" style="width: 16px; height: 16px;"></i>
+                      </div>
+                      <span class="quick-cat-name">Hóa đơn & Điện nước</span>
+                    </div>
+                    <div class="quick-cat-chip" onclick="UITransactions.selectCategoryById(5)" title="Mua sắm đồ dùng">
+                      <div class="quick-cat-icon" style="background: rgba(236, 72, 153, 0.15); color: #ec4899;">
+                        <i data-lucide="shopping-bag" style="width: 16px; height: 16px;"></i>
+                      </div>
+                      <span class="quick-cat-name">Mua sắm đồ dùng</span>
+                    </div>
+                    <div class="quick-cat-chip" onclick="UITransactions.selectCategoryById(6)" title="Nhà ở & Tiền thuê">
+                      <div class="quick-cat-icon" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;">
+                        <i data-lucide="home" style="width: 16px; height: 16px;"></i>
+                      </div>
+                      <span class="quick-cat-name">Nhà ở & Tiền thuê</span>
+                    </div>
+                    <div class="quick-cat-chip" onclick="UITransactions.selectDebtAction('lend')" title="Cho Vay">
+                      <div class="quick-cat-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+                        <i data-lucide="arrow-up-right" style="width: 16px; height: 16px;"></i>
+                      </div>
+                      <span class="quick-cat-name">Cho Vay</span>
+                    </div>
+                    <div class="quick-cat-chip" onclick="UITransactions.openCategoryPickerPage('debt')" title="Trả Nợ">
+                      <div class="quick-cat-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--warning);">
+                        <i data-lucide="clock" style="width: 16px; height: 16px;"></i>
+                      </div>
+                      <span class="quick-cat-name">Trả Nợ</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -6010,30 +6107,29 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <!-- Vendor Scripts (Offline Pre-Cached) -->
   <script src="./vendor/dexie.min.js"></script>
   <script src="./vendor/chart.umd.min.js"></script>
-  <script src="./vendor/lucide.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=2.7.2"></script>
+  <script src="./js/config.js?v=2.7.3"></script>
   <script src="./js/crypto.js"></script>
-  <script src="./js/db.js?v=2.7.2"></script>
-  <script src="./js/google-drive.js?v=2.7.2"></script>
-  <script src="./js/dropbox.js?v=2.7.2"></script>
-  <script src="./js/server-sync.js?v=2.7.2"></script>
+  <script src="./js/db.js?v=2.7.3"></script>
+  <script src="./js/google-drive.js?v=2.7.3"></script>
+  <script src="./js/dropbox.js?v=2.7.3"></script>
+  <script src="./js/server-sync.js?v=2.7.3"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=2.7.2"></script>
-  <script src="./js/sync-coordinator.js?v=2.7.2"></script>
+  <script src="./js/backup.js?v=2.7.3"></script>
+  <script src="./js/sync-coordinator.js?v=2.7.3"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=2.7.2"></script>
-  <script src="./js/ui-transactions.js?v=2.7.2"></script>
-  <script src="./js/ui-debts.js?v=2.7.2"></script>
-  <script src="./js/ui-accounts.js?v=2.7.2"></script>
-  <script src="./js/ui-share.js?v=2.7.2"></script>
-  <script src="./js/ui-budgets.js?v=2.7.2"></script>
-  <script src="./js/ui-analytics.js?v=2.7.2"></script>
-  <script src="./js/ui-settings.js?v=2.7.2"></script>
+  <script src="./js/ui-calendar.js?v=2.7.3"></script>
+  <script src="./js/ui-transactions.js?v=2.7.3"></script>
+  <script src="./js/ui-debts.js?v=2.7.3"></script>
+  <script src="./js/ui-accounts.js?v=2.7.3"></script>
+  <script src="./js/ui-share.js?v=2.7.3"></script>
+  <script src="./js/ui-budgets.js?v=2.7.3"></script>
+  <script src="./js/ui-analytics.js?v=2.7.3"></script>
+  <script src="./js/ui-settings.js?v=2.7.3"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.7.2"></script>
+  <script src="./js/app.js?v=2.7.3"></script>
 </body>
 </html>

@@ -19,11 +19,30 @@ const UITransactions = {
   activeKeypadTarget: 'amount', // 'amount' | 'fee'
   currentCatTab: 'expense',
   editingCatId: null,
+  _categoriesCache: null,
+
+  async loadCategories(forceReload = false) {
+    if (!forceReload && this._categoriesCache && this._categoriesCache.length > 0) {
+      return this._categoriesCache;
+    }
+    try {
+      this._categoriesCache = await db.categories.where('isDeleted').equals(0).toArray();
+    } catch (e) {
+      console.warn('[UITransactions] Lỗi nạp danh mục:', e);
+      this._categoriesCache = [];
+    }
+    return this._categoriesCache;
+  },
+
+  invalidateCategoriesCache() {
+    this._categoriesCache = null;
+  },
 
   async init() {
     if (this._initialized) return;
     this._initialized = true;
     this.bindEvents();
+    await this.loadCategories();
     await this.renderQuickCategories();
   },
 
@@ -1199,8 +1218,14 @@ const UITransactions = {
     }
     if (groupType !== 'income') groupType = 'expense';
 
-    // 1. Lấy danh mục tương thích theo groupType (thu hoặc chi)
-    const allCats = await db.categories.where('isDeleted').equals(0).and(c => c.type === groupType).toArray();
+    // 1. Lấy danh mục tương thích theo groupType (thu hoặc chi) từ RAM cache tức thì
+    let allCats = [];
+    if (this._categoriesCache && this._categoriesCache.length > 0) {
+      allCats = this._categoriesCache.filter(c => c.type === groupType);
+    } else {
+      const all = await this.loadCategories();
+      allCats = all.filter(c => c.type === groupType);
+    }
     let quickCats = allCats.filter(c => c.isQuick === 1);
     if (quickCats.length === 0) {
       quickCats = allCats.slice(0, 6);
@@ -1265,7 +1290,7 @@ const UITransactions = {
     }
 
     container.innerHTML = html;
-    if (window.lucide) lucide.createIcons();
+    if (window.lucide) lucide.createIcons({ root: container });
   },
 
   handleCategoryCardClick() {
@@ -1273,7 +1298,13 @@ const UITransactions = {
   },
 
   async selectCategoryById(catId) {
-    const cat = await db.categories.get(Number(catId));
+    let cat = null;
+    if (this._categoriesCache && this._categoriesCache.length > 0) {
+      cat = this._categoriesCache.find(c => c.id === Number(catId));
+    }
+    if (!cat) {
+      cat = await db.categories.get(Number(catId));
+    }
     if (cat) {
       await this.selectCategory(cat);
     }
@@ -1598,11 +1629,11 @@ const UITransactions = {
       const curType = document.getElementById('tx-type-input')?.value || 'expense';
       this.currentCatTab = (curType === 'income') ? 'income' : (curType === 'lend' || curType === 'borrow') ? 'debt' : 'expense';
     }
-    await this.renderCategoryPickerTabs();
-    this.switchCategoryTab(this.currentCatTab);
     if (window.app) {
       window.app.switchView('category-picker');
     }
+    this.switchCategoryTab(this.currentCatTab);
+    await this.renderCategoryPickerTabs();
   },
 
   openCategoryPicker() {
@@ -1628,10 +1659,11 @@ const UITransactions = {
   },
 
   async renderCategoryPickerTabs() {
+    const allCats = await this.loadCategories();
     // 1. Expense Tab
     const expenseList = document.getElementById('cat-list-expense');
     if (expenseList) {
-      const expenses = await db.categories.where('type').equals('expense').and(c => c.isDeleted === 0).toArray();
+      const expenses = allCats.filter(c => c.type === 'expense');
       expenseList.innerHTML = expenses.map(c => `
         <div class="cat-picker-item" onclick="UITransactions.selectCategoryById(${c.id})">
           <div class="category-icon-bubble" style="background: ${c.color}22; color: ${c.color};">
@@ -1645,7 +1677,7 @@ const UITransactions = {
     // 2. Income Tab
     const incomeList = document.getElementById('cat-list-income');
     if (incomeList) {
-      const incomes = await db.categories.where('type').equals('income').and(c => c.isDeleted === 0).toArray();
+      const incomes = allCats.filter(c => c.type === 'income');
       incomeList.innerHTML = incomes.map(c => `
         <div class="cat-picker-item" onclick="UITransactions.selectCategoryById(${c.id})">
           <div class="category-icon-bubble" style="background: ${c.color}22; color: ${c.color};">
@@ -2333,11 +2365,14 @@ const UITransactions = {
     const selector = document.getElementById('tx-type-selector');
     if (selector) selector.value = type;
 
-    if (type === 'expense') {
-      const defaultCat = await db.categories.where('type').equals('expense').first();
-      if (defaultCat) await this.selectCategory(defaultCat);
-    } else if (type === 'income') {
-      const defaultCat = await db.categories.where('type').equals('income').first();
+    if (type === 'expense' || type === 'income') {
+      let defaultCat = null;
+      if (this._categoriesCache && this._categoriesCache.length > 0) {
+        defaultCat = this._categoriesCache.find(c => c.type === type);
+      }
+      if (!defaultCat) {
+        defaultCat = await db.categories.where('type').equals(type).first();
+      }
       if (defaultCat) await this.selectCategory(defaultCat);
     } else if (type === 'transfer') {
       await this.selectTransferAction();
@@ -2957,9 +2992,7 @@ const UITransactions = {
     const subBoxReset = document.getElementById('tx-selected-cat-subtext');
     if (subBoxReset) subBoxReset.textContent = 'Chọn danh mục';
 
-    await this.populateAccounts();
-    await this.updateSelectedAccountDisplay();
-
+    // Hiển thị danh mục tức thì từ bộ nhớ RAM (0ms) mà không cần chờ tài khoản nạp
     if (defaultType === 'transfer') {
       await this.selectTransferAction();
     } else {
@@ -2968,14 +3001,22 @@ const UITransactions = {
       const fromDirTag = document.getElementById('tx-account-dir-tag');
       if (fromDirTag) fromDirTag.style.display = 'none';
 
-      // Default to top category for defaultType
-      const defaultCat = await db.categories.where('type').equals(defaultType).first();
+      let defaultCat = null;
+      if (this._categoriesCache && this._categoriesCache.length > 0) {
+        defaultCat = this._categoriesCache.find(c => c.type === defaultType);
+      }
+      if (!defaultCat) {
+        defaultCat = await db.categories.where('type').equals(defaultType).first();
+      }
       if (defaultCat) {
         await this.selectCategory(defaultCat);
       } else {
         await this.renderQuickCategories(defaultType);
       }
     }
+
+    await this.populateAccounts();
+    await this.updateSelectedAccountDisplay();
 
     // Chế độ thêm mới: ẩn nút Xóa
     this.setEditMode(false);

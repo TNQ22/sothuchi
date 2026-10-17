@@ -855,7 +855,7 @@ class App {
       window.UIAnalytics.render();
       if (window.UIBudgets) window.UIBudgets.render();
     } else if (viewId === 'new-transaction') {
-      if (window.UIBudgets) window.UIBudgets.render();
+      // Không chạy UIBudgets.render() ở đây để tránh nghẽn luồng nhập liệu
     } else if (viewId === 'transactions') {
       window.UITransactions.render();
     } else if (viewId === 'debts') {
@@ -1333,6 +1333,9 @@ class App {
   }
 
   async refreshAll() {
+    if (window.UITransactions && typeof window.UITransactions.invalidateCategoriesCache === 'function') {
+      window.UITransactions.invalidateCategoriesCache();
+    }
     await this.refreshNetWorth();
     await window.UITransactions.render();
     await window.UIDebts.render();
