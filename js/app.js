@@ -145,6 +145,7 @@ class App {
     this.isBackTransitioning = false;
     this.lastAddTabClickTime = 0;
     this.lastBudgetTabClickTime = 0;
+    this.lastSettingsTabClickTime = 0;
   }
 
   async init() {
@@ -393,6 +394,10 @@ class App {
             this.handleBudgetTabClick();
             return;
           }
+          if (view === 'settings') {
+            this.handleSettingsTabClick();
+            return;
+          }
           if (view === 'transactions') {
             this.txHistorySource = null;
             this.previousView = null;
@@ -413,6 +418,15 @@ class App {
           }
         });
       }
+      if (link.dataset.view === 'settings') {
+        link.addEventListener('dblclick', (e) => {
+          e.preventDefault();
+          this.lastSettingsTabClickTime = 0;
+          if (window.UISettings && typeof window.UISettings.backToHub === 'function') {
+            window.UISettings.backToHub();
+          }
+        });
+      }
     });
 
     // Mobile Bottom Nav Items (Chỉ các tab điều hướng, KHÔNG bao gồm nút FAB thêm giao dịch)
@@ -423,6 +437,10 @@ class App {
         if (view) {
           if (view === 'budgets') {
             this.handleBudgetTabClick();
+            return;
+          }
+          if (view === 'settings') {
+            this.handleSettingsTabClick();
             return;
           }
           if (view === 'transactions') {
@@ -442,6 +460,15 @@ class App {
           this.lastBudgetTabClickTime = 0;
           if (window.UIBudgets && typeof window.UIBudgets.goToCurrentMonth === 'function') {
             window.UIBudgets.goToCurrentMonth();
+          }
+        });
+      }
+      if (link.dataset.view === 'settings') {
+        link.addEventListener('dblclick', (e) => {
+          e.preventDefault();
+          this.lastSettingsTabClickTime = 0;
+          if (window.UISettings && typeof window.UISettings.backToHub === 'function') {
+            window.UISettings.backToHub();
           }
         });
       }
@@ -499,6 +526,41 @@ class App {
       if (activeView) activeView.scrollTop = 0;
       showToast('Đã mở lại trang ghi chép mặc định', 'success');
     }
+  }
+
+  handleSettingsTabClick() {
+    const now = Date.now();
+    const timeSinceLastClick = now - (this.lastSettingsTabClickTime || 0);
+
+    // Kích 2 lần nhanh (< 400ms) hoặc khi đã đang ở trong trang Cài đặt -> Trở về màn hình Cài Đặt chính (Hub)
+    if (this.currentView === 'settings') {
+      if (window.UISettings) {
+        if (window.UISettings.currentSection) {
+          window.UISettings.backToHub();
+        } else {
+          const settingsView = document.getElementById('view-settings');
+          if (settingsView) settingsView.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+      this.lastSettingsTabClickTime = 0;
+      return;
+    }
+
+    if (this.lastSettingsTabClickTime > 0 && timeSinceLastClick < 400) {
+      this.lastSettingsTabClickTime = 0;
+      this.activePrimaryView = 'settings';
+      this.switchView('settings');
+      if (window.UISettings && typeof window.UISettings.backToHub === 'function') {
+        window.UISettings.backToHub();
+      }
+      return;
+    }
+
+    this.lastSettingsTabClickTime = now;
+
+    // Chuyển vào trang Cài Đặt
+    this.activePrimaryView = 'settings';
+    this.switchView('settings');
   }
 
   handleBudgetTabClick() {
@@ -590,6 +652,9 @@ class App {
     this.lastAddTabClickTime = 0;
     if (viewId !== 'budgets') {
       this.lastBudgetTabClickTime = 0;
+    }
+    if (viewId !== 'settings') {
+      this.lastSettingsTabClickTime = 0;
     }
     const primaryViews = ['dashboard', 'accounts', 'budgets', 'settings', 'transactions', 'debts', 'analytics'];
     const isPrimary = primaryViews.includes(viewId);
