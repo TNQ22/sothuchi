@@ -751,32 +751,29 @@ const UISettings = {
       serverGoogleLoginBtn.addEventListener('click', async () => {
         if (!sService) return;
         const urlInput = document.getElementById('settings-server-url');
-        if (urlInput && urlInput.value) {
-          const trimmed = urlInput.value.trim().replace(/\/+$/, '');
-          sService.serverUrl = trimmed;
-          db.settings.put({ key: 'syncServerUrl', value: trimmed }).catch(() => {});
-        }
-
-        if (!sService.serverUrl) {
-          showToast('Vui lòng nhập và kiểm tra URL máy chủ trước khi đăng nhập', 'warning');
+        const enteredUrl = (urlInput ? urlInput.value : sService.serverUrl || '').trim().replace(/\/+$/, '');
+        if (!enteredUrl) {
+          showToast('Vui lòng nhập địa chỉ Máy Chủ Riêng trước khi đăng nhập', 'warning');
           return;
         }
+        sService.serverUrl = enteredUrl;
+        db.settings.put({ key: 'syncServerUrl', value: enteredUrl }).catch(() => {});
 
         try {
-          showToast('Đang mở màn hình xác thực Google...', 'info');
           serverGoogleLoginBtn.disabled = true;
+          showToast('Đang mở màn hình xác thực Google...', 'info');
           const result = await sService.loginWithGoogle();
-          showToast(`Đăng nhập thành công! Xin chào ${result.user.name}`, 'success');
+          showToast(`Đăng nhập máy chủ thành công! Xin chào ${result.user.name}`, 'success');
           if (window.app && window.app.refreshAll) await window.app.refreshAll();
           // Tự động kéo dữ liệu về
           await sService.sync({ interactive: true });
         } catch (err) {
-          if (err.message && (err.message.includes('popup_closed_by_user') || err.message.includes('Đã hủy'))) {
+          if (err.message && (err.message.includes('popup_closed') || err.message.includes('Đã đóng') || err.message.includes('hủy'))) {
             showToast('Đã hủy đăng nhập Google', 'info');
           } else if (err.message && err.message.includes('popup_blocked')) {
-            showToast('Safari đã chặn cửa sổ bật lên. Vui lòng vào Cài đặt iPhone > Safari > Tắt "Chặn cửa sổ bật lên" rồi bấm lại.', 'warning', 7000);
+            showToast('Safari đã chặn cửa sổ đăng nhập. Vui lòng vào Cài đặt iPhone > Safari > Tắt "Chặn cửa sổ bật lên" rồi thử lại.', 'warning', 6500);
           } else {
-            showToast('Đăng nhập máy chủ thất bại: ' + err.message, 'error');
+            showToast('Đăng nhập máy chủ thất bại: ' + err.message, 'error', 5500);
           }
         } finally {
           serverGoogleLoginBtn.disabled = false;

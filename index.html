@@ -1175,7 +1175,22 @@
                   <i data-lucide="chevron-right" class="settings-item-arrow"></i>
                 </div>
 
-                <!-- Mục 2: Google Drive -->
+                <!-- Mục 2: Dropbox -->
+                <div class="settings-nav-item" onclick="UISettings.openSection('dropbox')">
+                  <div class="settings-item-icon-box icon-dropbox">
+                    <i data-lucide="box"></i>
+                  </div>
+                  <div class="settings-item-content">
+                    <div class="settings-item-title-row">
+                      <span class="settings-item-title">Dropbox</span>
+                      <span id="hub-dropbox-badge" class="settings-status-pill pill-gray">Chưa kết nối</span>
+                    </div>
+                    <div id="hub-dropbox-desc" class="settings-item-desc">Đồng bộ chuẩn PKCE mượt mà trên iPhone</div>
+                  </div>
+                  <i data-lucide="chevron-right" class="settings-item-arrow"></i>
+                </div>
+
+                <!-- Mục 3: Google Drive -->
                 <div class="settings-nav-item" onclick="UISettings.openSection('google-drive')">
                   <div class="settings-item-icon-box icon-gdrive">
                     <svg viewBox="0 0 87.3 78" width="19" height="17">
@@ -1193,21 +1208,6 @@
                       <span id="hub-gdrive-badge" class="settings-status-pill pill-gray">Chưa kết nối</span>
                     </div>
                     <div id="hub-gdrive-desc" class="settings-item-desc">Lưu trữ đám mây Google & mã hóa E2EE</div>
-                  </div>
-                  <i data-lucide="chevron-right" class="settings-item-arrow"></i>
-                </div>
-
-                <!-- Mục 3: Dropbox -->
-                <div class="settings-nav-item" onclick="UISettings.openSection('dropbox')">
-                  <div class="settings-item-icon-box icon-dropbox">
-                    <i data-lucide="box"></i>
-                  </div>
-                  <div class="settings-item-content">
-                    <div class="settings-item-title-row">
-                      <span class="settings-item-title">Dropbox</span>
-                      <span id="hub-dropbox-badge" class="settings-status-pill pill-gray">Chưa kết nối</span>
-                    </div>
-                    <div id="hub-dropbox-desc" class="settings-item-desc">Đồng bộ chuẩn PKCE mượt mà trên iPhone</div>
                   </div>
                   <i data-lucide="chevron-right" class="settings-item-arrow"></i>
                 </div>
@@ -1309,6 +1309,132 @@
             </div>
 
             <!-- ==========================================
+                 PANEL 2: DROPBOX
+                 ========================================== -->
+            <div id="panel-dropbox" class="settings-detail-panel">
+              <!-- Thiết lập cơ bản -->
+              <div class="settings-card-clean">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                  <span class="badge" style="font-size: 0.72rem; padding: 3px 8px; background: rgba(0, 97, 255, 0.15); color: #0061ff; border-radius: 9999px; font-weight: 600;">Chuẩn PKCE Client-side</span>
+                </div>
+                <p class="settings-lead-text">
+                  Dropbox hỗ trợ cấp <strong>Refresh Token vĩnh viễn trực tiếp trên iPhone</strong> mà không cần server hay Cloudflare Worker.
+                </p>
+
+                <!-- Banner Tài khoản Dropbox (khi đã kết nối) -->
+                <div id="dropbox-account-info" style="display: none; margin-bottom: 16px; padding: 12px 14px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-md); align-items: center; justify-content: space-between;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <img id="dropbox-user-avatar" src="./assets/icons/icon.svg" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">
+                    <div>
+                      <strong id="dropbox-user-name" style="font-size: 0.88rem; color: var(--text-primary); display: block;">Dropbox User</strong>
+                      <span id="dropbox-user-email" style="font-size: 0.76rem; color: var(--text-secondary);">user@gmail.com</span>
+                    </div>
+                  </div>
+                  <button id="btn-dropbox-disconnect" class="btn-text" style="font-size: 0.8rem; color: var(--danger); background: none; border: none; cursor: pointer;">Ngắt kết nối</button>
+                </div>
+
+                <!-- Nút Kết nối & Đồng bộ ngay -->
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                  <button id="btn-dropbox-connect" class="btn-primary" style="background: #0061ff; border-color: #0061ff; flex: 1; min-width: 160px;">
+                    <i data-lucide="box" style="width: 16px; height: 16px;"></i>
+                    <span>Kết Nối Dropbox</span>
+                  </button>
+                  <button id="btn-dropbox-sync-now" class="btn-secondary" style="flex: 1; min-width: 150px;">
+                    <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                    <span>Đồng Bộ Ngay</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Cài đặt nâng cao (ẩn trong mũi tên xuống) -->
+              <div class="settings-accordion">
+                <div class="settings-accordion-header" onclick="UISettings.toggleAccordion(this)">
+                  <div class="settings-accordion-title">
+                    <i data-lucide="sliders"></i>
+                    <span>Cài Đặt Nâng Cao & Chia Sẻ Dropbox</span>
+                  </div>
+                  <i data-lucide="chevron-down" class="settings-accordion-arrow"></i>
+                </div>
+
+                <div class="settings-accordion-content">
+                  <!-- Chia sẻ Sổ qua Dropbox -->
+                  <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 18px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                      <div style="font-weight: 600; font-size: 0.88rem;">Chia Sẻ Sổ Cho Thành Viên (Tài Khoản Độc Lập)</div>
+                      <span id="dropbox-role-badge" class="badge" style="font-size: 0.7rem; padding: 2px 7px; background: rgba(0, 97, 255, 0.12); color: #0061ff; border-radius: 9999px;">Chủ Sổ</span>
+                    </div>
+                    <div style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
+                      Tạo liên kết chia sẻ để thành viên khác cùng đồng bộ vào sổ của bạn.
+                    </div>
+
+                    <!-- Dành cho Chủ Sổ -->
+                    <div id="dropbox-owner-share-box" style="margin-bottom: 10px;">
+                      <div style="display: flex; gap: 8px;">
+                        <input type="text" id="settings-dropbox-share-link" class="form-control" readonly placeholder="Bấm 'Lấy Link' để tạo link chia sẻ..." style="font-size: 0.8rem; background: var(--bg-surface);">
+                        <button type="button" id="btn-dropbox-generate-link" class="btn-secondary btn-sm" style="white-space: nowrap;">
+                          <i data-lucide="link" style="width: 14px; height: 14px;"></i>
+                          <span>Lấy Link</span>
+                        </button>
+                        <button type="button" id="btn-dropbox-copy-link" class="btn-primary btn-sm" style="background: #0061ff; border-color: #0061ff; white-space: nowrap;">
+                          <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                          <span>Chép</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Dành cho Thành viên (Chỉ xem) -->
+                    <div style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 10px;">
+                      <div style="font-size: 0.78rem; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary);">Nhập Link Sổ (Đồng bộ xem dữ liệu):</div>
+                      <div style="display: flex; gap: 8px;">
+                        <input type="text" id="settings-dropbox-join-link" class="form-control" placeholder="Dán link Dropbox của chủ sổ" style="font-size: 0.8rem;">
+                        <button type="button" id="btn-dropbox-join-vault" class="btn-secondary btn-sm" style="white-space: nowrap;">
+                          <i data-lucide="log-in" style="width: 14px; height: 14px;"></i>
+                          <span>Vào Sổ</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Đồng bộ Hai Chiều qua Shared Folder -->
+                    <div style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 10px;">
+                      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                        <div style="font-size: 0.78rem; font-weight: 600; color: #0061ff; display: flex; align-items: center; gap: 4px;">
+                          <i data-lucide="folder-symlink" style="width: 14px; height: 14px;"></i>
+                          <span>Đồng Bộ 2 Chiều (Cùng Ghi Chép & Sửa)</span>
+                        </div>
+                        <button type="button" id="btn-toggle-dropbox-folder-help" class="btn-text" style="font-size: 0.74rem; color: #0061ff; background: none; border: none; cursor: pointer;">Hướng dẫn</button>
+                      </div>
+                      <div style="display: flex; gap: 8px;">
+                        <input type="text" id="settings-dropbox-folder-path" class="form-control" placeholder="Ví dụ: /SoThuChi_Shared (để trống nếu mặc định)" style="font-size: 0.8rem;">
+                        <button type="button" id="btn-save-dropbox-folder" class="btn-secondary btn-sm" style="white-space: nowrap;">
+                          <i data-lucide="save" style="width: 14px; height: 14px;"></i>
+                          <span>Áp Dụng</span>
+                        </button>
+                      </div>
+                      <div id="dropbox-folder-help-box" style="display: none; margin-top: 8px; padding: 10px; background: rgba(0, 97, 255, 0.05); border: 1px solid rgba(0, 97, 255, 0.2); border-radius: var(--radius-sm); font-size: 0.76rem; line-height: 1.5; color: var(--text-secondary);">
+                        Tạo 1 thư mục trên <code>dropbox.com</code> (vd: <strong>SoThuChi_Shared</strong>) &rarr; Share cho người thân &rarr; Cả 2 cùng nhập tên thư mục đó vào ô trên và bấm Áp Dụng.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Tùy chỉnh Dropbox App Key -->
+                  <div class="form-group">
+                    <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="font-weight: 600;">Dropbox App Key (Client ID):</span>
+                      <button type="button" id="btn-toggle-dropbox-help" class="btn-text" style="font-size: 0.76rem; color: #0061ff; background: none; border: none; cursor: pointer;">Hướng dẫn lấy key</button>
+                    </label>
+                    <div style="display: flex; gap: 8px;">
+                      <input type="text" id="settings-dropbox-app-key" class="form-control" placeholder="Nhập Dropbox App Key tùy chỉnh (hoặc dùng mặc định)">
+                      <button id="btn-save-dropbox-key" class="btn-secondary btn-sm" style="white-space: nowrap;">Lưu</button>
+                    </div>
+                    <div id="dropbox-help-box" style="display: none; margin-top: 8px; padding: 10px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">
+                      Truy cập <code>dropbox.com/developers/apps</code> &rarr; Tạo Scoped App &rarr; Bật quyền read/write files &rarr; Thêm Redirect URI &rarr; Dán App key vào ô trên.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ==========================================
                  PANEL 1: GOOGLE DRIVE
                  ========================================== -->
             <div id="panel-google-drive" class="settings-detail-panel">
@@ -1359,7 +1485,10 @@
                     <div style="font-weight: 600; font-size: 0.9rem;">Tự Động Đồng Bộ Khi Có Thay Đổi</div>
                     <div style="font-size: 0.78rem; color: var(--text-muted);">Tự động tải lên Google Drive sau mỗi lần ghi chép</div>
                   </div>
-                  <input type="checkbox" id="settings-auto-sync" style="width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer;">
+                  <label class="switch">
+                    <input type="checkbox" id="settings-auto-sync" checked>
+                    <span class="slider round"></span>
+                  </label>
                 </div>
 
                 <div style="font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
@@ -1500,132 +1629,6 @@
             </div>
 
             <!-- ==========================================
-                 PANEL 2: DROPBOX
-                 ========================================== -->
-            <div id="panel-dropbox" class="settings-detail-panel">
-              <!-- Thiết lập cơ bản -->
-              <div class="settings-card-clean">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                  <span class="badge" style="font-size: 0.72rem; padding: 3px 8px; background: rgba(0, 97, 255, 0.15); color: #0061ff; border-radius: 9999px; font-weight: 600;">Chuẩn PKCE Client-side</span>
-                </div>
-                <p class="settings-lead-text">
-                  Dropbox hỗ trợ cấp <strong>Refresh Token vĩnh viễn trực tiếp trên iPhone</strong> mà không cần server hay Cloudflare Worker.
-                </p>
-
-                <!-- Banner Tài khoản Dropbox (khi đã kết nối) -->
-                <div id="dropbox-account-info" style="display: none; margin-bottom: 16px; padding: 12px 14px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-md); align-items: center; justify-content: space-between;">
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                    <img id="dropbox-user-avatar" src="./assets/icons/icon.svg" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">
-                    <div>
-                      <strong id="dropbox-user-name" style="font-size: 0.88rem; color: var(--text-primary); display: block;">Dropbox User</strong>
-                      <span id="dropbox-user-email" style="font-size: 0.76rem; color: var(--text-secondary);">user@gmail.com</span>
-                    </div>
-                  </div>
-                  <button id="btn-dropbox-disconnect" class="btn-text" style="font-size: 0.8rem; color: var(--danger); background: none; border: none; cursor: pointer;">Ngắt kết nối</button>
-                </div>
-
-                <!-- Nút Kết nối & Đồng bộ ngay -->
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                  <button id="btn-dropbox-connect" class="btn-primary" style="background: #0061ff; border-color: #0061ff; flex: 1; min-width: 160px;">
-                    <i data-lucide="box" style="width: 16px; height: 16px;"></i>
-                    <span>Kết Nối Dropbox</span>
-                  </button>
-                  <button id="btn-dropbox-sync-now" class="btn-secondary" style="flex: 1; min-width: 150px;">
-                    <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
-                    <span>Đồng Bộ Ngay</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Cài đặt nâng cao (ẩn trong mũi tên xuống) -->
-              <div class="settings-accordion">
-                <div class="settings-accordion-header" onclick="UISettings.toggleAccordion(this)">
-                  <div class="settings-accordion-title">
-                    <i data-lucide="sliders"></i>
-                    <span>Cài Đặt Nâng Cao & Chia Sẻ Dropbox</span>
-                  </div>
-                  <i data-lucide="chevron-down" class="settings-accordion-arrow"></i>
-                </div>
-
-                <div class="settings-accordion-content">
-                  <!-- Chia sẻ Sổ qua Dropbox -->
-                  <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 18px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                      <div style="font-weight: 600; font-size: 0.88rem;">Chia Sẻ Sổ Cho Thành Viên (Tài Khoản Độc Lập)</div>
-                      <span id="dropbox-role-badge" class="badge" style="font-size: 0.7rem; padding: 2px 7px; background: rgba(0, 97, 255, 0.12); color: #0061ff; border-radius: 9999px;">Chủ Sổ</span>
-                    </div>
-                    <div style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
-                      Tạo liên kết chia sẻ để thành viên khác cùng đồng bộ vào sổ của bạn.
-                    </div>
-
-                    <!-- Dành cho Chủ Sổ -->
-                    <div id="dropbox-owner-share-box" style="margin-bottom: 10px;">
-                      <div style="display: flex; gap: 8px;">
-                        <input type="text" id="settings-dropbox-share-link" class="form-control" readonly placeholder="Bấm 'Lấy Link' để tạo link chia sẻ..." style="font-size: 0.8rem; background: var(--bg-surface);">
-                        <button type="button" id="btn-dropbox-generate-link" class="btn-secondary btn-sm" style="white-space: nowrap;">
-                          <i data-lucide="link" style="width: 14px; height: 14px;"></i>
-                          <span>Lấy Link</span>
-                        </button>
-                        <button type="button" id="btn-dropbox-copy-link" class="btn-primary btn-sm" style="background: #0061ff; border-color: #0061ff; white-space: nowrap;">
-                          <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
-                          <span>Chép</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <!-- Dành cho Thành viên (Chỉ xem) -->
-                    <div style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 10px;">
-                      <div style="font-size: 0.78rem; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary);">Nhập Link Sổ (Đồng bộ xem dữ liệu):</div>
-                      <div style="display: flex; gap: 8px;">
-                        <input type="text" id="settings-dropbox-join-link" class="form-control" placeholder="Dán link Dropbox của chủ sổ" style="font-size: 0.8rem;">
-                        <button type="button" id="btn-dropbox-join-vault" class="btn-secondary btn-sm" style="white-space: nowrap;">
-                          <i data-lucide="log-in" style="width: 14px; height: 14px;"></i>
-                          <span>Vào Sổ</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <!-- Đồng bộ Hai Chiều qua Shared Folder -->
-                    <div style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 10px;">
-                      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                        <div style="font-size: 0.78rem; font-weight: 600; color: #0061ff; display: flex; align-items: center; gap: 4px;">
-                          <i data-lucide="folder-symlink" style="width: 14px; height: 14px;"></i>
-                          <span>Đồng Bộ 2 Chiều (Cùng Ghi Chép & Sửa)</span>
-                        </div>
-                        <button type="button" id="btn-toggle-dropbox-folder-help" class="btn-text" style="font-size: 0.74rem; color: #0061ff; background: none; border: none; cursor: pointer;">Hướng dẫn</button>
-                      </div>
-                      <div style="display: flex; gap: 8px;">
-                        <input type="text" id="settings-dropbox-folder-path" class="form-control" placeholder="Ví dụ: /SoThuChi_Shared (để trống nếu mặc định)" style="font-size: 0.8rem;">
-                        <button type="button" id="btn-save-dropbox-folder" class="btn-secondary btn-sm" style="white-space: nowrap;">
-                          <i data-lucide="save" style="width: 14px; height: 14px;"></i>
-                          <span>Áp Dụng</span>
-                        </button>
-                      </div>
-                      <div id="dropbox-folder-help-box" style="display: none; margin-top: 8px; padding: 10px; background: rgba(0, 97, 255, 0.05); border: 1px solid rgba(0, 97, 255, 0.2); border-radius: var(--radius-sm); font-size: 0.76rem; line-height: 1.5; color: var(--text-secondary);">
-                        Tạo 1 thư mục trên <code>dropbox.com</code> (vd: <strong>SoThuChi_Shared</strong>) &rarr; Share cho người thân &rarr; Cả 2 cùng nhập tên thư mục đó vào ô trên và bấm Áp Dụng.
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Tùy chỉnh Dropbox App Key -->
-                  <div class="form-group">
-                    <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
-                      <span style="font-weight: 600;">Dropbox App Key (Client ID):</span>
-                      <button type="button" id="btn-toggle-dropbox-help" class="btn-text" style="font-size: 0.76rem; color: #0061ff; background: none; border: none; cursor: pointer;">Hướng dẫn lấy key</button>
-                    </label>
-                    <div style="display: flex; gap: 8px;">
-                      <input type="text" id="settings-dropbox-app-key" class="form-control" placeholder="Nhập Dropbox App Key tùy chỉnh (hoặc dùng mặc định)">
-                      <button id="btn-save-dropbox-key" class="btn-secondary btn-sm" style="white-space: nowrap;">Lưu</button>
-                    </div>
-                    <div id="dropbox-help-box" style="display: none; margin-top: 8px; padding: 10px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">
-                      Truy cập <code>dropbox.com/developers/apps</code> &rarr; Tạo Scoped App &rarr; Bật quyền read/write files &rarr; Thêm Redirect URI &rarr; Dán App key vào ô trên.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- ==========================================
                  PANEL 3: MÁY CHỦ RIÊNG (DOCKER)
                  ========================================== -->
             <div id="panel-server" class="settings-detail-panel">
@@ -1685,8 +1688,8 @@
                     <div style="font-weight: 600; font-size: 0.88rem;">Tự Động Đồng Bộ Với Máy Chủ</div>
                     <div style="font-size: 0.76rem; color: var(--text-muted);">Gửi và nhận dữ liệu ngầm khi có phát sinh giao dịch</div>
                   </div>
-                  <label class="switch" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0;">
-                    <input type="checkbox" id="settings-server-auto-sync" checked style="opacity: 0; width: 0; height: 0; position: absolute;">
+                  <label class="switch">
+                    <input type="checkbox" id="settings-server-auto-sync" checked>
                     <span class="slider round"></span>
                   </label>
                 </div>

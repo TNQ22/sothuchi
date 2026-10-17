@@ -212,198 +212,103 @@ class ServerSyncService {
       throw new Error('Vui lòng nhập địa chỉ Máy Chủ Riêng trước khi đăng nhập.');
     }
 
-    // A. Nếu Google Drive hoặc Session đã có Access Token hợp lệ, gửi xác thực ngay lập tức không cần mở popup lại
+    let accessToken = null;
+    let idToken = null;
+
+    // 1. Tận dụng Google Drive Service đã được cấu hình sẵn để mở màn hình đăng nhập Google mượt mà trên iPhone
     const gDrive = window.googleDriveService;
-    let existingToken = (gDrive && gDrive.hasValidToken && gDrive.hasValidToken() && gDrive.accessToken)
-      ? gDrive.accessToken
-      : sessionStorage.getItem('sothuchi_google_access_token');
-
-    if (existingToken) {
+    if (gDrive && gDrive.clientId && typeof gDrive.requestToken === 'function') {
       try {
-        const authRes = await fetch(`${this.serverUrl}/api/auth/google`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ access_token: existingToken })
-        });
-        if (authRes.ok) {
-          const authData = await authRes.json();
-          this.token = authData.token;
-          this.userProfile = authData.user;
-          await db.settings.put({ key: 'syncServerToken', value: this.token });
-          await db.settings.put({ key: 'syncServerUserProfile', value: this.userProfile });
-          await this.fetchVaults();
-          window.dispatchEvent(new CustomEvent('server-auth-changed', {
-            detail: { user: this.userProfile, vaults: this.vaults, activeVaultId: this.activeVaultId }
-          }));
-          return { user: this.userProfile, vaults: this.vaults };
+        accessToken = await gDrive.requestToken({ prompt: 'select_account', interactive: true });
+      } catch (gErr) {
+        if (gErr.message && (gErr.message.includes('popup_closed') || gErr.message.includes('Đã đóng') || gErr.message.includes('hủy'))) {
+          throw new Error('popup_closed_by_user');
         }
-      } catch (reuseErr) {
-        console.warn('[ServerSync] Không tái sử dụng được token Google Drive hiện tại, chuyển sang đăng nhập mới:', reuseErr);
+        throw gErr;
       }
-    }
+    } else {
+      // 2. Nếu không có gDrive service, tự khởi tạo Google Identity Services
+      let clientId = this.serverGoogleClientId;
+      if (!clientId && window.EnvConfig) clientId = window.EnvConfig.get('GOOGLE_CLIENT_ID', '');
+      if (!clientId) {
+        const dbClientId = await db.settings.get('googleClientId');
+        if (dbClientId && dbClientId.value) clientId = dbClientId.value;
+      }
 
-    // B. Lấy Google Client ID (từ cache serverGoogleClientId, settings, hoặc EnvConfig)
-    let clientId = this.serverGoogleClientId || gDrive?.clientId;
-    if (!clientId) {
-      const dbClientId = await db.settings.get('googleClientId');
-      if (dbClientId && dbClientId.value) clientId = dbClientId.value;
-      else if (window.EnvConfig) clientId = window.EnvConfig.get('GOOGLE_CLIENT_ID', '');
-    }
+      if (!clientId) {
+        throw new Error('Chưa có Google Client ID. Vui lòng nhập Google Client ID trong phần Cài đặt.');
+      }
 
-    if (!clientId) {
-      try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 3500);
-        const cfgRes = await fetch(`${this.serverUrl}/api/auth/config`, { signal: ctrl.signal });
-        clearTimeout(t);
-        if (cfgRes.ok) {
-          const cfg = await cfgRes.json();
-          if (cfg.googleClientId) clientId = cfg.googleClientId;
-        }
-      } catch (e) {}
-    }
+      if (!window.google?.accounts?.oauth2) {
+        throw new Error('Thư viện Google Identity chưa tải xong. Vui lòng kiểm tra kết nối mạng và thử lại.');
+      }
 
-    if (!clientId) {
-      throw new Error('Chưa có Google Client ID. Vui lòng cấu hình GOOGLE_CLIENT_ID trên Docker máy chủ hoặc trong phần Cài đặt.');
-    }
-
-    // C. Sử dụng GIS token client với scope đầy đủ và xử lý liên tục
-    if (!window.google?.accounts) {
-      throw new Error('Thư viện Google Identity chưa tải xong. Vui lòng kiểm tra kết nối mạng và thử lại sau 3 giây.');
-    }
-
-    return new Promise((resolve, reject) => {
-      let settled = false;
-      const timeout = setTimeout(() => {
-        if (!settled) {
-          settled = true;
-          reject(new Error('Hết thời gian chờ đăng nhập Google'));
-        }
-      }, 60000);
-
-      const onAuthSuccess = async (authPayload) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-
-        try {
-          const authRes = await fetch(`${this.serverUrl}/api/auth/google`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(authPayload)
-          });
-
-          if (!authRes.ok) {
-            const errData = await authRes.json().catch(() => ({}));
-            throw new Error(errData.error || 'Đăng nhập vào máy chủ thất bại');
+      accessToken = await new Promise((resolve, reject) => {
+        let settled = false;
+        const timer = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            reject(new Error('Hết thời gian chờ đăng nhập Google'));
           }
+        }, 60000);
 
-          const authData = await authRes.json();
-          this.token = authData.token;
-          this.userProfile = authData.user;
-
-          await db.settings.put({ key: 'syncServerToken', value: this.token });
-          await db.settings.put({ key: 'syncServerUserProfile', value: this.userProfile });
-
-          await this.fetchVaults();
-
-          window.dispatchEvent(new CustomEvent('server-auth-changed', {
-            detail: { user: this.userProfile, vaults: this.vaults, activeVaultId: this.activeVaultId }
-          }));
-
-          resolve({ user: this.userProfile, vaults: this.vaults });
-        } catch (authErr) {
-          reject(authErr);
-        }
-      };
-
-      // 1. Khởi tạo Google One-Tap (google.accounts.id) hỗ trợ mobile / iOS PWA không bị chặn popup
-      if (window.google.accounts.id) {
-        try {
-          window.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: (cred) => {
-              if (cred && cred.credential) {
-                onAuthSuccess({ id_token: cred.credential });
-              }
-            }
-          });
-        } catch (initErr) {
-          console.warn('[ServerSync] Google id init error:', initErr);
-        }
-      }
-
-      // 2. Mở OAuth2 Token Client (có error_callback bắt sự kiện popup blocked)
-      if (window.google.accounts.oauth2 && window.google.accounts.oauth2.initTokenClient) {
         try {
           const tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: clientId,
             scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
-            callback: async (resp) => {
+            prompt: 'select_account',
+            callback: (resp) => {
               if (settled) return;
+              settled = true;
+              clearTimeout(timer);
               if (resp.error) {
-                settled = true;
-                clearTimeout(timeout);
                 if (resp.error === 'popup_closed_by_user') {
                   return reject(new Error('popup_closed_by_user'));
                 }
                 return reject(new Error(resp.error_description || resp.error));
               }
-              if (resp.access_token) {
-                await onAuthSuccess({ access_token: resp.access_token });
-              }
-            },
-            error_callback: (err) => {
-              console.warn('[ServerSync] OAuth error_callback:', err);
-              if (err.type === 'popup_failed_to_open') {
-                // Popup bị chặn bởi Safari iOS -> Thử kích hoạt One-Tap overlay ngay trên trang
-                if (window.google?.accounts?.id) {
-                  window.google.accounts.id.prompt((notification) => {
-                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                      if (!settled) {
-                        settled = true;
-                        clearTimeout(timeout);
-                        reject(new Error('popup_blocked'));
-                      }
-                    }
-                  });
-                } else {
-                  if (!settled) {
-                    settled = true;
-                    clearTimeout(timeout);
-                    reject(new Error('popup_blocked'));
-                  }
-                }
-              } else if (err.type === 'popup_closed') {
-                if (!settled) {
-                  settled = true;
-                  clearTimeout(timeout);
-                  reject(new Error('popup_closed_by_user'));
-                }
-              }
+              resolve(resp.access_token);
             }
           });
-
           tokenClient.requestAccessToken({ prompt: 'select_account' });
-          return;
-        } catch (oauthErr) {
-          console.warn('[ServerSync] initTokenClient failed:', oauthErr);
+        } catch (e) {
+          clearTimeout(timer);
+          reject(e);
         }
-      }
+      });
+    }
 
-      // Fallback hiển thị One Tap prompt trực tiếp nếu không thể gọi tokenClient
-      if (window.google.accounts.id) {
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed()) {
-            if (!settled) {
-              settled = true;
-              clearTimeout(timeout);
-              reject(new Error('popup_blocked'));
-            }
-          }
-        });
-      }
+    if (!accessToken && !idToken) {
+      throw new Error('Không nhận được token xác thực từ Google');
+    }
+
+    // 3. Gửi token xác thực lên Máy Chủ Riêng
+    const authRes = await fetch(`${this.serverUrl}/api/auth/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(accessToken ? { access_token: accessToken } : { id_token: idToken })
     });
+
+    if (!authRes.ok) {
+      const errData = await authRes.json().catch(() => ({}));
+      throw new Error(errData.error || `Máy chủ từ chối xác thực (HTTP ${authRes.status})`);
+    }
+
+    const authData = await authRes.json();
+    this.token = authData.token;
+    this.userProfile = authData.user;
+
+    await db.settings.put({ key: 'syncServerToken', value: this.token });
+    await db.settings.put({ key: 'syncServerUserProfile', value: this.userProfile });
+
+    // Tải danh sách Sổ
+    await this.fetchVaults();
+
+    window.dispatchEvent(new CustomEvent('server-auth-changed', {
+      detail: { user: this.userProfile, vaults: this.vaults, activeVaultId: this.activeVaultId }
+    }));
+
+    return { user: this.userProfile, vaults: this.vaults };
   }
 
   // Đăng xuất khỏi Máy chủ riêng
