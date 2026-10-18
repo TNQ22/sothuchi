@@ -1248,7 +1248,7 @@ async function handleApiRequest(req, res, pathname, url) {
     return sendJson(res, 200, {
       status: 'ok',
       service: 'So Thu Chi Sync Server',
-      version: '2.7.5',
+      version: '2.7.6',
       storage: dbManager.isSqlite ? 'sqlite' : 'json_store',
       googleAuth: true,
       googleClientId: GOOGLE_CLIENT_ID || null,

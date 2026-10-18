@@ -771,8 +771,6 @@ const UISettings = {
           const result = await sService.loginWithGoogle();
           showToast(`Đăng nhập máy chủ thành công! Xin chào ${result.user.name}`, 'success');
           if (window.app && window.app.refreshAll) await window.app.refreshAll();
-          // Tự động kéo dữ liệu về
-          await sService.sync({ interactive: true });
         } catch (err) {
           if (err.message && (err.message.includes('popup_closed') || err.message.includes('Đã đóng') || err.message.includes('hủy'))) {
             showToast('Đã hủy đăng nhập Google', 'info');
@@ -815,7 +813,6 @@ const UISettings = {
           const result = await sService.quickLogin(email);
           showToast(`Đăng nhập máy chủ thành công! Xin chào ${result.user.name}`, 'success');
           if (window.app && window.app.refreshAll) await window.app.refreshAll();
-          await sService.sync({ interactive: true }).catch(() => {});
         } catch (err) {
           showToast('Lỗi đăng nhập: ' + err.message, 'error');
         } finally {
@@ -826,10 +823,11 @@ const UISettings = {
 
 const serverLogoutBtn = document.getElementById('btn-server-logout');
     if (serverLogoutBtn) {
-      serverLogoutBtn.addEventListener('click', async () => {
-        if (confirm('Bạn có chắc muốn đăng xuất khỏi Máy Chủ Riêng?')) {
-          if (sService) await sService.logout();
-          showToast('Đã đăng xuất khỏi Máy Chủ Riêng', 'info');
+      serverLogoutBtn.addEventListener('click', () => {
+        if (window.ServerAuthModals) {
+          window.ServerAuthModals.openLogoutModal();
+        } else if (confirm('Bạn có chắc muốn đăng xuất khỏi Máy Chủ Riêng?')) {
+          if (sService) sService.logout().then(() => showToast('Đã đăng xuất khỏi Máy Chủ Riêng', 'info'));
         }
       });
     }

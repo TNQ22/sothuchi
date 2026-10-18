@@ -1485,3 +1485,36 @@ function triggerAutoSync() {
   }
 }
 window.triggerAutoSync = triggerAutoSync;
+
+// Xoá sạch toàn bộ dữ liệu người dùng trên máy để phục vụ đổi tài khoản hoặc khôi phục trạng thái mới
+async function wipeAndResetLocalDatabase() {
+  await db.transactions.clear();
+  await db.debts.clear();
+  await db.budgets.clear();
+  await db.recurring.clear();
+  if (db.savings) await db.savings.clear();
+  if (db.accumulations) await db.accumulations.clear();
+  if (db.assets) await db.assets.clear();
+  if (db.loans) await db.loans.clear();
+  if (db.loan_schedules) await db.loan_schedules.clear();
+
+  // Reset tài khoản về mặc định ban đầu
+  await db.accounts.clear();
+  const now = Date.now();
+  await db.accounts.bulkAdd(DEFAULT_ACCOUNTS.map((a, index) => ({
+    ...a,
+    order: a.order ?? index,
+    isDeleted: 0,
+    updatedAt: now
+  })));
+
+  // Xoá các mốc đồng bộ lưu trong settings
+  await db.settings.delete('syncServerLastSyncTime');
+  await db.settings.delete('lastSyncTime');
+  await db.settings.delete('syncServerActiveVaultId');
+
+  if (typeof recalculateAccountBalances === 'function') {
+    await recalculateAccountBalances();
+  }
+}
+window.wipeAndResetLocalDatabase = wipeAndResetLocalDatabase;

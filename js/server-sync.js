@@ -249,13 +249,11 @@ class ServerSyncService {
       detail: { user: this.userProfile, vaults: this.vaults, activeVaultId: this.activeVaultId }
     }));
 
-    // Tự động kéo dữ liệu từ máy chủ về ngay khi đăng nhập
+    // Kiểm tra xung đột dữ liệu và thực hiện chiến lược đồng bộ phù hợp
     if (this.activeVaultId) {
-      this.sync().then(async () => {
-        if (window.app && typeof window.app.refreshAll === 'function') {
-          await window.app.refreshAll();
-        }
-      }).catch(err => console.warn('[ServerSync] Sync after quickLogin:', err));
+      this.handlePostLoginSync(this.userProfile).catch(err => {
+        console.warn('[ServerSync] handlePostLoginSync after quickLogin:', err);
+      });
     }
 
     return data;
@@ -362,18 +360,18 @@ class ServerSyncService {
     }));
 
     if (this.activeVaultId) {
-      this.sync().then(async () => {
-        if (window.app && typeof window.app.refreshAll === 'function') {
-          await window.app.refreshAll();
-        }
-      }).catch(err => console.warn('[ServerSync] Sync after Google login:', err));
+      this.handlePostLoginSync(this.userProfile).catch(err => {
+        console.warn('[ServerSync] handlePostLoginSync after Google login:', err);
+      });
     }
 
     return { user: this.userProfile, vaults: this.vaults };
   }
 
   // Đăng xuất khỏi Máy chủ riêng
-  async logout() {
+  async logout(options = {}) {
+    const wipeLocal = options && options.wipeLocal === true;
+
     if (this.serverUrl && this.token) {
       try {
         await fetch(`${this.serverUrl}/api/auth/logout`, {
@@ -388,10 +386,16 @@ class ServerSyncService {
     this.vaults = [];
     this.shares = [];
     this.activeVaultId = null;
+    this.lastVaultVersion = null;
+    this.lastVaultUpdatedAt = null;
 
     await db.settings.delete('syncServerToken');
     await db.settings.delete('syncServerUserProfile');
     await db.settings.delete('syncServerActiveVaultId');
+
+    if (wipeLocal && typeof window.wipeAndResetLocalDatabase === 'function') {
+      await window.wipeAndResetLocalDatabase();
+    }
 
     window.dispatchEvent(new CustomEvent('server-auth-changed', { detail: null }));
   }
@@ -644,30 +648,101 @@ class ServerSyncService {
     return result;
   }
 
+  // Kiểm tra và xử lý đồng bộ khi người dùng vừa đăng nhập thành công
+  async handlePostLoginSync(userProfile) {
+    if (!this.activeVaultId || !this.serverUrl || !this.token) return;
+
+    // 1. Kiểm tra dữ liệu trên thiết bị cục bộ
+    const localTxCount = await db.transactions.count();
+    const localAccs = await db.accounts.toArray();
+    const hasCustomAccs = localAccs.some(a => (a.balance !== 0) || ((a.initialBalance || 0) !== 0) || a.id > 3);
+    const hasLocalData = localTxCount > 0 || hasCustomAccs;
+
+    // 2. Kéo thông tin dữ liệu từ Server Vault
+    let serverVaultData = {};
+    let serverTxCount = 0;
+    try {
+      const res = await fetch(`${this.serverUrl}/api/vaults/${this.activeVaultId}/data`, {
+        headers: { Authorization: `Bearer ${this.token}` }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        serverVaultData = json.data || {};
+        if (json.vault) {
+          this.lastVaultVersion = json.vault.version;
+          this.lastVaultUpdatedAt = json.vault.updated_at;
+        }
+        serverTxCount = (serverVaultData.transactions || []).filter(t => !t.isDeleted).length;
+      }
+    } catch (e) {
+      console.warn('[ServerSync] Lỗi kiểm tra dữ liệu vault khi đăng nhập:', e);
+    }
+
+    // 3. Nếu máy cục bộ HOÀN TOÀN TRỐNG (vừa cài mới hoặc vừa đăng xuất làm sạch dữ liệu):
+    if (!hasLocalData) {
+      console.log('[ServerSync] Thiết bị cục bộ chưa có dữ liệu, tự động kéo dữ liệu từ máy chủ...');
+      if (serverTxCount > 0 || (serverVaultData.accounts && serverVaultData.accounts.length > 0)) {
+        await this.replaceLocalWithSnapshotData(serverVaultData, false);
+      } else {
+        await this.sync();
+      }
+      if (window.app && typeof window.app.refreshAll === 'function') {
+        await window.app.refreshAll();
+      }
+      return;
+    }
+
+    // 4. Nếu máy cục bộ ĐANG CÓ DỮ LIỆU:
+    // Hiển thị Modal để người dùng chủ động lựa chọn (Tùy chọn mặc định để TRỐNG)
+    if (window.ServerAuthModals && typeof window.ServerAuthModals.promptLoginSyncStrategy === 'function') {
+      await window.ServerAuthModals.promptLoginSyncStrategy({
+        user: userProfile || this.userProfile,
+        serverVaultData,
+        localTxCount,
+        serverTxCount
+      });
+    } else {
+      // Fallback nếu modal chưa sẵn sàng
+      await this.sync();
+      if (window.app && typeof window.app.refreshAll === 'function') {
+        await window.app.refreshAll();
+      }
+    }
+  }
+
   // Thay thế toàn bộ dữ liệu dùng chung cục bộ bằng dữ liệu Snapshot
-  async replaceLocalWithSnapshotData(remoteData) {
+  async replaceLocalWithSnapshotData(remoteData, preservePrivate = true) {
     if (!remoteData) return;
 
-    // Giữ an toàn cho các tài khoản và giao dịch riêng tư cục bộ
-    const localAccs = await db.accounts.toArray();
-    const privateAccs = localAccs.filter(a => a.isShared !== 1 && a.isShared !== true);
-    const privateAccIds = new Set(privateAccs.map(a => Number(a.id)));
+    let newAccs = remoteData.accounts || [];
+    let newTxs = remoteData.transactions || [];
 
-    const localTxs = await db.transactions.toArray();
-    const privateTxs = localTxs.filter(t => {
-      const accId = Number(t.accountId);
-      const toAccId = t.toAccountId ? Number(t.toAccountId) : null;
-      return privateAccIds.has(accId) && (!toAccId || privateAccIds.has(toAccId));
-    });
+    if (preservePrivate) {
+      // Giữ an toàn cho các tài khoản và giao dịch riêng tư cục bộ
+      const localAccs = await db.accounts.toArray();
+      const privateAccs = localAccs.filter(a => a.isShared !== 1 && a.isShared !== true);
+      const privateAccIds = new Set(privateAccs.map(a => Number(a.id)));
 
-    const newAccs = [...privateAccs, ...(remoteData.accounts || [])];
-    const newTxs = [...privateTxs, ...(remoteData.transactions || [])];
+      const localTxs = await db.transactions.toArray();
+      const privateTxs = localTxs.filter(t => {
+        const accId = Number(t.accountId);
+        const toAccId = t.toAccountId ? Number(t.toAccountId) : null;
+        return privateAccIds.has(accId) && (!toAccId || privateAccIds.has(toAccId));
+      });
+
+      newAccs = [...privateAccs, ...newAccs];
+      newTxs = [...privateTxs, ...newTxs];
+    }
+
+    if (newAccs.length === 0 && typeof DEFAULT_ACCOUNTS !== 'undefined') {
+      newAccs = DEFAULT_ACCOUNTS.map((a, index) => ({ ...a, order: a.order ?? index, isDeleted: 0, updatedAt: 1 }));
+    }
 
     await db.accounts.clear();
-    await db.accounts.bulkAdd(newAccs);
+    if (newAccs.length > 0) await db.accounts.bulkAdd(newAccs);
 
     await db.transactions.clear();
-    await db.transactions.bulkAdd(newTxs);
+    if (newTxs.length > 0) await db.transactions.bulkAdd(newTxs);
 
     if (remoteData.categories) {
       await db.categories.clear();

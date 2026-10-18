@@ -11396,3 +11396,30 @@ html, body {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+
+/* Server Auth Modals (Logout & Login Sync Strategy) */
+.auth-action-card,
+.login-sync-opt-card {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  padding: 14px !important;
+  border: 1.5px solid var(--border-color, #e2e8f0) !important;
+  border-radius: var(--radius-md, 12px) !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  background: var(--bg-card, #ffffff) !important;
+}
+
+.auth-action-card:hover,
+.login-sync-opt-card:hover {
+  border-color: var(--primary, #0d9488) !important;
+  background: var(--bg-hover, rgba(13, 148, 136, 0.04)) !important;
+}
+
+.login-sync-opt-card.selected {
+  border-color: var(--primary, #0d9488) !important;
+  background: rgba(13, 148, 136, 0.07) !important;
+  box-shadow: 0 0 0 1px var(--primary, #0d9488) !important;
+}

@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.7.5">
+  <link rel="stylesheet" href="./css/style.css?v=2.7.6">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -6101,6 +6101,147 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
     </div>
   </div>
 
+
+  <!-- Modal: Xác Nhận Đăng Xuất Máy Chủ Riêng -->
+  <div id="modal-server-logout" class="modal-overlay">
+    <div class="modal-dialog" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="log-out" style="color: #ef4444; width: 20px; height: 20px;"></i>
+          Đăng Xuất Khỏi Máy Chủ
+        </h3>
+        <button type="button" class="btn-icon" onclick="ServerAuthModals.closeLogoutModal()">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 20px;">
+        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
+          Bạn đang đăng xuất tài khoản <strong id="logout-user-email" style="color: var(--text-primary);"></strong>. Vui lòng chọn cách xử lý dữ liệu hiện có trên thiết bị này:
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px;">
+          <!-- Option 1: Chuyển sang dùng độc lập -->
+          <label class="auth-action-card">
+            <input type="radio" name="logout-data-action" value="keep" style="margin-top: 4px; accent-color: var(--primary);" checked>
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: 0.92rem; color: var(--text-primary); margin-bottom: 3px; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="hard-drive" style="width: 16px; height: 16px; color: var(--primary);"></i> Chuyển sang dùng độc lập (Ngoại tuyến)
+              </div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                Giữ lại toàn bộ dữ liệu ghi chép và tài khoản trên máy này để tiếp tục sử dụng độc lập ngoại tuyến.
+              </div>
+            </div>
+          </label>
+
+          <!-- Option 2: Đổi tài khoản khác (Xoá sạch dữ liệu trên máy) -->
+          <label class="auth-action-card">
+            <input type="radio" name="logout-data-action" value="wipe" style="margin-top: 4px; accent-color: #ef4444;">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: 0.92rem; color: #ef4444; margin-bottom: 3px; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="trash-2" style="width: 16px; height: 16px; color: #ef4444;"></i> Đổi tài khoản khác (Xoá sạch dữ liệu trên máy)
+              </div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                Xoá sạch toàn bộ dữ liệu trên thiết bị này về trạng thái ban đầu để sẵn sàng đăng nhập tài khoản khác. Dữ liệu của bạn vẫn được lưu trữ an toàn trên máy chủ.
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <div id="logout-wipe-warning" style="display: none; background: rgba(239, 68, 68, 0.08); border: 1px dashed rgba(239, 68, 68, 0.4); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 0.8rem; color: #ef4444; line-height: 1.4;">
+          <i data-lucide="alert-triangle" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i>
+          Lưu ý: Sau khi xoá trên máy, bạn cần đăng nhập lại tài khoản cũ để tải lại dữ liệu nếu muốn sử dụng tiếp.
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 14px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn-secondary" onclick="ServerAuthModals.closeLogoutModal()">Huỷ</button>
+        <button type="button" id="btn-confirm-logout" class="btn-primary" onclick="ServerAuthModals.executeLogout()">
+          <i data-lucide="log-out" style="width: 15px; height: 15px;"></i> Xác Nhận Đăng Xuất
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Tùy Chọn Xử Lý Dữ Liệu Khi Đăng Nhập -->
+  <div id="modal-server-login-sync" class="modal-overlay">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="refresh-cw" style="color: var(--primary); width: 20px; height: 20px;"></i>
+          Tùy Chọn Dữ Liệu Khi Đăng Nhập
+        </h3>
+      </div>
+      <div class="modal-body" style="padding: 20px;">
+        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 16px; font-size: 0.85rem; line-height: 1.5;">
+          <div style="color: var(--text-secondary); margin-bottom: 4px;">
+            Tài khoản: <strong id="login-sync-user-email" style="color: var(--text-primary);">--</strong>
+          </div>
+          <div style="display: flex; gap: 16px; font-size: 0.8rem; color: var(--text-muted);">
+            <span>Dữ liệu trên máy: <strong id="login-sync-local-count" style="color: var(--text-primary);">0 ghi chép</strong></span>
+            <span>•</span>
+            <span>Dữ liệu máy chủ: <strong id="login-sync-server-count" style="color: var(--text-primary);">0 ghi chép</strong></span>
+          </div>
+        </div>
+
+        <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.45;">
+          Thiết bị này đang có dữ liệu cục bộ. Vui lòng chọn cách xử lý bên dưới <em>(bắt buộc chọn 1 phương án để tiếp tục)</em>:
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px;">
+          <!-- Option 1: Tải về & Ghi đè từ Máy Chủ (UNCHECKED BY DEFAULT) -->
+          <label class="login-sync-opt-card">
+            <input type="radio" name="login-sync-strategy" value="overwrite_from_server" style="margin-top: 4px; accent-color: var(--primary);">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 3px; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="cloud-download" style="width: 16px; height: 16px; color: #3b82f6;"></i>
+                Tải về & Ghi đè từ Máy Chủ (Khuyên dùng)
+              </div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+                Lấy toàn bộ dữ liệu từ tài khoản máy chủ mới, xoá sạch dữ liệu cũ trên máy này. Thích hợp khi chuyển sang tài khoản mới hoặc đổi thiết bị.
+              </div>
+            </div>
+          </label>
+
+          <!-- Option 2: Ghi đè dữ liệu lên Máy Chủ (UNCHECKED BY DEFAULT) -->
+          <label class="login-sync-opt-card">
+            <input type="radio" name="login-sync-strategy" value="overwrite_to_server" style="margin-top: 4px; accent-color: #f59e0b;">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 3px; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="cloud-upload" style="width: 16px; height: 16px; color: #f59e0b;"></i>
+                Đẩy lên & Ghi đè lên Máy Chủ
+              </div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+                Dùng toàn bộ dữ liệu đang có trên máy này để ghi đè lên sổ trên máy chủ. <span style="color: #ef4444;">(Dữ liệu cũ trên máy chủ sẽ bị thay thế)</span>.
+              </div>
+            </div>
+          </label>
+
+          <!-- Option 3: Gộp dữ liệu (Merge) (UNCHECKED BY DEFAULT) -->
+          <label class="login-sync-opt-card">
+            <input type="radio" name="login-sync-strategy" value="merge" style="margin-top: 4px; accent-color: var(--primary);">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 3px; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="git-merge" style="width: 16px; height: 16px; color: #10b981;"></i>
+                Gộp dữ liệu cả hai bên (Merge)
+              </div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+                Kết hợp dữ liệu hiện tại trên máy và dữ liệu trên máy chủ. Cả hai nguồn dữ liệu đều được giữ lại đầy đủ.
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <div id="login-sync-warning-box" style="display: none; border-radius: var(--radius-sm); padding: 10px 12px; font-size: 0.8rem; line-height: 1.4; border: 1px solid transparent;">
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 14px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn-secondary" onclick="ServerAuthModals.cancelLoginSync()">Huỷ Đăng Nhập</button>
+        <button type="button" id="btn-confirm-login-sync" class="btn-primary" disabled onclick="ServerAuthModals.executeLoginSync()">
+          <i data-lucide="check" style="width: 15px; height: 15px;"></i> Xác Nhận & Tiếp Tục
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div id="toast-container"></div>
 
@@ -6109,28 +6250,29 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./vendor/chart.umd.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=2.7.5"></script>
+  <script src="./js/config.js?v=2.7.6"></script>
   <script src="./js/crypto.js"></script>
-  <script src="./js/db.js?v=2.7.5"></script>
-  <script src="./js/google-drive.js?v=2.7.5"></script>
-  <script src="./js/dropbox.js?v=2.7.5"></script>
-  <script src="./js/server-sync.js?v=2.7.5"></script>
+  <script src="./js/db.js?v=2.7.6"></script>
+  <script src="./js/google-drive.js?v=2.7.6"></script>
+  <script src="./js/dropbox.js?v=2.7.6"></script>
+  <script src="./js/server-sync.js?v=2.7.6"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=2.7.5"></script>
-  <script src="./js/sync-coordinator.js?v=2.7.5"></script>
+  <script src="./js/backup.js?v=2.7.6"></script>
+  <script src="./js/sync-coordinator.js?v=2.7.6"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=2.7.5"></script>
-  <script src="./js/ui-transactions.js?v=2.7.5"></script>
-  <script src="./js/ui-debts.js?v=2.7.5"></script>
-  <script src="./js/ui-accounts.js?v=2.7.5"></script>
-  <script src="./js/ui-share.js?v=2.7.5"></script>
-  <script src="./js/ui-budgets.js?v=2.7.5"></script>
-  <script src="./js/ui-analytics.js?v=2.7.5"></script>
-  <script src="./js/ui-settings.js?v=2.7.5"></script>
+  <script src="./js/ui-calendar.js?v=2.7.6"></script>
+  <script src="./js/ui-transactions.js?v=2.7.6"></script>
+  <script src="./js/ui-debts.js?v=2.7.6"></script>
+  <script src="./js/ui-accounts.js?v=2.7.6"></script>
+  <script src="./js/ui-share.js?v=2.7.6"></script>
+  <script src="./js/ui-budgets.js?v=2.7.6"></script>
+  <script src="./js/ui-analytics.js?v=2.7.6"></script>
+  <script src="./js/ui-settings.js?v=2.7.6"></script>
+  <script src="./js/server-auth-modals.js?v=2.7.6"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/pull-to-refresh.js?v=2.7.5"></script>
-  <script src="./js/app.js?v=2.7.5"></script>
+  <script src="./js/pull-to-refresh.js?v=2.7.6"></script>
+  <script src="./js/app.js?v=2.7.6"></script>
 </body>
 </html>
