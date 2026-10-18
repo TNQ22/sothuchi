@@ -514,15 +514,21 @@ const UISettings = {
         serverPassInput.value = sService.encryptionPassword || '';
       }
     }
+    const disableEncBtn = document.getElementById('btn-disable-server-encryption');
+    const saveEncBtn = document.getElementById('btn-save-server-vault-password');
     if (encBadge) {
       if (sService.encryptionPassword) {
         encBadge.textContent = 'Đã bật E2EE';
         encBadge.style.background = 'rgba(16, 185, 129, 0.15)';
         encBadge.style.color = '#10b981';
+        if (disableEncBtn) disableEncBtn.style.display = 'inline-block';
+        if (saveEncBtn) saveEncBtn.textContent = 'Đổi mật khẩu';
       } else {
         encBadge.textContent = 'Chưa mã hóa';
         encBadge.style.background = 'rgba(100, 116, 139, 0.12)';
         encBadge.style.color = 'var(--text-muted)';
+        if (disableEncBtn) disableEncBtn.style.display = 'none';
+        if (saveEncBtn) saveEncBtn.textContent = 'Lưu';
       }
     }
 
@@ -765,25 +771,82 @@ const UISettings = {
       });
     }
 
-    // Lưu Mật khẩu Mã Hóa Sổ Máy Chủ (E2EE)
+    // Hàm tắt mã hóa E2EE
+    const handleDisableEncryption = async () => {
+      if (!confirm('Bạn có chắc chắn muốn TẮT MÃ HÓA ĐẦU CUỐI (E2EE)?\n\nDữ liệu trên máy của bạn sẽ được lưu dưới dạng thông thường (plain JSON) lên máy chủ.')) {
+        return;
+      }
+
+      try {
+        showToast('Đang tắt mã hóa và lưu dữ liệu thông thường lên máy chủ...', 'info');
+        await sService.disableEncryption();
+        showToast('Đã tắt mã hóa E2EE thành công! Sổ đã trở về dạng lưu trữ thông thường.', 'success');
+        this.renderServerSyncUI();
+      } catch (err) {
+        showToast('Lỗi tắt mã hóa: ' + err.message, 'error');
+      }
+    };
+
+    // Lưu / Đổi Mật khẩu Mã Hóa Sổ Máy Chủ (E2EE)
     const saveServerPassBtn = document.getElementById('btn-save-server-vault-password');
     if (saveServerPassBtn) {
       saveServerPassBtn.addEventListener('click', async () => {
         const input = document.getElementById('settings-server-vault-password');
-        const val = (input ? input.value : '').trim();
-        if (sService) {
-          sService.setEncryptionPassword(val);
-          this.renderServerSyncUI();
+        const newPass = (input ? input.value : '').trim();
+        const curPass = sService ? sService.encryptionPassword : null;
+
+        if (!sService) return;
+
+        // Nếu người dùng để trống -> chuyển sang quy trình tắt mã hóa
+        if (!newPass) {
+          if (curPass) {
+            handleDisableEncryption();
+          } else {
+            showToast('Vui lòng nhập mật khẩu muốn cài đặt.', 'warning');
+          }
+          return;
         }
-        showToast(val ? 'Đã lưu Mật khẩu Mã hóa Sổ Máy Chủ (E2EE) thành công!' : 'Đã tắt mật khẩu mã hóa sổ máy chủ', 'success');
-        if (val && sService && sService.isConnected && sService.activeVaultId) {
-          showToast('Đang mã hóa và đồng bộ lên máy chủ...', 'info');
-          sService.sync().catch(err => {
-            console.warn('[ServerSync] Sync after setting pass:', err.message);
-            showToast('Lỗi đồng bộ: ' + err.message, 'error');
-          });
+
+        // Trường hợp 1: Đã có mật khẩu trước đó và người dùng nhập mật khẩu khác -> Đổi mật khẩu
+        if (curPass && curPass !== newPass) {
+          if (!confirm('Bạn có chắc chắn muốn đổi sang mật khẩu mã hóa mới?\n\nDữ liệu trên máy của bạn sẽ được mã hóa với mật khẩu mới và ghi đè đồng bộ lên máy chủ.')) {
+            return;
+          }
+          try {
+            showToast('Đang mã hóa lại toàn bộ sổ với mật khẩu mới...', 'info');
+            await sService.changeEncryptionPassword(newPass);
+            showToast('Đổi mật khẩu mã hóa E2EE thành công! Hãy cập nhật mật khẩu mới trên các thiết bị khác.', 'success');
+            this.renderServerSyncUI();
+          } catch (err) {
+            showToast('Lỗi: ' + err.message, 'error');
+          }
+          return;
         }
+
+        // Trường hợp 2: Bật mã hóa lần đầu (chưa có mật khẩu trước đó)
+        if (!curPass) {
+          try {
+            showToast('Đang kích hoạt mã hóa E2EE và đồng bộ lên máy chủ...', 'info');
+            sService.setEncryptionPassword(newPass);
+            if (sService.isConnected && sService.activeVaultId) {
+              await sService.overwriteVaultWithLocal(newPass);
+            }
+            showToast('Đã kích hoạt Mã hóa Đầu cuối (E2EE) thành công!', 'success');
+            this.renderServerSyncUI();
+          } catch (err) {
+            showToast('Lỗi kích hoạt mã hóa: ' + err.message, 'error');
+          }
+          return;
+        }
+
+        // Trường hợp 3: Nhập lại đúng mật khẩu cũ
+        showToast('Mật khẩu mã hóa không có thay đổi.', 'info');
       });
+    }
+
+    const disableServerPassBtn = document.getElementById('btn-disable-server-encryption');
+    if (disableServerPassBtn) {
+      disableServerPassBtn.addEventListener('click', handleDisableEncryption);
     }
 
     // Toggle Ẩn / Hiện mật khẩu mã hóa máy chủ

@@ -898,9 +898,10 @@ class ServerSyncService {
       settings: localSettings
     };
 
+    const passToUse = customPassword !== undefined ? customPassword : this.encryptionPassword;
     let dataToSend = payload;
-    if (this.encryptionPassword && window.CryptoService) {
-      const encryptedPayload = await window.CryptoService.encrypt(JSON.stringify(payload), this.encryptionPassword);
+    if (passToUse && window.CryptoService) {
+      const encryptedPayload = await window.CryptoService.encrypt(JSON.stringify(payload), passToUse);
       dataToSend = {
         encrypted: true,
         payload: encryptedPayload,
@@ -937,6 +938,39 @@ class ServerSyncService {
     }));
 
     return pushResult;
+  }
+
+  // Đổi Mật Khẩu Mã Hóa Sổ (Re-encrypt vault with new password)
+  async changeEncryptionPassword(...args) {
+    if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
+    if (!this.activeVaultId) throw new Error('Chưa chọn sổ trên máy chủ.');
+    const newPassword = (args.length >= 2 ? args[1] : args[0]) || '';
+    if (!newPassword.trim()) {
+      throw new Error('Mật khẩu mới không được để trống.');
+    }
+    const cleanNewPass = newPassword.trim();
+
+    // Dữ liệu đã có sẵn trên máy khách. Ghi đè toàn bộ dữ liệu trên máy chủ bằng Mật khẩu mới
+    await this.overwriteVaultWithLocal(cleanNewPass);
+
+    // Cập nhật mật khẩu trong máy khách
+    this.setEncryptionPassword(cleanNewPass);
+
+    return { success: true };
+  }
+
+  // Vô hiệu hóa mã hóa E2EE (Chuyển về dạng lưu trữ thông thường trên máy chủ)
+  async disableEncryption() {
+    if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
+    if (!this.activeVaultId) throw new Error('Chưa chọn sổ trên máy chủ.');
+
+    // Dữ liệu thô đã có sẵn trên máy khách, ghi đè trực tiếp dạng Plain JSON (customPassword = null)
+    await this.overwriteVaultWithLocal(null);
+
+    // Xóa mật khẩu trên máy khách
+    this.setEncryptionPassword(null);
+
+    return { success: true };
   }
 
   // Thiết lập mật khẩu mã hóa sổ máy chủ (Zero-Knowledge E2EE)
