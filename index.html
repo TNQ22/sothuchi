@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.7.3">
+  <link rel="stylesheet" href="./css/style.css?v=2.7.4">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -4713,17 +4713,6 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           <span id="action-sheet-budget-badge" class="action-sheet-budget-badge active">Bật</span>
         </button>
 
-<button type="button" class="action-sheet-item" id="action-sheet-archive-btn" onclick="UIAccounts.handleActionSheetSelect('toggle-archive')">
-          <div class="action-sheet-item-icon" style="background: rgba(148, 163, 184, 0.12); color: var(--text-muted);">
-            <i data-lucide="power" id="action-sheet-archive-icon" style="width: 18px; height: 18px;"></i>
-          </div>
-          <div class="action-sheet-item-text">
-            <span class="action-sheet-item-title" id="action-sheet-archive-title">Ngừng sử dụng</span>
-            <span class="action-sheet-item-desc" id="action-sheet-archive-desc">Tạm ngưng tài khoản, ẩn khỏi danh sách ghi chép</span>
-          </div>
-          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
-        </button>
-
         <!-- Nút Chia sẻ Độc lập (Chủ sở hữu) -->
         <button type="button" class="action-sheet-item" id="action-sheet-universal-share-btn" onclick="UIAccounts.closeActionSheet(); UniversalShareModal.open('account', UIAccounts.currentActionAccountId)">
           <div class="action-sheet-item-icon" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
@@ -4732,6 +4721,17 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           <div class="action-sheet-item-text">
             <span class="action-sheet-item-title">Chia sẻ & Phân quyền</span>
             <span class="action-sheet-item-desc">Chia sẻ ví độc lập qua Email Google hoặc Liên kết</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
+        <button type="button" class="action-sheet-item" id="action-sheet-archive-btn" onclick="UIAccounts.handleActionSheetSelect('toggle-archive')">
+          <div class="action-sheet-item-icon" style="background: rgba(148, 163, 184, 0.12); color: var(--text-muted);">
+            <i data-lucide="power" id="action-sheet-archive-icon" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title" id="action-sheet-archive-title">Ngừng sử dụng</span>
+            <span class="action-sheet-item-desc" id="action-sheet-archive-desc">Tạm ngưng tài khoản, ẩn khỏi danh sách ghi chép</span>
           </div>
           <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
         </button>
@@ -6109,27 +6109,27 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./vendor/chart.umd.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=2.7.3"></script>
+  <script src="./js/config.js?v=2.7.4"></script>
   <script src="./js/crypto.js"></script>
-  <script src="./js/db.js?v=2.7.3"></script>
-  <script src="./js/google-drive.js?v=2.7.3"></script>
-  <script src="./js/dropbox.js?v=2.7.3"></script>
-  <script src="./js/server-sync.js?v=2.7.3"></script>
+  <script src="./js/db.js?v=2.7.4"></script>
+  <script src="./js/google-drive.js?v=2.7.4"></script>
+  <script src="./js/dropbox.js?v=2.7.4"></script>
+  <script src="./js/server-sync.js?v=2.7.4"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=2.7.3"></script>
-  <script src="./js/sync-coordinator.js?v=2.7.3"></script>
+  <script src="./js/backup.js?v=2.7.4"></script>
+  <script src="./js/sync-coordinator.js?v=2.7.4"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=2.7.3"></script>
-  <script src="./js/ui-transactions.js?v=2.7.3"></script>
-  <script src="./js/ui-debts.js?v=2.7.3"></script>
-  <script src="./js/ui-accounts.js?v=2.7.3"></script>
-  <script src="./js/ui-share.js?v=2.7.3"></script>
-  <script src="./js/ui-budgets.js?v=2.7.3"></script>
-  <script src="./js/ui-analytics.js?v=2.7.3"></script>
-  <script src="./js/ui-settings.js?v=2.7.3"></script>
+  <script src="./js/ui-calendar.js?v=2.7.4"></script>
+  <script src="./js/ui-transactions.js?v=2.7.4"></script>
+  <script src="./js/ui-debts.js?v=2.7.4"></script>
+  <script src="./js/ui-accounts.js?v=2.7.4"></script>
+  <script src="./js/ui-share.js?v=2.7.4"></script>
+  <script src="./js/ui-budgets.js?v=2.7.4"></script>
+  <script src="./js/ui-analytics.js?v=2.7.4"></script>
+  <script src="./js/ui-settings.js?v=2.7.4"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/app.js?v=2.7.3"></script>
+  <script src="./js/app.js?v=2.7.4"></script>
 </body>
 </html>
