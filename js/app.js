@@ -1298,13 +1298,16 @@ class App {
     window.addEventListener('sync-success', async (e) => {
       if (dot) dot.className = 'status-dot';
       if (text) text.textContent = 'Đã đồng bộ Drive';
-      if (window.UIBudgets && typeof window.UIBudgets.init === 'function') {
-        await window.UIBudgets.init();
+      const dataChanged = e.detail?.dataChanged !== false;
+      if (dataChanged) {
+        if (window.UIBudgets && typeof window.UIBudgets.init === 'function') {
+          await window.UIBudgets.init();
+        }
+        if (typeof window.recalculateAccountBalances === 'function') {
+          await window.recalculateAccountBalances();
+        }
+        await this.refreshAll();
       }
-      if (typeof window.recalculateAccountBalances === 'function') {
-        await window.recalculateAccountBalances();
-      }
-      await this.refreshAll();
     });
 
     window.addEventListener('sync-error', (e) => {

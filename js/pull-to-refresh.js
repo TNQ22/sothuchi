@@ -18,6 +18,7 @@ class PullToRefresh {
     this.isRefreshing = false;
     this.canPull = false;
     this._hasVibrated = false;
+    this.activeScrollContainer = null;
 
     this.PULL_THRESHOLD = 65; // Khoảng cách kéo tối thiểu để kích hoạt làm mới (px)
     this.MAX_PULL = 115;      // Giới hạn kéo tối đa (px)
@@ -74,6 +75,10 @@ class PullToRefresh {
     window.addEventListener('touchcancel', () => this.resetPullState(), { passive: true });
   }
 
+  getActivePageElement() {
+    return document.querySelector('.page-view.active') || document.getElementById('main-content');
+  }
+
   isAtTop(target) {
     if (window.scrollY > 2 || document.documentElement.scrollTop > 2 || document.body.scrollTop > 2) {
       return false;
@@ -112,6 +117,7 @@ class PullToRefresh {
     this.currentY = this.startY;
     this.pullDistance = 0;
     this.isPulling = false;
+    this.activeScrollContainer = this.getActivePageElement();
   }
 
   onTouchMove(e) {
@@ -140,10 +146,16 @@ class PullToRefresh {
   updatePullProgress(distance) {
     if (!this.container) return;
     this.container.classList.add('visible');
-    this.container.classList.remove('refreshing', 'success');
+    this.container.classList.remove('refreshing', 'success', 'animate-reset');
 
     this.container.style.transform = `translate(-50%, ${distance}px)`;
 
+
+    const pageEl = this.activeScrollContainer || this.getActivePageElement();
+    if (pageEl) {
+      pageEl.style.transition = 'none';
+      pageEl.style.transform = `translateY(${Math.round(distance * 0.5)}px)`;
+    }
     const progress = Math.min(1, distance / this.PULL_THRESHOLD);
     const rotation = progress * 180;
     if (this.arrowIcon) {
@@ -184,6 +196,12 @@ class PullToRefresh {
     this.container.style.transform = `translate(-50%, ${this.PULL_THRESHOLD}px)`;
     if (this.textLabel) this.textLabel.textContent = 'Đang đồng bộ từ máy chủ...';
 
+    const pageEl = this.activeScrollContainer || this.getActivePageElement();
+    if (pageEl) {
+      pageEl.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
+      pageEl.style.transform = `translateY(${Math.round(this.PULL_THRESHOLD * 0.45)}px)`;
+    }
+
     try {
       if (window.syncCoordinator) {
         await window.syncCoordinator.syncAll(false);
@@ -216,12 +234,29 @@ class PullToRefresh {
     this.pullDistance = 0;
     this._hasVibrated = false;
 
+    const pageEl = this.activeScrollContainer || this.getActivePageElement();
+    if (pageEl) {
+      pageEl.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1)';
+      pageEl.style.transform = '';
+      setTimeout(() => {
+        if (pageEl && !this.isPulling) {
+          pageEl.style.transition = '';
+        }
+      }, 350);
+    }
+
     if (this.container) {
+      this.container.classList.add('animate-reset');
       this.container.style.transform = '';
       this.container.classList.remove('visible', 'ready', 'refreshing', 'success');
       if (this.arrowIcon) this.arrowIcon.style.transform = '';
       if (this.textLabel) this.textLabel.textContent = 'Kéo xuống để làm mới';
+      setTimeout(() => {
+        if (this.container) this.container.classList.remove('animate-reset');
+      }, 300);
     }
+
+    this.activeScrollContainer = null;
   }
 }
 

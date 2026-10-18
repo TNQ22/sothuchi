@@ -606,8 +606,11 @@ class DatabaseManager {
   saveVaultData(vaultId, dataObj, updatedBy) {
     const now = new Date().toISOString();
     const current = this.getVaultData(vaultId);
-    const nextVersion = (current?.version || 0) + 1;
     const jsonStr = JSON.stringify(dataObj);
+    if (current && JSON.stringify(current.data) === jsonStr) {
+      return { vault_id: vaultId, version: current.version, updated_at: current.updated_at, updated_by: current.updated_by, data: current.data, unchanged: true };
+    }
+    const nextVersion = (current?.version || 0) + 1;
 
     if (this.isSqlite) {
       this.sqliteDb.prepare(`

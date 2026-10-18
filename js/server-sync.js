@@ -120,6 +120,12 @@ class ServerSyncService {
         this.lastSyncTime = savedTime.value;
       }
 
+      // 7. Đọc Last Vault Version
+      const savedVersion = await db.settings.get('syncServerLastVaultVersion');
+      if (savedVersion && savedVersion.value !== undefined) {
+        this.lastVaultVersion = savedVersion.value;
+      }
+
       // Kiểm tra kết nối và cập nhật phiên làm việc nếu có serverUrl
       if (this.serverUrl) {
         this.checkConnection().then(async (isOk) => {
@@ -997,13 +1003,17 @@ class ServerSyncService {
         }
 
         const pushResult = await pushRes.json();
-        if (pushResult.vault) {
-          this.lastVaultVersion = pushResult.vault.version;
-          this.lastVaultUpdatedAt = pushResult.vault.updated_at;
+        const newVersion = pushResult.version !== undefined ? pushResult.version : pushResult.vault?.version;
+        const newUpdatedAt = pushResult.updated_at !== undefined ? pushResult.updated_at : pushResult.vault?.updated_at;
+        if (newVersion !== undefined) {
+          this.lastVaultVersion = newVersion;
+          this.lastVaultUpdatedAt = newUpdatedAt;
+          await db.settings.put({ key: 'syncServerLastVaultVersion', value: this.lastVaultVersion });
         }
         // Cập nhật lại IndexedDB với kết quả đã gộp từ server
+        let localDataHasChanged = false;
         if (pushResult.data) {
-          await this.mergeServerDataIntoLocal(pushResult.data);
+          localDataHasChanged = await this.mergeServerDataIntoLocal(pushResult.data);
         }
 
         // Tự động đồng bộ các mục được người khác chia sẻ (Received Shared Items)
@@ -1024,7 +1034,7 @@ class ServerSyncService {
       await db.settings.put({ key: 'lastSyncTime', value: this.lastSyncTime });
 
       window.dispatchEvent(new CustomEvent('sync-success', {
-        detail: { time: this.lastSyncTime, target: targetLabel }
+        detail: { time: this.lastSyncTime, target: targetLabel, dataChanged: localDataHasChanged }
       }));
 
       return { success: true, time: this.lastSyncTime };
@@ -1080,12 +1090,10 @@ class ServerSyncService {
         if (this.lastVaultVersion !== null && data.version > this.lastVaultVersion) {
           console.log(`[ServerSync] Phát hiện dữ liệu mới trên máy chủ (v${data.version} > v${this.lastVaultVersion}), tự động cập nhật...`);
           await this.sync();
-          if (window.app && typeof window.app.refreshAll === 'function') {
-            await window.app.refreshAll();
-          }
         } else if (this.lastVaultVersion === null) {
           this.lastVaultVersion = data.version;
           this.lastVaultUpdatedAt = data.updated_at;
+          await db.settings.put({ key: 'syncServerLastVaultVersion', value: this.lastVaultVersion });
         }
       }
     } catch (e) {
@@ -1095,7 +1103,8 @@ class ServerSyncService {
 
   // Thuật toán gộp dữ liệu từ Server vào Dexie IndexedDB (Chống ghi đè & Tự động xử lý xung đột ID)
   async mergeServerDataIntoLocal(remoteData) {
-    if (!remoteData) return;
+    if (!remoteData) return false;
+    let anyDataChanged = false;
 
     const mergeTable = async (table, localItems, remoteItems, isAccountTable = false, tableName = '') => {
       if (!table || !Array.isArray(remoteItems)) return;
@@ -1195,8 +1204,13 @@ class ServerSyncService {
       }
 
       const mergedList = Array.from(itemMap.values());
-      await table.clear();
-      await table.bulkAdd(mergedList);
+      const beforeStr = JSON.stringify(localItems);
+      const afterStr = JSON.stringify(mergedList);
+      if (beforeStr !== afterStr) {
+        anyDataChanged = true;
+        await table.clear();
+        await table.bulkAdd(mergedList);
+      }
     };
 
     // Lưu lại các item được người khác chia sẻ để không bị ghi đè bởi vault cá nhân
@@ -1230,10 +1244,14 @@ class ServerSyncService {
         const rTime = new Date(rSetting.updatedAt || 0).getTime() || 0;
         const lTime = new Date(lSetting?.updatedAt || 0).getTime() || 0;
         if (!lSetting || rTime >= lTime) {
-          await db.settings.put(rSetting);
+          if (JSON.stringify(lSetting) !== JSON.stringify(rSetting)) {
+            anyDataChanged = true;
+            await db.settings.put(rSetting);
+          }
         }
       }
     }
+    return anyDataChanged;
   }
 
   // ===========================================================================
