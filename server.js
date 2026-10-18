@@ -73,6 +73,11 @@ try {
   console.error('================================================================');
 }
 
+// Ham tien ich tao ID ngau nhien duy nhat
+function generateId(prefix = 'id_') {
+  return (prefix || 'id_') + crypto.randomBytes(8).toString('hex');
+}
+
 // ==============================================================================
 // 1. DATABASE & STORAGE LAYER (SQLite with node:sqlite or JSON Store Fallback)
 // ==============================================================================
@@ -86,7 +91,9 @@ class DatabaseManager {
       vaults: {},
       vault_shares: {},
       vault_data: {},
-      vault_history: []
+      vault_history: [],
+      item_shares: [],
+      item_share_links: []
     };
     this.jsonFilePath = path.join(DATA_DIR, 'sothuchi_store.json');
     this.initDatabase();
@@ -206,8 +213,8 @@ class DatabaseManager {
       try {
         const content = fs.readFileSync(this.jsonFilePath, 'utf8');
         this.jsonStore = JSON.parse(content);
-        this.jsonStore.item_shares = this.jsonStore.item_shares || {};
-        this.jsonStore.item_share_links = this.jsonStore.item_share_links || {};
+        this.jsonStore.item_shares = Array.isArray(this.jsonStore.item_shares) ? this.jsonStore.item_shares : [];
+        this.jsonStore.item_share_links = Array.isArray(this.jsonStore.item_share_links) ? this.jsonStore.item_share_links : [];
       } catch (e) {
         console.warn('[Storage] Không thể đọc JSON store, khởi tạo mới:', e.message);
       }
@@ -736,7 +743,7 @@ class DatabaseManager {
   }
 
   addItemShare(vaultId, itemType, itemId, itemName, email, role, createdBy) {
-    const id = generateId();
+    const id = generateId('ishr_');
     const now = new Date().toISOString();
     const cleanEmail = email.trim().toLowerCase();
 
@@ -790,7 +797,7 @@ class DatabaseManager {
   }
 
   createItemShareLink(vaultId, itemType, itemId, itemName, role, createdBy) {
-    const id = generateId();
+    const id = generateId('ilnk_');
     const token = crypto.randomBytes(16).toString('hex');
     const now = new Date().toISOString();
 
@@ -1187,7 +1194,7 @@ async function handleApiRequest(req, res, pathname, url) {
     return sendJson(res, 200, {
       status: 'ok',
       service: 'So Thu Chi Sync Server',
-      version: '2.5.0',
+      version: '2.7.4',
       storage: dbManager.isSqlite ? 'sqlite' : 'json_store',
       googleAuth: true,
       googleClientId: GOOGLE_CLIENT_ID || null,
