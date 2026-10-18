@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thiết Kế Logo Sổ Thu Chi - Bảng Chọn Mẫu</title>
+  <style>
+    :root {
+      --primary: #0d9488;
+      --primary-light: #2dd4bf;
+      --bg: #090e17;
+      --card-bg: #111827;
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 32px 20px 80px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    header h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #2dd4bf, #0d9488);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    header p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .badge-bar {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      background: rgba(13, 148, 136, 0.15);
+      border: 1px solid rgba(45, 212, 191, 0.3);
+      color: #2dd4bf;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    /* Grid of Concepts */
+    .concepts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+      gap: 28px;
+      margin-bottom: 48px;
+    }
+    @media (max-width: 600px) {
+      .concepts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .concept-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .concept-card:hover {
+      border-color: rgba(45, 212, 191, 0.4);
+      transform: translateY(-2px);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 14px;
+    }
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .concept-tag {
+      background: #0d9488;
+      color: #ffffff;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    /* Preview visual rows */
+    .preview-showcase {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .preview-box {
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      text-align: center;
+    }
+    .preview-box.mobile-mode {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+    .preview-box.inapp-dark {
+      background: #0a0f1d;
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+    }
+    .preview-box.inapp-light {
+      background: #f8fafc;
+      color: #0f172a;
+      border: 1px dashed rgba(0, 0, 0, 0.15);
+    }
+    .preview-box-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.8;
+    }
+    .icon-display-large {
+      width: 110px;
+      height: 110px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-display-large img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 8px 16px rgba(0,0,0,0.15));
+    }
+    .inapp-preview-img {
+      filter: none !important;
+    }
+
+    /* In-app Context Preview (Header & Sidebar) */
+    .context-previews {
+      background: rgba(0,0,0,0.25);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .context-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .mock-header {
+      background: #0a0f1d;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .mock-header.light {
+      background: #ffffff;
+      border-color: #e2e8f0;
+    }
+    .mock-header .logo-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .mock-header .logo-btn img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+    }
+    .mock-header .mock-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+    .mock-header.light .mock-title {
+      color: #0f172a;
+    }
+    .mock-header .status-dot {
+      width: 8px;
+      height: 8px;
+      background: #10b981;
+      border-radius: 50%;
+      margin-left: auto;
+      box-shadow: 0 0 8px #10b981;
+    }
+
+    /* Concept description text */
+    .concept-desc {
+      font-size: 0.88rem;
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+    .concept-desc strong {
+      color: #2dd4bf;
+    }
+
+    /* Selection Callout */
+    .selection-banner {
+      background: linear-gradient(135deg, rgba(13, 148, 136, 0.2), rgba(45, 212, 191, 0.05));
+      border: 1px solid #14b8a6;
+      border-radius: 18px;
+      padding: 24px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .selection-banner h3 {
+      font-size: 1.2rem;
+      color: #5eead4;
+      margin-bottom: 8px;
+    }
+
+    /* AI Mockup Showcase */
+    .ai-showcase-section {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 40px;
+      text-align: center;
+    }
+    .ai-showcase-section h2 {
+      font-size: 1.3rem;
+      margin-bottom: 8px;
+      color: #2dd4bf;
+    }
+    .ai-showcase-img {
+      max-width: 520px;
+      width: 100%;
+      border-radius: 16px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+      margin-top: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Bảng Thiết Kế Mẫu Logo "Sổ Thu Chi"</h1>
+      <p>Tông màu chủ đạo: <strong>Xanh Ngọc (Emerald / Teal)</strong>. Tách biệt 2 phiên bản theo đúng yêu cầu: Icon ứng dụng điện thoại (nền trắng tinh tế, nổi bật) & Logo trong app (nền trong suốt, sắc nét trên nền tối).</p>
+      <div class="badge-bar">
+        <span class="badge">🎨 Chủ đạo: Xanh Ngọc (#0d9488, #14b8a6, #2dd4bf)</span>
+        <span class="badge">📱 Mobile App Icon: Nền Trắng</span>
+        <span class="badge">⚡ In-App: Nền Trong Suốt Không Đổ Hộp</span>
+        <span class="badge">🛡️ Chưa commit GitHub (Chờ bạn duyệt)</span>
+      </div>
+    </header>
+
+    <!-- Grid of 4 Concepts -->
+    <div class="concepts-grid">
+
+      <!-- CONCEPT 1 -->
+      <div class="concept-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Mẫu 1: Sổ Tài Chính & Ký Hiệu Đồng ₫</div>
+            <div class="card-subtitle">Phong cách Trực quan, Chuyên nghiệp & Sang trọng</div>
+          </div>
+          <span class="concept-tag">Đề cử #1</span>
+        </div>
+
+        <div class="preview-showcase">
+          <div class="preview-box mobile-mode">
+            <span class="preview-box-title">Icon Điện Thoại (Nền Trắng)</span>
+            <div class="icon-display-large">
+              <img src="./assets/icons/candidates/concept-1-appicon.svg" alt="Concept 1 Mobile">
+            </div>
+            <small style="color: #64748b; font-size: 0.72rem;">Gáy sổ + Biểu đồ tăng trưởng + Đồng ₫</small>
+          </div>
+
+          <div class="preview-box inapp-dark">
+            <span class="preview-box-title" style="color: #5eead4;">Trong Ứng Dụng (Nền Trong Suốt)</span>
+            <div class="icon-display-large">
+              <img src="./assets/icons/candidates/concept-1-inapp.svg" alt="Concept 1 In-App" class="inapp-preview-img">
+            </div>
+            <small style="color: #94a3b8; font-size: 0.72rem;">Nổi bật trên nền tối (#0a0f1d)</small>
+          </div>
+        </div>
+
+        <div class="context-previews">
+          <div class="context-label">Hiển thị thực tế trên Header Thanh Tiêu Đề</div>
+          <div class="mock-header">
+            <div class="logo-btn">
+              <img src="./assets/icons/candidates/concept-1-inapp.svg" alt="Header Logo">
+            </div>
+            <div class="mock-title">Sổ Thu Chi</div>
+            <span class="status-dot" title="Online"></span>
+          </div>
+
+          <div class="mock-header light">
+            <div class="logo-btn">
+              <img src="./assets/icons/candidates/concept-1-inapp.svg" alt="Header Logo Light">
+            </div>
+            <div class="mock-title">Sổ Thu Chi (Giao diện Sáng)</div>
+            <span class="status-dot" title="Online"></span>
+          </div>
+        </div>
+
+        <p class="concept-desc">
+          <strong>Ý tưởng:</strong> Hình tượng cuốn sổ cái tài chính thông minh với dải gáy xanh ngọc sâu, đường chỉ tiêu tăng trưởng hướng lên, ruy băng đánh dấu trang và huy hiệu tiền tệ Việt Nam (<strong>₫</strong>) rực sáng. Rất đúng nghĩa "Sổ Thu Chi", tạo cảm giác vững chắc và chuẩn xác.
+        </p>
+      </div>
+
+      <!-- CONCEPT 2 -->
+      <div class="concept-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Mẫu 2: Ví Thông Minh & Dòng Tiền Tuần Hoàn</div>
+            <div class="card-subtitle">Phong cách Hiện đại, Thân thiện & Năng động</div>
+          </div>
+          <span class="concept-tag">Đề cử #2</span>
+        </div>
+
+        <div class="preview-showcase">
+          <div class="preview-box mobile-mode">
+            <span class="preview-box-title">Icon Điện Thoại (Nền Trắng)</span>
+            <div class="icon-display-large">
+              <img src="./assets/icons/candidates/concept-2-appicon.svg" alt="Concept 2 Mobile">
+            </div>
+            <small style="color: #64748b; font-size: 0.72rem;">Ví tài chính + Đồng tiền ngọc + Vòng quỹ đạo</small>
+          </div>
+
+          <div class="preview-box inapp-dark">
+            <span class="preview-box-title" style="color: #5eead4;">Trong Ứng Dụng (Nền Trong Suốt)</span>
+            <div class="icon-display-large">
+              <img src="./assets/icons/candidates/concept-2-inapp.svg" alt="Concept 2 In-App" class="inapp-preview-img">
+            </div>
+            <small style="color: #94a3b8; font-size: 0.72rem;">Không bị chìm, đường nét ngọc lam phát sáng</small>
+          </div>
+        </div>
+
+        <div class="context-previews">
+          <div class="context-label">Hiển thị thực tế trên Header Thanh Tiêu Đề</div>
+          <div class="mock-header">
+            <div class="logo-btn">
+              <img src="./assets/icons/candidates/concept-2-inapp.svg" alt="Header Logo">
+            </div>
+            <div class="mock-title">Sổ Thu Chi</div>
+            <span class="status-dot"></span>
+          </div>
+
+          <div class="mock-header light">
+            <div class="logo-btn">
+              <img src="./assets/icons/candidates/concept-2-inapp.svg" alt="Header Logo Light">
+            </div>
+            <div class="mock-title">Sổ Thu Chi (Giao diện Sáng)</div>
+            <span class="status-dot"></span>
+          </div>
+        </div>
+
+        <p class="concept-desc">
+          <strong>Ý tưởng:</strong> Chiếc ví tài chính cá nhân bo cong mềm mại với đồng xu xanh ngọc nhô lên và vòng cung quỹ đạo luân chuyển tiền mặt. Biểu thị dòng tiền vào - ra (Thu - Chi), quản lý ngân sách thông minh và tích lũy thặng dư.
+        </p>
+      </div>
+
+      <!-- CONCEPT 3 -->
+      <div class="concept-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Mẫu 3: Sổ Mở & Dải Tăng Trưởng Bứt Phá</div>
+            <div class="card-subtitle">Phong cách Tăng trưởng, Bứt phá & Fintech Mới</div>
+          </div>
+          <span class="concept-tag">Mẫu 3</span>
+        </div>
+
+        <div class="preview-showcase">
+          <div class="preview-box mobile-mode">
+            <span class="preview-box-title">Icon Điện Thoại (Nền Trắng)</span>
+            <div class="icon-display-large">
+              <img src="./assets/icons/candidates/concept-3-appicon.svg" alt="Concept 3 Mobile">
+            </div>
+            <small style="color: #64748b; font-size: 0.72rem;">Sổ mở 2 cánh + Mũi tên 3D vươn cao</small>
+          </div>
+
+          <div class="preview-box inapp-dark">
+            <span class="preview-box-title" style="color: #5eead4;">Trong Ứng Dụng (Nền Trong Suốt)</span>
+            <div class="icon-display-large">
+              <img src="./assets/icons/candidates/concept-3-inapp.svg" alt="Concept 3 In-App" class="inapp-preview-img">
+            </div>
+            <small style="color: #94a3b8; font-size: 0.72rem;">Các tầng cánh sách và mũi tên xanh ngọc</small>
+          </div>
+        </div>
+
+        <div class="context-previews">
+          <div class="context-label">Hiển thị thực tế trên Header Thanh Tiêu Đề</div>
+          <div class="mock-header">
+            <div class="logo-btn">
+              <img src="./assets/icons/candidates/concept-3-inapp.svg" alt="Header Logo">
+            </div>
+            <div class="mock-title">Sổ Thu Chi</div>
+            <span class="status-dot"></span>
+          </div>
+
+          <div class="mock-header light">
+            <div class="logo-btn">
+              <img src="./assets/icons/candidates/concept-3-inapp.svg" alt="Header Logo Light">
+            </div>
+            <div class="mock-title">Sổ Thu Chi (Giao diện Sáng)</div>
+            <span class="status-dot"></span>
+          </div>
+        </div>
+
+        <p class="concept-desc">
+          <strong>Ý tưởng:</strong> Hình tượng trang sổ ghi chép mở ra làm bệ phóng, từ đó một dải lụa mũi tên năng lượng xanh ngọc bứt phá bay lên cao. Biểu trưng cho việc quản lý chi tiêu kỷ luật sẽ giúp tài chính cá nhân tăng trưởng không ngừng.
+        </p>
+      </div>
+
+      <!-- CONCEPT 4 -->
+      <div class="concept-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Mẫu 4: Khối Lục Giác Kim Cương Monogram STC</div>
+            <div class="card-subtitle">Phong cách Tối giản, Bảo mật & Công nghệ Cao</div>
+          </div>
+          <span class="concept-tag">Mẫu 4</span>
+        </div>
+
+        <div class="preview-showcase">
+          <div class="preview-box mobile-mode">
+            <span class="preview-box-title">Icon Điện Thoại (Nền Trắng)</span>
+            <div class="icon-display-large">
+              <img src="./assets/icons/candidates/concept-4-appicon.svg" alt="Concept 4 Mobile">
+            </div>
+            <small style="color: #64748b; font-size: 0.72rem;">Khung lục giác + Chữ lồng S-T-C & Đồng ₫</small>
+          </div>
+
+          <div class="preview-box inapp-dark">
+            <span class="preview-box-title" style="color: #5eead4;">Trong Ứng Dụng (Nền Trong Suốt)</span>
+            <div class="icon-display-large">
+              <img src="./assets/icons/candidates/concept-4-inapp.svg" alt="Concept 4 In-App" class="inapp-preview-img">
+            </div>
+            <small style="color: #94a3b8; font-size: 0.72rem;">Góc cạnh sắc nét, viền neon xanh ngọc</small>
+          </div>
+        </div>
+
+        <div class="context-previews">
+          <div class="context-label">Hiển thị thực tế trên Header Thanh Tiêu Đề</div>
+          <div class="mock-header">
+            <div class="logo-btn">
+              <img src="./assets/icons/candidates/concept-4-inapp.svg" alt="Header Logo">
+            </div>
+            <div class="mock-title">Sổ Thu Chi</div>
+            <span class="status-dot"></span>
+          </div>
+
+          <div class="mock-header light">
+            <div class="logo-btn">
+              <img src="./assets/icons/candidates/concept-4-inapp.svg" alt="Header Logo Light">
+            </div>
+            <div class="mock-title">Sổ Thu Chi (Giao diện Sáng)</div>
+            <span class="status-dot"></span>
+          </div>
+        </div>
+
+        <p class="concept-desc">
+          <strong>Ý tưởng:</strong> Khối lục giác bảo mật ngân hàng với cấu trúc chữ lồng hiện đại kết nối các ký tự viết tắt <strong>S - T - C</strong> và lõi tiền tệ. Đậm chất FinTech thế hệ mới, tối giản và cực kỳ sắc sảo.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- AI Visualization Mockup -->
+    <div class="ai-showcase-section">
+      <h2>Phác Thảo Trực Quan Tổng Thể (AI Concept Art)</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">Hình ảnh minh hoạ cách các phong cách icon hiển thị trên các ứng dụng di động hiện đại</p>
+      <img src="./assets/icons/candidates/concepts_mockup.jpg" alt="AI Concept Art" class="ai-showcase-img">
+    </div>
+
+    <!-- Selection Banner -->
+    <div class="selection-banner">
+      <h3>Bạn Thích Mẫu Nào Nhất?</h3>
+      <p style="color: #cbd5e1; font-size: 0.95rem; margin-top: 6px;">
+        Chỉ cần báo số mẫu bạn ưng ý (<strong>Mẫu 1, 2, 3 hoặc 4</strong>), hoặc góp ý tinh chỉnh (màu sắc, chi tiết, độ dày nét).<br>
+        Mình sẽ cập nhật chính thức vào toàn bộ hệ thống file icon của app (SVG, PWA PNGs 192x192, 512x512) để bạn kiểm tra xong xuôi trước khi đẩy lên GitHub!
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>

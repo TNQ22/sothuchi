@@ -24,6 +24,7 @@ class ServerSyncService {
     this.connectionStatus = 'disconnected'; // 'connected' | 'checking' | 'disconnected'
     this.lastVaultVersion = null;
     this.lastVaultUpdatedAt = null;
+    this.encryptionPassword = null;
     this._pollingStarted = false;
   }
 
@@ -33,6 +34,32 @@ class ServerSyncService {
 
   get isLoggedIn() {
     return !!(this.serverUrl && this.token && this.userProfile);
+  }
+
+  // Kiểm tra xem ứng dụng có đang được host và truy cập trực tiếp từ chính Máy Chủ (Self-Hosted) hay không
+  isSelfHosted() {
+    if (typeof window === 'undefined' || !window.location || !window.location.origin) return false;
+    if (window.location.protocol === 'file:') return false;
+
+    const origin = window.location.origin.toLowerCase().replace(/\/+$/, '');
+    const sUrl = (this.serverUrl || '').toLowerCase().replace(/\/+$/, '');
+
+    // 1. Trùng chính xác URL máy chủ với Origin trang web hiện tại
+    if (sUrl && sUrl === origin) return true;
+
+    // 2. Chạy trên cổng 8081 (Docker / Node mặc định của server)
+    if (window.location.port === '8081') return true;
+
+    // 3. Nếu đang mở từ localhost hoặc LAN và không phải static hosting công cộng
+    const hostname = window.location.hostname || '';
+    const isPublicHost = hostname.endsWith('github.io') || hostname.endsWith('web.app') || hostname.endsWith('pages.dev') || hostname.endsWith('vercel.app') || hostname.endsWith('netlify.app');
+    if (!isPublicHost) {
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || /^192\.168\./.test(hostname) || /^10\./.test(hostname)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   // Khởi tạo service khi tải app
@@ -106,6 +133,12 @@ class ServerSyncService {
         this.activeVaultId = savedVaultId.value;
       }
 
+      // 4.5 Đọc Danh sách Sổ đã lưu (Cached Vaults)
+      const savedVaults = await db.settings.get('syncServerVaults');
+      if (savedVaults && Array.isArray(savedVaults.value)) {
+        this.vaults = savedVaults.value;
+      }
+
       // 5. Đọc Auto Sync
       const savedAutoSync = await db.settings.get('syncServerAutoSync');
       if (savedAutoSync !== undefined) {
@@ -118,6 +151,17 @@ class ServerSyncService {
       const savedTime = await db.settings.get('syncServerLastSyncTime');
       if (savedTime) {
         this.lastSyncTime = savedTime.value;
+      }
+
+      // 6.5 Đọc Mật khẩu Mã hóa Sổ Máy Chủ (E2EE)
+      const savedServerPass = await db.settings.get('syncServerEncryptionPassword');
+      if (savedServerPass && savedServerPass.value) {
+        this.encryptionPassword = savedServerPass.value.trim();
+      } else {
+        const fallbackPass = await db.settings.get('syncEncryptionPassword');
+        if (fallbackPass && fallbackPass.value) {
+          this.encryptionPassword = fallbackPass.value.trim();
+        }
       }
 
       // 7. Đọc Last Vault Version
@@ -398,6 +442,7 @@ class ServerSyncService {
     await db.settings.delete('syncServerToken');
     await db.settings.delete('syncServerUserProfile');
     await db.settings.delete('syncServerActiveVaultId');
+    await db.settings.delete('syncServerVaults');
 
     if (wipeLocal && typeof window.wipeAndResetLocalDatabase === 'function') {
       await window.wipeAndResetLocalDatabase();
@@ -416,6 +461,7 @@ class ServerSyncService {
       if (res.ok) {
         const data = await res.json();
         this.vaults = data.vaults || [];
+        await db.settings.put({ key: 'syncServerVaults', value: this.vaults });
 
         // Đảm bảo activeVaultId hợp lệ
         if (!this.activeVaultId || !this.vaults.some(v => v.id === this.activeVaultId)) {
@@ -430,6 +476,10 @@ class ServerSyncService {
         if (currentVault && currentVault.role === 'owner') {
           await this.fetchShares(this.activeVaultId);
         }
+
+        window.dispatchEvent(new CustomEvent('server-vaults-updated', {
+          detail: { vaults: this.vaults, activeVaultId: this.activeVaultId }
+        }));
 
         return this.vaults;
       }
@@ -463,6 +513,9 @@ class ServerSyncService {
 
     window.dispatchEvent(new CustomEvent('server-vault-switched', {
       detail: { vault: currentVault }
+    }));
+    window.dispatchEvent(new CustomEvent('server-vaults-updated', {
+      detail: { vaults: this.vaults, activeVaultId: this.activeVaultId }
     }));
   }
 
@@ -845,13 +898,23 @@ class ServerSyncService {
       settings: localSettings
     };
 
+    let dataToSend = payload;
+    if (this.encryptionPassword && window.CryptoService) {
+      const encryptedPayload = await window.CryptoService.encrypt(JSON.stringify(payload), this.encryptionPassword);
+      dataToSend = {
+        encrypted: true,
+        payload: encryptedPayload,
+        encryptedAt: new Date().toISOString()
+      };
+    }
+
     const res = await fetch(`${this.serverUrl}/api/vaults/${this.activeVaultId}/overwrite`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ data: payload, forceOverwrite: true })
+      body: JSON.stringify({ data: dataToSend, forceOverwrite: true })
     });
 
     if (!res.ok) {
@@ -874,6 +937,12 @@ class ServerSyncService {
     }));
 
     return pushResult;
+  }
+
+  // Thiết lập mật khẩu mã hóa sổ máy chủ (Zero-Knowledge E2EE)
+  setEncryptionPassword(password) {
+    this.encryptionPassword = password ? password.trim() : null;
+    db.settings.put({ key: 'syncServerEncryptionPassword', value: this.encryptionPassword });
   }
 
   // Bật/tắt tự động đồng bộ
@@ -931,10 +1000,26 @@ class ServerSyncService {
       }
 
       const pullResult = await pullRes.json();
-      const serverData = pullResult.data || {};
+      let serverData = pullResult.data || {};
       if (pullResult.vault) {
         this.lastVaultVersion = pullResult.vault.version;
         this.lastVaultUpdatedAt = pullResult.vault.updated_at;
+      }
+
+      // Xử lý giải mã E2EE nếu dữ liệu trên máy chủ đã được mã hóa
+      if (serverData && serverData.encrypted && serverData.payload) {
+        if (!this.encryptionPassword) {
+          throw new Error('Sổ trên máy chủ đã được mã hóa đầu cuối (E2EE). Vui lòng vào Cài đặt Máy Chủ Riêng > Nhập Mật khẩu Mã Hóa Sổ để mở khóa dữ liệu.');
+        }
+        if (!window.CryptoService) {
+          throw new Error('Trình duyệt không hỗ trợ thư viện giải mã dữ liệu (CryptoService).');
+        }
+        try {
+          const decryptedStr = await window.CryptoService.decrypt(serverData.payload, this.encryptionPassword);
+          serverData = JSON.parse(decryptedStr);
+        } catch (decErr) {
+          throw new Error('Mật khẩu mã hóa Sổ không chính xác! Không thể giải mã dữ liệu tài chính từ máy chủ.');
+        }
       }
 
       // 2. Gộp dữ liệu từ Server vào IndexedDB máy khách (bảo vệ tài khoản riêng tư)
@@ -987,15 +1072,93 @@ class ServerSyncService {
           settings: localSettings
         };
 
-        // Gửi push & merge lên Server
-        const pushRes = await fetch(`${this.serverUrl}/api/vaults/${this.activeVaultId}/sync`, {
+        let dataToSend = localPayload;
+        if (this.encryptionPassword && window.CryptoService) {
+          const encryptedPayload = await window.CryptoService.encrypt(JSON.stringify(localPayload), this.encryptionPassword);
+          dataToSend = {
+            encrypted: true,
+            payload: encryptedPayload,
+            encryptedAt: new Date().toISOString()
+          };
+        }
+
+        // Gửi push & merge lên Server kèm baseVersion để kiểm soát xung đột đồng thời
+        let pushRes = await fetch(`${this.serverUrl}/api/vaults/${this.activeVaultId}/sync`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${this.token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ data: localPayload })
+          body: JSON.stringify({ data: dataToSend, baseVersion: this.lastVaultVersion })
         });
+
+        // TỰ ĐỘNG XỬ LÝ KHI 2 THIẾT BỊ GỬI ĐỒNG THỜI (Optimistic Concurrency Retry)
+        if (pushRes.status === 409) {
+          const conflictData = await pushRes.json();
+          console.warn(`[ServerSync] ⚔️ Phát hiện xung đột đồng thời (Client v${this.lastVaultVersion} < Server v${conflictData.currentVersion}). Tự động giải mã, gộp bản mới và đẩy lại...`);
+
+          let remoteData = conflictData.serverData;
+          if (remoteData && remoteData.encrypted && remoteData.payload && this.encryptionPassword && window.CryptoService) {
+            try {
+              const dec = await window.CryptoService.decrypt(remoteData.payload, this.encryptionPassword);
+              remoteData = JSON.parse(dec);
+            } catch (decErr) {
+              console.error('[ServerSync] Giải mã bản ghi xung đột thất bại:', decErr);
+            }
+          }
+
+          // 1. Gộp dữ liệu của thiết bị kia vừa gửi lên vào IndexedDB của mình
+          if (remoteData && !remoteData.encrypted) {
+            await this.mergeServerDataIntoLocal(remoteData);
+          }
+          this.lastVaultVersion = conflictData.currentVersion;
+
+          // 2. Thu thập lại dữ liệu địa phương (đã chứa cả dữ liệu của mình và thiết bị kia)
+          const remergedAccs = await db.accounts.toArray();
+          const remergedTxs = await db.transactions.toArray();
+          const pAccs = remergedAccs.filter(a => !a._isSharedItem);
+          const pAccIds = new Set(pAccs.map(a => Number(a.id)));
+          const pTxs = remergedTxs.filter(t => {
+            if (t._isSharedItem) return false;
+            const accId = Number(t.accountId);
+            const toAccId = t.toAccountId ? Number(t.toAccountId) : null;
+            return pAccIds.has(accId) || (toAccId && pAccIds.has(toAccId));
+          });
+
+          const remergedPayload = {
+            transactions: pTxs,
+            accounts: pAccs,
+            categories: await db.categories.toArray(),
+            debts: await db.debts.toArray(),
+            budgets: await db.budgets.toArray(),
+            recurring: await db.recurring.toArray(),
+            savings: db.savings ? (await db.savings.toArray()).filter(s => !s._isSharedItem) : [],
+            accumulations: db.accumulations ? (await db.accumulations.toArray()).filter(a => !a._isSharedItem) : [],
+            assets: db.assets ? (await db.assets.toArray()).filter(a => !a._isSharedItem) : [],
+            loans: db.loans ? (await db.loans.toArray()).filter(l => !l._isSharedItem) : [],
+            settings: localSettings
+          };
+
+          let reEncryptedData = remergedPayload;
+          if (this.encryptionPassword && window.CryptoService) {
+            const reEnc = await window.CryptoService.encrypt(JSON.stringify(remergedPayload), this.encryptionPassword);
+            reEncryptedData = {
+              encrypted: true,
+              payload: reEnc,
+              encryptedAt: new Date().toISOString()
+            };
+          }
+
+          // 3. Đẩy lại lần 2 lên server với baseVersion mới
+          pushRes = await fetch(`${this.serverUrl}/api/vaults/${this.activeVaultId}/sync`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${this.token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ data: reEncryptedData, baseVersion: this.lastVaultVersion })
+          });
+        }
 
         if (!pushRes.ok) {
           const err = await pushRes.json();
@@ -1013,11 +1176,35 @@ class ServerSyncService {
         // Cập nhật lại IndexedDB với kết quả đã gộp từ server
         let localDataHasChanged = false;
         if (pushResult.data) {
-          localDataHasChanged = await this.mergeServerDataIntoLocal(pushResult.data);
+          let pushData = pushResult.data;
+          if (pushData.encrypted && pushData.payload) {
+            if (this.encryptionPassword && window.CryptoService) {
+              try {
+                const dec = await window.CryptoService.decrypt(pushData.payload, this.encryptionPassword);
+                pushData = JSON.parse(dec);
+              } catch (_) {}
+            }
+          }
+          if (!pushData.encrypted) {
+            localDataHasChanged = await this.mergeServerDataIntoLocal(pushData);
+          }
         }
 
         // Tự động đồng bộ các mục được người khác chia sẻ (Received Shared Items)
         try {
+          // Tự động làm mới và cập nhật bản chiếu mã hóa cho các mục đang chia sẻ
+          try {
+            const ownedShares = await db.settings.get('syncOwnedSharedProjections');
+            if (ownedShares && Array.isArray(ownedShares.value)) {
+              for (const s of ownedShares.value) {
+                const currentKey = s.shareKey || (await this.getItemShareKey(`${s.itemType}_${s.itemId}`));
+                await this.projectAndPushItem(s.itemType, s.itemId, currentKey);
+              }
+            }
+          } catch (projErr) {
+            console.warn('[ServerSync] Lỗi tự động cập nhật bản chiếu chia sẻ:', projErr.message);
+          }
+
           await this.syncReceivedSharedItems();
         } catch (shareSyncErr) {
           console.warn('[ServerSync] Đồng bộ mục chia sẻ nhận được:', shareSyncErr.message);
@@ -1258,6 +1445,123 @@ class ServerSyncService {
   // GRANULAR PER-ITEM SHARING (TÀI KHOẢN, SỔ TIẾT KIỆM, TÍCH LUỸ, VAY, TÀI SẢN)
   // ===========================================================================
 
+  async getItemShareKey(keyIdentifier) {
+    if (!keyIdentifier) return null;
+    try {
+      const settings = (await db.settings.get('syncItemShareKeys')) || { value: {} };
+      const map = settings.value || {};
+      return map[String(keyIdentifier)] || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async saveItemShareKey(keyIdentifier, key) {
+    if (!keyIdentifier || !key) return;
+    try {
+      const settings = (await db.settings.get('syncItemShareKeys')) || { key: 'syncItemShareKeys', value: {} };
+      const map = settings.value || {};
+      map[String(keyIdentifier)] = key;
+      await db.settings.put({ key: 'syncItemShareKeys', value: map });
+    } catch (e) {
+      console.warn('[ServerSync] Không thể lưu item share key:', e);
+    }
+  }
+
+  async projectAndPushItem(itemType, itemId, shareKey = null) {
+    if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
+
+    // 1. Trích xuất item và giao dịch thuộc về item này từ IndexedDB
+    let targetItem = null;
+    let transactions = [];
+    if (itemType === 'account') {
+      targetItem = await db.accounts.get(Number(itemId));
+      if (targetItem) {
+        transactions = (await db.transactions.toArray()).filter(t => {
+          if (t._isSharedItem) return false;
+          return Number(t.accountId) === Number(itemId) || Number(t.toAccountId) === Number(itemId);
+        });
+      }
+    } else if (itemType === 'savings' && db.savings) {
+      targetItem = await db.savings.get(Number(itemId));
+    } else if (itemType === 'accumulation' && db.accumulations) {
+      targetItem = await db.accumulations.get(Number(itemId));
+    } else if (itemType === 'loan' && db.loans) {
+      targetItem = await db.loans.get(Number(itemId));
+    } else if (itemType === 'asset' && db.assets) {
+      targetItem = await db.assets.get(Number(itemId));
+    }
+
+    if (!targetItem) throw new Error('Không tìm thấy mục cần trích xuất trên thiết bị này.');
+
+    const categories = await db.categories.toArray();
+    const cleanItem = { ...targetItem };
+    delete cleanItem._isSharedItem;
+    delete cleanItem._shareId;
+
+    const projectedPayload = {
+      item: cleanItem,
+      transactions: transactions.map(t => {
+        const copy = { ...t };
+        delete copy._isSharedItem;
+        delete copy._shareId;
+        return copy;
+      }),
+      categories,
+      projectedAt: new Date().toISOString()
+    };
+
+    // 2. Mã hóa bằng Khóa Chia Sẻ (Item Share Key) nếu có
+    let projectionToSend;
+    if (shareKey && window.CryptoService) {
+      const encryptedStr = await window.CryptoService.encrypt(JSON.stringify(projectedPayload), shareKey);
+      projectionToSend = {
+        encrypted: true,
+        payload: encryptedStr,
+        updatedAt: new Date().toISOString()
+      };
+      await this.saveItemShareKey(`${itemType}_${itemId}`, shareKey);
+    } else {
+      projectionToSend = {
+        encrypted: false,
+        ...projectedPayload,
+        updatedAt: new Date().toISOString()
+      };
+    }
+
+    // 3. Đẩy bản chiếu đã mã hóa lên Server
+    const res = await fetch(`${this.serverUrl}/api/shares/item/projection`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        vaultId: this.activeVaultId,
+        itemType,
+        itemId: String(itemId),
+        projection: projectionToSend
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Đẩy bản chiếu chia sẻ thất bại.');
+    }
+
+    // Ghi nhận vào danh sách các mục mình sở hữu và chia sẻ
+    try {
+      const ownedShares = (await db.settings.get('syncOwnedSharedProjections')) || { key: 'syncOwnedSharedProjections', value: [] };
+      const list = Array.isArray(ownedShares.value) ? ownedShares.value : [];
+      if (!list.some(x => x.itemType === itemType && String(x.itemId) === String(itemId))) {
+        list.push({ itemType, itemId: String(itemId), shareKey: shareKey || null });
+        await db.settings.put({ key: 'syncOwnedSharedProjections', value: list });
+      }
+    } catch (_) {}
+
+    return { success: true, shareKey };
+  }
+
   async getAvailableServices() {
     try {
       const res = await fetch(`${this.serverUrl}/api/shares/services`);
@@ -1287,8 +1591,18 @@ class ServerSyncService {
     return res.json();
   }
 
-  async shareItemWithEmail(itemType, itemId, itemName, email, role = 'viewer') {
+  async shareItemWithEmail(itemType, itemId, itemName, email, role = 'viewer', password = null) {
     if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
+
+    let shareKey = password ? password.trim() : null;
+    if (!shareKey) {
+      shareKey = (await this.getItemShareKey(`${itemType}_${itemId}`)) ||
+        (Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join(''));
+    }
+
+    // Tự động bóc tách và mã hóa bản chiếu trước khi mời email
+    await this.projectAndPushItem(itemType, itemId, shareKey);
+
     const res = await fetch(`${this.serverUrl}/api/shares/item/email`, {
       method: 'POST',
       headers: {
@@ -1301,7 +1615,12 @@ class ServerSyncService {
       const err = await res.json();
       throw new Error(err.error || 'Cấp quyền chia sẻ thất bại.');
     }
-    return res.json();
+    const result = await res.json();
+    if (result.share && result.share.id) {
+      await this.saveItemShareKey(result.share.id, shareKey);
+      result.share.shareKey = shareKey;
+    }
+    return result;
   }
 
   async revokeItemEmailShare(shareId) {
@@ -1317,8 +1636,15 @@ class ServerSyncService {
     return res.json();
   }
 
-  async createItemShareLink(itemType, itemId, itemName, role = 'viewer') {
+  async createItemShareLink(itemType, itemId, itemName, role = 'viewer', customKey = null) {
     if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
+
+    // Tự động sinh khóa ngẫu nhiên 256-bit (16 bytes hex)
+    const shareKey = customKey ? customKey.trim() : (Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join(''));
+
+    // Tự động bóc tách và mã hóa bản chiếu gửi lên server
+    await this.projectAndPushItem(itemType, itemId, shareKey);
+
     const res = await fetch(`${this.serverUrl}/api/shares/item/link`, {
       method: 'POST',
       headers: {
@@ -1331,7 +1657,12 @@ class ServerSyncService {
       const err = await res.json();
       throw new Error(err.error || 'Tạo liên kết chia sẻ thất bại.');
     }
-    return res.json();
+    const result = await res.json();
+    if (result.link && result.link.token) {
+      await this.saveItemShareKey(result.link.token, shareKey);
+      result.link.shareKey = shareKey;
+    }
+    return result;
   }
 
   async revokeItemShareLink(linkId) {
@@ -1448,7 +1779,31 @@ class ServerSyncService {
 
       // 2. Thêm hoặc cập nhật các item được chia sẻ vào local IndexedDB
       for (const shareItem of items) {
-        const { itemType, itemId, shareId, role, ownerName, ownerEmail, vaultId, item, transactions } = shareItem;
+        const { itemType, itemId, shareId, role, ownerName, ownerEmail, vaultId } = shareItem;
+
+        let item = shareItem.item;
+        let transactions = shareItem.transactions;
+
+        // Xử lý bản chiếu mã hóa E2EE (Zero-Knowledge Item Projection)
+        if (shareItem.isProjection && shareItem.isEncrypted && shareItem.projectionData) {
+          const shareKey = (await this.getItemShareKey(shareId)) || (await this.getItemShareKey(itemId)) || (await this.getItemShareKey(`${itemType}_${itemId}`));
+          if (!shareKey) {
+            console.warn('[ServerSync] Chưa có khóa giải mã cho mục chia sẻ:', shareItem.itemName);
+            continue;
+          }
+          if (window.CryptoService) {
+            try {
+              const decStr = await window.CryptoService.decrypt(shareItem.projectionData.payload, shareKey);
+              const decData = JSON.parse(decStr);
+              item = decData.item;
+              transactions = decData.transactions;
+            } catch (decErr) {
+              console.error('[ServerSync] Lỗi giải mã mục chia sẻ:', decErr);
+              continue;
+            }
+          }
+        }
+
         if (!item) continue;
 
         if (itemType === 'account') {

@@ -788,6 +788,8 @@ class App {
       if (txHistoryBackBtn) txHistoryBackBtn.style.display = hasBack ? 'inline-flex' : 'none';
       const brandLogoBtn = document.getElementById('header-brand-logo-btn') || brandLogo;
       if (brandLogoBtn) brandLogoBtn.style.display = hasBack ? 'none' : 'inline-flex';
+      const headerVaultPill = document.getElementById('header-vault-pill');
+      if (headerVaultPill && hasBack) headerVaultPill.style.display = 'none';
 
       if (window.UITransactions) {
         window.UITransactions.updateHeaderAccountDisplay();
@@ -801,6 +803,9 @@ class App {
       if (txHistoryBackBtn) txHistoryBackBtn.style.display = 'none';
       const brandLogoBtn = document.getElementById('header-brand-logo-btn') || brandLogo;
       if (brandLogoBtn) brandLogoBtn.style.display = 'inline-flex';
+      if (window.SyncCoordinator && typeof window.SyncCoordinator.updateVaultUI === 'function') {
+        window.SyncCoordinator.updateVaultUI();
+      }
       if (window.UITransactions) {
         if (typeof window.UITransactions.closeHeaderAccountDropdown === 'function') {
           window.UITransactions.closeHeaderAccountDropdown();
@@ -1345,6 +1350,9 @@ class App {
     await window.UIAccounts.render();
     await window.UIBudgets.render();
     await window.UIAnalytics.render();
+    if (window.SyncCoordinator && typeof window.SyncCoordinator.updateVaultUI === 'function') {
+      window.SyncCoordinator.updateVaultUI();
+    }
     if (window.lucide) lucide.createIcons();
   }
 

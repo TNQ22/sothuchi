@@ -331,7 +331,11 @@ const UniversalShareModal = {
     try {
       const res = await window.serverSyncService.getItemShares(this.currentType, this.currentId);
       this.shares = res.shares || [];
-      this.links = res.links || [];
+      const rawLinks = res.links || [];
+      for (const l of rawLinks) {
+        l.shareKey = await window.serverSyncService.getItemShareKey(l.token) || await window.serverSyncService.getItemShareKey(`${this.currentType}_${this.currentId}`);
+      }
+      this.links = rawLinks;
 
       this.renderEmailShares();
       this.renderShareLinks();
@@ -449,7 +453,10 @@ const UniversalShareModal = {
         ? '<span class="share-role-badge editor"><i data-lucide="edit-3" style="width:12px;height:12px;"></i> Chỉnh sửa</span>'
         : '<span class="share-role-badge viewer"><i data-lucide="eye" style="width:12px;height:12px;"></i> Chỉ xem</span>';
 
-      const fullUrl = `${origin}${pathname}#share_token=${l.token}`;
+      const shareKey = l.shareKey || '';
+      const fullUrl = shareKey
+        ? `${origin}${pathname}#share_token=${l.token}&key=${encodeURIComponent(shareKey)}`
+        : `${origin}${pathname}#share_token=${l.token}`;
       const dateStr = l.created_at ? new Date(l.created_at).toLocaleDateString('vi-VN') : '';
 
       html += `
@@ -457,6 +464,9 @@ const UniversalShareModal = {
           <div class="share-link-header-row">
             <div style="display:flex; align-items:center; gap: 8px;">
               ${roleBadge}
+              <span class="badge" style="font-size: 0.68rem; background: rgba(16, 185, 129, 0.12); color: #10b981; border-radius: 999px; padding: 1px 7px;">
+                <i data-lucide="shield-check" style="width: 11px; height: 11px; display: inline-block; vertical-align: middle;"></i> E2EE AES-256
+              </span>
               <span class="share-link-date">Tạo ngày ${dateStr}</span>
             </div>
             <button type="button" class="btn-revoke-share" title="Thu hồi liên kết" onclick="UniversalShareModal.handleRevokeLink('${l.id}')">
@@ -554,8 +564,11 @@ const UniversalShareModal = {
     }
   },
 
-  copyLink(token) {
-    const fullUrl = `${window.location.origin}${window.location.pathname}#share_token=${token}`;
+  async copyLink(token) {
+    const key = (await window.serverSyncService.getItemShareKey(token)) || (await window.serverSyncService.getItemShareKey(`${this.currentType}_${this.currentId}`));
+    const fullUrl = key
+      ? `${window.location.origin}${window.location.pathname}#share_token=${token}&key=${encodeURIComponent(key)}`
+      : `${window.location.origin}${window.location.pathname}#share_token=${token}`;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(fullUrl).then(() => {
         if (typeof showToast === 'function') showToast('Đã sao chép liên kết chia sẻ vào khay nhớ tạm!', 'success');
@@ -578,20 +591,26 @@ const ReceiveShareModal = {
   async checkUrlForShareToken() {
     let token = null;
 
-    // 1. Kiểm tra hash: #share_token=...
+    let key = null;
+
+    // 1. Kiểm tra hash: #share_token=...&key=...
     if (window.location.hash) {
       const match = window.location.hash.match(/[#&]share_token=([^&]+)/);
       if (match) token = match[1];
+      const matchKey = window.location.hash.match(/[#&]key=([^&]+)/);
+      if (matchKey) key = decodeURIComponent(matchKey[1]);
     }
 
     // 2. Kiểm tra search: ?share_token=... hoặc ?shareToken=...
     if (!token && window.location.search) {
       const params = new URLSearchParams(window.location.search);
       token = params.get('share_token') || params.get('shareToken');
+      if (params.get('key')) key = params.get('key');
     }
 
     if (token) {
-      await this.promptWithToken(token);
+      this.currentKey = key;
+      await this.promptWithToken(token, key);
     }
   },
 
@@ -607,8 +626,9 @@ const ReceiveShareModal = {
     await this.promptWithToken(token);
   },
 
-  async promptWithToken(token) {
+  async promptWithToken(token, key = null) {
     this.currentToken = token;
+    if (key) this.currentKey = key;
     if (typeof showToast === 'function') showToast('Đang kiểm tra liên kết chia sẻ...', 'info');
 
     try {
@@ -624,12 +644,39 @@ const ReceiveShareModal = {
       const roleEl = document.getElementById('receive-share-role-info');
 
       if (nameEl) nameEl.textContent = info.itemName || 'Tài khoản chia sẻ';
-      if (typeEl) typeEl.textContent = UniversalShareModal.getTypeLabel(info.itemType);
+      if (typeEl) {
+        let typeBadgeHtml = UniversalShareModal.getTypeLabel(info.itemType);
+        if (info.isEncrypted) {
+          typeBadgeHtml += ' &bull; <span style="color:#10b981; font-weight:600;"><i data-lucide="shield-check" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Mã Hóa Đầu Cuối (E2EE)</span>';
+        }
+        typeEl.innerHTML = typeBadgeHtml;
+      }
       if (ownerEl) ownerEl.textContent = `${info.ownerName || 'Chủ sở hữu'} (${info.ownerEmail || ''})`;
       if (roleEl) {
         roleEl.innerHTML = info.role === 'editor'
           ? '<span class="share-role-badge editor"><i data-lucide="edit-3" style="width:12px;height:12px;"></i> Toàn quyền Ghi chép & Chỉnh sửa</span>'
           : '<span class="share-role-badge viewer"><i data-lucide="eye" style="width:12px;height:12px;"></i> Quyền Chỉ xem (Viewer)</span>';
+      }
+
+      // Khung nhập mật khẩu nếu mục được mã hóa nhưng URL không có key
+      let passBox = document.getElementById('receive-share-password-box');
+      if (info.isEncrypted && !this.currentKey) {
+        if (!passBox) {
+          passBox = document.createElement('div');
+          passBox.id = 'receive-share-password-box';
+          passBox.style.marginTop = '12px';
+          passBox.innerHTML = `
+            <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-primary); margin-bottom:5px;">Mật khẩu mở khóa mục chia sẻ:</label>
+            <input type="password" id="receive-share-password-input" class="form-control" placeholder="Nhập mật khẩu do người chia sẻ cung cấp" style="font-size:0.85rem;" />
+            <small style="color:var(--text-muted); font-size:0.72rem; display:block; margin-top:4px;">* Mục này đã được mã hóa bảo vệ bằng AES-256.</small>
+          `;
+          const body = modal.querySelector('.modal-body');
+          if (body) body.appendChild(passBox);
+        } else {
+          passBox.style.display = 'block';
+        }
+      } else if (passBox) {
+        passBox.style.display = 'none';
       }
 
       modal.classList.add('open');
@@ -648,8 +695,25 @@ const ReceiveShareModal = {
     if (!this.currentToken) return;
 
     try {
+      // Nếu có ô nhập mật khẩu
+      const passInput = document.getElementById('receive-share-password-input');
+      if (passInput && passInput.value.trim()) {
+        this.currentKey = passInput.value.trim();
+      }
+
       if (typeof showToast === 'function') showToast('Đang nhận tài khoản vào sổ...', 'info');
       const result = await window.serverSyncService.acceptShareLink(this.currentToken);
+
+      // Lưu khóa giải mã cho item này nếu có
+      if (this.currentKey) {
+        if (result && result.shareId) {
+          await window.serverSyncService.saveItemShareKey(result.shareId, this.currentKey);
+        }
+        if (this.shareData && this.shareData.itemId) {
+          await window.serverSyncService.saveItemShareKey(this.shareData.itemId, this.currentKey);
+          await window.serverSyncService.saveItemShareKey(`${this.shareData.itemType}_${this.shareData.itemId}`, this.currentKey);
+        }
+      }
 
       // Đồng bộ ngay dữ liệu vào IndexedDB
       await window.serverSyncService.syncReceivedSharedItems();

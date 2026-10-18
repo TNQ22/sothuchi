@@ -36,6 +36,10 @@ const UISettings = {
       this.renderServerSyncUI();
       this.updateHubBadges();
     });
+    window.addEventListener('server-vaults-updated', () => {
+      this.renderServerSyncUI();
+      this.updateHubBadges();
+    });
     window.addEventListener('sync-success', () => {
       this.renderServerSyncUI();
       this.updateHubBadges();
@@ -462,10 +466,64 @@ const UISettings = {
     const sService = window.serverSyncService;
     if (!sService) return;
 
-    // 1. Cập nhật input Server URL
+    // 1. Cấu hình hiển thị URL Máy Chủ:
+    // Nếu app được host và truy cập từ chính máy chủ (Self-Hosted):
+    // Ẩn ô nhập URL phía trên và chuyển xuống tùy chọn ẩn bên dưới, đồng thời hiện thông báo gọn gàng.
+    // Nếu là app public: Hiển thị nổi bật phía trên để người dùng dễ dàng cấu hình.
+    const isSelfHost = typeof sService.isSelfHosted === 'function' ? sService.isSelfHosted() : false;
+    const selfhostBanner = document.getElementById('server-selfhost-banner');
+    const selfhostOrigin = document.getElementById('server-selfhost-origin');
+    const urlContainer = document.getElementById('server-url-container');
+    const topSlot = document.getElementById('server-url-top-slot');
+    const bottomSlot = document.getElementById('server-url-bottom-slot');
     const urlInput = document.getElementById('settings-server-url');
+
     if (urlInput && !urlInput.value && sService.serverUrl) {
       urlInput.value = sService.serverUrl;
+    }
+
+    if (urlContainer && topSlot && bottomSlot) {
+      if (isSelfHost) {
+        if (selfhostBanner) {
+          selfhostBanner.style.display = 'flex';
+          if (selfhostOrigin) {
+            selfhostOrigin.textContent = window.location.origin || sService.serverUrl || '';
+          }
+        }
+        bottomSlot.style.display = 'block';
+        const target = bottomSlot.querySelector('.server-url-slot-target') || bottomSlot;
+        if (urlContainer.parentElement !== target) {
+          target.appendChild(urlContainer);
+        }
+        topSlot.style.display = 'none';
+      } else {
+        if (selfhostBanner) selfhostBanner.style.display = 'none';
+        bottomSlot.style.display = 'none';
+        topSlot.style.display = 'block';
+        if (urlContainer.parentElement !== topSlot) {
+          topSlot.appendChild(urlContainer);
+        }
+      }
+    }
+
+    // 1.5 Cập nhật Mật khẩu Mã Hóa Sổ (E2EE)
+    const serverPassInput = document.getElementById('settings-server-vault-password');
+    const encBadge = document.getElementById('server-encryption-badge');
+    if (serverPassInput) {
+      if (document.activeElement !== serverPassInput) {
+        serverPassInput.value = sService.encryptionPassword || '';
+      }
+    }
+    if (encBadge) {
+      if (sService.encryptionPassword) {
+        encBadge.textContent = 'Đã bật E2EE';
+        encBadge.style.background = 'rgba(16, 185, 129, 0.15)';
+        encBadge.style.color = '#10b981';
+      } else {
+        encBadge.textContent = 'Chưa mã hóa';
+        encBadge.style.background = 'rgba(100, 116, 139, 0.12)';
+        encBadge.style.color = 'var(--text-muted)';
+      }
     }
 
     // 2. Cập nhật Status Badge
@@ -704,6 +762,51 @@ const UISettings = {
         const isHidden = dockerHelpBox.style.display === 'none';
         dockerHelpBox.style.display = isHidden ? 'block' : 'none';
         dockerHelpBtn.textContent = isHidden ? 'Ẩn hướng dẫn' : 'Hướng dẫn Docker';
+      });
+    }
+
+    // Lưu Mật khẩu Mã Hóa Sổ Máy Chủ (E2EE)
+    const saveServerPassBtn = document.getElementById('btn-save-server-vault-password');
+    if (saveServerPassBtn) {
+      saveServerPassBtn.addEventListener('click', async () => {
+        const input = document.getElementById('settings-server-vault-password');
+        const val = (input ? input.value : '').trim();
+        if (sService) {
+          sService.setEncryptionPassword(val);
+          this.renderServerSyncUI();
+        }
+        showToast(val ? 'Đã lưu Mật khẩu Mã hóa Sổ Máy Chủ (E2EE) thành công!' : 'Đã tắt mật khẩu mã hóa sổ máy chủ', 'success');
+        if (val && sService && sService.isConnected && sService.activeVaultId) {
+          showToast('Đang mã hóa và đồng bộ lên máy chủ...', 'info');
+          sService.sync().catch(err => {
+            console.warn('[ServerSync] Sync after setting pass:', err.message);
+            showToast('Lỗi đồng bộ: ' + err.message, 'error');
+          });
+        }
+      });
+    }
+
+    // Toggle Ẩn / Hiện mật khẩu mã hóa máy chủ
+    const toggleServerPassBtn = document.getElementById('btn-toggle-server-password-visibility');
+    if (toggleServerPassBtn) {
+      toggleServerPassBtn.addEventListener('click', () => {
+        const input = document.getElementById('settings-server-vault-password');
+        if (!input) return;
+        const isPass = input.type === 'password';
+        input.type = isPass ? 'text' : 'password';
+        toggleServerPassBtn.innerHTML = isPass ? '<i data-lucide="eye-off" style="width: 14px; height: 14px;"></i>' : '<i data-lucide="eye" style="width: 14px; height: 14px;"></i>';
+        if (window.lucide) window.lucide.createIcons();
+      });
+    }
+
+    // Toggle Giải đáp bảo mật & mã hóa máy chủ
+    const secHelpBtn = document.getElementById('btn-toggle-server-security-help');
+    const secHelpBox = document.getElementById('box-server-security-help');
+    if (secHelpBtn && secHelpBox) {
+      secHelpBtn.addEventListener('click', () => {
+        const isHidden = secHelpBox.style.display === 'none';
+        secHelpBox.style.display = isHidden ? 'block' : 'none';
+        secHelpBtn.textContent = isHidden ? 'Thu gọn' : 'Tìm hiểu';
       });
     }
 

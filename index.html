@@ -1216,6 +1216,12 @@
           <button type="button" id="header-brand-logo-btn" class="header-brand-logo-btn" title="Trạng thái sao lưu & đồng bộ" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
             <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="header-brand-logo">
             <span class="sync-status-dot" id="header-sync-dot"></span>
+            <span class="header-vault-badge-count" id="header-vault-badge-count" style="display: none;"></span>
+          </button>
+          <button type="button" id="header-vault-pill" class="header-vault-pill" style="display: none;" title="Đổi sổ làm việc nhanh" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
+            <i data-lucide="book-marked" class="vault-pill-icon"></i>
+            <span class="vault-pill-text" id="header-vault-name">Sổ chính</span>
+            <i data-lucide="chevrons-up-down" class="vault-pill-chevron"></i>
           </button>
           <h2 id="header-page-title" class="page-title-badge">Tổng Quan Tài Chính</h2>
         </div>
@@ -2432,15 +2438,26 @@
                   Đồng bộ hai chiều tốc độ cao, hỗ trợ máy chủ tự host qua <strong>Docker</strong>, đăng nhập và chia sẻ sổ qua tài khoản Google.
                 </p>
 
-                <!-- Địa chỉ máy chủ (URL) -->
-                <div class="form-group" style="margin-bottom: 14px;">
-                  <label class="form-label" style="font-weight: 600;">Địa chỉ Máy Chủ Riêng (URL):</label>
-                  <div style="display: flex; gap: 8px;">
-                    <input type="url" id="settings-server-url" class="form-control" placeholder="http://localhost:8081 hoặc https://sync.domain.com">
-                    <button type="button" id="btn-test-server-connection" class="btn-secondary btn-sm" title="Kiểm tra kết nối">
-                      <i data-lucide="activity" style="width: 14px; height: 14px;"></i> Kiểm tra
-                    </button>
-                    <button type="button" id="btn-save-server-url" class="btn-primary btn-sm">Lưu</button>
+                <!-- Banner thông báo khi truy cập trực tiếp từ máy chủ -->
+                <div id="server-selfhost-banner" style="display: none; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(59, 130, 246, 0.08); border-radius: var(--radius-sm); border: 1px solid rgba(59, 130, 246, 0.2); font-size: 0.8rem; margin-bottom: 14px;">
+                  <div style="display: flex; align-items: center; gap: 6px; font-weight: 500; color: var(--text-primary);">
+                    <i data-lucide="hard-drive" style="width: 14px; height: 14px; color: var(--primary);"></i>
+                    <span>Đang kết nối trực tiếp máy chủ hiện tại</span>
+                  </div>
+                  <span id="server-selfhost-origin" style="color: var(--text-muted); font-size: 0.74rem; font-family: monospace;"></span>
+                </div>
+
+                <!-- Slot URL máy chủ phía trên (hiển thị khi app public cần cấu hình kết nối từ xa) -->
+                <div id="server-url-top-slot" style="margin-bottom: 14px;">
+                  <div id="server-url-container">
+                    <label class="form-label" style="font-weight: 600; margin-bottom: 6px;">Địa chỉ Máy Chủ Riêng (URL):</label>
+                    <div style="display: flex; gap: 8px;">
+                      <input type="url" id="settings-server-url" class="form-control" placeholder="http://localhost:8081 hoặc https://sync.domain.com">
+                      <button type="button" id="btn-test-server-connection" class="btn-secondary btn-sm" title="Kiểm tra kết nối">
+                        <i data-lucide="activity" style="width: 14px; height: 14px;"></i> Kiểm tra
+                      </button>
+                      <button type="button" id="btn-save-server-url" class="btn-primary btn-sm">Lưu</button>
+                    </div>
                   </div>
                 </div>
 
@@ -2481,6 +2498,29 @@
                   </div>
                 </div>
 
+                <!-- Mật khẩu mã hóa Sổ Máy Chủ E2EE (Zero-Knowledge) -->
+                <div class="form-group" style="margin-bottom: 14px; padding-top: 10px; border-top: 1px solid var(--border-color);">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <label class="form-label" style="font-weight: 600; margin: 0; display: flex; align-items: center; gap: 6px;">
+                      <i data-lucide="shield" style="width: 15px; height: 15px; color: var(--primary);"></i>
+                      <span>Mật khẩu Mã Hóa Sổ (Zero-Knowledge E2EE):</span>
+                    </label>
+                    <span id="server-encryption-badge" class="badge" style="font-size: 0.68rem; padding: 2px 7px; background: rgba(100, 116, 139, 0.12); color: var(--text-muted); border-radius: 9999px;">Chưa mã hóa</span>
+                  </div>
+                  <div style="display: flex; gap: 8px;">
+                    <div style="position: relative; flex: 1;">
+                      <input type="password" id="settings-server-vault-password" class="form-control" placeholder="Để trống nếu không mã hóa (Khuyên dùng: Đặt mật khẩu)" style="padding-right: 36px;">
+                      <button type="button" id="btn-toggle-server-password-visibility" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Hiện / Ẩn mật khẩu">
+                        <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                      </button>
+                    </div>
+                    <button type="button" id="btn-save-server-vault-password" class="btn-secondary" style="white-space: nowrap;">Lưu</button>
+                  </div>
+                  <small style="color: var(--text-muted); font-size: 0.76rem; margin-top: 5px; display: block; line-height: 1.4;">
+                    * <strong>Chống rò rỉ dữ liệu khi máy chủ bị hack:</strong> Dữ liệu được mã hóa AES-GCM 256-bit trực tiếp trên thiết bị của bạn trước khi đưa lên máy chủ. Cơ sở dữ liệu SQLite trên máy chủ chỉ chứa các chuỗi đã mã hóa. Hãy <strong>chia sẻ mật khẩu này cho các thành viên cùng dùng sổ</strong> để họ mở khóa trên thiết bị của họ.
+                  </small>
+                </div>
+
                 <!-- Kích Hoạt Đồng Bộ Máy Chủ Switch -->
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
                   <div>
@@ -2504,6 +2544,25 @@
                     <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
                     <span>Đồng bộ ngay</span>
                   </button>
+                </div>
+
+                <!-- Slot URL máy chủ phía dưới (ẩn gọn làm tùy chọn khi app được host trực tiếp từ máy chủ) -->
+                <div id="server-url-bottom-slot" style="display: none; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-color);">
+                  <details id="server-url-details" style="font-size: 0.82rem;">
+                    <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; user-select: none;">
+                      <span style="display: inline-flex; align-items: center; gap: 6px;">
+                        <i data-lucide="link" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
+                        <span>Tùy chọn: Địa chỉ Máy Chủ (URL)</span>
+                      </span>
+                      <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal;">Nhấp để đổi URL</span>
+                    </summary>
+                    <div class="server-url-slot-target" style="margin-top: 10px;">
+                      <!-- server-url-container sẽ được chuyển vào đây khi self-hosted -->
+                    </div>
+                    <small style="color: var(--text-muted); font-size: 0.74rem; display: block; margin-top: 6px; line-height: 1.4;">
+                      * Ứng dụng đã tự động kết nối máy chủ hosting. Bạn chỉ cần đổi nếu muốn kết nối tới máy chủ khác.
+                    </small>
+                  </details>
                 </div>
               </div>
 
@@ -2585,6 +2644,25 @@ docker compose up -d
 
 # Hoặc chạy lệnh Docker trực tiếp:
 docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sothuchi:latest</code></pre>
+                    </div>
+                  </div>
+
+                  <!-- Giải đáp Bảo mật & Mã hóa máy chủ -->
+                  <div style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                      <span style="font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                        <i data-lucide="shield-check" style="width: 14px; height: 14px; color: #10b981;"></i>
+                        Bảo Mật & Mã Hóa Dữ Liệu Máy Chủ:
+                      </span>
+                      <button type="button" id="btn-toggle-server-security-help" class="btn-text" style="font-size: 0.76rem; color: var(--primary); background: none; border: none; cursor: pointer;">Tìm hiểu</button>
+                    </div>
+                    <div id="box-server-security-help" style="display: none; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 0.78rem; line-height: 1.5; color: var(--text-secondary);">
+                      <p style="margin: 0 0 6px 0; font-weight: 600; color: var(--text-primary);">Cơ chế Bảo Mật & Mã Hóa Sổ Máy Chủ (Zero-Knowledge E2EE):</p>
+                      <ul style="margin: 0; padding-left: 18px;">
+                        <li style="margin-bottom: 4px;"><strong>Bảo vệ tuyệt đối khi máy chủ bị hack:</strong> Khi bạn thiết lập <em>Mật khẩu Mã Hóa Sổ</em> ở trên, dữ liệu sẽ được mã hóa bằng thuật toán quân sự <strong>AES-GCM 256-bit</strong> trực tiếp từ trình duyệt trước khi truyền tải. Kẻ tấn công nếu có quyền root trên VPS hoặc dump toàn bộ cơ sở dữ liệu SQLite cũng chỉ thấy các chuỗi nhị phân vô nghĩa.</li>
+                        <li style="margin-bottom: 4px;"><strong>Chia sẻ mật khẩu cho các thành viên:</strong> Vì dữ liệu được mã hóa đầu cuối (Zero-Knowledge), máy chủ không nắm giữ khóa giải mã. Bạn chỉ cần chia sẻ mật khẩu này cho người thân hoặc đối tác cùng dùng sổ; họ chỉ cần nhập mật khẩu một lần trong Cài đặt là có thể đồng bộ bình thường.</li>
+                        <li><strong>Linh hoạt tùy chọn:</strong> Nếu không đặt mật khẩu, máy chủ sẽ ở chế độ mặc định hỗ trợ hợp nhất giao dịch trực tiếp hai chiều (LWW).</li>
+                      </ul>
                     </div>
                   </div>
                 </div>
@@ -2817,6 +2895,12 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               <button type="button" id="tx-brand-logo-btn" class="header-brand-logo-btn" title="Trạng thái sao lưu & đồng bộ" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
                 <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="tx-brand-logo">
                 <span class="sync-status-dot" id="tx-sync-dot"></span>
+                <span class="header-vault-badge-count" id="tx-vault-badge-count" style="display: none;"></span>
+              </button>
+              <button type="button" id="tx-vault-pill" class="header-vault-pill tx-header-vault-pill" style="display: none;" title="Đổi sổ làm việc nhanh" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
+                <i data-lucide="book-marked" class="vault-pill-icon"></i>
+                <span class="vault-pill-text" id="tx-vault-name">Sổ chính</span>
+                <i data-lucide="chevrons-up-down" class="vault-pill-chevron"></i>
               </button>
               <button type="button" class="btn-icon tx-header-btn" onclick="UITransactions.openHistoryView()" title="Lịch sử ghi chép">
                 <i data-lucide="history" style="width: 19px; height: 19px; color: var(--text-secondary);"></i>
@@ -5871,6 +5955,27 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <button type="button" class="sync-popover-close" onclick="window.SyncCoordinator && window.SyncCoordinator.closePopover()" title="Đóng">
                   <i data-lucide="x" style="width: 14px; height: 14px;"></i>
                 </button>
+              </div>
+              <!-- Quick Vault Switcher when user has multiple vaults -->
+              <div id="popover-vault-container" class="sync-popover-vault-container" style="display: none;">
+                <div class="sync-popover-vault-header">
+                  <div class="sync-popover-vault-title">
+                    <i data-lucide="book-marked" style="width: 14px; height: 14px; color: var(--primary);"></i>
+                    <span>Đổi sổ làm việc</span>
+                  </div>
+                  <span class="sync-popover-vault-count" id="popover-vault-count-badge">2 sổ</span>
+                </div>
+                <div class="sync-popover-vault-list" id="popover-vault-list"></div>
+                <div class="sync-vault-quick-actions">
+                  <button type="button" onclick="window.SyncCoordinator && window.SyncCoordinator.quickCreateVault()" title="Tạo thêm sổ mới">
+                    <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
+                    <span>Tạo sổ mới</span>
+                  </button>
+                  <button type="button" onclick="window.SyncCoordinator && window.SyncCoordinator.openVaultSettings()" title="Vào cài đặt quản lý sổ">
+                    <i data-lucide="sliders-horizontal" style="width: 12px; height: 12px;"></i>
+                    <span>Quản lý sổ</span>
+                  </button>
+                </div>
               </div>
               <div class="sync-popover-body">
                 <div class="sync-popover-detail">

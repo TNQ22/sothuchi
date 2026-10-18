@@ -34,6 +34,7 @@ class SyncCoordinator {
 
     this.setupEventListeners();
     this.updateUI();
+    this.updateVaultUI();
   }
 
   registerAdapter(name, adapter) {
@@ -66,17 +67,35 @@ class SyncCoordinator {
       this.setStatus('error', e.detail?.target || 'Đám mây');
     });
 
+    // Lắng nghe sự kiện sổ máy chủ thay đổi
+    window.addEventListener('server-vault-switched', () => {
+      this.updateVaultUI();
+      if (this.isPopoverOpen) this.updatePopoverContent();
+    });
+    window.addEventListener('server-vaults-updated', () => {
+      this.updateVaultUI();
+      if (this.isPopoverOpen) this.updatePopoverContent();
+    });
+    window.addEventListener('server-auth-changed', () => {
+      this.updateVaultUI();
+      if (this.isPopoverOpen) this.updatePopoverContent();
+    });
+
     // Lắng nghe click bên ngoài để đóng popover
     document.addEventListener('click', (e) => {
       if (!this.isPopoverOpen) return;
       const popover = document.getElementById('sync-status-popover');
       const headerBtn = document.getElementById('header-brand-logo-btn');
       const txBtn = document.getElementById('tx-brand-logo-btn');
+      const headerPill = document.getElementById('header-vault-pill');
+      const txPill = document.getElementById('tx-vault-pill');
       const syncBtn = document.getElementById('header-sync-btn');
       
       if (popover && !popover.contains(e.target) && 
           (!headerBtn || !headerBtn.contains(e.target)) && 
           (!txBtn || !txBtn.contains(e.target)) &&
+          (!headerPill || !headerPill.contains(e.target)) &&
+          (!txPill || !txPill.contains(e.target)) &&
           (!syncBtn || !syncBtn.contains(e.target))) {
         this.closePopover();
       }
@@ -317,7 +336,8 @@ class SyncCoordinator {
     popover.style.display = 'block';
     this.isPopoverOpen = true;
 
-    const popoverWidth = 290;
+    const popoverWidth = Math.min(310, window.innerWidth - 24);
+    popover.style.width = popoverWidth + 'px';
     if (triggerBtn && typeof triggerBtn.getBoundingClientRect === 'function') {
       const rect = triggerBtn.getBoundingClientRect();
       popover.style.position = 'fixed';
@@ -408,6 +428,59 @@ class SyncCoordinator {
         errBox.style.display = 'none';
       }
     }
+
+    // Render mục chuyển sổ nếu có nhiều hơn 1 sổ
+    const vaultContainer = document.getElementById('popover-vault-container');
+    const vaultList = document.getElementById('popover-vault-list');
+    const vaultCountBadge = document.getElementById('popover-vault-count-badge');
+
+    const sService = window.serverSyncService;
+    const vaults = sService && Array.isArray(sService.vaults) ? sService.vaults : [];
+    const activeVaultId = sService?.activeVaultId;
+
+    if (vaultContainer && vaultList) {
+      if (vaults.length > 1) {
+        vaultContainer.style.display = 'block';
+        if (vaultCountBadge) vaultCountBadge.textContent = `${vaults.length} sổ`;
+
+        vaultList.innerHTML = vaults.map(v => {
+          const isActive = v.id === activeVaultId;
+          const roleLabel = v.role === 'owner' ? 'Chủ sổ' : (v.role === 'editor' ? 'Ghi chép' : 'Chỉ xem');
+          const roleClass = v.role || 'owner';
+          const safeId = typeof escapeHTML === 'function' ? escapeHTML(v.id) : v.id;
+          const safeName = typeof escapeHTML === 'function' ? escapeHTML(v.name) : v.name;
+
+          return `
+            <div class="sync-vault-item ${isActive ? 'active' : ''}" data-vault-id="${safeId}" onclick="${isActive ? '' : `window.SyncCoordinator.switchVaultQuick('${safeId}')`}">
+              <div class="sync-vault-item-left">
+                <div class="sync-vault-item-icon">
+                  <i data-lucide="${isActive ? 'book-check' : 'book'}" style="width: 14px; height: 14px;"></i>
+                </div>
+                <div class="sync-vault-item-info">
+                  <div class="sync-vault-item-name" title="${safeName}">${safeName}</div>
+                  <div class="sync-vault-item-meta">
+                    <span class="sync-vault-role-pill ${roleClass}">${roleLabel}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="sync-vault-item-right">
+                ${isActive 
+                  ? `<span class="sync-vault-active-tag"><i data-lucide="check" style="width: 12px; height: 12px;"></i> Đang dùng</span>`
+                  : `<button type="button" class="sync-vault-switch-btn" title="Chuyển sang sổ này">
+                      <span>Đổi</span>
+                      <i data-lucide="arrow-right" style="width: 12px; height: 12px;"></i>
+                    </button>`
+                }
+              </div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        vaultContainer.style.display = 'none';
+      }
+    }
+
+    if (window.lucide) lucide.createIcons();
   }
 
   // Nút hành động nhanh trên Popover
@@ -467,6 +540,158 @@ class SyncCoordinator {
     this.closePopover();
     if (window.app && window.app.switchView) {
       window.app.switchView('settings');
+    }
+  }
+
+  // Cập nhật hiển thị sổ bên ngoài Header
+  updateVaultUI() {
+    const sService = window.serverSyncService;
+    const vaults = sService && Array.isArray(sService.vaults) ? sService.vaults : [];
+    const activeVault = sService && typeof sService.getActiveVault === 'function' ? sService.getActiveVault() : null;
+
+    const hasMultiVaults = vaults.length > 1;
+
+    // 1. Cập nhật Pills bên ngoài Header
+    const headerPill = document.getElementById('header-vault-pill');
+    const txPill = document.getElementById('tx-vault-pill');
+    const headerName = document.getElementById('header-vault-name');
+    const txName = document.getElementById('tx-vault-name');
+
+    // 2. Cập nhật Badges số lượng sổ trên Logo
+    const headerBadge = document.getElementById('header-vault-badge-count');
+    const txBadge = document.getElementById('tx-vault-badge-count');
+    const headerBtn = document.getElementById('header-brand-logo-btn');
+    const txBtn = document.getElementById('tx-brand-logo-btn');
+
+    const vaultNameText = activeVault ? activeVault.name : (vaults[0]?.name || 'Sổ chính');
+
+    if (hasMultiVaults) {
+      if (headerPill) {
+        headerPill.style.display = 'inline-flex';
+        headerPill.setAttribute('title', `Sổ hiện tại: ${vaultNameText} (${vaults.length} sổ - Bấm để đổi)`);
+      }
+      if (txPill) {
+        txPill.style.display = 'inline-flex';
+        txPill.setAttribute('title', `Sổ hiện tại: ${vaultNameText} (${vaults.length} sổ - Bấm để đổi)`);
+      }
+      if (headerName) headerName.textContent = vaultNameText;
+      if (txName) txName.textContent = vaultNameText;
+
+      if (headerBadge) {
+        headerBadge.textContent = vaults.length;
+        headerBadge.style.display = 'flex';
+      }
+      if (txBadge) {
+        txBadge.textContent = vaults.length;
+        txBadge.style.display = 'flex';
+      }
+
+      if (headerBtn) {
+        headerBtn.classList.add('has-multi-vaults');
+        headerBtn.setAttribute('title', `Sổ: ${vaultNameText} (${vaults.length} sổ) - Bấm để đổi sổ hoặc xem đồng bộ`);
+      }
+      if (txBtn) {
+        txBtn.classList.add('has-multi-vaults');
+        txBtn.setAttribute('title', `Sổ: ${vaultNameText} (${vaults.length} sổ) - Bấm để đổi sổ hoặc xem đồng bộ`);
+      }
+    } else {
+      if (headerPill) headerPill.style.display = 'none';
+      if (txPill) txPill.style.display = 'none';
+      if (headerBadge) headerBadge.style.display = 'none';
+      if (txBadge) txBadge.style.display = 'none';
+
+      if (headerBtn) {
+        headerBtn.classList.remove('has-multi-vaults');
+        headerBtn.setAttribute('title', 'Trạng thái sao lưu & đồng bộ');
+      }
+      if (txBtn) {
+        txBtn.classList.remove('has-multi-vaults');
+        txBtn.setAttribute('title', 'Trạng thái sao lưu & đồng bộ');
+      }
+    }
+
+    if (window.lucide) lucide.createIcons();
+  }
+
+  // Đổi sổ nhanh từ Popover Logo
+  async switchVaultQuick(vaultId) {
+    const sService = window.serverSyncService;
+    if (!sService || !vaultId || vaultId === sService.activeVaultId) return;
+
+    const targetVault = sService.vaults ? sService.vaults.find(v => v.id === vaultId) : null;
+    const vaultName = targetVault ? targetVault.name : 'sổ mới';
+
+    // Hiển thị trạng thái đang đổi trên popover
+    const vaultListEl = document.getElementById('popover-vault-list');
+    if (vaultListEl) {
+      const items = vaultListEl.querySelectorAll('.sync-vault-item');
+      items.forEach(el => {
+        if (el.dataset.vaultId === vaultId) {
+          el.classList.add('is-switching');
+          const rightEl = el.querySelector('.sync-vault-item-right');
+          if (rightEl) {
+            rightEl.innerHTML = '<span class="vault-item-switching-text"><i data-lucide="loader-2" class="spin-animation" style="width:13px;height:13px;"></i> Đang chuyển...</span>';
+          }
+        }
+      });
+      if (window.lucide) lucide.createIcons();
+    }
+
+    try {
+      showToast(`Đang chuyển sang "${vaultName}"...`, 'info');
+      await sService.switchVault(vaultId);
+      if (window.app && typeof window.app.refreshAll === 'function') {
+        await window.app.refreshAll();
+      }
+      showToast(`Đã chuyển sang sổ "${vaultName}" thành công!`, 'success');
+      this.updateVaultUI();
+      this.updatePopoverContent();
+      setTimeout(() => {
+        this.closePopover();
+      }, 600);
+    } catch (err) {
+      console.error('switchVaultQuick error:', err);
+      showToast('Lỗi khi chuyển sổ: ' + (err.message || err), 'error');
+      this.updatePopoverContent();
+    }
+  }
+
+  // Tạo sổ mới nhanh từ Popover
+  async quickCreateVault() {
+    const sService = window.serverSyncService;
+    if (!sService || !sService.serverUrl || !sService.token) {
+      showToast('Vui lòng kết nối Máy Chủ Riêng để tạo sổ mới', 'warning');
+      this.openVaultSettings();
+      return;
+    }
+    const name = prompt('Nhập tên Sổ mới (ví dụ: Sổ Gia Đình, Sổ Quỹ Lớp, Sổ Kinh Doanh...):');
+    if (!name || !name.trim()) return;
+
+    try {
+      showToast('Đang tạo sổ mới...', 'info');
+      const v = await sService.createVault(name.trim());
+      showToast(`Đã tạo sổ "${v.name}" thành công!`, 'success');
+      if (window.app && typeof window.app.refreshAll === 'function') {
+        await window.app.refreshAll();
+      }
+      this.updateVaultUI();
+      this.updatePopoverContent();
+      setTimeout(() => {
+        this.closePopover();
+      }, 700);
+    } catch (err) {
+      showToast('Tạo sổ thất bại: ' + (err.message || err), 'error');
+    }
+  }
+
+  // Chuyển tới mục quản lý Sổ trong Cài đặt
+  openVaultSettings() {
+    this.closePopover();
+    if (window.app && typeof window.app.switchView === 'function') {
+      window.app.switchView('settings');
+      if (window.UISettings && typeof window.UISettings.openSection === 'function') {
+        setTimeout(() => window.UISettings.openSection('section-server-sync'), 120);
+      }
     }
   }
 }

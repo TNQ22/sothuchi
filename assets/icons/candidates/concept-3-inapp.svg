@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="c3_arrow_grad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0f766e" />
+      <stop offset="40%" stop-color="#0d9488" />
+      <stop offset="75%" stop-color="#14b8a6" />
+      <stop offset="100%" stop-color="#2dd4bf" />
+    </linearGradient>
+    <linearGradient id="c3_book_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14b8a6" />
+      <stop offset="100%" stop-color="#0f766e" />
+    </linearGradient>
+    <filter id="c3_shadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0d9488" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  
+
+  <g filter="url(#c3_shadow)">
+    <!-- Open Ledger: Left Page Stack -->
+    <path d="M 100 240 C 145 220 200 226 244 246 L 244 374 C 200 354 145 348 100 368 Z" fill="#115e59" opacity="0.6"/>
+    <path d="M 108 226 C 150 208 202 214 244 234 L 244 362 C 202 342 150 336 108 354 Z" fill="url(#c3_book_grad)"/>
+
+    <!-- Open Ledger: Right Page Stack -->
+    <path d="M 412 240 C 367 220 312 226 268 246 L 268 374 C 312 354 367 348 412 368 Z" fill="#115e59" opacity="0.6"/>
+    <path d="M 404 226 C 362 208 310 214 268 234 L 268 362 C 310 342 362 336 404 354 Z" fill="url(#c3_book_grad)"/>
+
+    <!-- Page lines on left page -->
+    <line x1="140" y1="250" x2="210" y2="260" stroke="#ccfbf1" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+    <line x1="140" y1="275" x2="210" y2="285" stroke="#ccfbf1" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+    <line x1="140" y1="300" x2="190" y2="308" stroke="#ccfbf1" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+
+    <!-- Page lines on right page -->
+    <line x1="302" y1="260" x2="372" y2="250" stroke="#ccfbf1" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+    <line x1="302" y1="285" x2="372" y2="275" stroke="#ccfbf1" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+    <line x1="302" y1="308" x2="352" y2="300" stroke="#ccfbf1" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+
+    <!-- Powerful Upward Surge Financial Growth Ribbon & Arrow -->
+    <path d="M 120 376 C 180 430 236 340 286 280 C 330 226 360 170 388 108" fill="none" stroke="url(#c3_arrow_grad)" stroke-width="26" stroke-linecap="round"/>
+    
+    <!-- Arrow Head -->
+    <polygon points="372,96 418,102 396,144" fill="#2dd4bf" stroke="#ffffff" stroke-width="2"/>
+
+    <!-- Dong Coin in center of growth curve -->
+    <circle cx="256" cy="270" r="54" fill="#0d9488" stroke="#5eead4" stroke-width="4"/>
+    <circle cx="256" cy="270" r="42" fill="none" stroke="#99f6e4" stroke-width="2" stroke-dasharray="5,3"/>
+    <text x="256" y="291" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="54" font-weight="900" fill="#ffffff" text-anchor="middle">₫</text>
+  </g>
+</svg>

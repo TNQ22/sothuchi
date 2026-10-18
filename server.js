@@ -197,6 +197,18 @@ class DatabaseManager {
         );
         CREATE INDEX IF NOT EXISTS idx_share_links_token ON item_share_links(token);
         CREATE INDEX IF NOT EXISTS idx_share_links_lookup ON item_share_links(vault_id, item_type, item_id);
+
+        CREATE TABLE IF NOT EXISTS shared_item_projections (
+          id TEXT PRIMARY KEY,
+          vault_id TEXT NOT NULL,
+          item_type TEXT NOT NULL,
+          item_id TEXT NOT NULL,
+          data_json TEXT NOT NULL,
+          version INTEGER NOT NULL DEFAULT 1,
+          updated_at TEXT NOT NULL,
+          updated_by TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_projections_unique ON shared_item_projections(vault_id, item_type, item_id);
       `);
 
       this.isSqlite = true;
@@ -215,6 +227,7 @@ class DatabaseManager {
         this.jsonStore = JSON.parse(content);
         this.jsonStore.item_shares = Array.isArray(this.jsonStore.item_shares) ? this.jsonStore.item_shares : [];
         this.jsonStore.item_share_links = Array.isArray(this.jsonStore.item_share_links) ? this.jsonStore.item_share_links : [];
+        this.jsonStore.shared_item_projections = typeof this.jsonStore.shared_item_projections === 'object' && this.jsonStore.shared_item_projections !== null ? this.jsonStore.shared_item_projections : {};
       } catch (e) {
         console.warn('[Storage] Không thể đọc JSON store, khởi tạo mới:', e.message);
       }
@@ -868,7 +881,75 @@ class DatabaseManager {
     }
   }
 
+  saveItemProjection(vaultId, itemType, itemId, projectionData, updatedBy) {
+    const now = new Date().toISOString();
+    const dataJson = typeof projectionData === 'string' ? projectionData : JSON.stringify(projectionData);
+    const id = `prj_${vaultId}_${itemType}_${itemId}`;
+
+    if (this.isSqlite) {
+      this.sqliteDb.prepare(`
+        INSERT INTO shared_item_projections (id, vault_id, item_type, item_id, data_json, version, updated_at, updated_by)
+        VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+        ON CONFLICT(vault_id, item_type, item_id) DO UPDATE SET
+          data_json = excluded.data_json,
+          version = version + 1,
+          updated_at = excluded.updated_at,
+          updated_by = excluded.updated_by
+      `).run(id, vaultId, itemType, String(itemId), dataJson, now, updatedBy);
+    } else {
+      this.jsonStore.shared_item_projections = this.jsonStore.shared_item_projections || {};
+      const key = `${vaultId}_${itemType}_${itemId}`;
+      const cur = this.jsonStore.shared_item_projections[key];
+      const nextVer = (cur?.version || 0) + 1;
+      this.jsonStore.shared_item_projections[key] = {
+        id, vault_id: vaultId, item_type: itemType, item_id: String(itemId),
+        data_json: dataJson, version: nextVer, updated_at: now, updated_by: updatedBy
+      };
+      this.saveJsonStore();
+    }
+    return { success: true, updated_at: now };
+  }
+
+  getItemProjection(vaultId, itemType, itemId) {
+    let raw;
+    if (this.isSqlite) {
+      raw = this.sqliteDb.prepare('SELECT * FROM shared_item_projections WHERE vault_id = ? AND item_type = ? AND item_id = ?').get(vaultId, itemType, String(itemId));
+    } else {
+      const key = `${vaultId}_${itemType}_${itemId}`;
+      raw = (this.jsonStore.shared_item_projections || {})[key];
+    }
+    if (!raw) return null;
+    try {
+      return {
+        ...raw,
+        data: JSON.parse(raw.data_json)
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
   getReceivedItemData(vaultId, itemType, itemId) {
+    // 1. Ưu tiên Bản Chiếu Độc Lập (Client-Side Projection - hỗ trợ mã hóa E2EE)
+    const proj = this.getItemProjection(vaultId, itemType, itemId);
+    if (proj && proj.data) {
+      if (proj.data.encrypted) {
+        return {
+          isProjection: true,
+          isEncrypted: true,
+          projectionData: proj.data
+        };
+      }
+      return {
+        isProjection: true,
+        isEncrypted: false,
+        item: proj.data.item,
+        transactions: Array.isArray(proj.data.transactions) ? proj.data.transactions : [],
+        categories: Array.isArray(proj.data.categories) ? proj.data.categories : []
+      };
+    }
+
+    // 2. Fallback bóc tách từ vault.data (nếu sổ không bật mã hóa E2EE)
     const vault = this.getVaultData(vaultId);
     if (!vault || !vault.data) return null;
     const data = vault.data;
@@ -903,7 +984,7 @@ class DatabaseManager {
     };
   }
 
-  saveSharedItemTransactions(shareId, email, incomingTxs) {
+  saveSharedItemTransactions(shareId, email, incomingTxs, incomingProjection = null) {
     let share = null;
     if (this.isSqlite) {
       share = this.sqliteDb.prepare('SELECT * FROM item_shares WHERE id = ?').get(shareId);
@@ -914,15 +995,34 @@ class DatabaseManager {
     if (!share) throw new Error('Không tìm thấy thông tin chia sẻ.');
     if (share.role !== 'editor') throw new Error('Bạn không có quyền chỉnh sửa tài khoản này.');
 
+    // Nếu Editor gửi kèm bản chiếu đã cập nhật (hỗ trợ cả E2EE)
+    if (incomingProjection) {
+      this.saveItemProjection(share.vault_id, share.item_type, share.item_id, incomingProjection, email);
+      return { success: true, isProjection: true };
+    }
+
+    // Nếu đã có bản chiếu plain trên server
+    const proj = this.getItemProjection(share.vault_id, share.item_type, share.item_id);
+    if (proj && proj.data && !proj.data.encrypted) {
+      const currentTxs = Array.isArray(proj.data.transactions) ? proj.data.transactions : [];
+      const mergedTxs = mergeTableData(currentTxs, incomingTxs, false);
+      proj.data.transactions = mergedTxs;
+      this.saveItemProjection(share.vault_id, share.item_type, share.item_id, proj.data, email);
+      return { success: true, count: mergedTxs.length };
+    }
+
     const vault = this.getVaultData(share.vault_id);
     if (!vault || !vault.data) throw new Error('Dữ liệu sổ chủ sở hữu không khả dụng.');
 
-    const currentTxs = Array.isArray(vault.data.transactions) ? vault.data.transactions : [];
-    const mergedTxs = mergeTableData(currentTxs, incomingTxs, false);
+    if (Array.isArray(vault.data.transactions)) {
+      const currentTxs = vault.data.transactions;
+      const mergedTxs = mergeTableData(currentTxs, incomingTxs, false);
+      vault.data.transactions = mergedTxs;
+      this.saveVaultData(share.vault_id, vault.data, email);
+      return { success: true, count: mergedTxs.length };
+    }
 
-    vault.data.transactions = mergedTxs;
-    this.saveVaultData(share.vault_id, vault.data, email);
-    return { success: true, count: mergedTxs.length };
+    return { success: true };
   }
 
   getVaultHistory(vaultId) {
@@ -1399,6 +1499,9 @@ async function handleApiRequest(req, res, pathname, url) {
     const link = dbManager.getShareLinkByToken(token);
     if (!link) return sendJson(res, 404, { error: 'Liên kết không tồn tại hoặc đã bị thu hồi' });
 
+    const proj = dbManager.getItemProjection(link.vault_id, link.item_type, link.item_id);
+    const isEncrypted = !!(proj && proj.data && proj.data.encrypted);
+
     return sendJson(res, 200, {
       token: link.token,
       itemType: link.item_type,
@@ -1407,7 +1510,8 @@ async function handleApiRequest(req, res, pathname, url) {
       role: link.role,
       ownerName: link.owner_name,
       ownerEmail: link.owner_email,
-      createdAt: link.created_at
+      createdAt: link.created_at,
+      isEncrypted
     });
   }
 
@@ -1606,16 +1710,36 @@ async function handleApiRequest(req, res, pathname, url) {
         const incomingData = body.data || {};
         const forceOverwrite = body.forceOverwrite === true || subPath === '/overwrite';
 
+        // Lấy dữ liệu hiện có trên Server
+        const serverCurrent = dbManager.getVaultData(vaultId);
+        const serverData = serverCurrent?.data || {};
+        const currentVersion = serverCurrent?.version || 1;
+
+        // KIỂM TRA XUNG ĐỘT ĐỒNG THỜI (Optimistic Concurrency Control):
+        // Nếu 2 thiết bị cùng gửi lên: Thiết bị A đã đẩy thành công khiến version tăng lên (ví dụ v2).
+        // Thiết bị B gửi sau nhưng dựa trên version cũ (baseVersion < currentVersion) -> Báo lỗi 409 Conflict
+        // kèm theo bản dữ liệu mới nhất để Thiết bị B tự động gộp rồi mới gửi lại, tránh ghi đè làm mất giao dịch của A.
+        if (!forceOverwrite && incomingData && incomingData.encrypted && body.baseVersion !== undefined && Number(body.baseVersion) < currentVersion) {
+          return sendJson(res, 409, {
+            error: 'conflict',
+            message: 'Dữ liệu trên máy chủ đã được một thiết bị khác cập nhật trước. Vui lòng hợp nhất dữ liệu mới nhất.',
+            currentVersion: currentVersion,
+            serverData: serverData
+          });
+        }
+
         let targetData;
-        if (forceOverwrite) {
+        if (forceOverwrite || (incomingData && incomingData.encrypted && incomingData.payload)) {
+          // Khi dữ liệu gửi lên là gói mã hóa đầu cuối E2EE (Zero-Knowledge): Lưu trực tiếp vào DB
           targetData = incomingData;
         } else {
-          // Lấy dữ liệu hiện có trên Server
-          const serverCurrent = dbManager.getVaultData(vaultId);
-          const serverData = serverCurrent?.data || {};
-
-          // Thực hiện gộp dữ liệu Last-Write-Wins
-          targetData = mergeFullVaultData(serverData, incomingData);
+          if (serverData && serverData.encrypted && serverData.payload) {
+            // Nếu dữ liệu hiện tại trên server đang được mã hóa mà client gửi plain: Lưu trực tiếp
+            targetData = incomingData;
+          } else {
+            // Thực hiện gộp dữ liệu Last-Write-Wins giữa 2 bản plain text
+            targetData = mergeFullVaultData(serverData, incomingData);
+          }
         }
 
         // Lưu vào cơ sở dữ liệu
@@ -1664,6 +1788,41 @@ async function handleApiRequest(req, res, pathname, url) {
   }
 
   // --- AUTHENTICATED ENDPOINTS CHO CHIA SẺ & PHÂN QUYỀN MỤC (GRANULAR PER-ITEM) ---
+
+  // 16b. Lưu hoặc cập nhật Bản Chiếu Chia Sẻ Mục (Client-Side Projection - E2EE)
+  if (req.method === 'POST' && pathname === '/api/shares/item/projection') {
+    try {
+      const body = await parseJsonBody(req);
+      const { itemType, itemId, projection, vaultId } = body;
+      if (!itemType || !itemId || !projection) {
+        return sendJson(res, 400, { error: 'Thiếu itemType, itemId hoặc projection' });
+      }
+
+      const userVaults = dbManager.getUserVaults(currentUser.id, currentUser.email);
+      const targetVaultId = vaultId || (userVaults.length > 0 ? userVaults[0].id : null);
+      if (!targetVaultId) return sendJson(res, 404, { error: 'Không tìm thấy sổ' });
+
+      const result = dbManager.saveItemProjection(targetVaultId, itemType, itemId, projection, currentUser.email);
+      return sendJson(res, 200, result);
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
+  // 16c. Lấy Bản Chiếu Chia Sẻ Mục
+  if (req.method === 'GET' && pathname === '/api/shares/item/projection') {
+    const itemType = searchParams.get('itemType');
+    const itemId = searchParams.get('itemId');
+    const vaultId = searchParams.get('vaultId');
+    if (!itemType || !itemId) return sendJson(res, 400, { error: 'Thiếu itemType hoặc itemId' });
+
+    const userVaults = dbManager.getUserVaults(currentUser.id, currentUser.email);
+    const targetVaultId = vaultId || (userVaults.length > 0 ? userVaults[0].id : null);
+    if (!targetVaultId) return sendJson(res, 404, { error: 'Không tìm thấy sổ' });
+
+    const proj = dbManager.getItemProjection(targetVaultId, itemType, itemId);
+    return sendJson(res, 200, { projection: proj ? proj.data : null });
+  }
 
   // 17. Lấy danh sách thành viên và liên kết chia sẻ cho một mục
   if (req.method === 'GET' && pathname === '/api/shares/item') {
@@ -1803,12 +1962,12 @@ async function handleApiRequest(req, res, pathname, url) {
   if (req.method === 'POST' && pathname === '/api/shares/received/sync') {
     try {
       const body = await parseJsonBody(req);
-      const { shareId, transactions } = body;
-      if (!shareId || !Array.isArray(transactions)) {
-        return sendJson(res, 400, { error: 'Thiếu shareId hoặc danh sách transactions' });
+      const { shareId, transactions, projection } = body;
+      if (!shareId || (!Array.isArray(transactions) && !projection)) {
+        return sendJson(res, 400, { error: 'Thiếu shareId hoặc danh sách transactions / projection' });
       }
 
-      const result = dbManager.saveSharedItemTransactions(shareId, currentUser.email, transactions);
+      const result = dbManager.saveSharedItemTransactions(shareId, currentUser.email, transactions, projection);
       return sendJson(res, 200, result);
     } catch (err) {
       return sendJson(res, 500, { error: err.message });
