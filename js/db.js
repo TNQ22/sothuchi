@@ -480,6 +480,12 @@ async function initDatabase() {
   if (!currency) await db.settings.put({ key: 'currency', value: 'VND' });
 }
 
+// Sinh ID dạng số duy nhất toàn cầu dựa trên microsecond để chống xung đột ID giữa các trình duyệt/thiết bị
+function generateUniqueId() {
+  return Date.now() * 1000 + Math.floor(Math.random() * 1000);
+}
+window.generateUniqueId = generateUniqueId;
+
 // Transaction operations with automatic balance recalculation
 async function addTransaction(data) {
   const now = Date.now();
@@ -487,6 +493,7 @@ async function addTransaction(data) {
   const fee = Number(data.fee) || 0;
   const tx = {
     ...data,
+    id: data.id || generateUniqueId(),
     amount: Number(data.amount),
     fee: fee,
     accountId: Number(data.accountId),
@@ -694,6 +701,7 @@ async function addDebt(data) {
   const now = Date.now();
   const debt = {
     ...data,
+    id: data.id || generateUniqueId(),
     originalAmount: Number(data.originalAmount),
     remainingAmount: Number(data.originalAmount),
     accountId: Number(data.accountId),
@@ -777,6 +785,7 @@ async function addSaving(data) {
   const sourceAccountId = data.sourceAccountId ? Number(data.sourceAccountId) : null;
 
   const saving = {
+    id: data.id || generateUniqueId(),
     name: data.name.trim(),
     bankCode: data.bankCode || '',
     initialBalance: amount,
@@ -873,6 +882,7 @@ async function addAccumulation(data) {
   const sourceAccountId = data.sourceAccountId ? Number(data.sourceAccountId) : null;
 
   const accumulation = {
+    id: data.id || generateUniqueId(),
     name: data.name.trim(),
     targetAmount: targetAmount,
     currentAmount: currentAmount,
@@ -976,6 +986,7 @@ async function addAsset(data) {
   const sourceAccountId = data.sourceAccountId ? Number(data.sourceAccountId) : null;
 
   const asset = {
+    id: data.id || generateUniqueId(),
     assetType: data.assetType || 'other', // 'real_estate' | 'precious_metal' | 'foreign_currency' | 'other'
     subType: data.subType || '',
     name: data.name.trim(),
@@ -1085,6 +1096,7 @@ async function addLoan(loanData) {
   const nowTs = Date.now();
   const loan = {
     ...loanData,
+    id: loanData.id || generateUniqueId(),
     remainingAmount: loanData.loanAmount,
     status: 'active',
     isDeleted: 0,

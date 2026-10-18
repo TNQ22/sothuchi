@@ -22,6 +22,9 @@ class ServerSyncService {
     this.lastError = null;
     this.serverGoogleClientId = null;
     this.connectionStatus = 'disconnected'; // 'connected' | 'checking' | 'disconnected'
+    this.lastVaultVersion = null;
+    this.lastVaultUpdatedAt = null;
+    this._pollingStarted = false;
   }
 
   get isConnected() {
@@ -128,6 +131,7 @@ class ServerSyncService {
     } catch (err) {
       console.warn('[ServerSync] Init warning:', err);
     }
+    this.startAutoPolling();
   }
 
   // Đặt Server URL
@@ -245,6 +249,15 @@ class ServerSyncService {
       detail: { user: this.userProfile, vaults: this.vaults, activeVaultId: this.activeVaultId }
     }));
 
+    // Tự động kéo dữ liệu từ máy chủ về ngay khi đăng nhập
+    if (this.activeVaultId) {
+      this.sync().then(async () => {
+        if (window.app && typeof window.app.refreshAll === 'function') {
+          await window.app.refreshAll();
+        }
+      }).catch(err => console.warn('[ServerSync] Sync after quickLogin:', err));
+    }
+
     return data;
   }
 
@@ -347,6 +360,14 @@ class ServerSyncService {
     window.dispatchEvent(new CustomEvent('server-auth-changed', {
       detail: { user: this.userProfile, vaults: this.vaults, activeVaultId: this.activeVaultId }
     }));
+
+    if (this.activeVaultId) {
+      this.sync().then(async () => {
+        if (window.app && typeof window.app.refreshAll === 'function') {
+          await window.app.refreshAll();
+        }
+      }).catch(err => console.warn('[ServerSync] Sync after Google login:', err));
+    }
 
     return { user: this.userProfile, vaults: this.vaults };
   }
@@ -830,6 +851,10 @@ class ServerSyncService {
 
       const pullResult = await pullRes.json();
       const serverData = pullResult.data || {};
+      if (pullResult.vault) {
+        this.lastVaultVersion = pullResult.vault.version;
+        this.lastVaultUpdatedAt = pullResult.vault.updated_at;
+      }
 
       // 2. Gộp dữ liệu từ Server vào IndexedDB máy khách (bảo vệ tài khoản riêng tư)
       await this.mergeServerDataIntoLocal(serverData);
@@ -897,6 +922,10 @@ class ServerSyncService {
         }
 
         const pushResult = await pushRes.json();
+        if (pushResult.vault) {
+          this.lastVaultVersion = pushResult.vault.version;
+          this.lastVaultUpdatedAt = pushResult.vault.updated_at;
+        }
         // Cập nhật lại IndexedDB với kết quả đã gộp từ server
         if (pushResult.data) {
           await this.mergeServerDataIntoLocal(pushResult.data);
@@ -936,43 +965,156 @@ class ServerSyncService {
     }
   }
 
-  // Thuật toán gộp dữ liệu từ Server vào Dexie IndexedDB
+  // ===========================================================================
+  // REAL-TIME AUTO POLLING & TAB VISIBILITY SYNC (ĐỒNG BỘ TỰ ĐỘNG THỜI GIAN THỰC)
+  // ===========================================================================
+  startAutoPolling() {
+    if (this._pollingStarted) return;
+    this._pollingStarted = true;
+
+    // 1. Kiểm tra định kỳ mỗi 10 giây (khi tab đang active)
+    setInterval(async () => {
+      if (document.hidden) return;
+      await this.checkRemoteVersionAndSync();
+    }, 10000);
+
+    // 2. Kiểm tra ngay lập tức khi người dùng chuyển qua lại giữa các tab hoặc app
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible') {
+        await this.checkRemoteVersionAndSync();
+      }
+    });
+
+    window.addEventListener('focus', async () => {
+      await this.checkRemoteVersionAndSync();
+    });
+  }
+
+  async checkRemoteVersionAndSync() {
+    if (!this.serverUrl || !this.token || !this.activeVaultId || this.isSyncing) return;
+    if (this.autoSync === false) return;
+
+    try {
+      const res = await fetch(`${this.serverUrl}/api/vaults/${this.activeVaultId}/version`, {
+        headers: { Authorization: `Bearer ${this.token}` }
+      });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (data && data.version !== undefined) {
+        if (this.lastVaultVersion !== null && data.version > this.lastVaultVersion) {
+          console.log(`[ServerSync] Phát hiện dữ liệu mới trên máy chủ (v${data.version} > v${this.lastVaultVersion}), tự động cập nhật...`);
+          await this.sync();
+          if (window.app && typeof window.app.refreshAll === 'function') {
+            await window.app.refreshAll();
+          }
+        } else if (this.lastVaultVersion === null) {
+          this.lastVaultVersion = data.version;
+          this.lastVaultUpdatedAt = data.updated_at;
+        }
+      }
+    } catch (e) {
+      // Bỏ qua lỗi kết nối tạm thời khi polling
+    }
+  }
+
+  // Thuật toán gộp dữ liệu từ Server vào Dexie IndexedDB (Chống ghi đè & Tự động xử lý xung đột ID)
   async mergeServerDataIntoLocal(remoteData) {
     if (!remoteData) return;
 
-    const mergeTable = async (table, localItems, remoteItems) => {
+    const mergeTable = async (table, localItems, remoteItems, isAccountTable = false, tableName = '') => {
       if (!table || !Array.isArray(remoteItems)) return;
       const itemMap = new Map();
+      const generateUniqueNumericId = () => (window.generateUniqueId ? window.generateUniqueId() : (Date.now() * 1000 + Math.floor(Math.random() * 1000)));
 
       for (const lItem of localItems) {
-        itemMap.set(lItem.id, lItem);
+        if (lItem && lItem.id !== undefined && lItem.id !== null) {
+          itemMap.set(lItem.id, lItem);
+        }
       }
 
       for (const rItem of remoteItems) {
-        if (!rItem || rItem.id === undefined) continue;
+        if (!rItem || rItem.id === undefined || rItem.id === null) continue;
 
         let lItem = itemMap.get(rItem.id);
 
-        if (!lItem && table === db.accounts && rItem.name) {
-          for (const existing of itemMap.values()) {
-            if (
-              existing.name &&
-              existing.name.trim().toLowerCase() === rItem.name.trim().toLowerCase() &&
-              existing.type === rItem.type
-            ) {
-              lItem = existing;
-              break;
+        // --- XỬ LÝ RIÊNG CHO BẢNG TÀI KHOẢN (ACCOUNTS) ---
+        if (isAccountTable) {
+          if (!lItem && rItem.name) {
+            for (const existing of itemMap.values()) {
+              if (
+                existing.name &&
+                existing.name.trim().toLowerCase() === rItem.name.trim().toLowerCase() &&
+                existing.type === rItem.type
+              ) {
+                lItem = existing;
+                break;
+              }
             }
           }
+
+          if (!lItem) {
+            itemMap.set(rItem.id, rItem);
+          } else {
+            // Bảo vệ tài khoản có số dư trên remote tránh bị tài khoản trắng mới khởi tạo của local ghi đè
+            const lIsBlank = (lItem.balance === 0 || lItem.balance === '0') &&
+                             ((lItem.initialBalance || 0) === 0) &&
+                             !lItem.isShared;
+            const rHasData = (rItem.balance !== 0 || (rItem.initialBalance || 0) !== 0);
+
+            if (lIsBlank && rHasData && !rItem.isDeleted) {
+              itemMap.set(lItem.id, { ...rItem, id: lItem.id });
+              continue;
+            }
+
+            const rIsBlank = (rItem.balance === 0 || rItem.balance === '0') &&
+                             ((rItem.initialBalance || 0) === 0) &&
+                             !rItem.isShared;
+            const lHasData = (lItem.balance !== 0 || (lItem.initialBalance || 0) !== 0);
+
+            if (rIsBlank && lHasData && !lItem.isDeleted) {
+              continue; // Giữ nguyên local
+            }
+
+            const rTime = new Date(rItem.updatedAt || 0).getTime() || 0;
+            const lTime = new Date(lItem.updatedAt || 0).getTime() || 0;
+            if (rTime >= lTime) {
+              itemMap.set(lItem.id, { ...rItem, id: lItem.id });
+            }
+          }
+          continue;
         }
 
+        // --- XỬ LÝ CHO CÁC BẢNG KHÁC (TRANSACTIONS, V.V...) ---
         if (!lItem) {
           itemMap.set(rItem.id, rItem);
         } else {
-          const rTime = new Date(rItem.updatedAt || 0).getTime() || 0;
-          const lTime = new Date(lItem.updatedAt || 0).getTime() || 0;
-          if (rTime >= lTime) {
-            itemMap.set(lItem.id, { ...rItem, id: lItem.id });
+          // Kiểm tra xem có phải trùng ID do auto-increment của 2 trình duyệt độc lập không
+          let isSameEntity = false;
+
+          if (tableName === 'transactions' || (rItem.amount !== undefined && rItem.date !== undefined)) {
+            const sameType = rItem.type === lItem.type;
+            const sameDate = String(rItem.date || '').slice(0, 10) === String(lItem.date || '').slice(0, 10);
+            const sameAmount = Math.abs(Number(rItem.amount || 0) - Number(lItem.amount || 0)) < 0.01;
+            const sameAccount = Number(rItem.accountId) === Number(lItem.accountId);
+            isSameEntity = sameType && sameDate && sameAmount && sameAccount;
+          } else if (rItem.name && lItem.name) {
+            isSameEntity = (rItem.name.trim().toLowerCase() === lItem.name.trim().toLowerCase());
+          } else {
+            isSameEntity = true;
+          }
+
+          if (isSameEntity) {
+            // Cùng một thực thể -> Last-Write-Wins
+            const rTime = new Date(rItem.updatedAt || 0).getTime() || 0;
+            const lTime = new Date(lItem.updatedAt || 0).getTime() || 0;
+            if (rTime >= lTime) {
+              itemMap.set(lItem.id, { ...rItem, id: lItem.id });
+            }
+          } else {
+            // Xung đột ID giữa 2 trình duyệt: Cấp ID mới cho rItem và giữ cả 2!
+            const newId = generateUniqueNumericId();
+            itemMap.set(newId, { ...rItem, id: newId });
           }
         }
       }
@@ -986,8 +1128,8 @@ class ServerSyncService {
     const sharedReceivedAccs = (await db.accounts.toArray()).filter(a => a._isSharedItem);
     const sharedReceivedTxs = (await db.transactions.toArray()).filter(t => t._isSharedItem);
 
-    if (remoteData.transactions) await mergeTable(db.transactions, await db.transactions.toArray(), remoteData.transactions);
-    if (remoteData.accounts) await mergeTable(db.accounts, await db.accounts.toArray(), remoteData.accounts);
+    if (remoteData.transactions) await mergeTable(db.transactions, await db.transactions.toArray(), remoteData.transactions, false, 'transactions');
+    if (remoteData.accounts) await mergeTable(db.accounts, await db.accounts.toArray(), remoteData.accounts, true, 'accounts');
 
     // Phục hồi lại các item chia sẻ nhận được
     for (const sAcc of sharedReceivedAccs) {
@@ -997,14 +1139,14 @@ class ServerSyncService {
       await db.transactions.put(sTx);
     }
 
-    if (remoteData.categories) await mergeTable(db.categories, await db.categories.toArray(), remoteData.categories);
-    if (remoteData.debts) await mergeTable(db.debts, await db.debts.toArray(), remoteData.debts);
-    if (remoteData.budgets) await mergeTable(db.budgets, await db.budgets.toArray(), remoteData.budgets);
-    if (remoteData.recurring) await mergeTable(db.recurring, await db.recurring.toArray(), remoteData.recurring);
-    if (remoteData.savings && db.savings) await mergeTable(db.savings, await db.savings.toArray(), remoteData.savings);
-    if (remoteData.accumulations && db.accumulations) await mergeTable(db.accumulations, await db.accumulations.toArray(), remoteData.accumulations);
-    if (remoteData.assets && db.assets) await mergeTable(db.assets, await db.assets.toArray(), remoteData.assets);
-    if (remoteData.loans && db.loans) await mergeTable(db.loans, await db.loans.toArray(), remoteData.loans);
+    if (remoteData.categories) await mergeTable(db.categories, await db.categories.toArray(), remoteData.categories, false, 'categories');
+    if (remoteData.debts) await mergeTable(db.debts, await db.debts.toArray(), remoteData.debts, false, 'debts');
+    if (remoteData.budgets) await mergeTable(db.budgets, await db.budgets.toArray(), remoteData.budgets, false, 'budgets');
+    if (remoteData.recurring) await mergeTable(db.recurring, await db.recurring.toArray(), remoteData.recurring, false, 'recurring');
+    if (remoteData.savings && db.savings) await mergeTable(db.savings, await db.savings.toArray(), remoteData.savings, false, 'savings');
+    if (remoteData.accumulations && db.accumulations) await mergeTable(db.accumulations, await db.accumulations.toArray(), remoteData.accumulations, false, 'accumulations');
+    if (remoteData.assets && db.assets) await mergeTable(db.assets, await db.assets.toArray(), remoteData.assets, false, 'assets');
+    if (remoteData.loans && db.loans) await mergeTable(db.loans, await db.loans.toArray(), remoteData.loans, false, 'loans');
 
     // Cài đặt ứng dụng
     if (remoteData.settings && Array.isArray(remoteData.settings)) {

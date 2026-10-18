@@ -952,49 +952,103 @@ const dbManager = new DatabaseManager();
 // ==============================================================================
 // 2. DATA MERGE ENGINE (Conflict-Free Last-Write-Wins Multi-Table)
 // ==============================================================================
-function mergeTableData(serverItems = [], clientItems = [], isAccountTable = false) {
+function mergeTableData(serverItems = [], clientItems = [], isAccountTable = false, tableName = '') {
   const map = new Map();
+  const generateUniqueNumericId = () => Date.now() * 1000 + Math.floor(Math.random() * 1000);
 
-  // Nạp dữ liệu hiện có trên Server
+  // 1. Nạp dữ liệu hiện có trên Server
   if (Array.isArray(serverItems)) {
     for (const item of serverItems) {
-      if (item && item.id !== undefined) {
+      if (item && item.id !== undefined && item.id !== null) {
         map.set(item.id, item);
       }
     }
   }
 
-  // So khớp với dữ liệu từ Client gửi lên
+  // 2. So khớp với dữ liệu từ Client gửi lên
   if (Array.isArray(clientItems)) {
     for (const cItem of clientItems) {
-      if (!cItem || cItem.id === undefined) continue;
+      if (!cItem || cItem.id === undefined || cItem.id === null) continue;
 
       let sItem = map.get(cItem.id);
 
-      // Đối với tài khoản: nếu chưa có ID nhưng trùng tên & loại -> ghép tránh nhân đôi
-      if (!sItem && isAccountTable && cItem.name) {
-        for (const existing of map.values()) {
-          if (
-            existing.name &&
-            existing.name.trim().toLowerCase() === cItem.name.trim().toLowerCase() &&
-            existing.type === cItem.type
-          ) {
-            sItem = existing;
-            break;
+      // --- XỬ LÝ RIÊNG CHO BẢNG TÀI KHOẢN (ACCOUNTS) ---
+      if (isAccountTable) {
+        if (!sItem && cItem.name) {
+          for (const existing of map.values()) {
+            if (
+              existing.name &&
+              existing.name.trim().toLowerCase() === cItem.name.trim().toLowerCase() &&
+              existing.type === cItem.type
+            ) {
+              sItem = existing;
+              break;
+            }
           }
         }
+
+        if (!sItem) {
+          map.set(cItem.id, cItem);
+        } else {
+          // Bảo vệ tài khoản có số dư trên server tránh bị tài khoản trắng mới khởi tạo của client ghi đè
+          const cIsBlank = (cItem.balance === 0 || cItem.balance === '0') &&
+                           ((cItem.initialBalance || 0) === 0) &&
+                           !cItem.isShared;
+          const sHasData = (sItem.balance !== 0 || (sItem.initialBalance || 0) !== 0);
+
+          if (cIsBlank && sHasData && !cItem.isDeleted) {
+            continue; // Giữ nguyên tài khoản server
+          }
+
+          const sIsBlank = (sItem.balance === 0 || sItem.balance === '0') &&
+                           ((sItem.initialBalance || 0) === 0) &&
+                           !sItem.isShared;
+          const cHasData = (cItem.balance !== 0 || (cItem.initialBalance || 0) !== 0);
+
+          if (sIsBlank && cHasData && !sItem.isDeleted) {
+            map.set(sItem.id, { ...cItem, id: sItem.id });
+            continue;
+          }
+
+          const cTime = new Date(cItem.updatedAt || 0).getTime() || 0;
+          const sTime = new Date(sItem.updatedAt || 0).getTime() || 0;
+          if (cTime >= sTime) {
+            map.set(sItem.id, { ...cItem, id: sItem.id });
+          }
+        }
+        continue;
       }
 
+      // --- XỬ LÝ CHO CÁC BẢNG KHÁC (TRANSACTIONS, V.V...) ---
       if (!sItem) {
         map.set(cItem.id, cItem);
       } else {
-        // Thuật toán Last-Write-Wins: so sánh updatedAt
-        const cTime = new Date(cItem.updatedAt || 0).getTime() || 0;
-        const sTime = new Date(sItem.updatedAt || 0).getTime() || 0;
+        // Kiểm tra xem có phải trùng ID ngẫu nhiên do auto-increment của 2 thiết bị khác nhau không
+        let isSameEntity = false;
 
-        if (cTime >= sTime) {
-          // Client mới hơn hoặc bằng -> nhận bản ghi của Client
-          map.set(sItem.id, { ...cItem, id: sItem.id });
+        if (tableName === 'transactions' || (cItem.amount !== undefined && cItem.date !== undefined)) {
+          const sameType = cItem.type === sItem.type;
+          const sameDate = String(cItem.date || '').slice(0, 10) === String(sItem.date || '').slice(0, 10);
+          const sameAmount = Math.abs(Number(cItem.amount || 0) - Number(sItem.amount || 0)) < 0.01;
+          const sameAccount = Number(cItem.accountId) === Number(sItem.accountId);
+          isSameEntity = sameType && sameDate && sameAmount && sameAccount;
+        } else if (cItem.name && sItem.name) {
+          isSameEntity = (cItem.name.trim().toLowerCase() === sItem.name.trim().toLowerCase());
+        } else {
+          isSameEntity = true;
+        }
+
+        if (isSameEntity) {
+          // Cùng một thực thể -> Last-Write-Wins
+          const cTime = new Date(cItem.updatedAt || 0).getTime() || 0;
+          const sTime = new Date(sItem.updatedAt || 0).getTime() || 0;
+          if (cTime >= sTime) {
+            map.set(sItem.id, { ...cItem, id: sItem.id });
+          }
+        } else {
+          // Xung đột ID giữa 2 trình duyệt độc lập: Cấp ID mới cho cItem và giữ cả 2!
+          const newId = generateUniqueNumericId();
+          map.set(newId, { ...cItem, id: newId });
         }
       }
     }
@@ -1043,16 +1097,16 @@ function mergeFullVaultData(serverVault, clientVault) {
   const c = clientVault || {};
 
   return {
-    transactions: mergeTableData(s.transactions, c.transactions, false),
-    accounts: mergeTableData(s.accounts, c.accounts, true),
-    categories: mergeTableData(s.categories, c.categories, false),
-    debts: mergeTableData(s.debts, c.debts, false),
-    budgets: mergeTableData(s.budgets, c.budgets, false),
-    recurring: mergeTableData(s.recurring, c.recurring, false),
-    savings: mergeTableData(s.savings, c.savings, false),
-    accumulations: mergeTableData(s.accumulations, c.accumulations, false),
-    assets: mergeTableData(s.assets, c.assets, false),
-    loans: mergeTableData(s.loans, c.loans, false),
+    transactions: mergeTableData(s.transactions, c.transactions, false, 'transactions'),
+    accounts: mergeTableData(s.accounts, c.accounts, true, 'accounts'),
+    categories: mergeTableData(s.categories, c.categories, false, 'categories'),
+    debts: mergeTableData(s.debts, c.debts, false, 'debts'),
+    budgets: mergeTableData(s.budgets, c.budgets, false, 'budgets'),
+    recurring: mergeTableData(s.recurring, c.recurring, false, 'recurring'),
+    savings: mergeTableData(s.savings, c.savings, false, 'savings'),
+    accumulations: mergeTableData(s.accumulations, c.accumulations, false, 'accumulations'),
+    assets: mergeTableData(s.assets, c.assets, false, 'assets'),
+    loans: mergeTableData(s.loans, c.loans, false, 'loans'),
     settings: mergeSettingsData(s.settings, c.settings)
   };
 }
@@ -1194,7 +1248,7 @@ async function handleApiRequest(req, res, pathname, url) {
     return sendJson(res, 200, {
       status: 'ok',
       service: 'So Thu Chi Sync Server',
-      version: '2.7.4',
+      version: '2.7.5',
       storage: dbManager.isSqlite ? 'sqlite' : 'json_store',
       googleAuth: true,
       googleClientId: GOOGLE_CLIENT_ID || null,
@@ -1504,6 +1558,18 @@ async function handleApiRequest(req, res, pathname, url) {
       const shareId = shareSubMatch[1];
       dbManager.removeShare(vaultId, shareId);
       return sendJson(res, 200, { success: true, message: 'Đã xóa quyền chia sẻ' });
+    }
+
+    // 12.5. Kiểm tra phiên bản dữ liệu Sổ (Siêu nhẹ phục vụ Polling / Tự động làm mới dữ liệu)
+    if (req.method === 'GET' && subPath === '/version') {
+      const vaultData = dbManager.getVaultData(vaultId);
+      const vaultInfo = dbManager.getVaultById(vaultId);
+      return sendJson(res, 200, {
+        vaultId: vaultId,
+        version: vaultData?.version || 1,
+        updated_at: vaultData?.updated_at || vaultInfo?.updated_at || null,
+        updated_by: vaultData?.updated_by || null
+      });
     }
 
     // 13. Lấy dữ liệu Sổ (Data Pull)

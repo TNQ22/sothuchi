@@ -1417,6 +1417,7 @@ const UIAccounts = {
       }
 
       await db.accounts.add({
+        id: (window.generateUniqueId ? window.generateUniqueId() : (Date.now() * 1000 + Math.floor(Math.random() * 1000))),
         name,
         type,
         currency,
