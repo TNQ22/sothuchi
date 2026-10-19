@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.8.0">
+  <link rel="stylesheet" href="./css/style.css?v=2.8.1">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1297,12 +1297,12 @@
       </header>
 
       <!-- Pull to refresh indicator (Hiển thị ngay dưới Header trong khoảng hở khi kéo xuống) -->
-      <div id="pull-to-refresh-indicator" class="ptr-indicator">
+      <div id="pull-to-refresh-indicator" class="ptr-indicator" style="position: fixed; left: 0; right: 0; top: 0; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 38; opacity: 0; transform: translate3d(0, 0, 0); will-change: transform, opacity;">
         <div class="ptr-pill">
           <div class="ptr-icon-box">
-            <svg class="ptr-icon ptr-icon-arrow" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <polyline points="19 12 12 19 5 12"></polyline>
+            <svg class="ptr-icon ptr-icon-circle-dot" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"></circle>
+              <circle class="ptr-inner-dot" cx="12" cy="12" r="3.2" fill="currentColor"></circle>
             </svg>
           </div>
           <span class="ptr-label">Kéo xuống để làm mới</span>
@@ -2076,7 +2076,7 @@
             <div class="settings-hub-footer">
               <a href="https://github.com/TNQ22/sothuchi" target="_blank" rel="noopener noreferrer" class="settings-version-link">
                 <i data-lucide="github" style="width: 14px; height: 14px;"></i>
-                <span>Phiên bản v2.8.0</span>
+                <span>Phiên bản v2.8.1</span>
               </a>
             </div>
               
@@ -2882,7 +2882,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <!-- Thông số hệ thống -->
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--border-color);">
                   <span style="font-size: 0.8rem; color: var(--text-secondary);">Phiên bản ứng dụng:</span>
-                  <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">v2.8.0</span>
+                  <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">v2.8.1</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; margin-bottom: 14px;">
                   <span style="font-size: 0.8rem; color: var(--text-secondary);">Dung lượng bộ nhớ ước tính:</span>
@@ -6430,7 +6430,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/server-auth-modals.js?v=2.8.0"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/pull-to-refresh.js?v=2.8.0"></script>
+  <script src="./js/pull-to-refresh.js?v=2.8.1"></script>
   <script src="./js/app.js?v=2.8.0"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
