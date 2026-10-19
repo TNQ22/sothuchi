@@ -115,6 +115,20 @@ const UISettings = {
     if (window.lucide) lucide.createIcons();
   },
 
+  // Xoá Cache & Cập nhật
+  clearAppCache() {
+    if (typeof window.clearAppCacheDirectly === 'function') {
+      return window.clearAppCacheDirectly();
+    }
+  },
+
+  // Khôi phục cài đặt gốc
+  factoryResetApp() {
+    if (typeof window.factoryResetAppDirectly === 'function') {
+      return window.factoryResetAppDirectly();
+    }
+  },
+
   // Cập nhật thông tin dung lượng bộ nhớ Cache & Storage
   async updateStorageUsage() {
     const textEl = document.getElementById('settings-storage-usage-text');
