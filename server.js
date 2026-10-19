@@ -481,6 +481,39 @@ class DatabaseManager {
     return this.getVaultById(vaultId);
   }
 
+  copyVault(sourceVaultId, newName, newOwnerId) {
+    const sourceVault = this.getVaultById(sourceVaultId);
+    if (!sourceVault) throw new Error('Sổ nguồn không tồn tại');
+
+    let raw = null;
+    if (this.isSqlite) {
+      raw = this.sqliteDb.prepare('SELECT * FROM vault_data WHERE vault_id = ?').get(sourceVaultId);
+    } else {
+      raw = this.jsonStore.vault_data[sourceVaultId];
+    }
+    const dataJson = raw && raw.data_json ? raw.data_json : '{}';
+
+    const newVault = this.createVault(newName || `${sourceVault.name} (Bản sao)`, newOwnerId);
+    const now = new Date().toISOString();
+    if (this.isSqlite) {
+      this.sqliteDb.prepare(`
+        UPDATE vault_data
+        SET data_json = ?, version = 1, updated_at = ?, updated_by = ?
+        WHERE vault_id = ?
+      `).run(dataJson, now, newOwnerId, newVault.id);
+    } else {
+      this.jsonStore.vault_data[newVault.id] = {
+        vault_id: newVault.id,
+        data_json: dataJson,
+        version: 1,
+        updated_at: now,
+        updated_by: newOwnerId
+      };
+      this.saveJsonStore();
+    }
+    return this.getVaultById(newVault.id);
+  }
+
   renameVault(vaultId, newName) {
     const now = new Date().toISOString();
     if (this.isSqlite) {
@@ -1601,6 +1634,30 @@ async function handleApiRequest(req, res, pathname, url) {
 
     if (!role) {
       return sendJson(res, 403, { error: 'Bạn không có quyền truy cập vào sổ này hoặc sổ đã bị xóa' });
+    }
+
+    // 7.5. Sao chép Sổ (Copy Vault)
+    if (req.method === 'POST' && subPath === '/copy') {
+      try {
+        const body = await parseJsonBody(req);
+        const sourceVault = dbManager.getVaultById(vaultId);
+        if (!sourceVault) {
+          return sendJson(res, 404, { error: 'Sổ nguồn không tồn tại' });
+        }
+        const newName = (body.name || '').trim() || `${sourceVault.name} (Bản sao)`;
+        const newVault = dbManager.copyVault(vaultId, newName, currentUser.id);
+        return sendJson(res, 201, {
+          success: true,
+          vault: {
+            ...newVault,
+            role: 'owner',
+            owner_name: currentUser.name,
+            owner_email: currentUser.email
+          }
+        });
+      } catch (err) {
+        return sendJson(res, 400, { error: err.message });
+      }
     }
 
     // 8. Đổi tên Sổ

@@ -1766,7 +1766,7 @@ body.dark .header-brand-logo-btn .sync-status-dot,
     height: 100% !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
-    overscroll-behavior-y: contain !important;
+    overscroll-behavior-y: none !important;
     padding: 12px 10px 18px 10px !important;
     box-sizing: border-box !important;
     max-width: 100% !important;
@@ -1823,7 +1823,7 @@ body.dark .header-brand-logo-btn .sync-status-dot,
     min-height: 0 !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
-    overscroll-behavior-y: contain !important;
+    overscroll-behavior-y: none !important;
     padding: 10px 12px 6px 12px !important;
     display: flex !important;
     flex-direction: column !important;
@@ -11634,65 +11634,83 @@ body.light .header-vault-pill .vault-pill-text {
    ========================================================================== */
 .ptr-indicator {
   position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translate(-50%, -80px);
-  z-index: 99999;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 0;
+  z-index: 38;
   pointer-events: none;
-  transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   opacity: 0;
-  will-change: transform, opacity;
+  transition: opacity 0.2s ease;
+  will-change: height, top, opacity;
 }
 
-.ptr-indicator.animate-reset {
-  transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.2s ease;
+@media (min-width: 769px) {
+  .ptr-indicator {
+    left: var(--sidebar-width, 260px);
+  }
 }
 
 .ptr-indicator.visible {
   opacity: 1;
 }
 
+.ptr-indicator.animate-reset {
+  transition: height 0.28s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.2s ease;
+}
+
 .ptr-pill {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  background: var(--bg-card, #ffffff);
-  color: var(--text-primary, #0f172a);
-  border: 1px solid var(--border-color, #e2e8f0);
-  padding: 8px 18px;
+  gap: 8px;
+  background: var(--bg-card, #1e293b);
+  color: var(--text-primary, #f8fafc);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  padding: 6px 16px;
   border-radius: 9999px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  font-size: 0.82rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  font-size: 0.8rem;
   font-weight: 600;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .ptr-indicator.ready .ptr-pill {
   border-color: var(--primary, #0d9488);
   color: var(--primary, #0d9488);
-  box-shadow: 0 12px 28px -4px rgba(13, 148, 136, 0.28);
+  box-shadow: 0 6px 18px rgba(13, 148, 136, 0.3);
   transform: scale(1.04);
 }
 
 .ptr-indicator.refreshing .ptr-pill {
   border-color: var(--primary, #0d9488);
   color: var(--primary, #0d9488);
+  box-shadow: 0 6px 18px rgba(13, 148, 136, 0.2);
 }
 
 .ptr-indicator.success .ptr-pill {
   border-color: #10b981;
   color: #10b981;
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.25);
 }
 
 .ptr-icon-box {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   position: relative;
+  flex-shrink: 0;
 }
 
 .ptr-icon {

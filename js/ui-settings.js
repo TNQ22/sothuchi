@@ -1067,6 +1067,29 @@ const serverLogoutBtn = document.getElementById('btn-server-logout');
       });
     }
 
+    // Sao chép Sổ (Copy Vault)
+    const copyVaultBtn = document.getElementById('btn-server-copy-vault');
+    if (copyVaultBtn) {
+      copyVaultBtn.addEventListener('click', async () => {
+        if (!sService || !sService.activeVaultId) {
+          showToast('Vui lòng kết nối và chọn Sổ trước khi sao chép', 'warning');
+          return;
+        }
+        const current = sService.getActiveVault ? sService.getActiveVault() : null;
+        const currentName = current ? current.name : 'Sổ hiện tại';
+        const name = prompt(`Nhập tên Sổ mới sao chép từ "${currentName}":`, `${currentName} (Bản sao)`);
+        if (!name || !name.trim()) return;
+        try {
+          showToast('Đang sao chép sổ...', 'info');
+          const v = await sService.copyVault(sService.activeVaultId, name.trim());
+          showToast(`Đã sao chép sang sổ "${v.name}" thành công!`, 'success');
+          if (window.app && window.app.refreshAll) await window.app.refreshAll();
+        } catch (err) {
+          showToast('Sao chép sổ thất bại: ' + err.message, 'error');
+        }
+      });
+    }
+
     // Xem Lịch sử Snapshot & Khôi phục
     const historyVaultBtn = document.getElementById('btn-server-history-vault');
     if (historyVaultBtn) {

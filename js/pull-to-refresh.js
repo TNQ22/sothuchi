@@ -1,13 +1,13 @@
 /**
- * PullToRefresh - Kéo xuống từ đỉnh trang để làm mới dữ liệu từ Máy Chủ
- * Hỗ trợ cảm ứng trên thiết bị di động (Touch) và thao tác mượt mà trên tất cả các trang.
+ * PullToRefresh - Kéo xuống từ đỉnh trang để kích hoạt làm mới dữ liệu từ Máy Chủ
+ * - Khi kéo: Mở khoảng hở dưới Header, hiện icon mũi tên xoay dần + "Kéo xuống để làm mới"
+ * - Khi đạt ngưỡng (65px): Rung phản hồi (Haptic 12ms), viền xanh ngọc + "Thả tay để làm mới..."
+ * - Khi thả tay: Lập tức tự cuộn êm lên lại 0px, kích hoạt đồng bộ nền (trạng thái làm mới hiển thị qua icon logo trên header)
  */
 class PullToRefresh {
   constructor() {
     this.container = null;
     this.arrowIcon = null;
-    this.spinnerIcon = null;
-    this.successIcon = null;
     this.textLabel = null;
 
     this.startY = 0;
@@ -35,34 +35,35 @@ class PullToRefresh {
   }
 
   setupDOM() {
-    if (document.getElementById('pull-to-refresh-indicator')) return;
+    let el = document.getElementById('pull-to-refresh-indicator');
 
-    const el = document.createElement('div');
-    el.id = 'pull-to-refresh-indicator';
-    el.className = 'ptr-indicator';
-    el.innerHTML = `
-      <div class="ptr-pill">
-        <div class="ptr-icon-box">
-          <svg class="ptr-icon ptr-icon-arrow" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <polyline points="19 12 12 19 5 12"></polyline>
-          </svg>
-          <svg class="ptr-icon ptr-icon-spinner" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-          </svg>
-          <svg class="ptr-icon ptr-icon-success" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'pull-to-refresh-indicator';
+      el.className = 'ptr-indicator';
+      el.innerHTML = `
+        <div class="ptr-pill">
+          <div class="ptr-icon-box">
+            <svg class="ptr-icon ptr-icon-arrow" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <polyline points="19 12 12 19 5 12"></polyline>
+            </svg>
+          </div>
+          <span class="ptr-label">Kéo xuống để làm mới</span>
         </div>
-        <span class="ptr-label">Kéo xuống để làm mới</span>
-      </div>
-    `;
+      `;
 
-    document.body.appendChild(el);
+      const mainWrapper = document.querySelector('.main-wrapper') || document.body;
+      const appHeader = document.querySelector('.app-header');
+      if (appHeader && appHeader.nextSibling) {
+        mainWrapper.insertBefore(el, appHeader.nextSibling);
+      } else {
+        mainWrapper.appendChild(el);
+      }
+    }
+
     this.container = el;
     this.arrowIcon = el.querySelector('.ptr-icon-arrow');
-    this.spinnerIcon = el.querySelector('.ptr-icon-spinner');
-    this.successIcon = el.querySelector('.ptr-icon-success');
     this.textLabel = el.querySelector('.ptr-label');
 
     this.setupListeners();
@@ -75,11 +76,25 @@ class PullToRefresh {
     window.addEventListener('touchcancel', () => this.resetPullState(), { passive: true });
   }
 
+  getHeaderBottom() {
+    const header = document.querySelector('.app-header');
+    if (!header || header.offsetParent === null || window.getComputedStyle(header).display === 'none') {
+      return 0;
+    }
+    const rect = header.getBoundingClientRect();
+    return Math.max(0, Math.round(rect.bottom));
+  }
+
   getActivePageElement() {
-    return document.querySelector('.page-view.active') || document.getElementById('main-content');
+    return document.querySelector('.page-view.active') || document.querySelector('.main-wrapper');
   }
 
   isAtTop(target) {
+    // Không cho phép pull khi đang mở modal, dialog, action sheet, keypad, hoặc đang ở form ghi chép/tạo mới
+    if (document.querySelector('.modal.open, .dialog.open, #modal-keypad.open, #action-sheet.open, .page-view.active.tx-page-view')) {
+      return false;
+    }
+
     if (window.scrollY > 2 || document.documentElement.scrollTop > 2 || document.body.scrollTop > 2) {
       return false;
     }
@@ -91,17 +106,10 @@ class PullToRefresh {
 
     let el = target;
     while (el && el !== document.body && el !== document.documentElement) {
-      if (el.scrollHeight > el.clientHeight + 4) {
-        const overflowY = window.getComputedStyle(el).overflowY;
-        if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollTop > 2) {
-          return false;
-        }
+      if (el.scrollTop > 2) {
+        return false;
       }
       el = el.parentElement;
-    }
-
-    if (document.querySelector('.modal.open, .dialog.open, #modal-keypad.open, #action-sheet.open')) {
-      return false;
     }
 
     return true;
@@ -128,11 +136,13 @@ class PullToRefresh {
     const deltaY = this.currentY - this.startY;
     const deltaX = Math.abs(e.touches[0].clientX - this.startX);
 
+    // Nếu vuốt ngang nhiều hơn vuốt dọc thì hủy pull
     if (deltaX > deltaY) {
       this.canPull = false;
       return;
     }
 
+    // Kéo xuống
     if (deltaY > 6) {
       this.isPulling = true;
       if (e.cancelable) e.preventDefault();
@@ -145,17 +155,21 @@ class PullToRefresh {
 
   updatePullProgress(distance) {
     if (!this.container) return;
+
+    const headerBottom = this.getHeaderBottom();
+    const pullOffset = Math.round(distance * 0.82);
+
+    this.container.style.top = `${headerBottom}px`;
+    this.container.style.height = `${pullOffset}px`;
     this.container.classList.add('visible');
-    this.container.classList.remove('refreshing', 'success', 'animate-reset');
-
-    this.container.style.transform = `translate(-50%, ${distance}px)`;
-
+    this.container.classList.remove('animate-reset');
 
     const pageEl = this.activeScrollContainer || this.getActivePageElement();
     if (pageEl) {
       pageEl.style.transition = 'none';
-      pageEl.style.transform = `translateY(${Math.round(distance * 0.5)}px)`;
+      pageEl.style.transform = `translateY(${pullOffset}px)`;
     }
+
     const progress = Math.min(1, distance / this.PULL_THRESHOLD);
     const rotation = progress * 180;
     if (this.arrowIcon) {
@@ -166,7 +180,7 @@ class PullToRefresh {
       this.container.classList.add('ready');
       if (this.textLabel) this.textLabel.textContent = 'Thả tay để làm mới...';
       if (!this._hasVibrated && navigator.vibrate) {
-        navigator.vibrate(12);
+        try { navigator.vibrate(12); } catch (_) {}
         this._hasVibrated = true;
       }
     } else {
@@ -176,32 +190,25 @@ class PullToRefresh {
     }
   }
 
-  async onTouchEnd() {
-    if (!this.isPulling || this.isRefreshing) {
+  onTouchEnd() {
+    if (!this.isPulling) {
       this.resetPullState();
       return;
     }
 
-    if (this.pullDistance >= this.PULL_THRESHOLD) {
-      await this.triggerRefresh();
-    } else {
-      this.resetPullState();
+    const shouldRefresh = this.pullDistance >= this.PULL_THRESHOLD;
+
+    // Tự cuộn êm lên lại ngay lập tức
+    this.resetPullState();
+
+    // Nếu đã kéo đủ khoảng cách thì kích hoạt làm mới (trạng thái làm mới hiển thị qua logo trên Header)
+    if (shouldRefresh) {
+      this.triggerRefresh();
     }
   }
 
   async triggerRefresh() {
     this.isRefreshing = true;
-    this.container.classList.add('refreshing');
-    this.container.classList.remove('ready');
-    this.container.style.transform = `translate(-50%, ${this.PULL_THRESHOLD}px)`;
-    if (this.textLabel) this.textLabel.textContent = 'Đang đồng bộ từ máy chủ...';
-
-    const pageEl = this.activeScrollContainer || this.getActivePageElement();
-    if (pageEl) {
-      pageEl.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
-      pageEl.style.transform = `translateY(${Math.round(this.PULL_THRESHOLD * 0.45)}px)`;
-    }
-
     try {
       if (window.syncCoordinator) {
         await window.syncCoordinator.syncAll(false);
@@ -212,47 +219,42 @@ class PullToRefresh {
       if (window.app && typeof window.app.refreshAll === 'function') {
         await window.app.refreshAll();
       }
-
-      this.container.classList.remove('refreshing');
-      this.container.classList.add('success');
-      if (this.textLabel) this.textLabel.textContent = 'Đã làm mới thành công!';
-
-      await new Promise(resolve => setTimeout(resolve, 600));
     } catch (err) {
       console.warn('[PullToRefresh] Lỗi làm mới:', err);
-      if (this.textLabel) this.textLabel.textContent = 'Không thể kết nối máy chủ';
-      await new Promise(resolve => setTimeout(resolve, 1000));
     } finally {
-      this.resetPullState();
+      this.isRefreshing = false;
     }
   }
 
   resetPullState() {
     this.isPulling = false;
-    this.isRefreshing = false;
     this.canPull = false;
     this.pullDistance = 0;
     this._hasVibrated = false;
 
     const pageEl = this.activeScrollContainer || this.getActivePageElement();
     if (pageEl) {
-      pageEl.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1)';
+      pageEl.style.transition = 'transform 0.28s cubic-bezier(0.25, 1, 0.5, 1)';
       pageEl.style.transform = '';
       setTimeout(() => {
         if (pageEl && !this.isPulling) {
           pageEl.style.transition = '';
         }
-      }, 350);
+      }, 300);
     }
 
     if (this.container) {
       this.container.classList.add('animate-reset');
-      this.container.style.transform = '';
-      this.container.classList.remove('visible', 'ready', 'refreshing', 'success');
+      this.container.style.transition = 'height 0.28s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.2s ease';
+      this.container.style.height = '0px';
+      this.container.classList.remove('visible', 'ready');
       if (this.arrowIcon) this.arrowIcon.style.transform = '';
       if (this.textLabel) this.textLabel.textContent = 'Kéo xuống để làm mới';
       setTimeout(() => {
-        if (this.container) this.container.classList.remove('animate-reset');
+        if (this.container && !this.isPulling) {
+          this.container.classList.remove('animate-reset');
+          this.container.style.transition = '';
+        }
       }, 300);
     }
 

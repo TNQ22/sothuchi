@@ -495,9 +495,139 @@ class ServerSyncService {
     return this.vaults.find(v => v.id === this.activeVaultId) || null;
   }
 
-  // Chuyển sang Sổ khác
-  async switchVault(vaultId) {
+  // Chuẩn bị payload dữ liệu cục bộ của Sổ hiện tại (không lấy các mục được chia sẻ độc lập)
+  async buildLocalPayload() {
+    const allAccs = await db.accounts.toArray();
+    const allTxs = await db.transactions.toArray();
+
+    // Không sao lưu ngược các mục do người khác chia sẻ vào Vault cá nhân của mình
+    const personalAccs = allAccs.filter(a => !a._isSharedItem);
+    const personalAccIds = new Set(personalAccs.map(a => Number(a.id)));
+    const personalTxs = allTxs.filter(t => {
+      if (t._isSharedItem) return false;
+      const accId = Number(t.accountId);
+      const toAccId = t.toAccountId ? Number(t.toAccountId) : null;
+      return personalAccIds.has(accId) || (toAccId && personalAccIds.has(toAccId));
+    });
+
+    const SYNCABLE_SETTINGS_KEYS = [
+      'budget_mode',
+      'budget_applicable_accounts',
+      'budget_rollover_enabled',
+      'budget_auto_rollover',
+      'theme',
+      'currency',
+      'privacyMode'
+    ];
+    const localSettings = [];
+    for (const k of SYNCABLE_SETTINGS_KEYS) {
+      const s = await db.settings.get(k);
+      if (s) localSettings.push(s);
+    }
+
+    return {
+      transactions: personalTxs,
+      accounts: personalAccs,
+      categories: await db.categories.toArray(),
+      debts: db.debts ? await db.debts.toArray() : [],
+      budgets: db.budgets ? await db.budgets.toArray() : [],
+      recurring: db.recurring ? await db.recurring.toArray() : [],
+      savings: db.savings ? (await db.savings.toArray()).filter(s => !s._isSharedItem) : [],
+      accumulations: db.accumulations ? (await db.accumulations.toArray()).filter(a => !a._isSharedItem) : [],
+      assets: db.assets ? (await db.assets.toArray()).filter(a => !a._isSharedItem) : [],
+      loans: db.loans ? (await db.loans.toArray()).filter(l => !l._isSharedItem) : [],
+      settings: localSettings
+    };
+  }
+
+  // Đẩy toàn bộ dữ liệu cục bộ của Sổ lên máy chủ
+  async pushLocalDataToServer(targetVaultId = this.activeVaultId, { forceOverwrite = false } = {}) {
+    if (!this.serverUrl || !this.token || !targetVaultId) return null;
+
+    const localPayload = await this.buildLocalPayload();
+    let dataToSend = localPayload;
+    if (this.encryptionPassword && window.CryptoService) {
+      const encryptedPayload = await window.CryptoService.encrypt(JSON.stringify(localPayload), this.encryptionPassword);
+      dataToSend = {
+        encrypted: true,
+        payload: encryptedPayload,
+        encryptedAt: new Date().toISOString()
+      };
+    }
+
+    const endpoint = forceOverwrite
+      ? `${this.serverUrl}/api/vaults/${targetVaultId}/overwrite`
+      : `${this.serverUrl}/api/vaults/${targetVaultId}/sync`;
+
+    const pushRes = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        data: dataToSend,
+        baseVersion: forceOverwrite ? undefined : this.lastVaultVersion,
+        forceOverwrite: forceOverwrite
+      })
+    });
+
+    if (pushRes.ok) {
+      const pushResult = await pushRes.json();
+      if (pushResult.version) {
+        this.lastVaultVersion = pushResult.version;
+        this.lastVaultUpdatedAt = pushResult.updated_at;
+        await db.settings.put({ key: 'syncServerLastVaultVersion', value: this.lastVaultVersion });
+      }
+    }
+    return pushRes;
+  }
+
+  // Khởi tạo sổ trắng (trống dữ liệu hoàn toàn, chỉ có tài khoản & danh mục mặc định)
+  async initializeBlankVault() {
+    await this.replaceLocalWithSnapshotData({
+      accounts: typeof DEFAULT_ACCOUNTS !== 'undefined' ? DEFAULT_ACCOUNTS.map((a, index) => ({
+        ...a,
+        balance: 0,
+        initialBalance: 0,
+        order: a.order ?? index,
+        isDeleted: 0,
+        updatedAt: 1
+      })) : [],
+      transactions: [],
+      categories: typeof DEFAULT_CATEGORIES !== 'undefined' ? DEFAULT_CATEGORIES.map(c => ({
+        ...c,
+        isDeleted: 0,
+        updatedAt: Date.now()
+      })) : [],
+      debts: [],
+      budgets: [],
+      recurring: [],
+      savings: [],
+      accumulations: [],
+      assets: [],
+      loans: []
+    }, false);
+  }
+
+  // Chuyển sang Sổ khác (hoàn toàn cách ly dữ liệu giữa các sổ)
+  async switchVault(vaultId, options = {}) {
     if (!vaultId) return;
+
+    // 1. Lưu thay đổi của sổ hiện tại lên máy chủ trước khi chuyển sang sổ khác
+    const oldVaultId = this.activeVaultId;
+    if (oldVaultId && oldVaultId !== vaultId && this.serverUrl && this.token) {
+      const oldVault = this.getActiveVault();
+      if (oldVault && (oldVault.role === 'owner' || oldVault.role === 'editor')) {
+        try {
+          await this.pushLocalDataToServer(oldVaultId);
+        } catch (saveOldErr) {
+          console.warn('[ServerSync] Không thể lưu sổ cũ trước khi chuyển:', saveOldErr);
+        }
+      }
+    }
+
+    // 2. Chuyển activeVaultId sang Sổ mới
     this.activeVaultId = vaultId;
     await db.settings.put({ key: 'syncServerActiveVaultId', value: this.activeVaultId });
 
@@ -511,8 +641,80 @@ class ServerSyncService {
     this.lastVaultVersion = null;
     await db.settings.delete('syncServerLastVaultVersion');
 
-    // Khi đổi sang sổ khác, đồng bộ kéo dữ liệu về máy ngay
-    await this.sync({ interactive: true });
+    // 3. Tải dữ liệu của Sổ mới từ Máy chủ
+    if (this.serverUrl && this.token) {
+      const pullRes = await fetch(`${this.serverUrl}/api/vaults/${this.activeVaultId}/data`, {
+        headers: { Authorization: `Bearer ${this.token}` }
+      });
+
+      if (!pullRes.ok) {
+        if (pullRes.status === 401) {
+          await this.logout();
+          throw new Error('Phiên làm việc trên máy chủ đã hết hạn. Vui lòng đăng nhập lại.');
+        }
+        const err = await pullRes.json().catch(() => ({}));
+        throw new Error(err.error || 'Không thể tải dữ liệu sổ từ máy chủ');
+      }
+
+      const pullResult = await pullRes.json();
+      let serverData = pullResult.data || {};
+      if (pullResult.vault) {
+        this.lastVaultVersion = pullResult.vault.version;
+        this.lastVaultUpdatedAt = pullResult.vault.updated_at;
+        await db.settings.put({ key: 'syncServerLastVaultVersion', value: this.lastVaultVersion });
+      }
+
+      // Xử lý giải mã E2EE nếu dữ liệu trên máy chủ đã được mã hóa
+      if (serverData && serverData.encrypted && serverData.payload) {
+        if (!this.encryptionPassword) {
+          throw new Error('Sổ trên máy chủ đã được mã hóa đầu cuối (E2EE). Vui lòng vào Cài đặt Máy Chủ Riêng > Nhập Mật khẩu Mã Hóa Sổ để mở khóa dữ liệu.');
+        }
+        if (!window.CryptoService) {
+          throw new Error('Trình duyệt không hỗ trợ thư viện giải mã dữ liệu (CryptoService).');
+        }
+        try {
+          const decryptedStr = await window.CryptoService.decrypt(serverData.payload, this.encryptionPassword);
+          serverData = JSON.parse(decryptedStr);
+        } catch (decErr) {
+          throw new Error('Mật khẩu mã hóa Sổ không chính xác! Không thể giải mã dữ liệu tài chính từ máy chủ.');
+        }
+      }
+
+      // Kiểm tra xem sổ này trên server là sổ mới trống dữ liệu hay đã có dữ liệu
+      const hasDataOnServer = serverData && (
+        (serverData.accounts && serverData.accounts.length > 0) ||
+        (serverData.transactions && serverData.transactions.length > 0) ||
+        (serverData.debts && serverData.debts.length > 0) ||
+        (serverData.savings && serverData.savings.length > 0) ||
+        (serverData.loans && serverData.loans.length > 0)
+      );
+
+      if (!hasDataOnServer || options.forceClean) {
+        // Sổ mới trống dữ liệu -> Khởi tạo sổ trắng hoàn toàn
+        await this.initializeBlankVault();
+
+        // Đẩy trạng thái trắng khởi tạo ban đầu lên server để lưu version 1
+        if (currentVault && (currentVault.role === 'owner' || currentVault.role === 'editor')) {
+          try {
+            await this.pushLocalDataToServer(this.activeVaultId, { forceOverwrite: true });
+          } catch (initPushErr) {
+            console.warn('[ServerSync] Không thể lưu trạng thái khởi tạo lên server:', initPushErr);
+          }
+        }
+      } else {
+        // Nạp và thay thế hoàn toàn dữ liệu cục bộ bằng dữ liệu của Sổ này
+        await this.replaceLocalWithSnapshotData(serverData, false);
+      }
+    }
+
+    this.lastSyncTime = new Date().toISOString();
+    await db.settings.put({ key: 'syncServerLastSyncTime', value: this.lastSyncTime });
+    await db.settings.put({ key: 'lastSyncTime', value: this.lastSyncTime });
+
+    // Cập nhật giao diện toàn ứng dụng
+    if (window.app && typeof window.app.refreshAll === 'function') {
+      await window.app.refreshAll();
+    }
 
     window.dispatchEvent(new CustomEvent('server-vault-switched', {
       detail: { vault: currentVault }
@@ -535,8 +737,48 @@ class ServerSyncService {
     });
 
     if (!res.ok) {
-      const err = await res.json();
+      const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Tạo sổ thất bại');
+    }
+
+    const data = await res.json();
+    await this.fetchVaults();
+    if (data.vault?.id) {
+      await this.switchVault(data.vault.id, { forceClean: true });
+    }
+    return data.vault;
+  }
+
+  // Sao chép Sổ (Copy Vault)
+  async copyVault(sourceVaultId, newName) {
+    if (!this.serverUrl || !this.token) throw new Error('Yêu cầu kết nối máy chủ');
+    const targetSourceId = sourceVaultId || this.activeVaultId;
+    if (!targetSourceId) throw new Error('Chưa chọn sổ nguồn để sao chép');
+
+    // Lưu thay đổi mới nhất của sổ nguồn trước khi sao chép
+    if (targetSourceId === this.activeVaultId) {
+      const currentVault = this.getActiveVault();
+      if (currentVault && (currentVault.role === 'owner' || currentVault.role === 'editor')) {
+        try {
+          await this.pushLocalDataToServer(targetSourceId);
+        } catch (e) {
+          console.warn('[ServerSync] Không thể đẩy dữ liệu trước khi copy:', e);
+        }
+      }
+    }
+
+    const res = await fetch(`${this.serverUrl}/api/vaults/${targetSourceId}/copy`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: (newName || '').trim() })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Sao chép sổ thất bại');
     }
 
     const data = await res.json();
@@ -772,12 +1014,12 @@ class ServerSyncService {
     }
   }
 
-  // Thay thế toàn bộ dữ liệu dùng chung cục bộ bằng dữ liệu Snapshot
+  // Thay thế toàn bộ dữ liệu dùng chung cục bộ bằng dữ liệu Snapshot / Sổ khác
   async replaceLocalWithSnapshotData(remoteData, preservePrivate = true) {
     if (!remoteData) return;
 
-    let newAccs = remoteData.accounts || [];
-    let newTxs = remoteData.transactions || [];
+    let newAccs = remoteData.accounts ? [...remoteData.accounts] : [];
+    let newTxs = remoteData.transactions ? [...remoteData.transactions] : [];
 
     if (preservePrivate) {
       // Giữ an toàn cho các tài khoản và giao dịch riêng tư cục bộ
@@ -796,8 +1038,28 @@ class ServerSyncService {
       newTxs = [...privateTxs, ...newTxs];
     }
 
+    // Bảo tồn các mục do người khác chia sẻ độc lập (_isSharedItem)
+    const localAccs = await db.accounts.toArray();
+    const sharedReceivedAccs = localAccs.filter(a => a._isSharedItem);
+    const localTxs = await db.transactions.toArray();
+    const sharedReceivedTxs = localTxs.filter(t => t._isSharedItem);
+
+    if (sharedReceivedAccs.length > 0) {
+      newAccs = [...newAccs.filter(a => !a._isSharedItem), ...sharedReceivedAccs];
+    }
+    if (sharedReceivedTxs.length > 0) {
+      newTxs = [...newTxs.filter(t => !t._isSharedItem), ...sharedReceivedTxs];
+    }
+
     if (newAccs.length === 0 && typeof DEFAULT_ACCOUNTS !== 'undefined') {
-      newAccs = DEFAULT_ACCOUNTS.map((a, index) => ({ ...a, order: a.order ?? index, isDeleted: 0, updatedAt: 1 }));
+      newAccs = DEFAULT_ACCOUNTS.map((a, index) => ({
+        ...a,
+        balance: 0,
+        initialBalance: 0,
+        order: a.order ?? index,
+        isDeleted: 0,
+        updatedAt: 1
+      }));
     }
 
     await db.accounts.clear();
@@ -806,37 +1068,61 @@ class ServerSyncService {
     await db.transactions.clear();
     if (newTxs.length > 0) await db.transactions.bulkAdd(newTxs);
 
-    if (remoteData.categories) {
-      await db.categories.clear();
+    await db.categories.clear();
+    if (remoteData.categories && remoteData.categories.length > 0) {
       await db.categories.bulkAdd(remoteData.categories);
+    } else if (typeof DEFAULT_CATEGORIES !== 'undefined') {
+      await db.categories.bulkAdd(DEFAULT_CATEGORIES.map(c => ({
+        ...c,
+        isDeleted: 0,
+        updatedAt: Date.now()
+      })));
     }
-    if (remoteData.debts) {
-      await db.debts.clear();
+    if (typeof ensureLoanSystemCategories === 'function') {
+      await ensureLoanSystemCategories();
+    }
+
+    await db.debts.clear();
+    if (remoteData.debts && remoteData.debts.length > 0) {
       await db.debts.bulkAdd(remoteData.debts);
     }
-    if (remoteData.budgets) {
-      await db.budgets.clear();
+
+    await db.budgets.clear();
+    if (remoteData.budgets && remoteData.budgets.length > 0) {
       await db.budgets.bulkAdd(remoteData.budgets);
     }
-    if (remoteData.recurring) {
-      await db.recurring.clear();
+
+    await db.recurring.clear();
+    if (remoteData.recurring && remoteData.recurring.length > 0) {
       await db.recurring.bulkAdd(remoteData.recurring);
     }
-    if (remoteData.savings && db.savings) {
+
+    if (db.savings) {
       await db.savings.clear();
-      await db.savings.bulkAdd(remoteData.savings);
+      if (remoteData.savings && remoteData.savings.length > 0) {
+        await db.savings.bulkAdd(remoteData.savings);
+      }
     }
-    if (remoteData.accumulations && db.accumulations) {
+
+    if (db.accumulations) {
       await db.accumulations.clear();
-      await db.accumulations.bulkAdd(remoteData.accumulations);
+      if (remoteData.accumulations && remoteData.accumulations.length > 0) {
+        await db.accumulations.bulkAdd(remoteData.accumulations);
+      }
     }
-    if (remoteData.assets && db.assets) {
+
+    if (db.assets) {
       await db.assets.clear();
-      await db.assets.bulkAdd(remoteData.assets);
+      if (remoteData.assets && remoteData.assets.length > 0) {
+        await db.assets.bulkAdd(remoteData.assets);
+      }
     }
-    if (remoteData.loans && db.loans) {
+
+    if (db.loans) {
       await db.loans.clear();
-      await db.loans.bulkAdd(remoteData.loans);
+      if (remoteData.loans && remoteData.loans.length > 0) {
+        await db.loans.bulkAdd(remoteData.loans);
+      }
     }
 
     if (remoteData.settings && Array.isArray(remoteData.settings)) {
@@ -1066,50 +1352,7 @@ class ServerSyncService {
 
       // 3. Nếu là Editor hoặc Owner: Chuẩn bị dữ liệu để đẩy (Push) lên Server
       if (!isViewer) {
-        // Lấy các tài khoản và giao dịch chia sẻ để đẩy lên server
-        // 100% dữ liệu tài khoản và giao dịch (kể cả sổ tiết kiệm, tích luỹ, vay, tài sản)
-        // đều được đẩy lên Server Vault để đảm bảo sao lưu dự phòng an toàn tuyệt đối.
-        const allAccs = await db.accounts.toArray();
-        const allTxs = await db.transactions.toArray();
-
-        // Không sao lưu ngược các mục do người khác chia sẻ vào Vault cá nhân của mình
-        const personalAccs = allAccs.filter(a => !a._isSharedItem);
-        const personalAccIds = new Set(personalAccs.map(a => Number(a.id)));
-        const personalTxs = allTxs.filter(t => {
-          if (t._isSharedItem) return false;
-          const accId = Number(t.accountId);
-          const toAccId = t.toAccountId ? Number(t.toAccountId) : null;
-          return personalAccIds.has(accId) || (toAccId && personalAccIds.has(toAccId));
-        });
-
-        const SYNCABLE_SETTINGS_KEYS = [
-          'budget_mode',
-          'budget_applicable_accounts',
-          'budget_rollover_enabled',
-          'budget_auto_rollover',
-          'theme',
-          'currency',
-          'privacyMode'
-        ];
-        const localSettings = [];
-        for (const k of SYNCABLE_SETTINGS_KEYS) {
-          const s = await db.settings.get(k);
-          if (s) localSettings.push(s);
-        }
-
-        const localPayload = {
-          transactions: personalTxs,
-          accounts: personalAccs,
-          categories: await db.categories.toArray(),
-          debts: await db.debts.toArray(),
-          budgets: await db.budgets.toArray(),
-          recurring: await db.recurring.toArray(),
-          savings: db.savings ? (await db.savings.toArray()).filter(s => !s._isSharedItem) : [],
-          accumulations: db.accumulations ? (await db.accumulations.toArray()).filter(a => !a._isSharedItem) : [],
-          assets: db.assets ? (await db.assets.toArray()).filter(a => !a._isSharedItem) : [],
-          loans: db.loans ? (await db.loans.toArray()).filter(l => !l._isSharedItem) : [],
-          settings: localSettings
-        };
+        const localPayload = await this.buildLocalPayload();
 
         let dataToSend = localPayload;
         if (this.encryptionPassword && window.CryptoService) {

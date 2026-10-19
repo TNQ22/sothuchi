@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.7.9">
+  <link rel="stylesheet" href="./css/style.css?v=2.8.0">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1296,6 +1296,19 @@
         </div>
       </header>
 
+      <!-- Pull to refresh indicator (Hiển thị ngay dưới Header trong khoảng hở khi kéo xuống) -->
+      <div id="pull-to-refresh-indicator" class="ptr-indicator">
+        <div class="ptr-pill">
+          <div class="ptr-icon-box">
+            <svg class="ptr-icon ptr-icon-arrow" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <polyline points="19 12 12 19 5 12"></polyline>
+            </svg>
+          </div>
+          <span class="ptr-label">Kéo xuống để làm mới</span>
+        </div>
+      </div>
+
       <!-- View: Dashboard (Tổng quan) -->
       <main id="view-dashboard" class="page-view">
         <!-- Stat Cards -->
@@ -2063,7 +2076,7 @@
             <div class="settings-hub-footer">
               <a href="https://github.com/TNQ22/sothuchi" target="_blank" rel="noopener noreferrer" class="settings-version-link">
                 <i data-lucide="github" style="width: 14px; height: 14px;"></i>
-                <span>Phiên bản v2.7.9</span>
+                <span>Phiên bản v2.8.0</span>
               </a>
             </div>
               
@@ -2588,6 +2601,9 @@
                         <button type="button" id="btn-server-create-vault" class="btn-secondary btn-sm" title="Tạo sổ mới">
                           <i data-lucide="plus" style="width: 12px; height: 12px;"></i> Sổ mới
                         </button>
+                        <button type="button" id="btn-server-copy-vault" class="btn-secondary btn-sm" title="Sao chép sổ hiện tại">
+                          <i data-lucide="copy" style="width: 12px; height: 12px;"></i> Copy sổ
+                        </button>
                         <button type="button" id="btn-server-history-vault" class="btn-secondary btn-sm" title="Lịch sử Snapshot & Khôi phục">
                           <i data-lucide="history" style="width: 12px; height: 12px;"></i> Lịch sử
                         </button>
@@ -2866,7 +2882,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <!-- Thông số hệ thống -->
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--border-color);">
                   <span style="font-size: 0.8rem; color: var(--text-secondary);">Phiên bản ứng dụng:</span>
-                  <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">v2.7.9</span>
+                  <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">v2.8.0</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; margin-bottom: 14px;">
                   <span style="font-size: 0.8rem; color: var(--text-secondary);">Dung lượng bộ nhớ ước tính:</span>
@@ -6004,6 +6020,10 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                     <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
                     <span>Tạo sổ mới</span>
                   </button>
+                  <button type="button" onclick="window.SyncCoordinator && window.SyncCoordinator.quickCopyVault()" title="Sao chép sổ hiện tại">
+                    <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                    <span>Copy sổ</span>
+                  </button>
                   <button type="button" onclick="window.SyncCoordinator && window.SyncCoordinator.openVaultSettings()" title="Vào cài đặt quản lý sổ">
                     <i data-lucide="sliders-horizontal" style="width: 12px; height: 12px;"></i>
                     <span>Quản lý sổ</span>
@@ -6388,30 +6408,30 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./vendor/chart.umd.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=2.7.9"></script>
+  <script src="./js/config.js?v=2.8.0"></script>
   <script src="./js/crypto.js"></script>
-  <script src="./js/db.js?v=2.7.9"></script>
-  <script src="./js/google-drive.js?v=2.7.9"></script>
-  <script src="./js/dropbox.js?v=2.7.9"></script>
-  <script src="./js/server-sync.js?v=2.7.9"></script>
+  <script src="./js/db.js?v=2.8.0"></script>
+  <script src="./js/google-drive.js?v=2.8.0"></script>
+  <script src="./js/dropbox.js?v=2.8.0"></script>
+  <script src="./js/server-sync.js?v=2.8.0"></script>
   <script src="./js/csv-export.js"></script>
-  <script src="./js/backup.js?v=2.7.9"></script>
-  <script src="./js/sync-coordinator.js?v=2.7.9"></script>
+  <script src="./js/backup.js?v=2.8.0"></script>
+  <script src="./js/sync-coordinator.js?v=2.8.0"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=2.7.9"></script>
-  <script src="./js/ui-transactions.js?v=2.7.9"></script>
-  <script src="./js/ui-debts.js?v=2.7.9"></script>
-  <script src="./js/ui-accounts.js?v=2.7.9"></script>
-  <script src="./js/ui-share.js?v=2.7.9"></script>
-  <script src="./js/ui-budgets.js?v=2.7.9"></script>
-  <script src="./js/ui-analytics.js?v=2.7.9"></script>
-  <script src="./js/ui-settings.js?v=2.7.9"></script>
-  <script src="./js/server-auth-modals.js?v=2.7.9"></script>
+  <script src="./js/ui-calendar.js?v=2.8.0"></script>
+  <script src="./js/ui-transactions.js?v=2.8.0"></script>
+  <script src="./js/ui-debts.js?v=2.8.0"></script>
+  <script src="./js/ui-accounts.js?v=2.8.0"></script>
+  <script src="./js/ui-share.js?v=2.8.0"></script>
+  <script src="./js/ui-budgets.js?v=2.8.0"></script>
+  <script src="./js/ui-analytics.js?v=2.8.0"></script>
+  <script src="./js/ui-settings.js?v=2.8.0"></script>
+  <script src="./js/server-auth-modals.js?v=2.8.0"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/pull-to-refresh.js?v=2.7.9"></script>
-  <script src="./js/app.js?v=2.7.9"></script>
+  <script src="./js/pull-to-refresh.js?v=2.8.0"></script>
+  <script src="./js/app.js?v=2.8.0"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
   <script>

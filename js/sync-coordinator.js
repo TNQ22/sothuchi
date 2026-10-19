@@ -684,6 +684,36 @@ class SyncCoordinator {
     }
   }
 
+  // Sao chép sổ nhanh từ Popover
+  async quickCopyVault() {
+    const sService = window.serverSyncService;
+    if (!sService || !sService.serverUrl || !sService.token || !sService.activeVaultId) {
+      showToast('Vui lòng kết nối Máy Chủ Riêng để sao chép sổ', 'warning');
+      this.openVaultSettings();
+      return;
+    }
+    const current = sService.getActiveVault ? sService.getActiveVault() : null;
+    const currentName = current ? current.name : 'Sổ hiện tại';
+    const name = prompt(`Nhập tên Sổ mới sao chép từ "${currentName}":`, `${currentName} (Bản sao)`);
+    if (!name || !name.trim()) return;
+
+    try {
+      showToast('Đang sao chép sổ...', 'info');
+      const v = await sService.copyVault(sService.activeVaultId, name.trim());
+      showToast(`Đã sao chép sang sổ "${v.name}" thành công!`, 'success');
+      if (window.app && typeof window.app.refreshAll === 'function') {
+        await window.app.refreshAll();
+      }
+      this.updateVaultUI();
+      this.updatePopoverContent();
+      setTimeout(() => {
+        this.closePopover();
+      }, 700);
+    } catch (err) {
+      showToast('Sao chép sổ thất bại: ' + (err.message || err), 'error');
+    }
+  }
+
   // Chuyển tới mục quản lý Sổ trong Cài đặt
   openVaultSettings() {
     this.closePopover();
