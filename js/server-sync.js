@@ -508,6 +508,9 @@ class ServerSyncService {
       this.shares = [];
     }
 
+    this.lastVaultVersion = null;
+    await db.settings.delete('syncServerLastVaultVersion');
+
     // Khi đổi sang sổ khác, đồng bộ kéo dữ liệu về máy ngay
     await this.sync({ interactive: true });
 
@@ -1016,6 +1019,7 @@ class ServerSyncService {
     window.dispatchEvent(new CustomEvent('sync-start', { detail: { target: targetLabel } }));
 
     try {
+      let localDataHasChanged = false;
       const currentVault = this.getActiveVault();
       const isViewer = currentVault && currentVault.role === 'viewer';
 
@@ -1057,7 +1061,8 @@ class ServerSyncService {
       }
 
       // 2. Gộp dữ liệu từ Server vào IndexedDB máy khách (bảo vệ tài khoản riêng tư)
-      await this.mergeServerDataIntoLocal(serverData);
+      const pullChanged = await this.mergeServerDataIntoLocal(serverData);
+      if (pullChanged) localDataHasChanged = true;
 
       // 3. Nếu là Editor hoặc Owner: Chuẩn bị dữ liệu để đẩy (Push) lên Server
       if (!isViewer) {
@@ -1143,7 +1148,8 @@ class ServerSyncService {
 
           // 1. Gộp dữ liệu của thiết bị kia vừa gửi lên vào IndexedDB của mình
           if (remoteData && !remoteData.encrypted) {
-            await this.mergeServerDataIntoLocal(remoteData);
+            const conflictChanged = await this.mergeServerDataIntoLocal(remoteData);
+            if (conflictChanged) localDataHasChanged = true;
           }
           this.lastVaultVersion = conflictData.currentVersion;
 
@@ -1208,7 +1214,6 @@ class ServerSyncService {
           await db.settings.put({ key: 'syncServerLastVaultVersion', value: this.lastVaultVersion });
         }
         // Cập nhật lại IndexedDB với kết quả đã gộp từ server
-        let localDataHasChanged = false;
         if (pushResult.data) {
           let pushData = pushResult.data;
           if (pushData.encrypted && pushData.payload) {
@@ -1220,7 +1225,8 @@ class ServerSyncService {
             }
           }
           if (!pushData.encrypted) {
-            localDataHasChanged = await this.mergeServerDataIntoLocal(pushData);
+            const pushChanged = await this.mergeServerDataIntoLocal(pushData);
+            if (pushChanged) localDataHasChanged = true;
           }
         }
 
@@ -1239,7 +1245,8 @@ class ServerSyncService {
             console.warn('[ServerSync] Lỗi tự động cập nhật bản chiếu chia sẻ:', projErr.message);
           }
 
-          await this.syncReceivedSharedItems();
+          const sharedChanged = await this.syncReceivedSharedItems();
+          if (sharedChanged) localDataHasChanged = true;
         } catch (shareSyncErr) {
           console.warn('[ServerSync] Đồng bộ mục chia sẻ nhận được:', shareSyncErr.message);
         }
@@ -1251,6 +1258,7 @@ class ServerSyncService {
       }
 
       this.lastSyncTime = new Date().toISOString();
+      this.lastError = null;
       await db.settings.put({ key: 'syncServerLastSyncTime', value: this.lastSyncTime });
       await db.settings.put({ key: 'lastSyncTime', value: this.lastSyncTime });
 
@@ -1748,7 +1756,8 @@ class ServerSyncService {
   }
 
   async syncReceivedSharedItems() {
-    if (!this.token) return;
+    if (!this.token) return false;
+    let hasChanges = false;
 
     try {
       const res = await fetch(`${this.serverUrl}/api/shares/my-received`, {
@@ -1766,6 +1775,7 @@ class ServerSyncService {
       for (const acc of localAccs) {
         if (acc._isSharedItem && acc._shareId && !activeReceivedShareIds.has(acc._shareId)) {
           console.log('[ServerSync] Quyền chia sẻ đã bị thu hồi, xóa tài khoản:', acc.name);
+          hasChanges = true;
           await db.accounts.delete(acc.id);
           // Xóa giao dịch kèm theo
           const relatedTxs = await db.transactions.where('accountId').equals(acc.id).toArray();
@@ -1856,9 +1866,11 @@ class ServerSyncService {
           let localAccId;
           if (localAcc) {
             localAccId = localAcc.id;
+            hasChanges = true;
             await db.accounts.update(localAccId, { ...accData, id: localAccId });
           } else {
             delete accData.id;
+            hasChanges = true;
             localAccId = await db.accounts.add(accData);
           }
 
@@ -1952,8 +1964,10 @@ class ServerSyncService {
           }
         }
       }
+      return hasChanges;
     } catch (err) {
       console.warn('[ServerSync] Lỗi tải các mục được chia sẻ:', err.message);
+      return false;
     }
   }
 
