@@ -11630,7 +11630,7 @@ body.light .header-vault-pill .vault-pill-text {
 
 
 /* ==========================================================================
-   PULL TO REFRESH COMPONENT (VUOT XUONG DE LAM MOI DU LIEU)
+   PULL TO REFRESH COMPONENT (VÒNG TRÒN CÁC CHẤM MÔ PHỎNG KÉO TAY - APPLE STYLE)
    ========================================================================== */
 .ptr-indicator {
   position: fixed;
@@ -11654,68 +11654,51 @@ body.light .header-vault-pill .vault-pill-text {
   }
 }
 
-.ptr-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(30, 41, 59, 0.94);
-  color: var(--text-primary, #f8fafc);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
-  padding: 6px 16px;
-  border-radius: 9999px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  font-size: 0.8rem;
-  font-weight: 600;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  transition: border-color 0.2s ease, color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
-  white-space: nowrap;
-  pointer-events: none;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-body.light .ptr-pill,
-[data-theme="light"] .ptr-pill {
-  background: rgba(255, 255, 255, 0.94);
-  color: #0f172a;
-  border-color: rgba(0, 0, 0, 0.1);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-}
-
-.ptr-indicator.ready .ptr-pill {
-  border-color: var(--primary, #0d9488);
-  color: var(--primary, #0d9488);
-  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.32);
-  transform: scale(1.04);
-}
-
-.ptr-icon-box {
+.ptr-circle-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  position: relative;
+  background: rgba(30, 41, 59, 0.94);
+  color: var(--text-primary, #f8fafc);
+  border: 1.5px solid var(--border-color, rgba(255, 255, 255, 0.14));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: border-color 0.2s ease, color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
   flex-shrink: 0;
 }
 
-.ptr-icon-circle-dot {
-  width: 16px;
-  height: 16px;
+body.light .ptr-circle-badge,
+[data-theme="light"] .ptr-circle-badge {
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+}
+
+.ptr-indicator.ready .ptr-circle-badge {
+  border-color: var(--primary, #0d9488);
+  color: var(--primary, #0d9488);
+  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.4);
+  transform: scale(1.08);
+}
+
+.ptr-dots-spinner {
+  width: 22px;
+  height: 22px;
   display: block;
   transform-origin: center center;
   transition: transform 0.05s linear;
 }
 
-.ptr-inner-dot {
-  transform-origin: center center;
-  transition: transform 0.2s ease, fill 0.2s ease;
-}
-
-.ptr-indicator.ready .ptr-inner-dot {
-  transform: scale(1.2);
-  fill: var(--primary, #0d9488);
+.ptr-dot {
+  transition: opacity 0.1s ease;
 }
 
 

@@ -1,16 +1,17 @@
 /**
  * PullToRefresh - Kéo xuống từ đỉnh trang để kích hoạt làm mới dữ liệu từ Máy Chủ
- * - Giao diện: Icon chấm vòng tròn (circle-dot) trong khung bo tròn cao cấp
- * - Chuyển động: GPU transform 60fps/120fps siêu mượt theo đường cong Apple Rubber-band, không khựng
- * - Phản hồi xúc giác (Haptic): Hỗ trợ Taptic Engine trên iOS (Switch trigger) & Vibration API trên Android
- * - Tự động thu gọn êm ái ngay khi thả tay, chạy đồng bộ nền hiển thị qua logo
+ * - Giao diện: Vòng tròn gồm các chấm mô phỏng kéo tay (Apple/iOS native style), không chữ
+ * - Hoạt ảnh: Các chấm sáng dần theo vòng tròn theo cự ly kéo tay (0% -> 100%)
+ * - Chuyển động: GPU transform 60fps/120fps siêu mượt theo đường cong Apple Rubber-band
+ * - Phản hồi xúc giác (Haptic): Hỗ trợ đa tầng iOS Taptic Engine (Switch hack + Web Audio micro-haptic) & Android
+ * - Tự động thu gọn êm ái ngay khi thả tay, chạy đồng bộ nền hiển thị qua logo header
  */
 class PullToRefresh {
   constructor() {
     this.container = null;
-    this.pillEl = null;
-    this.dotIcon = null;
-    this.textLabel = null;
+    this.badgeEl = null;
+    this.spinnerSvg = null;
+    this.dots = [];
 
     this.startY = 0;
     this.startX = 0;
@@ -23,9 +24,10 @@ class PullToRefresh {
     this._hasVibrated = false;
     this.activeScrollContainer = null;
     this.rafId = null;
+    this.audioCtx = null;
 
     this.PULL_THRESHOLD = 60; // Ngưỡng kéo để kích hoạt rung & làm mới (px)
-    this.MAX_PULL = 96;       // Giới hạn kéo tối đa (px)
+    this.MAX_PULL = 92;       // Giới hạn kéo tối đa (px)
 
     this.init();
   }
@@ -55,51 +57,85 @@ class PullToRefresh {
     }
 
     el.innerHTML = `
-      <div class="ptr-pill">
-        <div class="ptr-icon-box">
-          <svg class="ptr-icon ptr-icon-circle-dot" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"></circle>
-            <circle class="ptr-inner-dot" cx="12" cy="12" r="3.2" fill="currentColor"></circle>
-          </svg>
-        </div>
-        <span class="ptr-label">Kéo xuống để làm mới</span>
+      <div class="ptr-circle-badge">
+        <svg class="ptr-dots-spinner" viewBox="0 0 24 24" width="22" height="22">
+          <circle class="ptr-dot ptr-dot-0" cx="12.00" cy="4.20" r="1.45" fill="currentColor"></circle>
+          <circle class="ptr-dot ptr-dot-1" cx="15.90" cy="5.24" r="1.45" fill="currentColor"></circle>
+          <circle class="ptr-dot ptr-dot-2" cx="18.75" cy="8.10" r="1.45" fill="currentColor"></circle>
+          <circle class="ptr-dot ptr-dot-3" cx="19.80" cy="12.00" r="1.45" fill="currentColor"></circle>
+          <circle class="ptr-dot ptr-dot-4" cx="18.75" cy="15.90" r="1.45" fill="currentColor"></circle>
+          <circle class="ptr-dot ptr-dot-5" cx="15.90" cy="18.75" r="1.45" fill="currentColor"></circle>
+          <circle class="ptr-dot ptr-dot-6" cx="12.00" cy="19.80" r="1.45" fill="currentColor"></circle>
+          <circle class="ptr-dot ptr-dot-7" cx="8.10" cy="18.75" r="1.45" fill="currentColor"></circle>
+          <circle class="ptr-dot ptr-dot-8" cx="5.25" cy="15.90" r="1.45" fill="currentColor"></circle>
+          <circle class="ptr-dot ptr-dot-9" cx="4.20" cy="12.00" r="1.45" fill="currentColor"></circle>
+          <circle class="ptr-dot ptr-dot-10" cx="5.25" cy="8.10" r="1.45" fill="currentColor"></circle>
+          <circle class="ptr-dot ptr-dot-11" cx="8.10" cy="5.24" r="1.45" fill="currentColor"></circle>
+        </svg>
       </div>
     `;
 
     this.container = el;
-    this.pillEl = el.querySelector('.ptr-pill');
-    this.dotIcon = el.querySelector('.ptr-icon-circle-dot');
-    this.textLabel = el.querySelector('.ptr-label');
+    this.badgeEl = el.querySelector('.ptr-circle-badge');
+    this.spinnerSvg = el.querySelector('.ptr-dots-spinner');
+    this.dots = Array.from(el.querySelectorAll('.ptr-dot'));
 
-    // Khởi tạo thẻ hỗ trợ rung Taptic Engine trên iOS nếu chưa có
+    // Đặt ban đầu các chấm mờ
+    this.dots.forEach((dot, idx) => {
+      dot.style.opacity = idx === 0 ? '0.7' : '0.18';
+    });
+
+    // Khởi tạo thẻ hỗ trợ rung Taptic Engine trên iOS
     this.ensureIosHapticElement();
 
     this.setupListeners();
   }
 
   ensureIosHapticElement() {
-    if (!document.getElementById('ios-ptr-haptic-wrap')) {
-      const wrap = document.createElement('label');
-      wrap.id = 'ios-ptr-haptic-wrap';
-      wrap.style.cssText = 'position:fixed;top:-100px;left:-100px;opacity:0;pointer-events:none;z-index:-999;';
-      wrap.setAttribute('aria-hidden', 'true');
-      wrap.innerHTML = '<input type="checkbox" switch id="ios-ptr-haptic">';
-      document.body.appendChild(wrap);
+    if (!document.getElementById('ios-ptr-haptic-label')) {
+      const label = document.createElement('label');
+      label.id = 'ios-ptr-haptic-label';
+      label.setAttribute('for', 'ios-ptr-haptic-input');
+      label.setAttribute('aria-hidden', 'true');
+      label.style.cssText = 'position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.01;pointer-events:none;overflow:hidden;z-index:1;';
+      label.innerHTML = '<input type="checkbox" switch id="ios-ptr-haptic-input">';
+      document.body.appendChild(label);
     }
   }
 
   triggerHaptic() {
-    // 1. Rung trên Android / Thiết bị hỗ trợ Vibration API
+    // 1. Android / Thiết bị hỗ trợ Vibration API
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      try { navigator.vibrate(15); } catch (_) {}
+      try { navigator.vibrate(22); } catch (_) {}
     }
 
-    // 2. Kích hoạt Taptic Engine trên iOS (Safari / PWA qua switch toggle)
+    // 2. Kích hoạt Taptic Engine trên iOS (qua trigger click vào label của native switch)
     try {
-      const switchEl = document.getElementById('ios-ptr-haptic');
-      if (switchEl) {
-        switchEl.checked = !switchEl.checked;
-        switchEl.click();
+      const label = document.getElementById('ios-ptr-haptic-label');
+      if (label) {
+        label.click();
+      }
+    } catch (_) {}
+
+    // 3. Xung phản hồi xúc giác cơ học (Web Audio micro-haptic kick)
+    // Tần số siêu trầm 60Hz trong 30ms kích xung qua cuộn loa máy, tạo cảm giác giật xúc giác ở tay
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        if (!this.audioCtx) this.audioCtx = new AudioCtx();
+        if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+        const ctx = this.audioCtx;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(65, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(32, ctx.currentTime + 0.035);
+        gain.gain.setValueAtTime(0.4, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.035);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.04);
       }
     } catch (_) {}
   }
@@ -174,6 +210,13 @@ class PullToRefresh {
     if (this.container) {
       this.container.style.transition = 'none';
     }
+
+    // Đánh thức Web Audio Context sẵn sàng trong gesture
+    try {
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume();
+      }
+    } catch (_) {}
   }
 
   onTouchMove(e) {
@@ -229,30 +272,36 @@ class PullToRefresh {
       this.activeScrollContainer.style.transform = `translate3d(0, ${distance.toFixed(1)}px, 0)`;
     }
 
-    // Hiển thị pill căn giữa ngay trong khoảng trống vừa mở ra
-    const targetY = this.headerBottom + Math.max(8, (distance - 36) * 0.5);
-    const opacity = Math.min(1, distance / 22);
+    // Hiển thị vòng tròn chấm căn giữa ngay trong khoảng trống vừa mở ra
+    const targetY = this.headerBottom + Math.max(6, (distance - 38) * 0.5);
+    const opacity = Math.min(1, distance / 16);
 
     this.container.style.transform = `translate3d(0, ${targetY.toFixed(1)}px, 0)`;
     this.container.style.opacity = opacity.toFixed(2);
 
-    // Xoay icon chấm vòng tròn theo cự ly kéo
-    if (this.dotIcon) {
-      this.dotIcon.style.transform = `rotate(${(progress * 270).toFixed(1)}deg)`;
+    // Cập nhật số chấm sáng theo tiến trình kéo tay (từ 1 đến 12 chấm quanh vòng tròn)
+    const activeCount = Math.min(12, Math.max(1, Math.round(progress * 12)));
+    if (this.dots && this.dots.length === 12) {
+      for (let i = 0; i < 12; i++) {
+        this.dots[i].style.opacity = i < activeCount ? '1' : '0.18';
+      }
     }
 
-    // Đạt đủ ngưỡng 60px: Rung phản hồi & đổi màu viền xanh ngọc
+    // Xoay vòng tròn nhẹ nhàng theo tay kéo
+    if (this.spinnerSvg) {
+      this.spinnerSvg.style.transform = `rotate(${(progress * 240).toFixed(1)}deg)`;
+    }
+
+    // Đạt đủ ngưỡng 60px: Rung phản hồi & đổi sang màu xanh ngọc sẵn sàng
     if (distance >= this.PULL_THRESHOLD) {
       if (!this._hasVibrated) {
         this.triggerHaptic();
         this._hasVibrated = true;
       }
       this.container.classList.add('ready');
-      if (this.textLabel) this.textLabel.textContent = 'Thả tay để làm mới...';
     } else {
       this._hasVibrated = false;
       this.container.classList.remove('ready');
-      if (this.textLabel) this.textLabel.textContent = 'Kéo xuống để làm mới';
     }
   }
 
@@ -300,7 +349,6 @@ class PullToRefresh {
   resetPullState() {
     this.isPulling = false;
     this.canPull = false;
-    const wasPulling = this.currentPullDistance > 0;
     this.currentPullDistance = 0;
     this._hasVibrated = false;
 
@@ -323,12 +371,16 @@ class PullToRefresh {
       this.container.style.opacity = '0';
       this.container.classList.remove('ready');
 
-      if (this.dotIcon) this.dotIcon.style.transform = '';
-      if (this.textLabel) this.textLabel.textContent = 'Kéo xuống để làm mới';
+      if (this.spinnerSvg) this.spinnerSvg.style.transform = '';
 
       setTimeout(() => {
         if (this.container && !this.isPulling) {
           this.container.style.transition = '';
+          if (this.dots && this.dots.length === 12) {
+            this.dots.forEach((dot, idx) => {
+              dot.style.opacity = idx === 0 ? '0.7' : '0.18';
+            });
+          }
         }
       }, 300);
     }

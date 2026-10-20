@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.8.1">
+  <link rel="stylesheet" href="./css/style.css?v=2.8.2">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1296,16 +1296,23 @@
         </div>
       </header>
 
-      <!-- Pull to refresh indicator (Hiển thị ngay dưới Header trong khoảng hở khi kéo xuống) -->
+      <!-- Pull to refresh indicator (Vòng tròn gồm các chấm mô phỏng kéo tay - Apple Style) -->
       <div id="pull-to-refresh-indicator" class="ptr-indicator" style="position: fixed; left: 0; right: 0; top: 0; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 38; opacity: 0; transform: translate3d(0, 0, 0); will-change: transform, opacity;">
-        <div class="ptr-pill">
-          <div class="ptr-icon-box">
-            <svg class="ptr-icon ptr-icon-circle-dot" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"></circle>
-              <circle class="ptr-inner-dot" cx="12" cy="12" r="3.2" fill="currentColor"></circle>
-            </svg>
-          </div>
-          <span class="ptr-label">Kéo xuống để làm mới</span>
+        <div class="ptr-circle-badge" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(30, 41, 59, 0.94); color: #f8fafc; border: 1.5px solid rgba(255, 255, 255, 0.14); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); user-select: none; -webkit-user-select: none; flex-shrink: 0;">
+          <svg class="ptr-dots-spinner" viewBox="0 0 24 24" width="22" height="22" style="display: block; transform-origin: center center;">
+            <circle class="ptr-dot ptr-dot-0" cx="12.00" cy="4.20" r="1.45" fill="currentColor" style="opacity: 0.7;"></circle>
+            <circle class="ptr-dot ptr-dot-1" cx="15.90" cy="5.24" r="1.45" fill="currentColor" style="opacity: 0.18;"></circle>
+            <circle class="ptr-dot ptr-dot-2" cx="18.75" cy="8.10" r="1.45" fill="currentColor" style="opacity: 0.18;"></circle>
+            <circle class="ptr-dot ptr-dot-3" cx="19.80" cy="12.00" r="1.45" fill="currentColor" style="opacity: 0.18;"></circle>
+            <circle class="ptr-dot ptr-dot-4" cx="18.75" cy="15.90" r="1.45" fill="currentColor" style="opacity: 0.18;"></circle>
+            <circle class="ptr-dot ptr-dot-5" cx="15.90" cy="18.75" r="1.45" fill="currentColor" style="opacity: 0.18;"></circle>
+            <circle class="ptr-dot ptr-dot-6" cx="12.00" cy="19.80" r="1.45" fill="currentColor" style="opacity: 0.18;"></circle>
+            <circle class="ptr-dot ptr-dot-7" cx="8.10" cy="18.75" r="1.45" fill="currentColor" style="opacity: 0.18;"></circle>
+            <circle class="ptr-dot ptr-dot-8" cx="5.25" cy="15.90" r="1.45" fill="currentColor" style="opacity: 0.18;"></circle>
+            <circle class="ptr-dot ptr-dot-9" cx="4.20" cy="12.00" r="1.45" fill="currentColor" style="opacity: 0.18;"></circle>
+            <circle class="ptr-dot ptr-dot-10" cx="5.25" cy="8.10" r="1.45" fill="currentColor" style="opacity: 0.18;"></circle>
+            <circle class="ptr-dot ptr-dot-11" cx="8.10" cy="5.24" r="1.45" fill="currentColor" style="opacity: 0.18;"></circle>
+          </svg>
         </div>
       </div>
 
@@ -2076,7 +2083,7 @@
             <div class="settings-hub-footer">
               <a href="https://github.com/TNQ22/sothuchi" target="_blank" rel="noopener noreferrer" class="settings-version-link">
                 <i data-lucide="github" style="width: 14px; height: 14px;"></i>
-                <span>Phiên bản v2.8.1</span>
+                <span>Phiên bản v2.8.2</span>
               </a>
             </div>
               
@@ -2882,7 +2889,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <!-- Thông số hệ thống -->
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--border-color);">
                   <span style="font-size: 0.8rem; color: var(--text-secondary);">Phiên bản ứng dụng:</span>
-                  <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">v2.8.1</span>
+                  <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">v2.8.2</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; margin-bottom: 14px;">
                   <span style="font-size: 0.8rem; color: var(--text-secondary);">Dung lượng bộ nhớ ước tính:</span>
@@ -6426,11 +6433,11 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/ui-share.js?v=2.8.0"></script>
   <script src="./js/ui-budgets.js?v=2.8.0"></script>
   <script src="./js/ui-analytics.js?v=2.8.0"></script>
-  <script src="./js/ui-settings.js?v=2.8.0"></script>
+  <script src="./js/ui-settings.js?v=2.8.2"></script>
   <script src="./js/server-auth-modals.js?v=2.8.0"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/pull-to-refresh.js?v=2.8.1"></script>
+  <script src="./js/pull-to-refresh.js?v=2.8.2"></script>
   <script src="./js/app.js?v=2.8.0"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
