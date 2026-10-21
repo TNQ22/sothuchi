@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1792571499999">
+  <link rel="stylesheet" href="./css/style.css?v=1792589101304">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -348,16 +348,17 @@
 .settings-back-btn {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
   background: transparent !important;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1)) !important;
   color: var(--text-primary, #f8fafc) !important;
-  font-size: 0.84rem !important;
-  font-weight: 600 !important;
-  padding: 5px 10px !important;
+  padding: 0 !important;
   border-radius: var(--radius-sm, 8px) !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;
+  flex-shrink: 0 !important;
 }
 
 .settings-back-btn:hover {
@@ -372,7 +373,10 @@
   color: var(--text-primary, #f8fafc) !important;
   display: flex !important;
   align-items: center !important;
+  justify-content: center !important;
   gap: 6px !important;
+  flex: 1 !important;
+  text-align: center !important;
 }
 
 .settings-detail-panel {
@@ -1962,7 +1966,7 @@
                   </div>
                   <div class="settings-item-content">
                     <div class="settings-item-title-row">
-                      <span class="settings-item-title">Máy Chủ Riêng (Docker)</span>
+                      <span class="settings-item-title">Máy Chủ Riêng</span>
                       <span id="hub-server-badge" class="settings-status-pill pill-gray">Chưa kết nối</span>
                     </div>
                     <div id="hub-server-desc" class="settings-item-desc">Máy chủ tự lưu trữ Self-Hosted tốc độ cao & đa sổ</div>
@@ -2093,14 +2097,13 @@
           <div id="settings-detail-view" class="settings-detail-view" style="display: none;">
             <!-- Topbar Quay Lại -->
             <div class="settings-detail-topbar">
-              <button type="button" class="settings-back-btn" onclick="UISettings.backToHub()">
-                <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
-                <span>Cài Đặt</span>
+              <button type="button" class="settings-back-btn" onclick="UISettings.backToHub()" title="Quay lại Cài Đặt">
+                <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
               </button>
               <div id="settings-detail-header-title" class="settings-detail-header-title">
                 <i data-lucide="settings" style="width: 18px; height: 18px;"></i> Cài Đặt
               </div>
-              <div style="width: 75px;"></div>
+              <div style="width: 32px; flex-shrink: 0;"></div>
             </div>
 
             <!-- ==========================================
@@ -2356,7 +2359,7 @@
                   <div class="form-group" style="margin-bottom: 18px;">
                     <label class="form-label" style="font-weight: 600;">Mật khẩu Mã Hóa Sổ (E2EE AES-GCM 256-bit):</label>
                     <div style="display: flex; gap: 8px;">
-                      <input type="password" id="settings-vault-password" class="form-control" placeholder="Để trống nếu không mã hóa (Khuyên dùng: Đặt mật khẩu)">
+                      <input type="password" id="settings-vault-password" class="form-control" placeholder="Để trống nếu không mã hóa">
                       <button type="button" id="btn-save-vault-password" class="btn-secondary" style="white-space: nowrap;">Lưu</button>
                     </div>
                     <small style="color: var(--text-muted); font-size: 0.76rem; margin-top: 4px; display: block; line-height: 1.4;">
@@ -2575,12 +2578,12 @@
                     <span>Quản Lý Đa Sổ & Chia Sẻ Máy Chủ</span>
                   </div>
 
-                  <!-- 1. BẢNG SỔ ĐANG ĐỒNG BỘ (Sổ của tôi) -->
+                  <!-- 1. BẢNG SỔ CÁ NHÂN -->
                   <div class="server-vault-section-box">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                       <label class="form-label" style="margin-bottom: 0; font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
                         <i data-lucide="book-marked" style="width: 15px; height: 15px; color: var(--primary);"></i>
-                        <span>Sổ Đang Đồng Bộ</span>
+                        <span>Sổ Cá Nhân</span>
                       </label>
                       <!-- Nút thêm mới chỉ để lại icon + có màu nổi bật -->
                       <button type="button" id="btn-server-create-vault" class="btn-icon-circle btn-primary" title="Tạo sổ mới">
@@ -2632,9 +2635,8 @@
                       </div>
 
                       <!-- Nút mời -->
-                      <button type="button" id="btn-server-add-share" class="btn-primary btn-sm" style="white-space: nowrap; padding: 7px 12px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
-                        <i data-lucide="send" style="width: 13px; height: 13px;"></i>
-                        <span>Mời</span>
+                      <button type="button" id="btn-server-add-share" class="btn-primary btn-sm" style="white-space: nowrap; width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Mời thành viên">
+                        <i data-lucide="send" style="width: 14px; height: 14px;"></i>
                       </button>
                     </div>
 
@@ -6439,7 +6441,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/ui-share.js?v=2.8.0"></script>
   <script src="./js/ui-budgets.js?v=2.8.0"></script>
   <script src="./js/ui-analytics.js?v=2.8.0"></script>
-  <script src="./js/ui-settings.js?v=1792571499999"></script>
+  <script src="./js/ui-settings.js?v=1792589101304"></script>
   <script src="./js/server-auth-modals.js?v=2.8.0"></script>
 
   <!-- Main Entry Coordinator -->

@@ -76,7 +76,7 @@ const UISettings = {
     const titleMap = {
       'google-drive': '<svg viewBox="0 0 87.3 78" style="width: 20px; height: 18px; vertical-align: middle;"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg> Google Drive',
       'dropbox': '<i data-lucide="box" style="color: #0061ff; width: 20px; height: 20px;"></i> Dropbox',
-      'server': '<i data-lucide="server" style="color: #a855f7; width: 20px; height: 20px;"></i> Máy Chủ Riêng (Docker)',
+      'server': '<i data-lucide="server" style="color: #a855f7; width: 20px; height: 20px;"></i> Máy Chủ Riêng',
       'local-folder': '<i data-lucide="folder-sync" style="color: #f59e0b; width: 20px; height: 20px;"></i> Sao Lưu Thư Mục PC',
       'backup-restore': '<i data-lucide="database" style="color: #ec4899; width: 20px; height: 20px;"></i> Sao Lưu & Khôi Phục File',
       'export-csv': '<i data-lucide="file-spreadsheet" style="color: #10b981; width: 20px; height: 20px;"></i> Xuất Dữ Liệu Excel (CSV)',
@@ -546,9 +546,9 @@ const UISettings = {
         serverPassInput.value = '';
       }
       if (sService.encryptionPassword) {
-        serverPassInput.placeholder = '•••••••• (Đã kích hoạt E2EE) - Nhập mật khẩu mới nếu muốn đổi';
+        serverPassInput.placeholder = 'Nhập mới để đổi mật khẩu';
       } else {
-        serverPassInput.placeholder = 'Để trống nếu không mã hóa (Khuyên dùng: Đặt mật khẩu)';
+        serverPassInput.placeholder = 'Để trống nếu không mã hóa';
       }
     }
     const disableEncBtn = document.getElementById('btn-disable-server-encryption');
@@ -672,7 +672,7 @@ const UISettings = {
     const sharedVaults = sService.vaults.filter(v => v.role !== 'owner');
     const esc = typeof escapeHTML === 'function' ? escapeHTML : (s => s || '');
 
-    // 1. Render Sổ Đang Đồng Bộ (Sổ do tôi sở hữu - 2 hàng: hàng trên Tên sổ, hàng dưới Chú thích & Nút bấm)
+    // 1. Render Sổ Cá Nhân (Sổ do tôi sở hữu - 2 hàng: hàng trên Tên sổ, hàng dưới Chú thích & Nút bấm)
     if (myVaultsContainer) {
       if (myVaults.length === 0) {
         myVaultsContainer.innerHTML = '<div class="server-vaults-empty">Không có sổ cá nhân nào. Hãy bấm "+" để tạo sổ mới.</div>';
@@ -686,9 +686,11 @@ const UISettings = {
                 <div class="server-vault-name-text ${isActive ? 'active-name' : ''}">${esc(v.name)}</div>
                 ${isActive ? '<span class="vault-pill-active">Đang dùng</span>' : ''}
               </div>
-              <!-- Hàng dưới: Chú thích bên trái & Các nút bấm góc phải -->
+              <!-- Hàng dưới: Chú thích bên trái (màu chuẩn sync-vault-role-pill) & Các nút bấm góc phải -->
               <div class="server-vault-row-bottom">
-                <div class="server-vault-caption-text">Chủ sổ</div>
+                <div class="server-vault-caption-text">
+                  <span class="sync-vault-role-pill owner">Chủ sổ</span>
+                </div>
                 <div class="server-vault-icon-actions">
                   <button type="button" class="btn-vault-icon btn-vault-rename" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Đổi tên sổ">
                     <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
@@ -710,7 +712,7 @@ const UISettings = {
       }
     }
 
-    // 2. Render Sổ Được Share (Riêng 1 bảng - 2 hàng: con mắt đổi thành chú thích dưới tên sổ)
+    // 2. Render Sổ Được Share (Riêng 1 bảng - 2 hàng: Chỉ xem / Ghi chép có màu giống trên trạng thái đồng bộ)
     if (sharedVaultsContainer) {
       if (sharedVaults.length === 0) {
         sharedVaultsContainer.innerHTML = '<div class="server-vaults-empty">Chưa có sổ nào được chia sẻ với bạn.</div>';
@@ -718,8 +720,9 @@ const UISettings = {
         sharedVaultsContainer.innerHTML = sharedVaults.map(v => {
           const isActive = v.id === sService.activeVaultId;
           const isEditor = v.role === 'editor';
-          const permText = isEditor ? 'Quyền Ghi chép' : 'Quyền Chỉ xem';
-          const ownerText = v.owner_email ? ` • Từ: ${esc(v.owner_email)}` : '';
+          const roleClass = isEditor ? 'editor' : 'viewer';
+          const roleText = isEditor ? 'Ghi chép' : 'Chỉ xem';
+          const ownerText = v.owner_email ? `<span style="opacity: 0.7; font-size: 0.72rem; margin-left: 5px;">• Từ: ${esc(v.owner_email)}</span>` : '';
           return `
             <div class="server-vault-row ${isActive ? 'is-active' : ''}" data-vault-id="${v.id}" role="button" tabindex="0" title="${isActive ? 'Sổ đang được chọn' : 'Chạm để chọn sổ này'}">
               <!-- Hàng trên: Tên sổ & Nhãn trạng thái -->
@@ -727,9 +730,11 @@ const UISettings = {
                 <div class="server-vault-name-text ${isActive ? 'active-name' : ''}">${esc(v.name)}</div>
                 ${isActive ? '<span class="vault-pill-active">Đang dùng</span>' : ''}
               </div>
-              <!-- Hàng dưới: Chú thích quyền hạn & Người chia sẻ thay thế cho icon con mắt; nút bấm góc phải -->
+              <!-- Hàng dưới: Chú thích quyền hạn & Người chia sẻ; nút bấm góc phải -->
               <div class="server-vault-row-bottom">
-                <div class="server-vault-caption-text">${permText}${ownerText}</div>
+                <div class="server-vault-caption-text">
+                  <span class="sync-vault-role-pill ${roleClass}">${roleText}</span>${ownerText}
+                </div>
                 <div class="server-vault-icon-actions">
                   ${isEditor ? `
                   <button type="button" class="btn-vault-icon btn-vault-rename" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Đổi tên sổ">

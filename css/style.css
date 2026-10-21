@@ -9565,26 +9565,43 @@ body.light .header-vault-pill .vault-pill-text {
 }
 
 .sync-vault-role-pill {
-  font-size: 0.65rem;
-  font-weight: 500;
-  padding: 0 5px;
-  border-radius: 4px;
-  line-height: 1.4;
+  font-size: 0.68rem !important;
+  font-weight: 600 !important;
+  padding: 1px 6px !important;
+  border-radius: 4px !important;
+  line-height: 1.35 !important;
+  display: inline-flex !important;
+  align-items: center !important;
 }
 
 .sync-vault-role-pill.owner {
-  background: rgba(168, 85, 247, 0.15);
-  color: #c084fc;
+  background: rgba(168, 85, 247, 0.16) !important;
+  color: #c084fc !important;
+  border: 1px solid rgba(168, 85, 247, 0.28) !important;
+}
+
+body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.owner {
+  color: #7c3aed !important;
 }
 
 .sync-vault-role-pill.editor {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.28) !important;
+}
+
+body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.editor {
+  color: #059669 !important;
 }
 
 .sync-vault-role-pill.viewer {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.28) !important;
+}
+
+body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
+  color: #d97706 !important;
 }
 
 .sync-vault-item-right {
@@ -10172,16 +10189,17 @@ body.light .header-vault-pill .vault-pill-text {
 .settings-back-btn {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
   background: transparent !important;
   border: 1px solid var(--border-color) !important;
   color: var(--text-primary) !important;
-  font-size: 0.84rem !important;
-  font-weight: 600 !important;
-  padding: 5px 10px !important;
-  border-radius: var(--radius-sm) !important;
+  padding: 0 !important;
+  border-radius: var(--radius-sm, 8px) !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;
+  flex-shrink: 0 !important;
 }
 
 .settings-back-btn:hover {
@@ -10196,7 +10214,10 @@ body.light .header-vault-pill .vault-pill-text {
   color: var(--text-primary) !important;
   display: flex !important;
   align-items: center !important;
+  justify-content: center !important;
   gap: 6px !important;
+  flex: 1 !important;
+  text-align: center !important;
 }
 
 .settings-detail-panel {
@@ -11776,7 +11797,7 @@ body.light .ptr-circle-badge,
 
 .server-reauth-badge-btn {
   position: absolute !important;
-  top: -3px !important;
+  bottom: -3px !important;
   right: -3px !important;
   width: 16px !important;
   height: 16px !important;
