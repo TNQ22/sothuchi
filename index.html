@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1792571384272">
+  <link rel="stylesheet" href="./css/style.css?v=1792571499999">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -2446,57 +2446,57 @@
                  PANEL 3: MÁY CHỦ RIÊNG (DOCKER)
                  ========================================== -->
             <div id="panel-server" class="settings-detail-panel">
-              <!-- Thiết lập cơ bản -->
+              <!-- Thẻ tài khoản Google trên máy chủ (Nằm bên ngoài viền bao chính, đóng vai trò chủ sở hữu) -->
+              <div id="server-user-card" class="server-user-header-card" style="display: none;">
+                <div class="server-user-header-row">
+                  <!-- Avatar / Logo Google nhỏ hình tròn kích thước 34px thực tế & icon đổi tài khoản ở góc trên bên phải -->
+                  <div class="server-avatar-wrapper">
+                    <img id="server-user-avatar" src="./assets/icons/icon.svg" alt="Avatar" class="server-user-avatar-round" style="width: 34px; height: 34px; max-width: 34px; max-height: 34px; border-radius: 50%; object-fit: cover;">
+                    <button type="button" id="btn-server-reauth" class="server-reauth-badge-btn" title="Đổi tài khoản khác">
+                      <i data-lucide="refresh-cw"></i>
+                    </button>
+                  </div>
+
+                  <!-- 2 hàng: Tên tài khoản và Email (Tràn màn hình thì tự ẩn bớt bằng ellipsis) -->
+                  <div class="server-user-meta">
+                    <div id="server-user-name" class="server-user-name">Người dùng Google</div>
+                    <div id="server-user-email" class="server-user-email">email@gmail.com</div>
+                  </div>
+
+                  <!-- Nút icon đăng xuất màu đỏ nổi bật -->
+                  <button type="button" id="btn-server-logout" class="btn-server-logout-compact" title="Đăng xuất">
+                    <i data-lucide="log-out" style="width: 14px; height: 14px;"></i>
+                  </button>
+
+                  <!-- Thanh gạt kích hoạt/vô hiệu hóa tối giản -->
+                  <label class="app-switch switch switch-sm" title="Kích hoạt / Vô hiệu hóa đồng bộ" style="margin: 0; flex-shrink: 0;">
+                    <input type="checkbox" id="settings-server-auto-sync" checked>
+                    <span class="app-switch-slider slider round"></span>
+                  </label>
+                </div>
+
+                <!-- Bên dưới: Hàng URL máy chủ (Chỉ hiện khi client công cộng / không phải self-host) -->
+                <div class="server-url-line-box" id="server-url-card-slot" style="display: none;">
+                  <div id="server-url-container">
+                    <div style="display: flex; gap: 8px;">
+                      <input type="url" id="settings-server-url" class="form-control" placeholder="http://localhost:8081 hoặc https://sync.domain.com" style="flex: 1; font-size: 0.82rem;">
+                      <button type="button" id="btn-test-server-connection" class="btn-secondary btn-sm" title="Kiểm tra kết nối" style="white-space: nowrap; font-size: 0.78rem; padding: 6px 10px; display: inline-flex; align-items: center; gap: 4px;">
+                        <i data-lucide="activity" style="width: 13px; height: 13px;"></i> Kiểm tra
+                      </button>
+                      <button type="button" id="btn-save-server-url" class="btn-primary btn-sm" style="white-space: nowrap; font-size: 0.78rem; padding: 6px 12px;">Lưu</button>
+                    </div>
+                    <div class="server-url-caption">
+                      * Địa chỉ máy chủ đồng bộ riêng (Self-Hosted qua Docker hoặc VPS cá nhân).
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Viền bao chính bên dưới (Thiết lập cơ bản) -->
               <div class="settings-card-clean">
                 <!-- Status badge (ẩn/fallback để giữ tương thích ngược script) -->
                 <div id="server-status-badge" class="badge-status badge-disconnected" style="display: none;">
                   <span class="badge-dot"></span> <span id="server-status-text">Chưa kết nối</span>
-                </div>
-
-                <!-- Thẻ tài khoản Google trên máy chủ (Khi đã kết nối) -->
-                <div id="server-user-card" class="server-user-header-card" style="display: none;">
-                  <div class="server-user-header-row">
-                    <!-- Avatar / Logo Google nhỏ hình tròn kích thước 34px thực tế & icon đổi tài khoản ở góc trên bên phải -->
-                    <div class="server-avatar-wrapper">
-                      <img id="server-user-avatar" src="./assets/icons/icon.svg" alt="Avatar" class="server-user-avatar-round" style="width: 34px; height: 34px; max-width: 34px; max-height: 34px; border-radius: 50%; object-fit: cover;">
-                      <button type="button" id="btn-server-reauth" class="server-reauth-badge-btn" title="Đổi tài khoản khác">
-                        <i data-lucide="refresh-cw"></i>
-                      </button>
-                    </div>
-
-                    <!-- 2 hàng: Tên tài khoản và Email (Tràn màn hình thì tự ẩn bớt bằng ellipsis) -->
-                    <div class="server-user-meta">
-                      <div id="server-user-name" class="server-user-name">Người dùng Google</div>
-                      <div id="server-user-email" class="server-user-email">email@gmail.com</div>
-                    </div>
-
-                    <!-- Nút icon đăng xuất màu đỏ nổi bật -->
-                    <button type="button" id="btn-server-logout" class="btn-server-logout-compact" title="Đăng xuất">
-                      <i data-lucide="log-out" style="width: 14px; height: 14px;"></i>
-                    </button>
-
-                    <!-- Thanh gạt kích hoạt/vô hiệu hóa tối giản -->
-                    <label class="app-switch switch switch-sm" title="Kích hoạt / Vô hiệu hóa đồng bộ" style="margin: 0; flex-shrink: 0;">
-                      <input type="checkbox" id="settings-server-auto-sync" checked>
-                      <span class="app-switch-slider slider round"></span>
-                    </label>
-                  </div>
-
-                  <!-- Bên dưới: Hàng URL máy chủ (Chỉ hiện khi client công cộng / không phải self-host) -->
-                  <div class="server-url-line-box" id="server-url-card-slot" style="display: none;">
-                    <div id="server-url-container">
-                      <div style="display: flex; gap: 8px;">
-                        <input type="url" id="settings-server-url" class="form-control" placeholder="http://localhost:8081 hoặc https://sync.domain.com" style="flex: 1; font-size: 0.82rem;">
-                        <button type="button" id="btn-test-server-connection" class="btn-secondary btn-sm" title="Kiểm tra kết nối" style="white-space: nowrap; font-size: 0.78rem; padding: 6px 10px; display: inline-flex; align-items: center; gap: 4px;">
-                          <i data-lucide="activity" style="width: 13px; height: 13px;"></i> Kiểm tra
-                        </button>
-                        <button type="button" id="btn-save-server-url" class="btn-primary btn-sm" style="white-space: nowrap; font-size: 0.78rem; padding: 6px 12px;">Lưu</button>
-                      </div>
-                      <div class="server-url-caption">
-                        * Địa chỉ máy chủ đồng bộ riêng (Self-Hosted qua Docker hoặc VPS cá nhân).
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
                 <!-- Banner thông báo khi truy cập trực tiếp từ máy chủ -->
@@ -2517,7 +2517,7 @@
                 </div>
 
                 <!-- Mật khẩu mã hóa Sổ (xóa Zero... đi; giữ trường nhập mật khẩu riêng ở trên, lưu/đổi mật khẩu & tắt mã hóa ở dưới căng đều 2 bên) -->
-                <div class="form-group" style="margin-bottom: 14px; padding-top: 10px; border-top: 1px solid var(--border-color);">
+                <div class="form-group" style="margin-bottom: 14px;">
                   <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
                     <label class="form-label" style="font-weight: 600; margin: 0; display: flex; align-items: center; gap: 6px; cursor: pointer;" id="label-server-vault-password">
                       <i data-lucide="shield" style="width: 15px; height: 15px; color: var(--primary);"></i>
@@ -6439,7 +6439,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/ui-share.js?v=2.8.0"></script>
   <script src="./js/ui-budgets.js?v=2.8.0"></script>
   <script src="./js/ui-analytics.js?v=2.8.0"></script>
-  <script src="./js/ui-settings.js?v=1792571384272"></script>
+  <script src="./js/ui-settings.js?v=1792571499999"></script>
   <script src="./js/server-auth-modals.js?v=2.8.0"></script>
 
   <!-- Main Entry Coordinator -->

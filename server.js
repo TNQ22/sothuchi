@@ -2069,7 +2069,7 @@ function serveStaticFile(req, res, reqPath) {
     };
 
     // PWA & Service Worker không cache vĩnh viễn để cập nhật tức thì
-    if (ext === '.html' || ext === '.json' || path.basename(filePath) === 'sw.js') {
+    if (ext === '.html' || ext === '.json' || ext === '.js' || ext === '.css' || path.basename(filePath) === 'sw.js') {
       headers['Cache-Control'] = 'no-cache, must-revalidate';
       if (path.basename(filePath) === 'sw.js') {
         headers['Service-Worker-Allowed'] = '/';

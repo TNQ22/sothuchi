@@ -541,8 +541,14 @@ const UISettings = {
     const serverPassInput = document.getElementById('settings-server-vault-password');
     const encBadge = document.getElementById('server-encryption-badge');
     if (serverPassInput) {
+      // Tuyệt đối không hiển thị mật khẩu đã nhập để tránh ai đó vào xem trộm mật khẩu cá nhân
       if (document.activeElement !== serverPassInput) {
-        serverPassInput.value = sService.encryptionPassword || '';
+        serverPassInput.value = '';
+      }
+      if (sService.encryptionPassword) {
+        serverPassInput.placeholder = '•••••••• (Đã kích hoạt E2EE) - Nhập mật khẩu mới nếu muốn đổi';
+      } else {
+        serverPassInput.placeholder = 'Để trống nếu không mã hóa (Khuyên dùng: Đặt mật khẩu)';
       }
     }
     const disableEncBtn = document.getElementById('btn-disable-server-encryption');
@@ -666,7 +672,7 @@ const UISettings = {
     const sharedVaults = sService.vaults.filter(v => v.role !== 'owner');
     const esc = typeof escapeHTML === 'function' ? escapeHTML : (s => s || '');
 
-    // 1. Render Sổ Đang Đồng Bộ (Sổ do tôi sở hữu)
+    // 1. Render Sổ Đang Đồng Bộ (Sổ do tôi sở hữu - 2 hàng: hàng trên Tên sổ, hàng dưới Chú thích & Nút bấm)
     if (myVaultsContainer) {
       if (myVaults.length === 0) {
         myVaultsContainer.innerHTML = '<div class="server-vaults-empty">Không có sổ cá nhân nào. Hãy bấm "+" để tạo sổ mới.</div>';
@@ -674,14 +680,15 @@ const UISettings = {
         myVaultsContainer.innerHTML = myVaults.map(v => {
           const isActive = v.id === sService.activeVaultId;
           return `
-            <div class="server-vault-row ${isActive ? 'is-active' : ''}" data-vault-id="${v.id}">
-              <div class="server-vault-left-bar">
-                <!-- Thanh gạt phía trước để kích hoạt chọn sổ -->
-                <label class="app-switch switch switch-sm" title="${isActive ? 'Sổ đang kích hoạt' : 'Bật thanh gạt để kích hoạt sổ này'}">
-                  <input type="checkbox" class="vault-activate-switch" data-vault-id="${v.id}" ${isActive ? 'checked' : ''}>
-                  <span class="app-switch-slider slider round"></span>
-                </label>
-                <!-- Các nút hành động: Đổi tên, Copy, Lịch sử, Xóa (nằm phía bên trái mỗi sổ, chỉ giữ icon) -->
+            <div class="server-vault-row ${isActive ? 'is-active' : ''}" data-vault-id="${v.id}" role="button" tabindex="0" title="${isActive ? 'Sổ đang được chọn' : 'Chạm để chọn sổ này'}">
+              <!-- Hàng trên: Tên sổ & Nhãn trạng thái -->
+              <div class="server-vault-row-top">
+                <div class="server-vault-name-text ${isActive ? 'active-name' : ''}">${esc(v.name)}</div>
+                ${isActive ? '<span class="vault-pill-active">Đang dùng</span>' : ''}
+              </div>
+              <!-- Hàng dưới: Chú thích bên trái & Các nút bấm góc phải -->
+              <div class="server-vault-row-bottom">
+                <div class="server-vault-caption-text">Chủ sổ</div>
                 <div class="server-vault-icon-actions">
                   <button type="button" class="btn-vault-icon btn-vault-rename" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Đổi tên sổ">
                     <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
@@ -697,17 +704,13 @@ const UISettings = {
                   </button>
                 </div>
               </div>
-              <div class="server-vault-center-info">
-                <div class="server-vault-name-text ${isActive ? 'active-name' : ''}">${esc(v.name)}</div>
-                ${isActive ? '<span class="vault-pill-active">Đang dùng</span>' : ''}
-              </div>
             </div>
           `;
         }).join('');
       }
     }
 
-    // 2. Render Sổ Được Share (Riêng 1 bảng)
+    // 2. Render Sổ Được Share (Riêng 1 bảng - 2 hàng: con mắt đổi thành chú thích dưới tên sổ)
     if (sharedVaultsContainer) {
       if (sharedVaults.length === 0) {
         sharedVaultsContainer.innerHTML = '<div class="server-vaults-empty">Chưa có sổ nào được chia sẻ với bạn.</div>';
@@ -715,15 +718,18 @@ const UISettings = {
         sharedVaultsContainer.innerHTML = sharedVaults.map(v => {
           const isActive = v.id === sService.activeVaultId;
           const isEditor = v.role === 'editor';
+          const permText = isEditor ? 'Quyền Ghi chép' : 'Quyền Chỉ xem';
+          const ownerText = v.owner_email ? ` • Từ: ${esc(v.owner_email)}` : '';
           return `
-            <div class="server-vault-row ${isActive ? 'is-active' : ''}" data-vault-id="${v.id}">
-              <div class="server-vault-left-bar">
-                <!-- Thanh gạt phía trước để kích hoạt -->
-                <label class="app-switch switch switch-sm" title="${isActive ? 'Sổ đang kích hoạt' : 'Bật thanh gạt để kích hoạt sổ này'}">
-                  <input type="checkbox" class="vault-activate-switch" data-vault-id="${v.id}" ${isActive ? 'checked' : ''}>
-                  <span class="app-switch-slider slider round"></span>
-                </label>
-                <!-- Các nút hành động: Đổi tên (nếu editor), Copy, Lịch sử -->
+            <div class="server-vault-row ${isActive ? 'is-active' : ''}" data-vault-id="${v.id}" role="button" tabindex="0" title="${isActive ? 'Sổ đang được chọn' : 'Chạm để chọn sổ này'}">
+              <!-- Hàng trên: Tên sổ & Nhãn trạng thái -->
+              <div class="server-vault-row-top">
+                <div class="server-vault-name-text ${isActive ? 'active-name' : ''}">${esc(v.name)}</div>
+                ${isActive ? '<span class="vault-pill-active">Đang dùng</span>' : ''}
+              </div>
+              <!-- Hàng dưới: Chú thích quyền hạn & Người chia sẻ thay thế cho icon con mắt; nút bấm góc phải -->
+              <div class="server-vault-row-bottom">
+                <div class="server-vault-caption-text">${permText}${ownerText}</div>
                 <div class="server-vault-icon-actions">
                   ${isEditor ? `
                   <button type="button" class="btn-vault-icon btn-vault-rename" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Đổi tên sổ">
@@ -737,21 +743,6 @@ const UISettings = {
                     <i data-lucide="history" style="width: 14px; height: 14px;"></i>
                   </button>
                 </div>
-              </div>
-              <div class="server-vault-center-info shared-center-info">
-                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px;">
-                  <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
-                    <span class="server-vault-name-text ${isActive ? 'active-name' : ''}">${esc(v.name)}</span>
-                    ${isActive ? '<span class="vault-pill-active">Đang dùng</span>' : ''}
-                  </div>
-                  <!-- Icon quyền ở cuối tên sổ: con mắt (viewer) hoặc cây bút (editor) -->
-                  <div class="server-vault-perm-badge" title="${isEditor ? 'Quyền Ghi Chép (Editor)' : 'Quyền Chỉ Xem (Viewer)'}">
-                    ${isEditor 
-                      ? '<i data-lucide="pencil" style="width: 15px; height: 15px; color: #3b82f6;"></i>' 
-                      : '<i data-lucide="eye" style="width: 15px; height: 15px; color: #94a3b8;"></i>'}
-                  </div>
-                </div>
-                ${v.owner_email ? `<div class="server-vault-owner-line">Từ: ${esc(v.owner_email)}</div>` : ''}
               </div>
             </div>
           `;
@@ -945,10 +936,10 @@ const UISettings = {
 
         if (!sService) return;
 
-        // Nếu người dùng để trống -> chuyển sang quy trình tắt mã hóa
+        // Nếu người dùng để trống ô nhập mật khẩu
         if (!newPass) {
           if (curPass) {
-            handleDisableEncryption();
+            showToast('Vui lòng nhập mật khẩu mới vào ô bên trên để thay đổi.', 'warning');
           } else {
             showToast('Vui lòng nhập mật khẩu muốn cài đặt.', 'warning');
           }
@@ -963,6 +954,7 @@ const UISettings = {
           try {
             showToast('Đang mã hóa lại toàn bộ sổ với mật khẩu mới...', 'info');
             await sService.changeEncryptionPassword(newPass);
+            if (input) input.value = '';
             showToast('Đổi mật khẩu mã hóa E2EE thành công! Hãy cập nhật mật khẩu mới trên các thiết bị khác.', 'success');
             this.renderServerSyncUI();
           } catch (err) {
@@ -979,6 +971,7 @@ const UISettings = {
             if (sService.isConnected && sService.activeVaultId) {
               await sService.overwriteVaultWithLocal(newPass);
             }
+            if (input) input.value = '';
             showToast('Đã kích hoạt Mã hóa Đầu cuối (E2EE) thành công!', 'success');
             this.renderServerSyncUI();
           } catch (err) {
@@ -1192,30 +1185,9 @@ const UISettings = {
       });
     }
 
-    // Quản lý Đa Sổ tương tác trực tiếp (Thanh gạt chọn sổ, icon Đổi tên, Copy, Lịch sử, Xóa)
+    // Quản lý Đa Sổ tương tác trực tiếp (Chạm để chọn sổ, icon Đổi tên, Copy, Lịch sử, Xóa)
     const multiVaultContainer = document.getElementById('server-multi-vault-container');
     if (multiVaultContainer) {
-      // 1. Kích hoạt chuyển sổ qua thanh gạt (Switch)
-      multiVaultContainer.addEventListener('change', async (e) => {
-        const switchInput = e.target.closest('.vault-activate-switch');
-        if (!switchInput || !sService) return;
-        const vaultId = switchInput.getAttribute('data-vault-id');
-        if (vaultId && vaultId !== sService.activeVaultId) {
-          try {
-            showToast('Đang chuyển sang sổ được chọn...', 'info');
-            await sService.switchVault(vaultId);
-            showToast('Đã chuyển sang sổ mới thành công!', 'success');
-            if (window.app && window.app.refreshAll) await window.app.refreshAll();
-          } catch (err) {
-            showToast('Lỗi khi chuyển sổ: ' + err.message, 'error');
-            this.renderServerVaultsLists();
-          }
-        } else {
-          switchInput.checked = true;
-        }
-      });
-
-      // 2. Click các nút icon: Đổi tên, Copy, Lịch sử, Xóa
       multiVaultContainer.addEventListener('click', async (e) => {
         // Đổi tên sổ
         const renameBtn = e.target.closest('.btn-vault-rename');
@@ -1280,6 +1252,24 @@ const UISettings = {
               if (window.app && window.app.refreshAll) await window.app.refreshAll();
             } catch (err) {
               showToast('Xóa sổ thất bại: ' + err.message, 'error');
+            }
+          }
+          return;
+        }
+
+        // 3. Tính năng chạm để chọn: Nhấp vào hàng sổ (.server-vault-row) để kích hoạt
+        const row = e.target.closest('.server-vault-row');
+        if (row && sService) {
+          const vaultId = row.getAttribute('data-vault-id');
+          if (vaultId && vaultId !== sService.activeVaultId) {
+            try {
+              showToast('Đang chuyển sang sổ được chọn...', 'info');
+              await sService.switchVault(vaultId);
+              showToast('Đã kích hoạt sổ thành công!', 'success');
+              if (window.app && window.app.refreshAll) await window.app.refreshAll();
+            } catch (err) {
+              showToast('Lỗi khi chuyển sổ: ' + err.message, 'error');
+              this.renderServerVaultsLists();
             }
           }
           return;
