@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.8.3">
+  <link rel="stylesheet" href="./css/style.css?v=1792571384272">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -2083,7 +2083,7 @@
             <div class="settings-hub-footer">
               <a href="https://github.com/TNQ22/sothuchi" target="_blank" rel="noopener noreferrer" class="settings-version-link">
                 <i data-lucide="github" style="width: 14px; height: 14px;"></i>
-                <span>Phiên bản v2.8.2</span>
+                <span>Phiên bản v2.8.4</span>
               </a>
             </div>
               
@@ -2456,34 +2456,34 @@
                 <!-- Thẻ tài khoản Google trên máy chủ (Khi đã kết nối) -->
                 <div id="server-user-card" class="server-user-header-card" style="display: none;">
                   <div class="server-user-header-row">
-                    <!-- Avatar / Logo Google nhỏ như ngoài màn hình chính & icon đổi tài khoản ở góc trên bên phải -->
+                    <!-- Avatar / Logo Google nhỏ hình tròn kích thước 34px thực tế & icon đổi tài khoản ở góc trên bên phải -->
                     <div class="server-avatar-wrapper">
-                      <img id="server-user-avatar" src="./assets/icons/icon.svg" alt="Avatar" class="server-user-avatar-round">
+                      <img id="server-user-avatar" src="./assets/icons/icon.svg" alt="Avatar" class="server-user-avatar-round" style="width: 34px; height: 34px; max-width: 34px; max-height: 34px; border-radius: 50%; object-fit: cover;">
                       <button type="button" id="btn-server-reauth" class="server-reauth-badge-btn" title="Đổi tài khoản khác">
                         <i data-lucide="refresh-cw"></i>
                       </button>
                     </div>
 
-                    <!-- 2 hàng: Tên tài khoản và Email (bỏ badge chủ sổ) -->
+                    <!-- 2 hàng: Tên tài khoản và Email (Tràn màn hình thì tự ẩn bớt bằng ellipsis) -->
                     <div class="server-user-meta">
                       <div id="server-user-name" class="server-user-name">Người dùng Google</div>
                       <div id="server-user-email" class="server-user-email">email@gmail.com</div>
                     </div>
 
-                    <!-- Góc phải: Nút icon đăng xuất & Thanh gạt kích hoạt/vô hiệu hóa tối giản -->
-                    <div class="server-user-right-actions">
-                      <button type="button" id="btn-server-logout" class="btn-server-logout-compact" title="Đăng xuất">
-                        <i data-lucide="log-out" style="width: 15px; height: 15px;"></i>
-                      </button>
-                      <label class="app-switch switch" title="Kích hoạt / Vô hiệu hóa đồng bộ">
-                        <input type="checkbox" id="settings-server-auto-sync" checked>
-                        <span class="app-switch-slider slider round"></span>
-                      </label>
-                    </div>
+                    <!-- Nút icon đăng xuất màu đỏ nổi bật -->
+                    <button type="button" id="btn-server-logout" class="btn-server-logout-compact" title="Đăng xuất">
+                      <i data-lucide="log-out" style="width: 14px; height: 14px;"></i>
+                    </button>
+
+                    <!-- Thanh gạt kích hoạt/vô hiệu hóa tối giản -->
+                    <label class="app-switch switch switch-sm" title="Kích hoạt / Vô hiệu hóa đồng bộ" style="margin: 0; flex-shrink: 0;">
+                      <input type="checkbox" id="settings-server-auto-sync" checked>
+                      <span class="app-switch-slider slider round"></span>
+                    </label>
                   </div>
 
-                  <!-- Bên dưới: Hàng URL máy chủ và Chú thích bên dưới -->
-                  <div class="server-url-line-box" id="server-url-card-slot">
+                  <!-- Bên dưới: Hàng URL máy chủ (Chỉ hiện khi client công cộng / không phải self-host) -->
+                  <div class="server-url-line-box" id="server-url-card-slot" style="display: none;">
                     <div id="server-url-container">
                       <div style="display: flex; gap: 8px;">
                         <input type="url" id="settings-server-url" class="form-control" placeholder="http://localhost:8081 hoặc https://sync.domain.com" style="flex: 1; font-size: 0.82rem;">
@@ -2500,38 +2500,23 @@
                 </div>
 
                 <!-- Banner thông báo khi truy cập trực tiếp từ máy chủ -->
-                <div id="server-selfhost-banner" style="display: none; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(59, 130, 246, 0.08); border-radius: var(--radius-sm); border: 1px solid rgba(59, 130, 246, 0.2); font-size: 0.8rem; margin-bottom: 14px;">
-                  <div style="display: flex; align-items: center; gap: 6px; font-weight: 500; color: var(--text-primary);">
-                    <i data-lucide="hard-drive" style="width: 14px; height: 14px; color: var(--primary);"></i>
-                    <span>Đang kết nối trực tiếp máy chủ hiện tại</span>
-                  </div>
-                  <span id="server-selfhost-origin" style="color: var(--text-muted); font-size: 0.74rem; font-family: monospace;"></span>
+                <div id="server-selfhost-banner" style="display: none;">
+                  <span id="server-selfhost-origin"></span>
                 </div>
 
                 <!-- Màn hình Đăng nhập (khi chưa kết nối / chưa đăng nhập) -->
                 <div id="server-login-prompt" style="margin-bottom: 14px;">
-                  <div id="server-url-unlogged-slot" style="margin-bottom: 12px;">
-                    <!-- server-url-container sẽ hiển thị ở đây khi chưa login -->
+                  <div id="server-url-unlogged-slot" style="margin-bottom: 12px; display: none;">
+                    <!-- server-url-container sẽ hiển thị ở đây khi chưa login và không phải self-host -->
                   </div>
 
-                  <button type="button" id="btn-server-google-login" class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                  <button type="button" id="btn-server-google-login" class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px;">
                     <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
                     <span>Đăng nhập Máy chủ bằng Google</span>
                   </button>
-                  <div style="display: flex; align-items: center; gap: 8px; margin: 10px 0;">
-                    <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">hoặc đăng nhập nhanh</span>
-                    <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
-                  </div>
-                  <div style="display: flex; gap: 8px;">
-                    <input type="email" id="settings-server-quick-email" class="form-control" placeholder="Email tài khoản (không cần Google GIS)" style="flex: 1; font-size: 0.85rem;">
-                    <button type="button" id="btn-server-quick-login" class="btn-secondary" style="white-space: nowrap; padding: 7px 12px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px;">
-                      <i data-lucide="zap" style="width: 14px; height: 14px;"></i> Đăng nhập
-                    </button>
-                  </div>
                 </div>
 
-                <!-- Mật khẩu mã hóa Sổ (xóa Zero... đi; ẩn chú thích trong dòng tiêu đề khi bấm vào mới hiển thị) -->
+                <!-- Mật khẩu mã hóa Sổ (xóa Zero... đi; giữ trường nhập mật khẩu riêng ở trên, lưu/đổi mật khẩu & tắt mã hóa ở dưới căng đều 2 bên) -->
                 <div class="form-group" style="margin-bottom: 14px; padding-top: 10px; border-top: 1px solid var(--border-color);">
                   <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
                     <label class="form-label" style="font-weight: 600; margin: 0; display: flex; align-items: center; gap: 6px; cursor: pointer;" id="label-server-vault-password">
@@ -2543,16 +2528,27 @@
                     </label>
                     <span id="server-encryption-badge" class="badge" style="font-size: 0.68rem; padding: 2px 7px; background: rgba(100, 116, 139, 0.12); color: var(--text-muted); border-radius: 9999px;">Chưa mã hóa</span>
                   </div>
-                  <div style="display: flex; gap: 8px;">
-                    <div style="position: relative; flex: 1;">
-                      <input type="password" id="settings-server-vault-password" class="form-control" placeholder="Để trống nếu không mã hóa (Khuyên dùng: Đặt mật khẩu)" style="padding-right: 36px;">
-                      <button type="button" id="btn-toggle-server-password-visibility" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Hiện / Ẩn mật khẩu">
-                        <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
-                      </button>
-                    </div>
-                    <button type="button" id="btn-save-server-vault-password" class="btn-primary" style="white-space: nowrap;">Lưu</button>
-                    <button type="button" id="btn-disable-server-encryption" class="btn-secondary" style="white-space: nowrap; display: none; color: #ef4444;" title="Tắt mã hóa E2EE và chuyển về dạng lưu trữ thông thường">Tắt mã hóa</button>
+
+                  <!-- 1. Trường nhập mật khẩu riêng ở trên -->
+                  <div style="position: relative; width: 100%; margin-bottom: 8px;">
+                    <input type="password" id="settings-server-vault-password" class="form-control" placeholder="Để trống nếu không mã hóa (Khuyên dùng: Đặt mật khẩu)" style="width: 100%; padding-right: 36px; box-sizing: border-box;">
+                    <button type="button" id="btn-toggle-server-password-visibility" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Hiện / Ẩn mật khẩu">
+                      <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                    </button>
                   </div>
+
+                  <!-- 2. Hàng nút: Lưu/đổi mật khẩu và Tắt mã hóa chuyển xuống dưới và căng đều 2 bên -->
+                  <div style="display: flex; gap: 8px; width: 100%;">
+                    <button type="button" id="btn-save-server-vault-password" class="btn-primary" style="flex: 1; text-align: center; justify-content: center; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; font-size: 0.84rem;">
+                      <i data-lucide="key" style="width: 14px; height: 14px;"></i>
+                      <span id="btn-save-server-vault-password-text">Lưu</span>
+                    </button>
+                    <button type="button" id="btn-disable-server-encryption" class="btn-secondary" style="flex: 1; text-align: center; justify-content: center; display: none; color: #ef4444; border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.08); align-items: center; gap: 6px; padding: 8px 12px; font-size: 0.84rem;" title="Tắt mã hóa E2EE và chuyển về dạng lưu trữ thông thường">
+                      <i data-lucide="unlock" style="width: 14px; height: 14px; color: #ef4444;"></i>
+                      <span>Tắt mã hóa</span>
+                    </button>
+                  </div>
+
                   <!-- Chú thích ẩn trong dòng tiêu đề, khi bấm vào mới hiển thị -->
                   <div id="server-enc-help-box" style="display: none; margin-top: 8px; padding: 8px 12px; background: rgba(59, 130, 246, 0.06); border: 1px solid rgba(59, 130, 246, 0.18); border-radius: var(--radius-sm); font-size: 0.76rem; color: var(--text-secondary); line-height: 1.45;">
                     * <strong>Chống rò rỉ dữ liệu khi máy chủ bị hack:</strong> Dữ liệu được mã hóa AES-GCM 256-bit trực tiếp trên thiết bị của bạn trước khi đưa lên máy chủ. Cơ sở dữ liệu SQLite trên máy chủ chỉ chứa các chuỗi đã mã hóa. Hãy <strong>chia sẻ mật khẩu này cho các thành viên cùng dùng sổ</strong> để họ mở khóa trên thiết bị của họ.
@@ -2561,10 +2557,10 @@
 
                 <!-- Đồng bộ ngay thành "Đồng bộ" -->
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 8px;">
-                  <div style="font-size: 0.8rem; color: var(--text-muted);">
+                  <div style="font-size: 0.8rem; color: var(--text-muted); flex: 1; min-width: 140px;">
                     Lần cuối: <span id="settings-server-last-sync-time" style="font-weight: 600; color: var(--text-primary);">Chưa đồng bộ</span>
                   </div>
-                  <button type="button" id="btn-server-sync-now" class="btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+                  <button type="button" id="btn-server-sync-now" class="btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;">
                     <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
                     <span>Đồng bộ</span>
                   </button>
@@ -2586,7 +2582,7 @@
                         <i data-lucide="book-marked" style="width: 15px; height: 15px; color: var(--primary);"></i>
                         <span>Sổ Đang Đồng Bộ</span>
                       </label>
-                      <!-- Nút thêm mới chỉ để lại icon + -->
+                      <!-- Nút thêm mới chỉ để lại icon + có màu nổi bật -->
                       <button type="button" id="btn-server-create-vault" class="btn-icon-circle btn-primary" title="Tạo sổ mới">
                         <i data-lucide="plus" style="width: 15px; height: 15px;"></i>
                       </button>
@@ -2602,7 +2598,7 @@
                   <div class="server-vault-section-box">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                       <label class="form-label" style="margin-bottom: 0; font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
-                        <i data-lucide="users" style="width: 15px; height: 15px; color: #3b82f6;"></i>
+                        <i data-lucide="users" style="width: 15px; height: 15px; color: #2563eb;"></i>
                         <span>Sổ Được Chia Sẻ</span>
                       </label>
                     </div>
@@ -2613,19 +2609,32 @@
                     </div>
                   </div>
 
-                  <!-- 3. Chia sẻ Sổ Cho Thành Viên (Email Google) -->
-                  <div id="server-sharing-panel" style="display: none; margin-bottom: 14px; padding: 12px; background: rgba(59, 130, 246, 0.05); border-radius: var(--radius-md); border: 1px dashed rgba(59, 130, 246, 0.3);">
-                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 6px; font-size: 0.88rem;">
-                      Chia Sẻ Sổ Cho Thành Viên (Email Google):
+                  <!-- 3. Chia sẻ Sổ Cho Thành Viên (Email Google) - Đồng bộ viền bao chuẩn server-vault-section-box -->
+                  <div id="server-sharing-panel" class="server-vault-section-box" style="display: none;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-weight: 600; font-size: 0.88rem; color: var(--text-primary);">
+                      <i data-lucide="user-plus" style="width: 15px; height: 15px; color: var(--primary);"></i>
+                      <span>Chia Sẻ Sổ Cho Thành Viên</span>
                     </div>
-                    <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;">
-                      <input type="email" id="settings-server-share-email" class="form-control" placeholder="Nhập email Google (vd: banbe@gmail.com)" style="flex: 2; min-width: 180px;">
-                      <select id="settings-server-share-role" class="form-control" style="flex: 1; min-width: 120px;">
-                        <option value="editor">Ghi chép</option>
-                        <option value="viewer">Chỉ xem</option>
-                      </select>
-                      <button type="button" id="btn-server-add-share" class="btn-primary btn-sm" style="white-space: nowrap;">
-                        <i data-lucide="user-plus" style="width: 13px; height: 13px;"></i> Mời
+
+                    <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 10px;">
+                      <!-- Ô nhập email mở rộng tối đa diện tích hiển thị -->
+                      <input type="email" id="settings-server-share-email" class="form-control" placeholder="Email Google thành viên (vd: banbe@gmail.com)" style="flex: 1; min-width: 0; font-size: 0.82rem; padding: 7px 10px;">
+                      
+                      <!-- Cụm chọn quyền bằng icon gọn gàng: Bút (Ghi chép) / Mắt (Chỉ xem) -->
+                      <div class="share-role-icon-segmented" id="server-share-role-group">
+                        <button type="button" class="btn-share-role-icon role-btn-editor active" data-role="editor" title="Quyền Ghi Chép (Editor: Thêm, sửa, xóa giao dịch)">
+                          <i data-lucide="pencil" style="width: 13px; height: 13px;"></i>
+                        </button>
+                        <button type="button" class="btn-share-role-icon role-btn-viewer" data-role="viewer" title="Quyền Chỉ Xem (Viewer: Không được chỉnh sửa)">
+                          <i data-lucide="eye" style="width: 13px; height: 13px;"></i>
+                        </button>
+                        <input type="hidden" id="settings-server-share-role" value="editor">
+                      </div>
+
+                      <!-- Nút mời -->
+                      <button type="button" id="btn-server-add-share" class="btn-primary btn-sm" style="white-space: nowrap; padding: 7px 12px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                        <i data-lucide="send" style="width: 13px; height: 13px;"></i>
+                        <span>Mời</span>
                       </button>
                     </div>
 
@@ -6430,7 +6439,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/ui-share.js?v=2.8.0"></script>
   <script src="./js/ui-budgets.js?v=2.8.0"></script>
   <script src="./js/ui-analytics.js?v=2.8.0"></script>
-  <script src="./js/ui-settings.js?v=2.8.3"></script>
+  <script src="./js/ui-settings.js?v=1792571384272"></script>
   <script src="./js/server-auth-modals.js?v=2.8.0"></script>
 
   <!-- Main Entry Coordinator -->

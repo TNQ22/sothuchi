@@ -514,20 +514,24 @@ const UISettings = {
       urlInput.value = sService.serverUrl;
     }
 
-    if (selfhostBanner) {
-      selfhostBanner.style.display = isSelfHost ? 'flex' : 'none';
-      if (isSelfHost && selfhostOrigin) {
-        selfhostOrigin.textContent = window.location.origin || sService.serverUrl || '';
-      }
-    }
-
-    if (urlContainer) {
+    if (isSelfHost) {
+      // 1. NẾU DÙNG MÁY CHỦ RIÊNG (Self-Hosted): ẨN HOÀN TOÀN TRƯỜNG URL
+      if (urlContainer) urlContainer.style.display = 'none';
+      if (cardSlot) cardSlot.style.display = 'none';
+      if (unloggedSlot) unloggedSlot.style.display = 'none';
+      if (selfhostBanner) selfhostBanner.style.display = 'none';
+    } else {
+      // 2. Nếu truy cập từ bên ngoài (Public Web / GitHub Pages): Hiển thị trường URL để nhập máy chủ
+      if (selfhostBanner) selfhostBanner.style.display = 'none';
+      if (urlContainer) urlContainer.style.display = 'block';
       if (sService.userProfile && sService.token && cardSlot) {
-        if (urlContainer.parentElement !== cardSlot) {
+        cardSlot.style.display = 'block';
+        if (urlContainer && urlContainer.parentElement !== cardSlot) {
           cardSlot.appendChild(urlContainer);
         }
       } else if (unloggedSlot) {
-        if (urlContainer.parentElement !== unloggedSlot) {
+        unloggedSlot.style.display = 'block';
+        if (urlContainer && urlContainer.parentElement !== unloggedSlot) {
           unloggedSlot.appendChild(urlContainer);
         }
       }
@@ -543,19 +547,22 @@ const UISettings = {
     }
     const disableEncBtn = document.getElementById('btn-disable-server-encryption');
     const saveEncBtn = document.getElementById('btn-save-server-vault-password');
+    const saveEncText = document.getElementById('btn-save-server-vault-password-text');
     if (encBadge) {
       if (sService.encryptionPassword) {
         encBadge.textContent = 'Đã bật E2EE';
         encBadge.style.background = 'rgba(16, 185, 129, 0.15)';
         encBadge.style.color = '#10b981';
-        if (disableEncBtn) disableEncBtn.style.display = 'inline-block';
-        if (saveEncBtn) saveEncBtn.textContent = 'Đổi mật khẩu';
+        if (disableEncBtn) disableEncBtn.style.display = 'inline-flex';
+        if (saveEncText) saveEncText.textContent = 'Đổi mật khẩu';
+        else if (saveEncBtn) saveEncBtn.textContent = 'Đổi mật khẩu';
       } else {
         encBadge.textContent = 'Chưa mã hóa';
         encBadge.style.background = 'rgba(100, 116, 139, 0.12)';
         encBadge.style.color = 'var(--text-muted)';
         if (disableEncBtn) disableEncBtn.style.display = 'none';
-        if (saveEncBtn) saveEncBtn.textContent = 'Lưu';
+        if (saveEncText) saveEncText.textContent = 'Lưu';
+        else if (saveEncBtn) saveEncBtn.textContent = 'Lưu';
       }
     }
 
@@ -1092,43 +1099,22 @@ const UISettings = {
       });
     }
 
-    // Đăng xuất Máy chủ
-        // Đăng nhập nhanh Máy chủ bằng Email (Không cần Google GIS)
-    const serverQuickLoginBtn = document.getElementById('btn-server-quick-login');
-    if (serverQuickLoginBtn) {
-      serverQuickLoginBtn.addEventListener('click', async () => {
-        if (!sService) return;
-        const urlInput = document.getElementById('settings-server-url');
-        const enteredUrl = (urlInput ? urlInput.value : sService.serverUrl || '').trim().replace(/\/+$/, '');
-        if (!enteredUrl) {
-          showToast('Vui lòng nhập địa chỉ Máy Chủ Riêng trước khi đăng nhập', 'warning');
-          return;
-        }
-        sService.serverUrl = enteredUrl;
-        await db.settings.put({ key: 'syncServerUrl', value: enteredUrl }).catch(() => {});
-
-        const emailInput = document.getElementById('settings-server-quick-email');
-        const email = (emailInput ? emailInput.value : '').trim();
-        if (!email) {
-          showToast('Vui lòng nhập email tài khoản của bạn', 'warning');
-          return;
-        }
-
-        serverQuickLoginBtn.disabled = true;
-        showToast('Đang đăng nhập vào máy chủ...', 'info');
-        try {
-          const result = await sService.quickLogin(email);
-          showToast(`Đăng nhập máy chủ thành công! Xin chào ${result.user.name}`, 'success');
-          if (window.app && window.app.refreshAll) await window.app.refreshAll();
-        } catch (err) {
-          showToast('Lỗi đăng nhập: ' + err.message, 'error');
-        } finally {
-          serverQuickLoginBtn.disabled = false;
-        }
+    // Cụm nút icon chọn quyền Chia sẻ Sổ (Editor: Bút / Viewer: Mắt)
+    const roleGroup = document.getElementById('server-share-role-group');
+    if (roleGroup) {
+      roleGroup.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-share-role-icon');
+        if (!btn) return;
+        const role = btn.getAttribute('data-role');
+        const hiddenInput = document.getElementById('settings-server-share-role');
+        if (hiddenInput) hiddenInput.value = role;
+        roleGroup.querySelectorAll('.btn-share-role-icon').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
       });
     }
 
-const serverLogoutBtn = document.getElementById('btn-server-logout');
+    // Đăng xuất Máy chủ
+    const serverLogoutBtn = document.getElementById('btn-server-logout');
     if (serverLogoutBtn) {
       serverLogoutBtn.addEventListener('click', () => {
         if (window.ServerAuthModals) {

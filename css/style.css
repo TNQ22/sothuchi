@@ -9701,7 +9701,7 @@ body.light .header-vault-pill .vault-pill-text {
   background: rgba(20, 184, 166, 0.08);
 }
 
-.storage-loc-card input[type=" radio\] {
+.storage-loc-card input[type="radio"] {
  margin-top: 3px;
  accent-color: var(--primary);
 }
@@ -11735,109 +11735,122 @@ body.light .ptr-circle-badge,
   background: var(--bg-card, #ffffff);
   border: 1px solid var(--border-color, #e2e8f0);
   border-radius: var(--radius-md, 12px);
-  padding: 12px 14px;
+  padding: 10px 12px;
   margin-bottom: 14px;
 }
 
 .server-user-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  flex-wrap: nowrap !important;
 }
 
 .server-avatar-wrapper {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
+  position: relative !important;
+  width: 34px !important;
+  height: 34px !important;
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .server-user-avatar-round {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
-  border: 1.5px solid var(--primary, #0d9488);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  width: 34px !important;
+  height: 34px !important;
+  max-width: 34px !important;
+  max-height: 34px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  display: block !important;
+  border: 1.5px solid var(--primary, #0d9488) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
 }
 
 .server-reauth-badge-btn {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  background: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-color, #cbd5e1);
-  color: var(--primary, #0d9488);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
-  z-index: 2;
+  position: absolute !important;
+  top: -3px !important;
+  right: -3px !important;
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50% !important;
+  background: #2563eb !important;
+  border: 1.5px solid var(--bg-surface, #ffffff) !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+  transition: transform 0.15s ease, background-color 0.15s ease !important;
+  z-index: 2 !important;
 }
 
 .server-reauth-badge-btn:hover {
-  transform: scale(1.15);
-  background: var(--primary, #0d9488);
-  color: #ffffff;
+  transform: scale(1.15) !important;
+  background: #1d4ed8 !important;
+}
+
+.server-reauth-badge-btn i,
+.server-reauth-badge-btn svg {
+  width: 9px !important;
+  height: 9px !important;
+  stroke-width: 2.5 !important;
 }
 
 .server-user-meta {
-  flex: 1;
-  min-width: 0;
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  overflow: hidden !important;
 }
 
 .server-user-name {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.25;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  line-height: 1.25 !important;
 }
 
 .server-user-email {
-  font-size: 0.76rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.25;
-}
-
-.server-user-right-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
+  font-size: 0.72rem !important;
+  color: var(--text-muted) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  line-height: 1.25 !important;
 }
 
 .btn-server-logout-compact {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm, 8px);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  background: rgba(239, 68, 68, 0.08);
-  color: #ef4444;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  transition: all 0.15s ease;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 7px !important;
+  border: 1px solid rgba(239, 68, 68, 0.25) !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #ef4444 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+  transition: all 0.15s ease !important;
 }
 
 .btn-server-logout-compact:hover {
-  background: rgba(239, 68, 68, 0.18);
-  transform: scale(1.05);
+  background: rgba(239, 68, 68, 0.22) !important;
+  transform: scale(1.06) !important;
 }
 
 .server-url-line-box {
@@ -11923,31 +11936,62 @@ body.light .ptr-circle-badge,
   gap: 3px;
 }
 
+/* Các nút hành động trên mỗi sổ có MÀU SẮC NỔI BẬT & ĐỒNG BỘ */
 .btn-vault-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0;
-  transition: all 0.15s ease;
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  transition: all 0.15s ease !important;
+  border: 1px solid transparent !important;
 }
 
-.btn-vault-icon:hover {
-  background: var(--bg-hover, rgba(0, 0, 0, 0.06));
-  color: var(--text-primary);
-  border-color: var(--border-color, #e2e8f0);
+/* Đổi tên: Xanh dương (Blue) */
+.btn-vault-icon.btn-vault-rename {
+  color: #2563eb !important;
+  background: rgba(37, 99, 235, 0.12) !important;
+  border-color: rgba(37, 99, 235, 0.25) !important;
+}
+.btn-vault-icon.btn-vault-rename:hover {
+  background: rgba(37, 99, 235, 0.22) !important;
+  transform: scale(1.08) !important;
 }
 
+/* Sao chép: Xanh ngọc (Emerald Green) */
+.btn-vault-icon.btn-vault-copy {
+  color: #059669 !important;
+  background: rgba(5, 150, 105, 0.12) !important;
+  border-color: rgba(5, 150, 105, 0.25) !important;
+}
+.btn-vault-icon.btn-vault-copy:hover {
+  background: rgba(5, 150, 105, 0.22) !important;
+  transform: scale(1.08) !important;
+}
+
+/* Lịch sử: Tím (Purple / Violet) */
+.btn-vault-icon.btn-vault-history {
+  color: #7c3aed !important;
+  background: rgba(124, 58, 237, 0.12) !important;
+  border-color: rgba(124, 58, 237, 0.25) !important;
+}
+.btn-vault-icon.btn-vault-history:hover {
+  background: rgba(124, 58, 237, 0.22) !important;
+  transform: scale(1.08) !important;
+}
+
+/* Xóa sổ: Đỏ (Red) */
+.btn-vault-icon.btn-vault-delete {
+  color: #dc2626 !important;
+  background: rgba(220, 38, 38, 0.12) !important;
+  border-color: rgba(220, 38, 38, 0.25) !important;
+}
 .btn-vault-icon.btn-vault-delete:hover {
-  background: rgba(239, 68, 68, 0.12) !important;
-  color: #ef4444 !important;
-  border-color: rgba(239, 68, 68, 0.3) !important;
+  background: rgba(220, 38, 38, 0.22) !important;
+  transform: scale(1.08) !important;
 }
 
 .server-vault-center-info {
@@ -12022,4 +12066,78 @@ body.light .ptr-circle-badge,
 
 .btn-icon-circle:hover {
   transform: scale(1.08);
+}
+
+/* Nút thêm mới sổ (+) có màu sắc đồng bộ */
+.btn-icon-circle.btn-primary#btn-server-create-vault {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 7px !important;
+  background: var(--primary, #0d9488) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(13, 148, 136, 0.35) !important;
+}
+
+/* Cụm chọn quyền chia sẻ bằng icon gọn gàng: Bút (Ghi chép) / Mắt (Chỉ xem) */
+.share-role-icon-segmented {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-surface, rgba(0, 0, 0, 0.05));
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.btn-share-role-icon {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
+  border: none !important;
+  background: transparent;
+  color: var(--text-muted);
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  padding: 0 !important;
+}
+
+.btn-share-role-icon:hover {
+  color: var(--text-primary) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.btn-share-role-icon.role-btn-editor.active,
+.btn-share-role-icon.active[data-role="editor"] {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.35) !important;
+}
+
+.btn-share-role-icon.role-btn-viewer.active,
+.btn-share-role-icon.active[data-role="viewer"] {
+  background: #059669 !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 4px rgba(5, 150, 105, 0.35) !important;
+}
+
+/* Viền bao sát màn hình trên di động */
+@media (max-width: 768px) {
+  #view-settings.page-view {
+    padding: 6px 4px 28px 4px !important;
+  }
+  .settings-container {
+    padding: 0 2px 28px 2px !important;
+  }
+  .settings-card-clean {
+    padding: 12px 8px !important;
+    border-radius: var(--radius-md) !important;
+  }
+  .server-vault-section-box {
+    padding: 10px 8px !important;
+  }
 }
