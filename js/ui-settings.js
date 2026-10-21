@@ -339,8 +339,15 @@ const UISettings = {
     // 4. Load Vault Password (E2EE)
     const vaultPassSetting = await db.settings.get('syncEncryptionPassword');
     const vaultPassInput = document.getElementById('settings-vault-password');
-    if (vaultPassSetting && vaultPassInput) {
-      vaultPassInput.value = vaultPassSetting.value || '';
+    if (vaultPassInput) {
+      if (document.activeElement !== vaultPassInput) {
+        vaultPassInput.value = '';
+      }
+      if (vaultPassSetting && vaultPassSetting.value) {
+        vaultPassInput.placeholder = 'Nhập mới để đổi mật khẩu';
+      } else {
+        vaultPassInput.placeholder = 'Để trống nếu không mã hóa';
+      }
     }
 
     // 5. Load Mirror Backup setting
@@ -400,15 +407,15 @@ const UISettings = {
     if (!card) return;
 
     if (profile && profile.email) {
-      card.style.display = 'flex';
+      card.style.display = 'block';
       if (avatar) avatar.src = profile.picture || './assets/icons/google-drive.svg';
-      if (nameEl) nameEl.textContent = profile.name || 'Người dùng Google';
+      if (nameEl) nameEl.textContent = profile.name || 'Tài khoản Google';
       if (emailEl) emailEl.textContent = profile.email;
 
       const isOwner = (window.googleDriveService && window.googleDriveService.vaultRole !== 'member');
       if (roleBadge) {
-        roleBadge.textContent = isOwner ? 'Chủ Sổ' : 'Thành Viên';
-        roleBadge.className = isOwner ? 'google-role-badge' : 'google-role-badge member';
+        roleBadge.textContent = isOwner ? 'Chủ sổ' : 'Thành viên';
+        roleBadge.className = isOwner ? 'sync-vault-role-pill owner' : 'sync-vault-role-pill editor';
       }
 
       if (loginBtn) {
@@ -482,7 +489,7 @@ const UISettings = {
 
     const dbx = window.dropboxService;
     if (dbx && (dbx.refreshToken || dbx.accessToken) && dbx.userProfile) {
-      if (infoBox) infoBox.style.display = 'flex';
+      if (infoBox) infoBox.style.display = 'block';
       if (nameEl) nameEl.textContent = dbx.userProfile.name || 'Dropbox User';
       if (emailEl) emailEl.textContent = dbx.userProfile.email || '';
       if (avatarEl && dbx.userProfile.picture) avatarEl.src = dbx.userProfile.picture;
@@ -1740,6 +1747,10 @@ const UISettings = {
         const val = input ? input.value : '';
         if (window.googleDriveService) {
           window.googleDriveService.setEncryptionPassword(val);
+        }
+        if (input) {
+          input.value = '';
+          input.placeholder = val ? 'Nhập mới để đổi mật khẩu' : 'Để trống nếu không mã hóa';
         }
         showToast(val ? 'Đã lưu Mật khẩu Mã hóa Sổ (E2EE) thành công!' : 'Đã bỏ mật khẩu mã hóa sổ', 'success');
       });
