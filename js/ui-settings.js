@@ -502,41 +502,33 @@ const UISettings = {
     if (!sService) return;
 
     // 1. Cấu hình hiển thị URL Máy Chủ:
-    // Nếu app được host và truy cập từ chính máy chủ (Self-Hosted):
-    // Ẩn ô nhập URL phía trên và chuyển xuống tùy chọn ẩn bên dưới, đồng thời hiện thông báo gọn gàng.
-    // Nếu là app public: Hiển thị nổi bật phía trên để người dùng dễ dàng cấu hình.
     const isSelfHost = typeof sService.isSelfHosted === 'function' ? sService.isSelfHosted() : false;
     const selfhostBanner = document.getElementById('server-selfhost-banner');
     const selfhostOrigin = document.getElementById('server-selfhost-origin');
     const urlContainer = document.getElementById('server-url-container');
-    const topSlot = document.getElementById('server-url-top-slot');
-    const bottomSlot = document.getElementById('server-url-bottom-slot');
+    const cardSlot = document.getElementById('server-url-card-slot');
+    const unloggedSlot = document.getElementById('server-url-unlogged-slot');
     const urlInput = document.getElementById('settings-server-url');
 
     if (urlInput && !urlInput.value && sService.serverUrl) {
       urlInput.value = sService.serverUrl;
     }
 
-    if (urlContainer && topSlot && bottomSlot) {
-      if (isSelfHost) {
-        if (selfhostBanner) {
-          selfhostBanner.style.display = 'flex';
-          if (selfhostOrigin) {
-            selfhostOrigin.textContent = window.location.origin || sService.serverUrl || '';
-          }
+    if (selfhostBanner) {
+      selfhostBanner.style.display = isSelfHost ? 'flex' : 'none';
+      if (isSelfHost && selfhostOrigin) {
+        selfhostOrigin.textContent = window.location.origin || sService.serverUrl || '';
+      }
+    }
+
+    if (urlContainer) {
+      if (sService.userProfile && sService.token && cardSlot) {
+        if (urlContainer.parentElement !== cardSlot) {
+          cardSlot.appendChild(urlContainer);
         }
-        bottomSlot.style.display = 'block';
-        const target = bottomSlot.querySelector('.server-url-slot-target') || bottomSlot;
-        if (urlContainer.parentElement !== target) {
-          target.appendChild(urlContainer);
-        }
-        topSlot.style.display = 'none';
-      } else {
-        if (selfhostBanner) selfhostBanner.style.display = 'none';
-        bottomSlot.style.display = 'none';
-        topSlot.style.display = 'block';
-        if (urlContainer.parentElement !== topSlot) {
-          topSlot.appendChild(urlContainer);
+      } else if (unloggedSlot) {
+        if (urlContainer.parentElement !== unloggedSlot) {
+          unloggedSlot.appendChild(urlContainer);
         }
       }
     }
@@ -567,7 +559,7 @@ const UISettings = {
       }
     }
 
-    // 2. Cập nhật Status Badge
+    // 2. Cập nhật Status Badge (fallback)
     const badge = document.getElementById('server-status-badge');
     const text = document.getElementById('server-status-text');
     if (badge && text) {
@@ -589,17 +581,16 @@ const UISettings = {
     // 3. Cập nhật Auth & User Profile Card
     const userCard = document.getElementById('server-user-card');
     const loginPrompt = document.getElementById('server-login-prompt');
-    const vaultSection = document.getElementById('server-vault-section');
+    const multiVaultContainer = document.getElementById('server-multi-vault-container');
     const sharingPanel = document.getElementById('server-sharing-panel');
 
     if (sService.userProfile && sService.token) {
-      if (userCard) userCard.style.display = 'flex';
+      if (userCard) userCard.style.display = 'block';
       if (loginPrompt) loginPrompt.style.display = 'none';
 
       const avatar = document.getElementById('server-user-avatar');
       const nameEl = document.getElementById('server-user-name');
       const emailEl = document.getElementById('server-user-email');
-      const roleBadge = document.getElementById('server-user-role-badge');
 
       if (avatar) avatar.src = sService.userProfile.picture || './assets/icons/icon.svg';
       if (nameEl) nameEl.textContent = sService.userProfile.name || 'Người dùng Google';
@@ -607,21 +598,20 @@ const UISettings = {
 
       const activeVault = sService.getActiveVault ? sService.getActiveVault() : null;
       const isOwner = !activeVault || activeVault.role === 'owner';
-      if (roleBadge) {
-        roleBadge.textContent = isOwner ? 'Chủ Sổ' : 'Thành Viên';
-        roleBadge.className = isOwner ? 'google-role-badge' : 'google-role-badge member';
-      }
 
-      if (vaultSection) vaultSection.style.display = 'block';
+      if (multiVaultContainer) multiVaultContainer.style.display = 'block';
       if (sharingPanel) sharingPanel.style.display = isOwner ? 'block' : 'none';
     } else {
       if (userCard) userCard.style.display = 'none';
       if (loginPrompt) loginPrompt.style.display = 'block';
-      if (vaultSection) vaultSection.style.display = 'none';
+      if (multiVaultContainer) multiVaultContainer.style.display = 'none';
       if (sharingPanel) sharingPanel.style.display = 'none';
     }
 
-    // 4. Cập nhật danh sách Sổ (Vaults)
+    // 4. Render danh sách Sổ dạng List (Sổ đang đồng bộ & Sổ được share)
+    this.renderServerVaultsLists();
+
+    // Đồng bộ select ẩn cho tương thích ngược
     const vaultSelect = document.getElementById('settings-server-vault-select');
     if (vaultSelect && sService.vaults && sService.vaults.length > 0) {
       vaultSelect.innerHTML = sService.vaults.map(v => `
@@ -629,12 +619,6 @@ const UISettings = {
           ${v.name} ${v.role === 'owner' ? '(Chủ sổ)' : '(Thành viên)'}
         </option>
       `).join('');
-
-      const activeVault = sService.getActiveVault ? sService.getActiveVault() : null;
-      const ownerEl = document.getElementById('server-vault-owner-text');
-      const roleEl = document.getElementById('server-vault-role-text');
-      if (ownerEl) ownerEl.textContent = activeVault ? `Chủ sở hữu: ${activeVault.ownerEmail || 'Tôi'}` : 'Chủ sở hữu: Tôi';
-      if (roleEl) roleEl.textContent = activeVault ? `Quyền: ${activeVault.role === 'owner' ? 'Toàn quyền' : (activeVault.role === 'editor' ? 'Ghi chép' : 'Chỉ xem')}` : 'Quyền: Toàn quyền';
     }
 
     // 5. Cập nhật Toggle Tự động đồng bộ
@@ -651,6 +635,123 @@ const UISettings = {
 
     this.renderServerSharesList();
     this.updateHubBadges();
+    if (window.lucide) lucide.createIcons();
+  },
+
+  // Render danh sách Sổ trên Máy Chủ (Bảng Sổ đang đồng bộ & Bảng Sổ được chia sẻ riêng biệt)
+  renderServerVaultsLists() {
+    const sService = window.serverSyncService;
+    const myVaultsContainer = document.getElementById('server-my-vaults-list');
+    const sharedVaultsContainer = document.getElementById('server-shared-vaults-list');
+
+    if (!sService || !sService.vaults || sService.vaults.length === 0) {
+      if (myVaultsContainer) {
+        myVaultsContainer.innerHTML = '<div class="server-vaults-empty">Chưa có sổ nào trên máy chủ. Bấm nút "+" để thêm sổ mới.</div>';
+      }
+      if (sharedVaultsContainer) {
+        sharedVaultsContainer.innerHTML = '<div class="server-vaults-empty">Chưa có sổ nào được chia sẻ với bạn.</div>';
+      }
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    const myVaults = sService.vaults.filter(v => v.role === 'owner');
+    const sharedVaults = sService.vaults.filter(v => v.role !== 'owner');
+    const esc = typeof escapeHTML === 'function' ? escapeHTML : (s => s || '');
+
+    // 1. Render Sổ Đang Đồng Bộ (Sổ do tôi sở hữu)
+    if (myVaultsContainer) {
+      if (myVaults.length === 0) {
+        myVaultsContainer.innerHTML = '<div class="server-vaults-empty">Không có sổ cá nhân nào. Hãy bấm "+" để tạo sổ mới.</div>';
+      } else {
+        myVaultsContainer.innerHTML = myVaults.map(v => {
+          const isActive = v.id === sService.activeVaultId;
+          return `
+            <div class="server-vault-row ${isActive ? 'is-active' : ''}" data-vault-id="${v.id}">
+              <div class="server-vault-left-bar">
+                <!-- Thanh gạt phía trước để kích hoạt chọn sổ -->
+                <label class="app-switch switch switch-sm" title="${isActive ? 'Sổ đang kích hoạt' : 'Bật thanh gạt để kích hoạt sổ này'}">
+                  <input type="checkbox" class="vault-activate-switch" data-vault-id="${v.id}" ${isActive ? 'checked' : ''}>
+                  <span class="app-switch-slider slider round"></span>
+                </label>
+                <!-- Các nút hành động: Đổi tên, Copy, Lịch sử, Xóa (nằm phía bên trái mỗi sổ, chỉ giữ icon) -->
+                <div class="server-vault-icon-actions">
+                  <button type="button" class="btn-vault-icon btn-vault-rename" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Đổi tên sổ">
+                    <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+                  </button>
+                  <button type="button" class="btn-vault-icon btn-vault-copy" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Sao chép sổ">
+                    <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                  </button>
+                  <button type="button" class="btn-vault-icon btn-vault-history" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Lịch sử snapshot">
+                    <i data-lucide="history" style="width: 14px; height: 14px;"></i>
+                  </button>
+                  <button type="button" class="btn-vault-icon btn-vault-delete" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Xóa sổ">
+                    <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="server-vault-center-info">
+                <div class="server-vault-name-text ${isActive ? 'active-name' : ''}">${esc(v.name)}</div>
+                ${isActive ? '<span class="vault-pill-active">Đang dùng</span>' : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // 2. Render Sổ Được Share (Riêng 1 bảng)
+    if (sharedVaultsContainer) {
+      if (sharedVaults.length === 0) {
+        sharedVaultsContainer.innerHTML = '<div class="server-vaults-empty">Chưa có sổ nào được chia sẻ với bạn.</div>';
+      } else {
+        sharedVaultsContainer.innerHTML = sharedVaults.map(v => {
+          const isActive = v.id === sService.activeVaultId;
+          const isEditor = v.role === 'editor';
+          return `
+            <div class="server-vault-row ${isActive ? 'is-active' : ''}" data-vault-id="${v.id}">
+              <div class="server-vault-left-bar">
+                <!-- Thanh gạt phía trước để kích hoạt -->
+                <label class="app-switch switch switch-sm" title="${isActive ? 'Sổ đang kích hoạt' : 'Bật thanh gạt để kích hoạt sổ này'}">
+                  <input type="checkbox" class="vault-activate-switch" data-vault-id="${v.id}" ${isActive ? 'checked' : ''}>
+                  <span class="app-switch-slider slider round"></span>
+                </label>
+                <!-- Các nút hành động: Đổi tên (nếu editor), Copy, Lịch sử -->
+                <div class="server-vault-icon-actions">
+                  ${isEditor ? `
+                  <button type="button" class="btn-vault-icon btn-vault-rename" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Đổi tên sổ">
+                    <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+                  </button>
+                  ` : ''}
+                  <button type="button" class="btn-vault-icon btn-vault-copy" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Sao chép sổ">
+                    <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                  </button>
+                  <button type="button" class="btn-vault-icon btn-vault-history" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Lịch sử snapshot">
+                    <i data-lucide="history" style="width: 14px; height: 14px;"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="server-vault-center-info shared-center-info">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px;">
+                  <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                    <span class="server-vault-name-text ${isActive ? 'active-name' : ''}">${esc(v.name)}</span>
+                    ${isActive ? '<span class="vault-pill-active">Đang dùng</span>' : ''}
+                  </div>
+                  <!-- Icon quyền ở cuối tên sổ: con mắt (viewer) hoặc cây bút (editor) -->
+                  <div class="server-vault-perm-badge" title="${isEditor ? 'Quyền Ghi Chép (Editor)' : 'Quyền Chỉ Xem (Viewer)'}">
+                    ${isEditor 
+                      ? '<i data-lucide="pencil" style="width: 15px; height: 15px; color: #3b82f6;"></i>' 
+                      : '<i data-lucide="eye" style="width: 15px; height: 15px; color: #94a3b8;"></i>'}
+                  </div>
+                </div>
+                ${v.owner_email ? `<div class="server-vault-owner-line">Từ: ${esc(v.owner_email)}</div>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
     if (window.lucide) lucide.createIcons();
   },
 
@@ -683,17 +784,22 @@ const UISettings = {
   },
 
   // Mở modal Lịch sử Snapshot của Sổ trên Máy chủ riêng
-  async openVaultHistoryModal() {
+  async openVaultHistoryModal(vaultId = null, vaultName = null) {
     const sService = window.serverSyncService;
-    if (!sService || !sService.activeVaultId) return;
+    const targetVaultId = vaultId || (sService ? sService.activeVaultId : null);
+    if (!sService || !targetVaultId) return;
 
     const modal = document.getElementById('modal-server-vault-history');
     if (!modal) return;
 
-    const currentVault = sService.getActiveVault ? sService.getActiveVault() : null;
+    let targetVault = null;
+    if (sService.vaults) {
+      targetVault = sService.vaults.find(v => v.id === targetVaultId);
+    }
+    const displayName = vaultName || (targetVault ? targetVault.name : 'Hiện tại');
     const vaultNameEl = document.getElementById('server-history-vault-name');
     if (vaultNameEl) {
-      vaultNameEl.textContent = `Sổ: ${currentVault ? currentVault.name : 'Hiện tại'}`;
+      vaultNameEl.textContent = `Sổ: ${displayName}`;
     }
 
     const loadingEl = document.getElementById('server-history-loading');
@@ -708,7 +814,7 @@ const UISettings = {
     if (window.lucide) lucide.createIcons();
 
     try {
-      const history = await sService.getVaultHistory();
+      const history = await sService.getVaultHistory(targetVaultId);
       if (loadingEl) loadingEl.style.display = 'none';
 
       if (!history || history.length === 0) {
@@ -716,7 +822,7 @@ const UISettings = {
         return;
       }
 
-      const isViewer = currentVault && currentVault.role === 'viewer';
+      const isViewer = targetVault && targetVault.role === 'viewer';
 
       listEl.innerHTML = history.map((item, idx) => {
         const dateStr = item.synced_at ? new Date(item.synced_at).toLocaleString('vi-VN') : 'Không rõ thời gian';
@@ -767,7 +873,7 @@ const UISettings = {
           if (window.lucide) lucide.createIcons();
 
           try {
-            await sService.restoreVaultSnapshot(histId);
+            await sService.restoreVaultSnapshot(histId, targetVaultId);
             showToast('Đã khôi phục dữ liệu snapshot thành công!', 'success');
             if (window.app && window.app.refreshAll) await window.app.refreshAll();
             this.closeVaultHistoryModal();
@@ -1033,7 +1139,40 @@ const serverLogoutBtn = document.getElementById('btn-server-logout');
       });
     }
 
-    // Chuyển Sổ (Vault Switcher)
+    // Đổi tài khoản khác (icon góc trên bên phải logo Google)
+    const serverReauthBtn = document.getElementById('btn-server-reauth');
+    if (serverReauthBtn) {
+      serverReauthBtn.addEventListener('click', async () => {
+        if (!sService) return;
+        try {
+          showToast('Đang mở màn hình xác thực Google để đổi tài khoản...', 'info');
+          const result = await sService.loginWithGoogle();
+          showToast(`Đã đổi sang tài khoản: ${result.user.name || result.user.email}`, 'success');
+          if (window.app && window.app.refreshAll) await window.app.refreshAll();
+        } catch (err) {
+          if (err.message && (err.message.includes('popup_closed') || err.message.includes('Đã đóng') || err.message.includes('hủy'))) {
+            showToast('Đã hủy đổi tài khoản', 'info');
+          } else {
+            showToast('Đổi tài khoản thất bại: ' + err.message, 'error');
+          }
+        }
+      });
+    }
+
+    // Ẩn / Hiện chú thích bảo mật trong dòng tiêu đề Mật khẩu Mã Hóa Sổ
+    const toggleEncHelp = () => {
+      const encHelpBox = document.getElementById('server-enc-help-box');
+      if (encHelpBox) {
+        const isHidden = encHelpBox.style.display === 'none' || !encHelpBox.style.display;
+        encHelpBox.style.display = isHidden ? 'block' : 'none';
+      }
+    };
+    const toggleEncHelpBtn = document.getElementById('btn-toggle-server-enc-help');
+    if (toggleEncHelpBtn) toggleEncHelpBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggleEncHelp(); });
+    const labelEnc = document.getElementById('label-server-vault-password');
+    if (labelEnc) labelEnc.addEventListener('click', toggleEncHelp);
+
+    // Chuyển Sổ (Vault Switcher qua select ẩn nếu có)
     const vaultSelectEl = document.getElementById('settings-server-vault-select');
     if (vaultSelectEl) {
       vaultSelectEl.addEventListener('change', async (e) => {
@@ -1050,7 +1189,7 @@ const serverLogoutBtn = document.getElementById('btn-server-logout');
       });
     }
 
-    // Tạo Sổ mới
+    // Tạo Sổ mới (Nút icon +)
     const createVaultBtn = document.getElementById('btn-server-create-vault');
     if (createVaultBtn) {
       createVaultBtn.addEventListener('click', async () => {
@@ -1067,38 +1206,98 @@ const serverLogoutBtn = document.getElementById('btn-server-logout');
       });
     }
 
-    // Sao chép Sổ (Copy Vault)
-    const copyVaultBtn = document.getElementById('btn-server-copy-vault');
-    if (copyVaultBtn) {
-      copyVaultBtn.addEventListener('click', async () => {
-        if (!sService || !sService.activeVaultId) {
-          showToast('Vui lòng kết nối và chọn Sổ trước khi sao chép', 'warning');
-          return;
-        }
-        const current = sService.getActiveVault ? sService.getActiveVault() : null;
-        const currentName = current ? current.name : 'Sổ hiện tại';
-        const name = prompt(`Nhập tên Sổ mới sao chép từ "${currentName}":`, `${currentName} (Bản sao)`);
-        if (!name || !name.trim()) return;
-        try {
-          showToast('Đang sao chép sổ...', 'info');
-          const v = await sService.copyVault(sService.activeVaultId, name.trim());
-          showToast(`Đã sao chép sang sổ "${v.name}" thành công!`, 'success');
-          if (window.app && window.app.refreshAll) await window.app.refreshAll();
-        } catch (err) {
-          showToast('Sao chép sổ thất bại: ' + err.message, 'error');
+    // Quản lý Đa Sổ tương tác trực tiếp (Thanh gạt chọn sổ, icon Đổi tên, Copy, Lịch sử, Xóa)
+    const multiVaultContainer = document.getElementById('server-multi-vault-container');
+    if (multiVaultContainer) {
+      // 1. Kích hoạt chuyển sổ qua thanh gạt (Switch)
+      multiVaultContainer.addEventListener('change', async (e) => {
+        const switchInput = e.target.closest('.vault-activate-switch');
+        if (!switchInput || !sService) return;
+        const vaultId = switchInput.getAttribute('data-vault-id');
+        if (vaultId && vaultId !== sService.activeVaultId) {
+          try {
+            showToast('Đang chuyển sang sổ được chọn...', 'info');
+            await sService.switchVault(vaultId);
+            showToast('Đã chuyển sang sổ mới thành công!', 'success');
+            if (window.app && window.app.refreshAll) await window.app.refreshAll();
+          } catch (err) {
+            showToast('Lỗi khi chuyển sổ: ' + err.message, 'error');
+            this.renderServerVaultsLists();
+          }
+        } else {
+          switchInput.checked = true;
         }
       });
-    }
 
-    // Xem Lịch sử Snapshot & Khôi phục
-    const historyVaultBtn = document.getElementById('btn-server-history-vault');
-    if (historyVaultBtn) {
-      historyVaultBtn.addEventListener('click', () => {
-        if (!sService || !sService.activeVaultId) {
-          showToast('Vui lòng kết nối và chọn Sổ trước', 'warning');
+      // 2. Click các nút icon: Đổi tên, Copy, Lịch sử, Xóa
+      multiVaultContainer.addEventListener('click', async (e) => {
+        // Đổi tên sổ
+        const renameBtn = e.target.closest('.btn-vault-rename');
+        if (renameBtn && sService) {
+          const vaultId = renameBtn.getAttribute('data-vault-id');
+          const currentName = renameBtn.getAttribute('data-vault-name') || '';
+          const newName = prompt('Nhập tên mới cho sổ:', currentName);
+          if (newName && newName.trim() && newName.trim() !== currentName) {
+            try {
+              await sService.renameVault(vaultId, newName.trim());
+              showToast('Đã đổi tên sổ thành công!', 'success');
+              if (window.app && window.app.refreshAll) await window.app.refreshAll();
+            } catch (err) {
+              showToast('Đổi tên sổ thất bại: ' + err.message, 'error');
+            }
+          }
           return;
         }
-        this.openVaultHistoryModal();
+
+        // Sao chép sổ
+        const copyBtn = e.target.closest('.btn-vault-copy');
+        if (copyBtn && sService) {
+          const vaultId = copyBtn.getAttribute('data-vault-id');
+          const currentName = copyBtn.getAttribute('data-vault-name') || 'Sổ';
+          const name = prompt(`Nhập tên Sổ mới sao chép từ "${currentName}":`, `${currentName} (Bản sao)`);
+          if (name && name.trim()) {
+            try {
+              showToast('Đang sao chép sổ...', 'info');
+              const v = await sService.copyVault(vaultId, name.trim());
+              showToast(`Đã sao chép sang sổ "${v.name}" thành công!`, 'success');
+              if (window.app && window.app.refreshAll) await window.app.refreshAll();
+            } catch (err) {
+              showToast('Sao chép sổ thất bại: ' + err.message, 'error');
+            }
+          }
+          return;
+        }
+
+        // Xem lịch sử snapshot
+        const historyBtn = e.target.closest('.btn-vault-history');
+        if (historyBtn && sService) {
+          const vaultId = historyBtn.getAttribute('data-vault-id');
+          const vaultName = historyBtn.getAttribute('data-vault-name');
+          this.openVaultHistoryModal(vaultId, vaultName);
+          return;
+        }
+
+        // Xóa sổ
+        const deleteBtn = e.target.closest('.btn-vault-delete');
+        if (deleteBtn && sService) {
+          const vaultId = deleteBtn.getAttribute('data-vault-id');
+          const vaultName = deleteBtn.getAttribute('data-vault-name') || 'sổ';
+          const v = sService.vaults ? sService.vaults.find(item => item.id === vaultId) : null;
+          if (v && v.role !== 'owner') {
+            showToast('Chỉ Chủ Sổ mới có quyền xóa sổ này', 'warning');
+            return;
+          }
+          if (confirm(`Bạn có chắc chắn muốn xóa sổ "${vaultName}" vĩnh viễn trên máy chủ?`)) {
+            try {
+              await sService.deleteVault(vaultId);
+              showToast('Đã xóa sổ thành công!', 'success');
+              if (window.app && window.app.refreshAll) await window.app.refreshAll();
+            } catch (err) {
+              showToast('Xóa sổ thất bại: ' + err.message, 'error');
+            }
+          }
+          return;
+        }
       });
     }
 
@@ -1107,45 +1306,6 @@ const serverLogoutBtn = document.getElementById('btn-server-logout');
       historyModalOverlay.addEventListener('click', (e) => {
         if (e.target === historyModalOverlay) {
           this.closeVaultHistoryModal();
-        }
-      });
-    }
-
-    // Đổi tên Sổ
-    const renameVaultBtn = document.getElementById('btn-server-rename-vault');
-    if (renameVaultBtn) {
-      renameVaultBtn.addEventListener('click', async () => {
-        if (!sService || !sService.activeVaultId) return;
-        const current = sService.getActiveVault ? sService.getActiveVault() : null;
-        const newName = prompt('Nhập tên mới cho sổ:', current?.name || '');
-        if (!newName || !newName.trim()) return;
-        try {
-          await sService.renameVault(sService.activeVaultId, newName.trim());
-          showToast('Đã đổi tên sổ thành công!', 'success');
-        } catch (err) {
-          showToast('Đổi tên sổ thất bại: ' + err.message, 'error');
-        }
-      });
-    }
-
-    // Xóa Sổ
-    const deleteVaultBtn = document.getElementById('btn-server-delete-vault');
-    if (deleteVaultBtn) {
-      deleteVaultBtn.addEventListener('click', async () => {
-        if (!sService || !sService.activeVaultId) return;
-        const current = sService.getActiveVault ? sService.getActiveVault() : null;
-        if (current?.role !== 'owner') {
-          showToast('Chỉ Chủ Sổ mới có quyền xóa sổ này', 'warning');
-          return;
-        }
-        if (confirm(`Bạn có chắc chắn muốn xóa sổ "${current.name}" vĩnh viễn trên máy chủ?`)) {
-          try {
-            await sService.deleteVault(sService.activeVaultId);
-            showToast('Đã xóa sổ thành công!', 'success');
-            if (window.app && window.app.refreshAll) await window.app.refreshAll();
-          } catch (err) {
-            showToast('Xóa sổ thất bại: ' + err.message, 'error');
-          }
         }
       });
     }

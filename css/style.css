@@ -11727,3 +11727,299 @@ body.light .ptr-circle-badge,
   background: rgba(13, 148, 136, 0.07) !important;
   box-shadow: 0 0 0 1px var(--primary, #0d9488) !important;
 }
+
+/* ==========================================================================
+   SERVER SYNC & MULTI-VAULT REDESIGN
+   ========================================================================== */
+.server-user-header-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 12px);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.server-user-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.server-avatar-wrapper {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.server-user-avatar-round {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  border: 1.5px solid var(--primary, #0d9488);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.server-reauth-badge-btn {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #cbd5e1);
+  color: var(--primary, #0d9488);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  z-index: 2;
+}
+
+.server-reauth-badge-btn:hover {
+  transform: scale(1.15);
+  background: var(--primary, #0d9488);
+  color: #ffffff;
+}
+
+.server-user-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.server-user-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.server-user-email {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.server-user-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.btn-server-logout-compact {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.btn-server-logout-compact:hover {
+  background: rgba(239, 68, 68, 0.18);
+  transform: scale(1.05);
+}
+
+.server-url-line-box {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-color, #e2e8f0);
+}
+
+.server-url-caption {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  margin-top: 5px;
+  line-height: 1.35;
+}
+
+/* Small Switch Variant for List Items */
+.app-switch.switch-sm,
+.switch.switch-sm {
+  width: 34px !important;
+  height: 18px !important;
+}
+
+.app-switch.switch-sm .app-switch-slider,
+.switch.switch-sm .slider {
+  border-radius: 18px !important;
+}
+
+.app-switch.switch-sm .app-switch-slider::before,
+.switch.switch-sm .slider::before {
+  width: 12px !important;
+  height: 12px !important;
+  left: 1px !important;
+  top: 1px !important;
+}
+
+.app-switch.switch-sm input:checked + .app-switch-slider::before,
+.switch.switch-sm input:checked + .slider::before {
+  transform: translateX(16px) !important;
+}
+
+/* Multi-Vault List Styles */
+.server-vault-section-box {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 12px);
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.server-vaults-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.server-vault-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-surface, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 10px);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.server-vault-row.is-active {
+  border-color: var(--primary, #0d9488);
+  background: rgba(13, 148, 136, 0.06);
+}
+
+.server-vault-left-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.server-vault-icon-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.btn-vault-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.btn-vault-icon:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.06));
+  color: var(--text-primary);
+  border-color: var(--border-color, #e2e8f0);
+}
+
+.btn-vault-icon.btn-vault-delete:hover {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.server-vault-center-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.server-vault-name-text {
+  font-size: 0.86rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.server-vault-name-text.active-name {
+  font-weight: 700;
+  color: var(--primary, #0d9488);
+}
+
+.vault-pill-active {
+  font-size: 0.68rem;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.server-vault-perm-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
+  flex-shrink: 0;
+}
+
+.server-vault-owner-line {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.server-vaults-empty {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 10px;
+  text-align: center;
+}
+
+.btn-icon-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.btn-icon-circle:hover {
+  transform: scale(1.08);
+}

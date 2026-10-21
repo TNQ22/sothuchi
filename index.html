@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=2.8.2">
+  <link rel="stylesheet" href="./css/style.css?v=2.8.3">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -2448,15 +2448,56 @@
             <div id="panel-server" class="settings-detail-panel">
               <!-- Thiết lập cơ bản -->
               <div class="settings-card-clean">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-                  <span id="server-status-badge" class="badge-status badge-disconnected">
-                    <span class="badge-dot"></span> <span id="server-status-text">Chưa kết nối</span>
-                  </span>
+                <!-- Status badge (ẩn/fallback để giữ tương thích ngược script) -->
+                <div id="server-status-badge" class="badge-status badge-disconnected" style="display: none;">
+                  <span class="badge-dot"></span> <span id="server-status-text">Chưa kết nối</span>
                 </div>
 
-                <p class="settings-lead-text">
-                  Đồng bộ hai chiều tốc độ cao, hỗ trợ máy chủ tự host qua <strong>Docker</strong>, đăng nhập và chia sẻ sổ qua tài khoản Google.
-                </p>
+                <!-- Thẻ tài khoản Google trên máy chủ (Khi đã kết nối) -->
+                <div id="server-user-card" class="server-user-header-card" style="display: none;">
+                  <div class="server-user-header-row">
+                    <!-- Avatar / Logo Google nhỏ như ngoài màn hình chính & icon đổi tài khoản ở góc trên bên phải -->
+                    <div class="server-avatar-wrapper">
+                      <img id="server-user-avatar" src="./assets/icons/icon.svg" alt="Avatar" class="server-user-avatar-round">
+                      <button type="button" id="btn-server-reauth" class="server-reauth-badge-btn" title="Đổi tài khoản khác">
+                        <i data-lucide="refresh-cw"></i>
+                      </button>
+                    </div>
+
+                    <!-- 2 hàng: Tên tài khoản và Email (bỏ badge chủ sổ) -->
+                    <div class="server-user-meta">
+                      <div id="server-user-name" class="server-user-name">Người dùng Google</div>
+                      <div id="server-user-email" class="server-user-email">email@gmail.com</div>
+                    </div>
+
+                    <!-- Góc phải: Nút icon đăng xuất & Thanh gạt kích hoạt/vô hiệu hóa tối giản -->
+                    <div class="server-user-right-actions">
+                      <button type="button" id="btn-server-logout" class="btn-server-logout-compact" title="Đăng xuất">
+                        <i data-lucide="log-out" style="width: 15px; height: 15px;"></i>
+                      </button>
+                      <label class="app-switch switch" title="Kích hoạt / Vô hiệu hóa đồng bộ">
+                        <input type="checkbox" id="settings-server-auto-sync" checked>
+                        <span class="app-switch-slider slider round"></span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Bên dưới: Hàng URL máy chủ và Chú thích bên dưới -->
+                  <div class="server-url-line-box" id="server-url-card-slot">
+                    <div id="server-url-container">
+                      <div style="display: flex; gap: 8px;">
+                        <input type="url" id="settings-server-url" class="form-control" placeholder="http://localhost:8081 hoặc https://sync.domain.com" style="flex: 1; font-size: 0.82rem;">
+                        <button type="button" id="btn-test-server-connection" class="btn-secondary btn-sm" title="Kiểm tra kết nối" style="white-space: nowrap; font-size: 0.78rem; padding: 6px 10px; display: inline-flex; align-items: center; gap: 4px;">
+                          <i data-lucide="activity" style="width: 13px; height: 13px;"></i> Kiểm tra
+                        </button>
+                        <button type="button" id="btn-save-server-url" class="btn-primary btn-sm" style="white-space: nowrap; font-size: 0.78rem; padding: 6px 12px;">Lưu</button>
+                      </div>
+                      <div class="server-url-caption">
+                        * Địa chỉ máy chủ đồng bộ riêng (Self-Hosted qua Docker hoặc VPS cá nhân).
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 <!-- Banner thông báo khi truy cập trực tiếp từ máy chủ -->
                 <div id="server-selfhost-banner" style="display: none; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(59, 130, 246, 0.08); border-radius: var(--radius-sm); border: 1px solid rgba(59, 130, 246, 0.2); font-size: 0.8rem; margin-bottom: 14px;">
@@ -2467,45 +2508,17 @@
                   <span id="server-selfhost-origin" style="color: var(--text-muted); font-size: 0.74rem; font-family: monospace;"></span>
                 </div>
 
-                <!-- Slot URL máy chủ phía trên (hiển thị khi app public cần cấu hình kết nối từ xa) -->
-                <div id="server-url-top-slot" style="margin-bottom: 14px;">
-                  <div id="server-url-container">
-                    <label class="form-label" style="font-weight: 600; margin-bottom: 6px;">Địa chỉ Máy Chủ Riêng (URL):</label>
-                    <div style="display: flex; gap: 8px;">
-                      <input type="url" id="settings-server-url" class="form-control" placeholder="http://localhost:8081 hoặc https://sync.domain.com">
-                      <button type="button" id="btn-test-server-connection" class="btn-secondary btn-sm" title="Kiểm tra kết nối">
-                        <i data-lucide="activity" style="width: 14px; height: 14px;"></i> Kiểm tra
-                      </button>
-                      <button type="button" id="btn-save-server-url" class="btn-primary btn-sm">Lưu</button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Thẻ tài khoản Google trên máy chủ -->
-                <div id="server-user-card" class="google-user-banner" style="display: none; margin-bottom: 14px;">
-                  <div class="google-user-info">
-                    <img id="server-user-avatar" src="./assets/icons/icon.svg" alt="Avatar" class="google-user-avatar">
-                    <div style="min-width: 0;">
-                      <div style="display: flex; align-items: center; gap: 6px;">
-                        <span id="server-user-name" class="google-user-name">Người dùng Google</span>
-                        <span id="server-user-role-badge" class="google-role-badge">Chủ Sổ</span>
-                      </div>
-                      <div id="server-user-email" class="google-user-email">email@gmail.com</div>
-                    </div>
-                  </div>
-                  <button type="button" id="btn-server-logout" class="btn-secondary btn-sm" style="color: #ef4444;" title="Đăng xuất">
-                    <i data-lucide="log-out" style="width: 14px; height: 14px;"></i>
-                    <span>Đăng xuất</span>
-                  </button>
-                </div>
-
-                <!-- Nút Đăng nhập Google vào Máy chủ -->
+                <!-- Màn hình Đăng nhập (khi chưa kết nối / chưa đăng nhập) -->
                 <div id="server-login-prompt" style="margin-bottom: 14px;">
+                  <div id="server-url-unlogged-slot" style="margin-bottom: 12px;">
+                    <!-- server-url-container sẽ hiển thị ở đây khi chưa login -->
+                  </div>
+
                   <button type="button" id="btn-server-google-login" class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
                     <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
                     <span>Đăng nhập Máy chủ bằng Google</span>
                   </button>
-                                  <div style="display: flex; align-items: center; gap: 8px; margin: 10px 0;">
+                  <div style="display: flex; align-items: center; gap: 8px; margin: 10px 0;">
                     <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
                     <span style="font-size: 0.75rem; color: var(--text-muted);">hoặc đăng nhập nhanh</span>
                     <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
@@ -2518,12 +2531,15 @@
                   </div>
                 </div>
 
-                <!-- Mật khẩu mã hóa Sổ Máy Chủ E2EE (Zero-Knowledge) -->
+                <!-- Mật khẩu mã hóa Sổ (xóa Zero... đi; ẩn chú thích trong dòng tiêu đề khi bấm vào mới hiển thị) -->
                 <div class="form-group" style="margin-bottom: 14px; padding-top: 10px; border-top: 1px solid var(--border-color);">
                   <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                    <label class="form-label" style="font-weight: 600; margin: 0; display: flex; align-items: center; gap: 6px;">
+                    <label class="form-label" style="font-weight: 600; margin: 0; display: flex; align-items: center; gap: 6px; cursor: pointer;" id="label-server-vault-password">
                       <i data-lucide="shield" style="width: 15px; height: 15px; color: var(--primary);"></i>
-                      <span>Mật khẩu Mã Hóa Sổ (Zero-Knowledge E2EE):</span>
+                      <span>Mật khẩu Mã Hóa Sổ:</span>
+                      <button type="button" id="btn-toggle-server-enc-help" class="btn-text-help" title="Nhấp để xem / ẩn chú thích bảo mật" style="background: none; border: none; cursor: pointer; color: var(--primary); display: inline-flex; align-items: center; padding: 2px 4px;">
+                        <i data-lucide="help-circle" style="width: 14px; height: 14px;"></i>
+                      </button>
                     </label>
                     <span id="server-encryption-badge" class="badge" style="font-size: 0.68rem; padding: 2px 7px; background: rgba(100, 116, 139, 0.12); color: var(--text-muted); border-radius: 9999px;">Chưa mã hóa</span>
                   </div>
@@ -2537,103 +2553,68 @@
                     <button type="button" id="btn-save-server-vault-password" class="btn-primary" style="white-space: nowrap;">Lưu</button>
                     <button type="button" id="btn-disable-server-encryption" class="btn-secondary" style="white-space: nowrap; display: none; color: #ef4444;" title="Tắt mã hóa E2EE và chuyển về dạng lưu trữ thông thường">Tắt mã hóa</button>
                   </div>
-                  <small style="color: var(--text-muted); font-size: 0.76rem; margin-top: 5px; display: block; line-height: 1.4;">
+                  <!-- Chú thích ẩn trong dòng tiêu đề, khi bấm vào mới hiển thị -->
+                  <div id="server-enc-help-box" style="display: none; margin-top: 8px; padding: 8px 12px; background: rgba(59, 130, 246, 0.06); border: 1px solid rgba(59, 130, 246, 0.18); border-radius: var(--radius-sm); font-size: 0.76rem; color: var(--text-secondary); line-height: 1.45;">
                     * <strong>Chống rò rỉ dữ liệu khi máy chủ bị hack:</strong> Dữ liệu được mã hóa AES-GCM 256-bit trực tiếp trên thiết bị của bạn trước khi đưa lên máy chủ. Cơ sở dữ liệu SQLite trên máy chủ chỉ chứa các chuỗi đã mã hóa. Hãy <strong>chia sẻ mật khẩu này cho các thành viên cùng dùng sổ</strong> để họ mở khóa trên thiết bị của họ.
-                  </small>
-                </div>
-
-                <!-- Kích Hoạt Đồng Bộ Máy Chủ Switch -->
-                <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
-                  <div>
-                    <div style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
-                      <span>Kích Hoạt</span>
-                      <span class="badge" style="font-size: 0.68rem; padding: 1px 6px; background: rgba(59, 130, 246, 0.12); color: #3b82f6; border-radius: 9999px;">Máy Chủ Riêng</span>
-                    </div>
-                    <div style="font-size: 0.76rem; color: var(--text-muted);">Bật để tự động đồng bộ và đồng bộ tổng; tắt để vô hiệu hóa hoàn toàn</div>
                   </div>
-                  <label class="app-switch switch" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; vertical-align: middle;">
-                    <input type="checkbox" id="settings-server-auto-sync" checked style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;">
-                    <span class="app-switch-slider slider round"></span>
-                  </label>
                 </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <!-- Đồng bộ ngay thành "Đồng bộ" -->
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 8px;">
                   <div style="font-size: 0.8rem; color: var(--text-muted);">
                     Lần cuối: <span id="settings-server-last-sync-time" style="font-weight: 600; color: var(--text-primary);">Chưa đồng bộ</span>
                   </div>
                   <button type="button" id="btn-server-sync-now" class="btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
                     <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
-                    <span>Đồng bộ ngay</span>
+                    <span>Đồng bộ</span>
                   </button>
-                </div>
-
-                <!-- Slot URL máy chủ phía dưới (ẩn gọn làm tùy chọn khi app được host trực tiếp từ máy chủ) -->
-                <div id="server-url-bottom-slot" style="display: none; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-color);">
-                  <details id="server-url-details" style="font-size: 0.82rem;">
-                    <summary style="cursor: pointer; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; user-select: none;">
-                      <span style="display: inline-flex; align-items: center; gap: 6px;">
-                        <i data-lucide="link" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
-                        <span>Tùy chọn: Địa chỉ Máy Chủ (URL)</span>
-                      </span>
-                      <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal;">Nhấp để đổi URL</span>
-                    </summary>
-                    <div class="server-url-slot-target" style="margin-top: 10px;">
-                      <!-- server-url-container sẽ được chuyển vào đây khi self-hosted -->
-                    </div>
-                    <small style="color: var(--text-muted); font-size: 0.74rem; display: block; margin-top: 6px; line-height: 1.4;">
-                      * Ứng dụng đã tự động kết nối máy chủ hosting. Bạn chỉ cần đổi nếu muốn kết nối tới máy chủ khác.
-                    </small>
-                  </details>
                 </div>
               </div>
 
-              <!-- Cài đặt nâng cao (ẩn trong mũi tên xuống) -->
-              <div class="settings-accordion">
-                <div class="settings-accordion-header" onclick="UISettings.toggleAccordion(this)">
-                  <div class="settings-accordion-title">
-                    <i data-lucide="sliders"></i>
+              <!-- Quản Lý Đa Sổ & Chia Sẻ Máy Chủ (Hiển thị trực tiếp, không ẩn trong accordion) -->
+              <div id="server-multi-vault-container" style="display: none; margin-top: 14px;">
+                <div class="settings-card-clean">
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-weight: 700; font-size: 0.92rem; color: var(--text-primary);">
+                    <i data-lucide="layers" style="width: 18px; height: 18px; color: var(--primary);"></i>
                     <span>Quản Lý Đa Sổ & Chia Sẻ Máy Chủ</span>
                   </div>
-                  <i data-lucide="chevron-down" class="settings-accordion-arrow"></i>
-                </div>
 
-                <div class="settings-accordion-content">
-                  <!-- Quản lý Sổ (Multi-Vault) -->
-                  <div id="server-vault-section" style="display: none; margin-bottom: 16px; padding: 12px; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                      <label class="form-label" style="margin-bottom: 0; font-weight: 600; font-size: 0.88rem;">
-                        <i data-lucide="book-marked" style="width: 14px; height: 14px; vertical-align: middle;"></i> Sổ Đang Đồng Bộ:
+                  <!-- 1. BẢNG SỔ ĐANG ĐỒNG BỘ (Sổ của tôi) -->
+                  <div class="server-vault-section-box">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                      <label class="form-label" style="margin-bottom: 0; font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
+                        <i data-lucide="book-marked" style="width: 15px; height: 15px; color: var(--primary);"></i>
+                        <span>Sổ Đang Đồng Bộ</span>
                       </label>
-                      <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                        <button type="button" id="btn-server-create-vault" class="btn-secondary btn-sm" title="Tạo sổ mới">
-                          <i data-lucide="plus" style="width: 12px; height: 12px;"></i> Sổ mới
-                        </button>
-                        <button type="button" id="btn-server-copy-vault" class="btn-secondary btn-sm" title="Sao chép sổ hiện tại">
-                          <i data-lucide="copy" style="width: 12px; height: 12px;"></i> Copy sổ
-                        </button>
-                        <button type="button" id="btn-server-history-vault" class="btn-secondary btn-sm" title="Lịch sử Snapshot & Khôi phục">
-                          <i data-lucide="history" style="width: 12px; height: 12px;"></i> Lịch sử
-                        </button>
-                        <button type="button" id="btn-server-rename-vault" class="btn-secondary btn-sm" title="Đổi tên sổ">
-                          <i data-lucide="edit-3" style="width: 12px; height: 12px;"></i> Đổi tên
-                        </button>
-                        <button type="button" id="btn-server-delete-vault" class="btn-secondary btn-sm" style="color: #ef4444;" title="Xóa sổ">
-                          <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
-                        </button>
-                      </div>
+                      <!-- Nút thêm mới chỉ để lại icon + -->
+                      <button type="button" id="btn-server-create-vault" class="btn-icon-circle btn-primary" title="Tạo sổ mới">
+                        <i data-lucide="plus" style="width: 15px; height: 15px;"></i>
+                      </button>
                     </div>
 
-                    <select id="settings-server-vault-select" class="form-control" style="margin-bottom: 8px;">
-                      <option value="">(Đang tải danh sách sổ...)</option>
-                    </select>
-                    <div id="server-vault-meta" style="font-size: 0.76rem; color: var(--text-muted); display: flex; justify-content: space-between;">
-                      <span id="server-vault-owner-text">Chủ sở hữu: Tôi</span>
-                      <span id="server-vault-role-text">Quyền: Toàn quyền</span>
+                    <!-- Danh sách sổ của tôi -->
+                    <div id="server-my-vaults-list" class="server-vaults-list">
+                      <div class="server-vaults-empty">Đang tải danh sách sổ...</div>
                     </div>
                   </div>
 
-                  <!-- Chia sẻ Sổ qua Email Google -->
-                  <div id="server-sharing-panel" style="display: none; margin-bottom: 16px; padding: 12px; background: rgba(59, 130, 246, 0.05); border-radius: var(--radius-md); border: 1px dashed rgba(59, 130, 246, 0.3);">
+                  <!-- 2. BẢNG SỔ ĐƯỢC CHIA SẺ (Hiển thị riêng 1 bảng) -->
+                  <div class="server-vault-section-box">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                      <label class="form-label" style="margin-bottom: 0; font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
+                        <i data-lucide="users" style="width: 15px; height: 15px; color: #3b82f6;"></i>
+                        <span>Sổ Được Chia Sẻ</span>
+                      </label>
+                    </div>
+
+                    <!-- Danh sách sổ được share -->
+                    <div id="server-shared-vaults-list" class="server-vaults-list">
+                      <div class="server-vaults-empty">Chưa có sổ nào được chia sẻ.</div>
+                    </div>
+                  </div>
+
+                  <!-- 3. Chia sẻ Sổ Cho Thành Viên (Email Google) -->
+                  <div id="server-sharing-panel" style="display: none; margin-bottom: 14px; padding: 12px; background: rgba(59, 130, 246, 0.05); border-radius: var(--radius-md); border: 1px dashed rgba(59, 130, 246, 0.3);">
                     <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 6px; font-size: 0.88rem;">
                       Chia Sẻ Sổ Cho Thành Viên (Email Google):
                     </div>
@@ -2656,10 +2637,26 @@
                     </div>
                   </div>
 
+                  <!-- Select ẩn cho tương thích ngược -->
+                  <select id="settings-server-vault-select" style="display: none;"></select>
+                </div>
+              </div>
+
+              <!-- Hướng dẫn Docker & Bảo Mật (Thu gọn bên dưới) -->
+              <div class="settings-accordion" style="margin-top: 14px;">
+                <div class="settings-accordion-header" onclick="UISettings.toggleAccordion(this)">
+                  <div class="settings-accordion-title">
+                    <i data-lucide="info"></i>
+                    <span>Hướng Dẫn Triển Khai Docker & Bảo Mật</span>
+                  </div>
+                  <i data-lucide="chevron-down" class="settings-accordion-arrow"></i>
+                </div>
+
+                <div class="settings-accordion-content">
                   <!-- Hướng dẫn Docker -->
-                  <div style="border-top: 1px dashed var(--border-color); padding-top: 10px;">
+                  <div style="margin-bottom: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                      <span style="font-size: 0.82rem; font-weight: 600;">Hướng Dẫn Triển Khai Docker:</span>
+                      <span style="font-size: 0.82rem; font-weight: 600;">Lệnh Triển Khai Docker:</span>
                       <button type="button" id="btn-toggle-server-docker-help" class="btn-text" style="font-size: 0.76rem; color: var(--primary); background: none; border: none; cursor: pointer;">Xem lệnh</button>
                     </div>
                     <div id="box-server-docker-help" style="display: none; background: #1e293b; color: #f8fafc; border-radius: var(--radius-sm); padding: 10px; font-size: 0.78rem; line-height: 1.5;">
@@ -2671,8 +2668,8 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                     </div>
                   </div>
 
-                  <!-- Giải đáp Bảo mật & Mã hóa máy chủ -->
-                  <div style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 10px;">
+                  <!-- Bảo mật & Mã hóa máy chủ -->
+                  <div style="border-top: 1px dashed var(--border-color); padding-top: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                       <span style="font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
                         <i data-lucide="shield-check" style="width: 14px; height: 14px; color: #10b981;"></i>
@@ -6433,7 +6430,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/ui-share.js?v=2.8.0"></script>
   <script src="./js/ui-budgets.js?v=2.8.0"></script>
   <script src="./js/ui-analytics.js?v=2.8.0"></script>
-  <script src="./js/ui-settings.js?v=2.8.2"></script>
+  <script src="./js/ui-settings.js?v=2.8.3"></script>
   <script src="./js/server-auth-modals.js?v=2.8.0"></script>
 
   <!-- Main Entry Coordinator -->
