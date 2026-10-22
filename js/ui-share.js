@@ -517,9 +517,15 @@ const UniversalShareModal = {
   },
 
   async handleRevokeEmailShare(shareId) {
-    if (!confirm('Bạn có chắc muốn thu hồi quyền truy cập của thành viên này đối với tài khoản?')) {
-      return;
-    }
+    const ok = await showConfirm({
+      title: 'Thu Hồi Quyền Truy Cập',
+      message: 'Bạn có chắc muốn thu hồi quyền truy cập của thành viên này đối với tài khoản?',
+      confirmText: 'Thu Hồi',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'user-x'
+    });
+    if (!ok) return;
 
     try {
       await window.serverSyncService.revokeItemEmailShare(shareId);
@@ -551,9 +557,15 @@ const UniversalShareModal = {
   },
 
   async handleRevokeLink(linkId) {
-    if (!confirm('Bạn có chắc muốn thu hồi liên kết này? Bất kỳ ai đang giữ liên kết này sẽ không thể xem hoặc cập nhật dữ liệu nữa.')) {
-      return;
-    }
+    const ok = await showConfirm({
+      title: 'Thu Hồi Liên Kết Chia Sẻ',
+      message: 'Bạn có chắc muốn thu hồi liên kết này? Bất kỳ ai đang giữ liên kết này sẽ không thể xem hoặc cập nhật dữ liệu nữa.',
+      confirmText: 'Thu Hồi Liên Kết',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'link-2-off'
+    });
+    if (!ok) return;
 
     try {
       await window.serverSyncService.revokeItemShareLink(linkId);
@@ -572,11 +584,25 @@ const UniversalShareModal = {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(fullUrl).then(() => {
         if (typeof showToast === 'function') showToast('Đã sao chép liên kết chia sẻ vào khay nhớ tạm!', 'success');
-      }).catch(() => {
-        prompt('Sao chép liên kết chia sẻ dưới đây:', fullUrl);
+      }).catch(async () => {
+        await showPrompt({
+          title: 'Sao Chép Liên Kết',
+          message: 'Sao chép liên kết chia sẻ dưới đây:',
+          defaultValue: fullUrl,
+          confirmText: 'Đóng',
+          cancelText: 'Đóng',
+          icon: 'share-2'
+        });
       });
     } else {
-      prompt('Sao chép liên kết chia sẻ dưới đây:', fullUrl);
+      await showPrompt({
+        title: 'Sao Chép Liên Kết',
+        message: 'Sao chép liên kết chia sẻ dưới đây:',
+        defaultValue: fullUrl,
+        confirmText: 'Đóng',
+        cancelText: 'Đóng',
+        icon: 'share-2'
+      });
     }
   }
 };
@@ -615,8 +641,15 @@ const ReceiveShareModal = {
   },
 
   async promptManual() {
-    const input = prompt('Dán liên kết chia sẻ hoặc mã token:');
-    if (!input) return;
+    const input = await showPrompt({
+      title: 'Nhận Tài Khoản Chia Sẻ',
+      message: 'Dán liên kết chia sẻ hoặc mã token được cấp vào bên dưới:',
+      placeholder: 'https://... hoặc mã token',
+      confirmText: 'Kiểm Tra & Nhận',
+      cancelText: 'Huỷ',
+      icon: 'link'
+    });
+    if (!input || !input.trim()) return;
 
     let token = input.trim();
     if (token.includes('share_token=')) {

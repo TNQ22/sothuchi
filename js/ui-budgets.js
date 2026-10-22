@@ -1445,9 +1445,15 @@ const UIBudgets = {
 
   async deleteFormBudget() {
     const monthDisplay = this.formatMonthDisplay(this.currentMonth);
-    if (!confirm(`Bạn có chắc chắn muốn xóa ngân sách tổng của ${monthDisplay}?`)) {
-      return;
-    }
+    const ok = await showConfirm({
+      title: 'Xoá Ngân Sách Tổng',
+      message: `Bạn có chắc chắn muốn xóa ngân sách tổng của <strong>${monthDisplay}</strong>?`,
+      confirmText: 'Xoá Ngân Sách',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'trash-2'
+    });
+    if (!ok) return;
     const existing = await db.budgets.where('month').equals(this.currentMonth).toArray();
     const overall = existing.find(b => b.categoryId === 'TOTAL' || b.categoryId === 0 || b.isOverall);
     if (overall) {
@@ -1570,9 +1576,15 @@ const UIBudgets = {
 
   async deleteOverallBudget() {
     const monthDisplay = this.formatMonthDisplay(this.currentMonth);
-    if (!confirm(`Bạn có chắc chắn muốn xóa ngân sách tổng của ${monthDisplay}?`)) {
-      return;
-    }
+    const ok = await showConfirm({
+      title: 'Xoá Ngân Sách Tổng',
+      message: `Bạn có chắc chắn muốn xóa ngân sách tổng của <strong>${monthDisplay}</strong>?`,
+      confirmText: 'Xoá Ngân Sách',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'trash-2'
+    });
+    if (!ok) return;
     const existing = await db.budgets.where('month').equals(this.currentMonth).toArray();
     const overall = existing.find(b => b.categoryId === 'TOTAL' || b.categoryId === 0 || b.isOverall);
     if (overall) {
@@ -1940,9 +1952,15 @@ const UIBudgets = {
     const catIdHidden = document.getElementById('budget-cat-page-id');
     const categoryId = Number(catIdHidden?.value);
     if (categoryId) {
-      if (!confirm('Bạn có chắc chắn muốn xóa hạn mức cho danh mục này?')) {
-        return;
-      }
+      const ok = await showConfirm({
+        title: 'Xoá Hạn Mức Danh Mục',
+        message: 'Bạn có chắc chắn muốn xóa hạn mức cho danh mục này?',
+        confirmText: 'Xoá Hạn Mức',
+        cancelText: 'Huỷ',
+        danger: true,
+        icon: 'trash-2'
+      });
+      if (!ok) return;
       const existing = await db.budgets.where({ categoryId, month: this.currentMonth }).first();
       if (existing) {
         await db.budgets.delete(existing.id);
@@ -2044,17 +2062,31 @@ const UIBudgets = {
     const catIdHidden = document.getElementById('budget-lock-cat-id');
     const categoryId = Number(catIdHidden?.value);
     if (categoryId) {
-      if (!confirm('Bạn có chắc chắn muốn xóa hạn mức cho danh mục này?')) {
-        return;
-      }
+      const ok = await showConfirm({
+        title: 'Xoá Hạn Mức Danh Mục',
+        message: 'Bạn có chắc chắn muốn xóa hạn mức cho danh mục này?',
+        confirmText: 'Xoá Hạn Mức',
+        cancelText: 'Huỷ',
+        danger: true,
+        icon: 'trash-2'
+      });
+      if (!ok) return;
       await this.unlockCategory(categoryId, true);
       this.closeLockModal();
     }
   },
 
   async unlockCategory(catId, skipConfirm = false) {
-    if (!skipConfirm && !confirm('Bạn có chắc chắn muốn xóa hạn mức cho danh mục này?')) {
-      return;
+    if (!skipConfirm) {
+      const ok = await showConfirm({
+        title: 'Xoá Hạn Mức Danh Mục',
+        message: 'Bạn có chắc chắn muốn xóa hạn mức cho danh mục này?',
+        confirmText: 'Xoá Hạn Mức',
+        cancelText: 'Huỷ',
+        danger: true,
+        icon: 'trash-2'
+      });
+      if (!ok) return;
     }
     const existing = await db.budgets.where({ categoryId: Number(catId), month: this.currentMonth }).first();
     if (existing) {
@@ -2141,9 +2173,15 @@ const UIBudgets = {
     const catIdHidden = document.getElementById('budget-cat-id');
     const categoryId = Number(catIdHidden?.value);
     if (categoryId) {
-      if (!confirm('Bạn có chắc chắn muốn xóa hạn mức phân bổ cho danh mục này?')) {
-        return;
-      }
+      const ok = await showConfirm({
+        title: 'Xoá Hạn Mức Phân Bổ',
+        message: 'Bạn có chắc chắn muốn xóa hạn mức phân bổ cho danh mục này?',
+        confirmText: 'Xoá Hạn Mức',
+        cancelText: 'Huỷ',
+        danger: true,
+        icon: 'trash-2'
+      });
+      if (!ok) return;
       const existing = await db.budgets.where({ categoryId, month: this.currentMonth }).first();
       if (existing) {
         await db.budgets.delete(existing.id);
@@ -2722,9 +2760,15 @@ const UIBudgets = {
       return;
     }
 
-    if (!confirm(`Bạn có chắc chắn muốn xóa toàn bộ ngân sách (${budgets.length} mục) của ${monthDisplay}?`)) {
-      return;
-    }
+    const ok = await showConfirm({
+      title: 'Xoá Toàn Bộ Ngân Sách',
+      message: `Bạn có chắc chắn muốn xóa toàn bộ ngân sách (<strong>${budgets.length} mục</strong>) của <strong>${monthDisplay}</strong>?`,
+      confirmText: 'Xoá Toàn Bộ',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'trash-2'
+    });
+    if (!ok) return;
 
     try {
       await db.budgets.where('month').equals(month).delete();

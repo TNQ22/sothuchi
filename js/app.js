@@ -1407,6 +1407,9 @@ class App {
     const id = overlay.id;
     try {
       switch (id) {
+        case 'modal-custom-dialog':
+          if (window.CustomDialog) window.CustomDialog._close();
+          break;
         case 'modal-source-account-picker':
           if (window.UIAccounts) window.UIAccounts.closeSourceAccountPicker();
           break;

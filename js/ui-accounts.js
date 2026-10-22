@@ -571,7 +571,15 @@ const UIAccounts = {
   async confirmDeleteAccount(accId) {
     const acc = await db.accounts.get(Number(accId));
     if (!acc) return;
-    if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản "${acc.name}"? Tất cả giao dịch cũ vẫn được lưu trong sổ.`)) return;
+    const ok = await showConfirm({
+      title: 'Xoá Tài Khoản',
+      message: `Bạn có chắc chắn muốn xóa tài khoản <strong>${typeof escapeHTML === 'function' ? escapeHTML(acc.name) : acc.name}</strong>?<br><br><span style="color: var(--text-muted); font-size: 0.85rem;">Tất cả giao dịch cũ vẫn được lưu trong sổ.</span>`,
+      confirmText: 'Xoá Tài Khoản',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'trash-2'
+    });
+    if (!ok) return;
 
     await db.accounts.update(Number(accId), { isDeleted: 1, updatedAt: Date.now() });
     await window.app.refreshAll();
@@ -1091,7 +1099,15 @@ const UIAccounts = {
   },
 
   async deleteStatementHistory(accId, index) {
-    if (!confirm('Bạn có chắc muốn xóa lịch sử đợt nhập sao kê này? (Các giao dịch đã nhập vẫn được giữ lại)')) return;
+    const ok = await showConfirm({
+      title: 'Xoá Đợt Sao Kê',
+      message: 'Bạn có chắc muốn xóa lịch sử đợt nhập sao kê này?<br><br><span style="color: var(--text-muted); font-size: 0.85rem;">(Các giao dịch đã nhập vẫn được giữ lại)</span>',
+      confirmText: 'Xoá Lịch Sử',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'trash-2'
+    });
+    if (!ok) return;
     const logKey = `statement_logs_${accId}`;
     const logRecord = await db.settings.get(logKey);
     const logs = (logRecord && Array.isArray(logRecord.value)) ? logRecord.value : [];
@@ -1448,7 +1464,15 @@ const UIAccounts = {
     if (!id) return;
     const acc = await db.accounts.get(Number(id));
     const accName = acc ? acc.name : '';
-    if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản "${accName}"? Tất cả giao dịch cũ vẫn được lưu trong sổ.`)) return;
+    const ok = await showConfirm({
+      title: 'Xoá Tài Khoản',
+      message: `Bạn có chắc chắn muốn xóa tài khoản <strong>${typeof escapeHTML === 'function' ? escapeHTML(accName) : accName}</strong>?<br><br><span style="color: var(--text-muted); font-size: 0.85rem;">Tất cả giao dịch cũ vẫn được lưu trong sổ.</span>`,
+      confirmText: 'Xoá Tài Khoản',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'trash-2'
+    });
+    if (!ok) return;
 
     await db.accounts.update(Number(id), { isDeleted: 1, updatedAt: Date.now() });
     this.closeAccountFormView();
@@ -2037,7 +2061,15 @@ const UIAccounts = {
   async deleteSavingItem(id) {
     const s = await db.savings.get(Number(id));
     if (!s) return;
-    if (!confirm(`Bạn có chắc muốn xóa sổ tiết kiệm "${s.name}"?`)) return;
+    const ok = await showConfirm({
+      title: 'Xoá Sổ Tiết Kiệm',
+      message: `Bạn có chắc muốn xóa sổ tiết kiệm <strong>${typeof escapeHTML === 'function' ? escapeHTML(s.name) : s.name}</strong>?`,
+      confirmText: 'Xoá Sổ',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'trash-2'
+    });
+    if (!ok) return;
     await deleteSaving(Number(id));
     showToast(`Đã xóa sổ "${s.name}"`, 'info');
     await window.app.refreshAll();
@@ -2271,7 +2303,15 @@ const UIAccounts = {
   async deleteAccumulationItem(id) {
     const acc = await db.accumulations.get(Number(id));
     if (!acc) return;
-    if (!confirm(`Bạn có chắc muốn xóa mục tiêu "${acc.name}"?`)) return;
+    const ok = await showConfirm({
+      title: 'Xoá Mục Tiêu',
+      message: `Bạn có chắc muốn xóa mục tiêu <strong>${typeof escapeHTML === 'function' ? escapeHTML(acc.name) : acc.name}</strong>?`,
+      confirmText: 'Xoá Mục Tiêu',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'trash-2'
+    });
+    if (!ok) return;
     await deleteAccumulation(Number(id));
     showToast(`Đã xóa mục tiêu "${acc.name}"`, 'info');
     await window.app.refreshAll();
@@ -3239,7 +3279,15 @@ const UIAccounts = {
   async deleteAssetItem(id) {
     const asset = await db.assets.get(Number(id));
     if (!asset) return;
-    if (!confirm(`Bạn có chắc muốn xóa tài sản "${asset.name}"?`)) return;
+    const ok = await showConfirm({
+      title: 'Xoá Tài Sản',
+      message: `Bạn có chắc muốn xóa tài sản <strong>${typeof escapeHTML === 'function' ? escapeHTML(asset.name) : asset.name}</strong>?`,
+      confirmText: 'Xoá Tài Sản',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'trash-2'
+    });
+    if (!ok) return;
     await deleteAsset(Number(id));
     showToast(`Đã xóa tài sản "${asset.name}"`, 'info');
     await window.app.refreshAll();
@@ -4499,7 +4547,15 @@ const UIAccounts = {
   async deleteLoanItem(id) {
     const l = await db.loans.get(Number(id));
     if (!l) return;
-    if (confirm(`Bạn có chắc chắn muốn xóa sổ vay "${l.name}"?\nHành động này không thể hoàn tác.`)) {
+    const ok = await showConfirm({
+      title: 'Xoá Sổ Vay',
+      message: `Bạn có chắc chắn muốn xóa sổ vay <strong>${typeof escapeHTML === 'function' ? escapeHTML(l.name) : l.name}</strong>?<br><br><span style="color: #ef4444; font-size: 0.85rem;">Hành động này không thể hoàn tác.</span>`,
+      confirmText: 'Xoá Sổ Vay',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'trash-2'
+    });
+    if (ok) {
       await deleteLoan(id);
       showToast('Đã xóa sổ vay thành công', 'success');
       await this.render();
@@ -4573,7 +4629,15 @@ const UIAccounts = {
   },
 
   async leaveSharedItem(type, id) {
-    if (!confirm('Bạn có chắc chắn muốn rời khỏi và xóa mục được chia sẻ này khỏi thiết bị của bạn?\n(Mục gốc của chủ sở hữu vẫn an toàn)')) return;
+    const ok = await showConfirm({
+      title: 'Rời Khỏi Mục Chia Sẻ',
+      message: 'Bạn có chắc chắn muốn rời khỏi và xóa mục được chia sẻ này khỏi thiết bị của bạn?<br><br><span style="color: var(--text-muted); font-size: 0.85rem;">(Mục gốc của chủ sở hữu vẫn an toàn)</span>',
+      confirmText: 'Rời Khỏi',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'log-out'
+    });
+    if (!ok) return;
     try {
       const numId = Number(id);
       if (type === 'account') {

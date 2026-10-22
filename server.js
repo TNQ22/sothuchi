@@ -351,6 +351,19 @@ class DatabaseManager {
     return this.findUserById(session.user_id);
   }
 
+  getAllUsers() {
+    if (this.isSqlite) {
+      const stmt = this.sqliteDb.prepare('SELECT id, email, name, picture FROM users ORDER BY name ASC');
+      return stmt.all() || [];
+    }
+    return Object.values(this.jsonStore.users || {}).map(u => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      picture: u.picture
+    }));
+  }
+
   deleteSession(token) {
     if (this.isSqlite) {
       this.sqliteDb.prepare('DELETE FROM sessions WHERE token = ?').run(token);
@@ -1588,6 +1601,12 @@ async function handleApiRequest(req, res, pathname, url) {
     });
   }
 
+  // 4b. Danh sách tài khoản trên máy chủ để gợi ý chia sẻ sổ
+  if (req.method === 'GET' && pathname === '/api/users') {
+    const users = dbManager.getAllUsers();
+    return sendJson(res, 200, { users });
+  }
+
   // 5. Đăng xuất (Logout)
   if (req.method === 'POST' && pathname === '/api/auth/logout') {
     const token = (req.headers.authorization || '').slice(7).trim();
@@ -1609,7 +1628,7 @@ async function handleApiRequest(req, res, pathname, url) {
   if (req.method === 'POST' && pathname === '/api/vaults') {
     try {
       const body = await parseJsonBody(req);
-      const name = (body.name || '').trim() || 'Sổ Thu Chi Mới';
+      const name = (body.name || '').trim() || 'Sổ mặc định';
       const newVault = dbManager.createVault(name, currentUser.id);
       return sendJson(res, 201, {
         success: true,

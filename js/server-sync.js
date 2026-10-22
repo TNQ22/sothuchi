@@ -835,6 +835,23 @@ class ServerSyncService {
     return true;
   }
 
+  // Lấy danh sách người dùng trên server để gợi ý khi chia sẻ sổ
+  async fetchServerUsers() {
+    if (!this.serverUrl || !this.token) return [];
+    try {
+      const res = await fetch(`${this.serverUrl}/api/users`, {
+        headers: { Authorization: `Bearer ${this.token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return Array.isArray(data.users) ? data.users : [];
+      }
+    } catch (e) {
+      console.warn('[ServerSync] fetchServerUsers error:', e);
+    }
+    return [];
+  }
+
   // Lấy danh sách thành viên được chia sẻ của 1 sổ
   async fetchShares(vaultId = null) {
     const targetVaultId = vaultId || this.activeVaultId;

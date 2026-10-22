@@ -227,7 +227,15 @@ const UIDebts = {
   },
 
   async deleteDebtRecord(debtId) {
-    if (confirm('Bạn có chắc chắn muốn xóa khoản vay nợ này không?')) {
+    const ok = await showConfirm({
+      title: 'Xoá Khoản Vay Nợ',
+      message: 'Bạn có chắc chắn muốn xóa khoản vay nợ này không?',
+      confirmText: 'Xoá Khoản Nợ',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'trash-2'
+    });
+    if (ok) {
       await deleteDebt(debtId);
       showToast('Đã xóa khoản nợ', 'info');
       window.app.refreshAll();

@@ -880,7 +880,15 @@ const UISettings = {
           const time = btn.getAttribute('data-time');
           if (!histId) return;
 
-          if (!confirm(`Bạn có chắc chắn muốn khôi phục Sổ về bản snapshot lúc:\n${time}?\n\nToàn bộ dữ liệu hiện tại của Sổ trên máy chủ sẽ được thay thế bằng bản này và đồng bộ về máy bạn!`)) {
+          const ok = await showConfirm({
+            title: 'Khôi Phục Bản Snapshot',
+            message: `Bạn có chắc chắn muốn khôi phục Sổ về bản snapshot lúc <strong>${time}</strong>?<br><br>Toàn bộ dữ liệu hiện tại của Sổ trên máy chủ sẽ được thay thế bằng bản này và đồng bộ về máy bạn!`,
+            confirmText: 'Khôi Phục Snapshot',
+            cancelText: 'Huỷ',
+            danger: true,
+            icon: 'rotate-ccw'
+          });
+          if (!ok) {
             return;
           }
 
@@ -914,6 +922,94 @@ const UISettings = {
   },
 
   // Mở modal Chia Sẻ Sổ trên Máy chủ riêng (độc lập theo từng sổ)
+  serverUsersCache: [],
+
+  async loadServerUsersForShare() {
+    const sService = window.serverSyncService;
+    if (!sService) return;
+    try {
+      this.serverUsersCache = await sService.fetchServerUsers();
+    } catch (e) {
+      console.warn('loadServerUsersForShare error:', e);
+      this.serverUsersCache = [];
+    }
+  },
+
+  renderShareUserDropdown(filterText = '') {
+    const dropdown = document.getElementById('modal-server-share-user-dropdown');
+    if (!dropdown) return;
+
+    const sService = window.serverSyncService;
+    const currentEmail = (sService?.userProfile?.email || '').toLowerCase();
+    const query = (filterText || '').trim().toLowerCase();
+
+    // Lọc người dùng: loại trừ bản thân người dùng hiện tại
+    let users = (this.serverUsersCache || []).filter(u => {
+      const uEmail = (u.email || '').toLowerCase();
+      if (uEmail === currentEmail) return false;
+      if (!query) return true;
+      const uName = (u.name || '').toLowerCase();
+      return uEmail.includes(query) || uName.includes(query);
+    });
+
+    if (users.length === 0) {
+      if (!query) {
+        dropdown.style.display = 'none';
+        return;
+      }
+      dropdown.innerHTML = `
+        <div class="server-share-user-empty">
+          <span>Không tìm thấy tài khoản phù hợp trên máy chủ. Bạn có thể tiếp tục nhập đầy đủ email.</span>
+        </div>
+      `;
+      dropdown.style.display = 'block';
+      return;
+    }
+
+    const esc = typeof escapeHTML === 'function' ? escapeHTML : (s => s || '');
+
+    dropdown.innerHTML = `
+      <div class="server-share-user-dropdown-header">
+        <span>Tài khoản trên máy chủ (${users.length})</span>
+        <span style="font-size: 0.64rem; font-weight: normal; opacity: 0.7;">Chọn để điền nhanh</span>
+      </div>
+      ${users.map(u => {
+        const uEmail = esc(u.email || '');
+        const uName = esc(u.name || u.email || 'Người dùng');
+        const firstLetter = (u.name || u.email || 'U').charAt(0).toUpperCase();
+        const avatarHtml = u.picture 
+          ? `<img src="${esc(u.picture)}" class="server-share-user-avatar" alt="${uName}">`
+          : `<div class="server-share-user-avatar-fallback">${esc(firstLetter)}</div>`;
+
+        return `
+          <div class="server-share-user-item" data-email="${uEmail}">
+            ${avatarHtml}
+            <div class="server-share-user-info">
+              <div class="server-share-user-name">${uName}</div>
+              <div class="server-share-user-email">${uEmail}</div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    `;
+
+    dropdown.style.display = 'block';
+  },
+
+  hideShareUserDropdown() {
+    const dropdown = document.getElementById('modal-server-share-user-dropdown');
+    if (dropdown) dropdown.style.display = 'none';
+  },
+
+  selectShareUser(email) {
+    const emailInput = document.getElementById('modal-server-share-email');
+    if (emailInput) {
+      emailInput.value = email;
+      emailInput.focus();
+    }
+    this.hideShareUserDropdown();
+  },
+
   async openVaultShareModal(vaultId = null, vaultName = null) {
     const sService = window.serverSyncService;
     const targetVaultId = vaultId || (sService ? sService.activeVaultId : null);
@@ -952,6 +1048,8 @@ const UISettings = {
     if (emailInput) {
       emailInput.value = '';
     }
+    this.hideShareUserDropdown();
+    this.loadServerUsersForShare();
 
     // Đặt lại quyền mặc định là editor
     const roleInput = document.getElementById('modal-server-share-role');
@@ -991,6 +1089,7 @@ const UISettings = {
   closeVaultShareModal() {
     const modal = document.getElementById('modal-server-vault-share');
     if (modal) modal.classList.remove('open');
+    this.hideShareUserDropdown();
     this.currentShareModalVaultId = null;
     this.currentShareModalVaultName = null;
     this.currentShareModalIsOwner = false;
@@ -1075,7 +1174,15 @@ const UISettings = {
         showToast('Chỉ Chủ sổ mới có quyền tắt mã hoá cho sổ này.', 'warning');
         return;
       }
-      if (!confirm('Bạn có chắc chắn muốn TẮT MÃ HÓA ĐẦU CUỐI (E2EE)?\n\nDữ liệu trên máy của bạn sẽ được lưu dưới dạng thông thường (plain JSON) lên máy chủ.')) {
+      const ok = await showConfirm({
+        title: 'Tắt Mã Hoá Đầu Cuối (E2EE)',
+        message: 'Bạn có chắc chắn muốn <strong>TẮT MÃ HÓA ĐẦU CUỐI (E2EE)</strong>?<br><br>Dữ liệu trên máy của bạn sẽ được lưu dưới dạng thông thường (plain JSON) lên máy chủ.',
+        confirmText: 'Tắt Mã Hoá',
+        cancelText: 'Huỷ',
+        danger: true,
+        icon: 'unlock'
+      });
+      if (!ok) {
         return;
       }
 
@@ -1116,7 +1223,14 @@ const UISettings = {
             showToast('Chỉ Chủ sổ mới có quyền thay đổi mật khẩu mã hoá của sổ này.', 'warning');
             return;
           }
-          if (!confirm('Bạn có chắc chắn muốn đổi sang mật khẩu mã hóa mới?\n\nDữ liệu trên máy của bạn sẽ được mã hóa với mật khẩu mới và ghi đè đồng bộ lên máy chủ.')) {
+          const ok = await showConfirm({
+            title: 'Đổi Mật Khẩu Mã Hoá',
+            message: 'Bạn có chắc chắn muốn đổi sang mật khẩu mã hóa mới?<br><br>Dữ liệu trên máy của bạn sẽ được mã hóa với mật khẩu mới và ghi đè đồng bộ lên máy chủ.',
+            confirmText: 'Đổi Mật Khẩu',
+            cancelText: 'Huỷ',
+            icon: 'key'
+          });
+          if (!ok) {
             return;
           }
           try {
@@ -1285,7 +1399,14 @@ const UISettings = {
       serverLogoutBtn.addEventListener('click', () => {
         if (window.ServerAuthModals) {
           window.ServerAuthModals.openLogoutModal();
-        } else if (confirm('Bạn có chắc muốn đăng xuất khỏi Máy Chủ Riêng?')) {
+        } else if (await showConfirm({
+          title: 'Đăng Xuất Máy Chủ',
+          message: 'Bạn có chắc muốn đăng xuất khỏi Máy Chủ Riêng?',
+          confirmText: 'Đăng Xuất',
+          cancelText: 'Huỷ',
+          danger: true,
+          icon: 'log-out'
+        })) {
           if (sService) sService.logout().then(() => showToast('Đã đăng xuất khỏi Máy Chủ Riêng', 'info'));
         }
       });
@@ -1345,7 +1466,14 @@ const UISettings = {
     const createVaultBtn = document.getElementById('btn-server-create-vault');
     if (createVaultBtn) {
       createVaultBtn.addEventListener('click', async () => {
-        const name = prompt('Nhập tên Sổ mới (ví dụ: Sổ Chi Tiêu Gia Đình, Sổ Quỹ Lớp...):');
+        const name = await showPrompt({
+          title: 'Tạo Sổ Mới',
+          message: 'Nhập tên Sổ mới để quản lý thu chi riêng biệt:',
+          placeholder: 'Ví dụ: Sổ Chi Tiêu Gia Đình, Sổ Quỹ Lớp...',
+          confirmText: 'Tạo Sổ',
+          cancelText: 'Huỷ',
+          icon: 'book-plus'
+        });
         if (!name || !name.trim() || !sService) return;
         try {
           showToast('Đang tạo sổ mới trên máy chủ...', 'info');
@@ -1376,7 +1504,16 @@ const UISettings = {
         if (renameBtn && sService) {
           const vaultId = renameBtn.getAttribute('data-vault-id');
           const currentName = renameBtn.getAttribute('data-vault-name') || '';
-          const newName = prompt('Nhập tên mới cho sổ:', currentName);
+          const escName = typeof escapeHTML === 'function' ? escapeHTML(currentName) : currentName;
+          const newName = await showPrompt({
+            title: 'Đổi Tên Sổ',
+            message: `Nhập tên mới cho sổ <strong>${escName}</strong>:`,
+            defaultValue: currentName,
+            placeholder: 'Nhập tên mới...',
+            confirmText: 'Lưu Tên Mới',
+            cancelText: 'Huỷ',
+            icon: 'edit-3'
+          });
           if (newName && newName.trim() && newName.trim() !== currentName) {
             try {
               await sService.renameVault(vaultId, newName.trim());
@@ -1394,7 +1531,16 @@ const UISettings = {
         if (copyBtn && sService) {
           const vaultId = copyBtn.getAttribute('data-vault-id');
           const currentName = copyBtn.getAttribute('data-vault-name') || 'Sổ';
-          const name = prompt(`Nhập tên Sổ mới sao chép từ "${currentName}":`, `${currentName} (Bản sao)`);
+          const escName = typeof escapeHTML === 'function' ? escapeHTML(currentName) : currentName;
+          const name = await showPrompt({
+            title: 'Sao Chép Sổ',
+            message: `Nhập tên Sổ mới sao chép từ <strong>${escName}</strong>:`,
+            defaultValue: `${currentName} (Bản sao)`,
+            placeholder: 'Nhập tên sổ mới...',
+            confirmText: 'Sao Chép',
+            cancelText: 'Huỷ',
+            icon: 'copy'
+          });
           if (name && name.trim()) {
             try {
               showToast('Đang sao chép sổ...', 'info');
@@ -1427,7 +1573,15 @@ const UISettings = {
             showToast('Chỉ Chủ Sổ mới có quyền xóa sổ này', 'warning');
             return;
           }
-          if (confirm(`Bạn có chắc chắn muốn xóa sổ "${vaultName}" vĩnh viễn trên máy chủ?`)) {
+          const ok = await showConfirm({
+            title: 'Xoá Sổ Vĩnh Viễn',
+            message: `Bạn có chắc chắn muốn xóa sổ <strong>${typeof escapeHTML === 'function' ? escapeHTML(vaultName) : vaultName}</strong> vĩnh viễn trên máy chủ?<br><br><span style="color: #ef4444; font-size: 0.85rem;">Hành động này không thể hoàn tác. Toàn bộ dữ liệu ghi chép trong sổ này sẽ bị xoá khỏi máy chủ.</span>`,
+            confirmText: 'Xoá Vĩnh Viễn',
+            cancelText: 'Huỷ',
+            danger: true,
+            icon: 'trash-2'
+          });
+          if (ok) {
             try {
               await sService.deleteVault(vaultId);
               showToast('Đã xóa sổ thành công!', 'success');
@@ -1467,6 +1621,45 @@ const UISettings = {
         }
       });
     }
+
+    // Email Auto-complete & User Dropdown trong Modal Chia Sẻ
+    const shareEmailInput = document.getElementById('modal-server-share-email');
+    const shareUserDropdown = document.getElementById('modal-server-share-user-dropdown');
+
+    if (shareEmailInput) {
+      // Khi click hoặc focus vào ô email: hiển thị dropdown danh sách tài khoản trên server
+      shareEmailInput.addEventListener('focus', () => {
+        this.renderShareUserDropdown(shareEmailInput.value);
+      });
+      shareEmailInput.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.renderShareUserDropdown(shareEmailInput.value);
+      });
+      // Khi gõ phím để tìm kiếm hoặc hoàn tất
+      shareEmailInput.addEventListener('input', () => {
+        this.renderShareUserDropdown(shareEmailInput.value);
+      });
+    }
+
+    if (shareUserDropdown) {
+      shareUserDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const item = e.target.closest('.server-share-user-item');
+        if (!item) return;
+        const email = item.getAttribute('data-email');
+        if (email) {
+          this.selectShareUser(email);
+        }
+      });
+    }
+
+    // Đóng dropdown khi click ra ngoài
+    document.addEventListener('click', (e) => {
+      const wrapper = e.target.closest('.server-share-email-wrapper');
+      if (!wrapper) {
+        this.hideShareUserDropdown();
+      }
+    });
 
     // Modal Chia Sẻ Sổ Overlay & Actions
     const shareModalOverlay = document.getElementById('modal-server-vault-share');
@@ -1538,7 +1731,15 @@ const UISettings = {
         const vaultId = removeBtn.getAttribute('data-vault-id') || this.currentShareModalVaultId;
         if (!shareId || !vaultId || !sService) return;
 
-        if (confirm(`Bạn có chắc muốn xóa quyền truy cập của "${shareEmail}" khỏi sổ này?`)) {
+        const ok = await showConfirm({
+          title: 'Xoá Quyền Thành Viên',
+          message: `Bạn có chắc muốn xóa quyền truy cập của <strong>${typeof escapeHTML === 'function' ? escapeHTML(shareEmail) : shareEmail}</strong> khỏi sổ này?`,
+          confirmText: 'Xoá Quyền',
+          cancelText: 'Huỷ',
+          danger: true,
+          icon: 'user-x'
+        });
+        if (ok) {
           try {
             await sService.removeShare(shareId, vaultId);
             showToast(`Đã xóa quyền truy cập của ${shareEmail}`, 'info');
@@ -1589,7 +1790,15 @@ const UISettings = {
         const shareId = removeBtn.getAttribute('data-share-id');
         if (!shareId || !sService) return;
 
-        if (confirm('Bạn có chắc muốn xóa quyền truy cập của thành viên này?')) {
+        const ok = await showConfirm({
+          title: 'Xoá Quyền Thành Viên',
+          message: 'Bạn có chắc muốn xóa quyền truy cập của thành viên này khỏi danh sách?',
+          confirmText: 'Xoá Quyền',
+          cancelText: 'Huỷ',
+          danger: true,
+          icon: 'user-x'
+        });
+        if (ok) {
           try {
             await sService.removeShare(shareId);
             showToast('Đã xóa quyền thành viên thành công!', 'success');
@@ -1709,7 +1918,15 @@ const UISettings = {
     const dbxDisconnectBtn = document.getElementById('btn-dropbox-disconnect');
     if (dbxDisconnectBtn) {
       dbxDisconnectBtn.addEventListener('click', async () => {
-        if (confirm('Bạn có chắc muốn ngắt kết nối Dropbox?')) {
+        const ok = await showConfirm({
+          title: 'Ngắt Kết Nối Dropbox',
+          message: 'Bạn có chắc chắn muốn ngắt kết nối với tài khoản Dropbox?',
+          confirmText: 'Ngắt Kết Nối',
+          cancelText: 'Huỷ',
+          danger: true,
+          icon: 'log-out'
+        });
+        if (ok) {
           if (window.dropboxService) await window.dropboxService.disconnect();
           this.updateDropboxAccountUI();
           showToast('Đã ngắt kết nối Dropbox', 'info');
@@ -2025,7 +2242,13 @@ const UISettings = {
     const promoteBtn = document.getElementById('btn-promote-master');
     if (promoteBtn) {
       promoteBtn.addEventListener('click', async () => {
-        const ok = confirm('Bạn có chắc chắn muốn thăng cấp dữ liệu hiện tại trên máy này thành Sổ Chính trên tài khoản Google của bạn không?\n\n(Hành động này hữu ích khi Chủ sổ cũ xóa tài khoản hoặc ngừng chia sẻ).');
+        const ok = await showConfirm({
+          title: 'Thăng Cấp Thành Sổ Chính',
+          message: 'Bạn có chắc chắn muốn thăng cấp dữ liệu hiện tại trên máy này thành <strong>Sổ Chính</strong> trên tài khoản Google của bạn không?<br><br><span style="color: var(--text-muted); font-size: 0.85rem;">Hành động này hữu ích khi Chủ sổ cũ xóa tài khoản hoặc ngừng chia sẻ.</span>',
+          confirmText: 'Thăng Cấp',
+          cancelText: 'Huỷ',
+          icon: 'crown'
+        });
         if (!ok) return;
 
         try {
@@ -2085,7 +2308,15 @@ const UISettings = {
         try {
           if (!window.BackupService) return;
           if (!window.BackupService.isFileSystemAccessSupported()) {
-            const pass = prompt('iOS / Safari không cho phép ứng dụng web tự động ghi nền vào thư mục máy.\n\nNhập mật khẩu để mã hóa file (hoặc bấm OK để xuất file bình thường):');
+            const pass = await showPrompt({
+              title: 'Xuất Sao Lưu Dự Phòng',
+              message: 'iOS / Safari không cho phép ứng dụng web tự động ghi nền vào thư mục máy.<br><br>Nhập mật khẩu để mã hóa file sao lưu (hoặc bấm Xác Nhận mà không nhập để xuất file bình thường):',
+              placeholder: 'Mật khẩu bảo vệ (tuỳ chọn)',
+              inputType: 'password',
+              confirmText: 'Xuất File',
+              cancelText: 'Huỷ',
+              icon: 'shield'
+            });
             if (pass === null) return;
             await window.BackupService.exportFullBackup(pass || null);
             showToast('Đã tải file sao lưu về máy (lưu vào Tệp / Files)!', 'success');
@@ -2109,7 +2340,14 @@ const UISettings = {
     const removeLocalFolderBtn = document.getElementById('btn-remove-local-folder');
     if (removeLocalFolderBtn) {
       removeLocalFolderBtn.addEventListener('click', async () => {
-        const ok = confirm('Bạn có chắc muốn hủy liên kết thư mục sao lưu cục bộ trên máy tính?');
+        const ok = await showConfirm({
+          title: 'Hủy Liên Kết Thư Mục',
+          message: 'Bạn có chắc muốn hủy liên kết thư mục sao lưu cục bộ trên máy tính?',
+          confirmText: 'Hủy Liên Kết',
+          cancelText: 'Giữ Lại',
+          danger: true,
+          icon: 'folder-x'
+        });
         if (!ok) return;
 
         if (window.BackupService) {
@@ -2194,7 +2432,16 @@ const UISettings = {
     const exportJsonBtn = document.getElementById('btn-export-json');
     if (exportJsonBtn) {
       exportJsonBtn.addEventListener('click', async () => {
-        const pass = prompt('Nhập mật khẩu để mã hóa sao lưu AES-GCM (hoặc bấm OK để xuất JSON thông thường):');
+        const pass = await showPrompt({
+          title: 'Mã Hoá Sao Lưu AES-GCM',
+          message: 'Nhập mật khẩu để mã hóa sao lưu AES-GCM (hoặc để trống và bấm Tải Về để xuất JSON thông thường):',
+          placeholder: 'Mật khẩu bảo vệ (tuỳ chọn)',
+          inputType: 'password',
+          confirmText: 'Tải Về',
+          cancelText: 'Huỷ',
+          icon: 'shield-check'
+        });
+        if (pass === null) return;
         await window.BackupService.exportFullBackup(pass || null);
         showToast('Đã tải file sao lưu dự phòng thành công', 'success');
       });
@@ -2220,7 +2467,14 @@ const UISettings = {
 
           const currentVault = sService.getActiveVault ? sService.getActiveVault() : null;
           const vaultName = currentVault ? currentVault.name : 'hiện tại';
-          const ok = confirm(`CẢNH BÁO GHI ĐÈ MÁY CHỦ RIÊNG:\n\nBạn đang bật tùy chọn ghi đè toàn bộ lên máy chủ.\nDữ liệu của Sổ "${vaultName}" trên máy chủ sẽ bị THAY THẾ 100% bằng tệp sao lưu này!\n\nBạn có chắc chắn muốn thực hiện không?`);
+          const ok = await showConfirm({
+            title: 'Cảnh Báo Ghi Đè Máy Chủ Riêng',
+            message: `Bạn đang bật tùy chọn ghi đè toàn bộ lên máy chủ.<br><br>Dữ liệu của Sổ <strong>${typeof escapeHTML === 'function' ? escapeHTML(vaultName) : vaultName}</strong> trên máy chủ sẽ bị <strong>THAY THẾ 100%</strong> bằng tệp sao lưu này!<br><br><span style="color: #ef4444; font-size: 0.85rem;">Bạn có chắc chắn muốn thực hiện không?</span>`,
+            confirmText: 'Ghi Đè Toàn Bộ',
+            cancelText: 'Huỷ',
+            danger: true,
+            icon: 'alert-triangle'
+          });
           if (!ok) {
             e.target.value = '';
             return;
@@ -2229,7 +2483,19 @@ const UISettings = {
 
         let password = null;
         if (file.name.endsWith('.stc') || file.name.includes('Encrypted')) {
-          password = prompt('Tệp sao lưu này yêu cầu mật khẩu giải mã:');
+          password = await showPrompt({
+            title: 'Mở Khóa Tệp Sao Lưu',
+            message: 'Tệp sao lưu này yêu cầu mật khẩu giải mã để khôi phục dữ liệu:',
+            placeholder: 'Nhập mật khẩu giải mã...',
+            inputType: 'password',
+            confirmText: 'Giải Mã & Khôi Phục',
+            cancelText: 'Huỷ',
+            icon: 'key'
+          });
+          if (password === null) {
+            e.target.value = '';
+            return;
+          }
         }
 
         try {

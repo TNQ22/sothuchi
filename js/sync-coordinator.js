@@ -670,7 +670,14 @@ class SyncCoordinator {
       this.openVaultSettings();
       return;
     }
-    const name = prompt('Nhập tên Sổ mới (ví dụ: Sổ Gia Đình, Sổ Quỹ Lớp, Sổ Kinh Doanh...):');
+    const name = await showPrompt({
+      title: 'Tạo Sổ Mới',
+      message: 'Nhập tên Sổ mới để quản lý thu chi riêng biệt:',
+      placeholder: 'Ví dụ: Sổ Gia Đình, Sổ Quỹ Lớp, Sổ Kinh Doanh...',
+      confirmText: 'Tạo Sổ',
+      cancelText: 'Huỷ',
+      icon: 'book-plus'
+    });
     if (!name || !name.trim()) return;
 
     try {
@@ -700,7 +707,16 @@ class SyncCoordinator {
     }
     const current = sService.getActiveVault ? sService.getActiveVault() : null;
     const currentName = current ? current.name : 'Sổ hiện tại';
-    const name = prompt(`Nhập tên Sổ mới sao chép từ "${currentName}":`, `${currentName} (Bản sao)`);
+    const escName = typeof escapeHTML === 'function' ? escapeHTML(currentName) : currentName;
+    const name = await showPrompt({
+      title: 'Sao Chép Sổ',
+      message: `Nhập tên Sổ mới sao chép từ <strong>${escName}</strong>:`,
+      defaultValue: `${currentName} (Bản sao)`,
+      placeholder: 'Nhập tên sổ mới...',
+      confirmText: 'Sao Chép',
+      cancelText: 'Huỷ',
+      icon: 'copy'
+    });
     if (!name || !name.trim()) return;
 
     try {

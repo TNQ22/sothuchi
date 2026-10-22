@@ -2039,7 +2039,15 @@ const UITransactions = {
       showToast('Danh mục hệ thống được bảo vệ, không thể xóa!', 'warning');
       return;
     }
-    if (confirm('Bạn có chắc muốn xóa danh mục này? Các giao dịch cũ vẫn được giữ nguyên.')) {
+    const ok = await showConfirm({
+      title: 'Xoá Danh Mục',
+      message: 'Bạn có chắc muốn xóa danh mục này?<br><br><span style="color: var(--text-muted); font-size: 0.85rem;">Các giao dịch cũ vẫn được giữ nguyên.</span>',
+      confirmText: 'Xoá Danh Mục',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'trash-2'
+    });
+    if (ok) {
       await deleteCategory(id);
       showToast('Đã xóa danh mục', 'info');
       await this.renderCategoryManagerList();
@@ -3602,7 +3610,14 @@ const UITransactions = {
       const isDisburse = tx.loanAction === 'disburse' || (tx.note && tx.note.includes('Giải ngân'));
       const actionText = isDisburse ? 'Giải ngân khoản vay' : 'Trả nợ gốc sổ vay';
 
-      if (confirm('Giao dịch "' + actionText + '" được tạo tự động từ ' + loanName + '.\n\nĐể đảm bảo tính chính xác cho số dư và nghĩa vụ nợ, giao dịch này được khóa không cho sửa trực tiếp tại đây.\n\nBạn có muốn mở "' + loanName + '" trong mục Sổ Vay Ngân Hàng để chỉnh sửa không?')) {
+      const ok = await showConfirm({
+        title: 'Giao Dịch Sổ Vay',
+        message: 'Giao dịch <strong>"' + actionText + '"</strong> được tạo tự động từ <strong>' + loanName + '</strong>.<br><br>Để đảm bảo tính chính xác cho số dư và nghĩa vụ nợ, giao dịch này được khóa không cho sửa trực tiếp tại đây.<br><br>Bạn có muốn mở <strong>' + loanName + '</strong> trong mục Sổ Vay Ngân Hàng để chỉnh sửa không?',
+        confirmText: 'Mở Sổ Vay',
+        cancelText: 'Đóng',
+        icon: 'landmark'
+      });
+      if (ok) {
         if (window.UIAccounts && typeof window.UIAccounts.openLoanForm === 'function') {
           window.UIAccounts.openLoanForm(tx.loanId);
         }
@@ -3694,7 +3709,15 @@ const UITransactions = {
       showToast('Giao dịch thuộc Sổ Vay Ngân Hàng, không thể xóa tại đây! Vui lòng quản lý trong mục Sổ Vay.', 'warning');
       return;
     }
-    if (!confirm('Bạn có chắc muốn xóa giao dịch này không?\nSố dư tài khoản sẽ được hoàn lại.')) return;
+    const ok = await showConfirm({
+      title: 'Xoá Giao Dịch',
+      message: 'Bạn có chắc muốn xóa giao dịch này không?<br><br><span style="color: var(--text-muted); font-size: 0.85rem;">Số dư tài khoản sẽ được hoàn lại.</span>',
+      confirmText: 'Xoá Giao Dịch',
+      cancelText: 'Huỷ',
+      danger: true,
+      icon: 'trash-2'
+    });
+    if (!ok) return;
     try {
       await deleteTransaction(txId);
       showToast('Đã xóa giao dịch', 'info');

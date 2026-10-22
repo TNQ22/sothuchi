@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1792655571898">
+  <link rel="stylesheet" href="./css/style.css?v=1792669466778">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -6103,7 +6103,10 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           </div>
 
           <div style="display: flex; gap: 6px; align-items: center;">
-            <input type="email" id="modal-server-share-email" class="form-control" placeholder="Email Google thành viên (vd: banbe@gmail.com)" style="flex: 1; min-width: 0; font-size: 0.82rem; padding: 7px 10px;">
+            <div class="server-share-email-wrapper">
+              <input type="email" id="modal-server-share-email" class="form-control" placeholder="Email Google hoặc chọn từ máy chủ..." autocomplete="off" style="width: 100%; box-sizing: border-box; font-size: 0.82rem; padding: 7px 10px;">
+              <div id="modal-server-share-user-dropdown" class="server-share-user-dropdown" style="display: none;"></div>
+            </div>
 
             <!-- Cụm chọn quyền bằng icon: Bút (Ghi chép) / Mắt (Chỉ xem) -->
             <div class="share-role-icon-segmented" id="modal-server-share-role-group">
@@ -6462,6 +6465,36 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
     </div>
   </div>
 
+  <!-- Modal: Custom Dialog (showConfirm, showPrompt, showAlert) -->
+  <div id="modal-custom-dialog" class="modal-overlay custom-dialog-overlay" style="z-index: 100050;">
+    <div class="modal-dialog custom-dialog-box" role="dialog" aria-modal="true">
+      <div class="modal-header custom-dialog-header">
+        <div class="custom-dialog-title-wrap">
+          <div class="custom-dialog-icon-badge" id="custom-dialog-badge">
+            <i data-lucide="help-circle" id="custom-dialog-icon" style="width: 20px; height: 20px;"></i>
+          </div>
+          <h3 class="custom-dialog-title-text" id="custom-dialog-title-text">Xác Nhận</h3>
+        </div>
+        <button type="button" class="btn-icon" id="custom-dialog-btn-close" title="Đóng">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+      <div class="modal-body custom-dialog-body">
+        <div id="custom-dialog-message" class="custom-dialog-message"></div>
+        <div id="custom-dialog-input-container" class="custom-dialog-input-wrap" style="display: none;">
+          <input type="text" id="custom-dialog-input" class="custom-dialog-input" autocomplete="off" spellcheck="false">
+          <div id="custom-dialog-input-hint" class="custom-dialog-input-hint" style="display: none;"></div>
+        </div>
+      </div>
+      <div class="modal-footer custom-dialog-footer">
+        <button type="button" class="btn-secondary" id="custom-dialog-btn-cancel">Huỷ</button>
+        <button type="button" class="btn-primary" id="custom-dialog-btn-confirm">
+          <span id="custom-dialog-confirm-text">Xác Nhận</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div id="toast-container"></div>
 
@@ -6471,14 +6504,15 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- App Core Modules -->
   <script src="./js/config.js?v=2.8.0"></script>
+  <script src="./js/custom-dialog.js?v=2.8.0"></script>
   <script src="./js/crypto.js"></script>
   <script src="./js/db.js?v=2.8.0"></script>
   <script src="./js/google-drive.js?v=2.8.0"></script>
   <script src="./js/dropbox.js?v=2.8.0"></script>
-  <script src="./js/server-sync.js?v=1792655571898"></script>
+  <script src="./js/server-sync.js?v=1792669466778"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.8.0"></script>
-  <script src="./js/sync-coordinator.js?v=1792655571898"></script>
+  <script src="./js/sync-coordinator.js?v=1792669466778"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.8.0"></script>
@@ -6488,12 +6522,12 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/ui-share.js?v=2.8.0"></script>
   <script src="./js/ui-budgets.js?v=2.8.0"></script>
   <script src="./js/ui-analytics.js?v=2.8.0"></script>
-  <script src="./js/ui-settings.js?v=1792655571898"></script>
+  <script src="./js/ui-settings.js?v=1792669466778"></script>
   <script src="./js/server-auth-modals.js?v=2.8.0"></script>
 
   <!-- Main Entry Coordinator -->
   <script src="./js/pull-to-refresh.js?v=2.8.2"></script>
-  <script src="./js/app.js?v=1792655571898"></script>
+  <script src="./js/app.js?v=1792669466778"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
   <script>
