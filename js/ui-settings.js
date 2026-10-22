@@ -76,7 +76,7 @@ const UISettings = {
     const titleMap = {
       'google-drive': '<svg viewBox="0 0 87.3 78" style="width: 20px; height: 18px; vertical-align: middle;"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg> Google Drive',
       'dropbox': '<i data-lucide="box" style="color: #0061ff; width: 20px; height: 20px;"></i> Dropbox',
-      'server': '<i data-lucide="server" style="color: #a855f7; width: 20px; height: 20px;"></i> Máy Chủ Riêng',
+      'server': '<i data-lucide="server" style="color: #10b981; width: 20px; height: 20px;"></i> Máy Chủ Riêng',
       'local-folder': '<i data-lucide="folder-sync" style="color: #f59e0b; width: 20px; height: 20px;"></i> Sao Lưu Thư Mục PC',
       'backup-restore': '<i data-lucide="database" style="color: #ec4899; width: 20px; height: 20px;"></i> Sao Lưu & Khôi Phục File',
       'export-csv': '<i data-lucide="file-spreadsheet" style="color: #10b981; width: 20px; height: 20px;"></i> Xuất Dữ Liệu Excel (CSV)',
@@ -699,6 +699,9 @@ const UISettings = {
                   <span class="sync-vault-role-pill owner">Chủ sổ</span>
                 </div>
                 <div class="server-vault-icon-actions">
+                  <button type="button" class="btn-vault-icon btn-vault-share" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Chia sẻ sổ này">
+                    <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i>
+                  </button>
                   <button type="button" class="btn-vault-icon btn-vault-rename" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Đổi tên sổ">
                     <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
                   </button>
@@ -728,7 +731,7 @@ const UISettings = {
           const isActive = v.id === sService.activeVaultId;
           const isEditor = v.role === 'editor';
           const roleClass = isEditor ? 'editor' : 'viewer';
-          const roleText = isEditor ? 'Ghi chép' : 'Chỉ xem';
+          const roleText = isEditor ? 'Chỉnh sửa' : 'Chỉ xem';
           const ownerText = v.owner_email ? `<span style="opacity: 0.7; font-size: 0.72rem; margin-left: 5px;">• Từ: ${esc(v.owner_email)}</span>` : '';
           return `
             <div class="server-vault-row ${isActive ? 'is-active' : ''}" data-vault-id="${v.id}" role="button" tabindex="0" title="${isActive ? 'Sổ đang được chọn' : 'Chạm để chọn sổ này'}">
@@ -743,6 +746,9 @@ const UISettings = {
                   <span class="sync-vault-role-pill ${roleClass}">${roleText}</span>${ownerText}
                 </div>
                 <div class="server-vault-icon-actions">
+                  <button type="button" class="btn-vault-icon btn-vault-share" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Xem thành viên sổ này">
+                    <i data-lucide="users" style="width: 14px; height: 14px;"></i>
+                  </button>
                   ${isEditor ? `
                   <button type="button" class="btn-vault-icon btn-vault-rename" data-vault-id="${v.id}" data-vault-name="${esc(v.name)}" title="Đổi tên sổ">
                     <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
@@ -776,9 +782,9 @@ const UISettings = {
         <div class="server-share-item">
           <div class="server-share-info">
             <i data-lucide="user-check" style="width: 14px; height: 14px; color: #10b981;"></i>
-            <span class="server-share-email">${s.email}</span>
+            <span class="server-share-email">${esc(s.email || s.user_email || "")}</span>
             <span class="badge" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(59, 130, 246, 0.12); color: #3b82f6; border-radius: 9999px;">
-              ${s.role === 'editor' ? 'Ghi chép' : 'Chỉ xem'}
+              ${s.role === 'editor' ? 'Chỉnh sửa' : 'Chỉ xem'}
             </span>
           </div>
           <button type="button" class="btn-text btn-server-remove-share" data-share-id="${s.id}" style="color: #ef4444; font-size: 0.78rem; padding: 2px 6px; border: none; background: none; cursor: pointer;" title="Xóa quyền truy cập">
@@ -844,7 +850,7 @@ const UISettings = {
           <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
             <div style="min-width: 0; flex: 1;">
               <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px; flex-wrap: wrap;">
-                <span class="badge" style="font-size: 0.72rem; padding: 2px 7px; background: rgba(168, 85, 247, 0.15); color: #a855f7; font-weight: 700; border-radius: 6px;">
+                <span class="badge" style="font-size: 0.72rem; padding: 2px 7px; background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700; border-radius: 6px;">
                   v${item.version}
                 </span>
                 ${isLatest ? '<span class="badge" style="font-size: 0.68rem; padding: 2px 6px; background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600; border-radius: 6px;">Bản hiện tại</span>' : ''}
@@ -907,6 +913,146 @@ const UISettings = {
     if (modal) modal.classList.remove('open');
   },
 
+  // Mở modal Chia Sẻ Sổ trên Máy chủ riêng (độc lập theo từng sổ)
+  async openVaultShareModal(vaultId = null, vaultName = null) {
+    const sService = window.serverSyncService;
+    const targetVaultId = vaultId || (sService ? sService.activeVaultId : null);
+    if (!sService || !targetVaultId) return;
+
+    const modal = document.getElementById('modal-server-vault-share');
+    if (!modal) return;
+
+    let targetVault = null;
+    if (sService.vaults) {
+      targetVault = sService.vaults.find(v => v.id === targetVaultId);
+    }
+    const displayName = vaultName || (targetVault ? targetVault.name : 'Hiện tại');
+    const isOwner = !targetVault || targetVault.role === 'owner';
+
+    this.currentShareModalVaultId = targetVaultId;
+    this.currentShareModalVaultName = displayName;
+    this.currentShareModalIsOwner = isOwner;
+
+    const modalTitleEl = document.getElementById('server-share-modal-title');
+    if (modalTitleEl) {
+      modalTitleEl.textContent = isOwner ? 'Chia Sẻ Sổ' : 'Thành Viên Sổ';
+    }
+
+    const vaultNameEl = document.getElementById('server-share-vault-name');
+    if (vaultNameEl) {
+      vaultNameEl.textContent = `Sổ: ${displayName}`;
+    }
+
+    const formWrap = document.getElementById('server-share-form-wrap');
+    if (formWrap) {
+      formWrap.style.display = isOwner ? 'block' : 'none';
+    }
+
+    const emailInput = document.getElementById('modal-server-share-email');
+    if (emailInput) {
+      emailInput.value = '';
+    }
+
+    // Đặt lại quyền mặc định là editor
+    const roleInput = document.getElementById('modal-server-share-role');
+    if (roleInput) roleInput.value = 'editor';
+    const roleGroup = document.getElementById('modal-server-share-role-group');
+    if (roleGroup) {
+      roleGroup.querySelectorAll('.btn-share-role-icon').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-role') === 'editor');
+      });
+    }
+
+    const loadingEl = document.getElementById('modal-server-share-loading');
+    const emptyEl = document.getElementById('modal-server-share-empty');
+    const listEl = document.getElementById('modal-server-share-list');
+    const countBadge = document.getElementById('modal-server-share-count');
+
+    if (loadingEl) loadingEl.style.display = 'block';
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (listEl) listEl.innerHTML = '';
+    if (countBadge) countBadge.textContent = '...';
+
+    modal.classList.add('open');
+    if (window.lucide) lucide.createIcons();
+
+    try {
+      const shares = await sService.fetchShares(targetVaultId);
+      this.renderModalServerShares(shares, isOwner, targetVaultId);
+    } catch (err) {
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (emptyEl) {
+        emptyEl.textContent = 'Lỗi tải danh sách thành viên: ' + err.message;
+        emptyEl.style.display = 'block';
+      }
+    }
+  },
+
+  closeVaultShareModal() {
+    const modal = document.getElementById('modal-server-vault-share');
+    if (modal) modal.classList.remove('open');
+    this.currentShareModalVaultId = null;
+    this.currentShareModalVaultName = null;
+    this.currentShareModalIsOwner = false;
+  },
+
+  renderModalServerShares(shares, isOwner, targetVaultId) {
+    const loadingEl = document.getElementById('modal-server-share-loading');
+    const emptyEl = document.getElementById('modal-server-share-empty');
+    const listEl = document.getElementById('modal-server-share-list');
+    const countBadge = document.getElementById('modal-server-share-count');
+
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    const safeShares = Array.isArray(shares) ? shares : [];
+    if (countBadge) {
+      countBadge.textContent = safeShares.length > 0 ? `${safeShares.length} thành viên` : '0 thành viên';
+    }
+
+    if (safeShares.length === 0) {
+      if (emptyEl) {
+        emptyEl.textContent = isOwner ? 'Chưa có thành viên nào được chia sẻ sổ này.' : 'Chỉ có bạn và chủ sổ trong sổ này.';
+        emptyEl.style.display = 'block';
+      }
+      if (listEl) listEl.innerHTML = '';
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    if (emptyEl) emptyEl.style.display = 'none';
+    const esc = typeof escapeHTML === 'function' ? escapeHTML : (s => s || '');
+
+    if (listEl) {
+      listEl.innerHTML = safeShares.map(s => {
+        const isEditor = s.role === 'editor';
+        const roleText = isEditor ? 'Chỉnh sửa' : 'Chỉ xem';
+        const roleClass = isEditor ? 'editor' : 'viewer';
+        return `
+          <div class="server-share-item" style="padding: 9px 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div class="server-share-info" style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
+              <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(59, 130, 246, 0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--primary);">
+                <i data-lucide="user-check" style="width: 14px; height: 14px; color: #10b981;"></i>
+              </div>
+              <div style="min-width: 0; flex: 1;">
+                <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${esc(s.email || s.user_email || "")}</div>
+                <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                  <span class="sync-vault-role-pill ${roleClass}">${roleText}</span>
+                </div>
+              </div>
+            </div>
+            ${isOwner ? `
+              <button type="button" class="btn-server-logout-compact btn-modal-remove-share" data-share-id="${s.id}" data-share-email="${esc(s.email || s.user_email || "")}" data-vault-id="${targetVaultId}" style="width: 28px; height: 28px; flex-shrink: 0;" title="Xóa quyền truy cập">
+                <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i>
+              </button>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    if (window.lucide) lucide.createIcons();
+  },
+
   bindEvents() {
     // --- DEDICATED SYNC SERVER EVENTS ---
     const sService = window.serverSyncService;
@@ -924,6 +1070,11 @@ const UISettings = {
 
     // Hàm tắt mã hóa E2EE
     const handleDisableEncryption = async () => {
+      const activeVault = sService && sService.getActiveVault ? sService.getActiveVault() : null;
+      if (activeVault && activeVault.role !== 'owner') {
+        showToast('Chỉ Chủ sổ mới có quyền tắt mã hoá cho sổ này.', 'warning');
+        return;
+      }
       if (!confirm('Bạn có chắc chắn muốn TẮT MÃ HÓA ĐẦU CUỐI (E2EE)?\n\nDữ liệu trên máy của bạn sẽ được lưu dưới dạng thông thường (plain JSON) lên máy chủ.')) {
         return;
       }
@@ -960,6 +1111,11 @@ const UISettings = {
 
         // Trường hợp 1: Đã có mật khẩu trước đó và người dùng nhập mật khẩu khác -> Đổi mật khẩu
         if (curPass && curPass !== newPass) {
+          const activeVault = sService && sService.getActiveVault ? sService.getActiveVault() : null;
+          if (activeVault && activeVault.role !== 'owner') {
+            showToast('Chỉ Chủ sổ mới có quyền thay đổi mật khẩu mã hoá của sổ này.', 'warning');
+            return;
+          }
           if (!confirm('Bạn có chắc chắn muốn đổi sang mật khẩu mã hóa mới?\n\nDữ liệu trên máy của bạn sẽ được mã hóa với mật khẩu mới và ghi đè đồng bộ lên máy chủ.')) {
             return;
           }
@@ -977,9 +1133,14 @@ const UISettings = {
 
         // Trường hợp 2: Bật mã hóa lần đầu (chưa có mật khẩu trước đó)
         if (!curPass) {
+          const activeVault = sService && sService.getActiveVault ? sService.getActiveVault() : null;
+          if (activeVault && activeVault.role !== 'owner') {
+            showToast('Chỉ Chủ sổ mới có quyền kích hoạt mã hoá cho sổ này.', 'warning');
+            return;
+          }
           try {
             showToast('Đang kích hoạt mã hóa E2EE và đồng bộ lên máy chủ...', 'info');
-            sService.setEncryptionPassword(newPass);
+            await sService.setEncryptionPassword(newPass, sService.activeVaultId);
             if (sService.isConnected && sService.activeVaultId) {
               await sService.overwriteVaultWithLocal(newPass);
             }
@@ -1201,6 +1362,15 @@ const UISettings = {
     const multiVaultContainer = document.getElementById('server-multi-vault-container');
     if (multiVaultContainer) {
       multiVaultContainer.addEventListener('click', async (e) => {
+        // Chia sẻ sổ (Mở modal chia sẻ của riêng sổ này)
+        const shareBtn = e.target.closest('.btn-vault-share');
+        if (shareBtn && sService) {
+          const vaultId = shareBtn.getAttribute('data-vault-id');
+          const vaultName = shareBtn.getAttribute('data-vault-name');
+          this.openVaultShareModal(vaultId, vaultName);
+          return;
+        }
+
         // Đổi tên sổ
         const renameBtn = e.target.closest('.btn-vault-rename');
         if (renameBtn && sService) {
@@ -1294,6 +1464,90 @@ const UISettings = {
       historyModalOverlay.addEventListener('click', (e) => {
         if (e.target === historyModalOverlay) {
           this.closeVaultHistoryModal();
+        }
+      });
+    }
+
+    // Modal Chia Sẻ Sổ Overlay & Actions
+    const shareModalOverlay = document.getElementById('modal-server-vault-share');
+    if (shareModalOverlay) {
+      shareModalOverlay.addEventListener('click', (e) => {
+        if (e.target === shareModalOverlay) {
+          this.closeVaultShareModal();
+        }
+      });
+    }
+
+    // Chuyển đổi quyền (Editor / Viewer) trong Modal
+    const modalRoleGroup = document.getElementById('modal-server-share-role-group');
+    if (modalRoleGroup) {
+      modalRoleGroup.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-share-role-icon');
+        if (!btn) return;
+        const role = btn.getAttribute('data-role');
+        const hiddenInput = document.getElementById('modal-server-share-role');
+        if (hiddenInput) hiddenInput.value = role;
+        modalRoleGroup.querySelectorAll('.btn-share-role-icon').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    }
+
+    // Nút Gửi Lời Mời trong Modal Chia Sẻ
+    const modalAddShareBtn = document.getElementById('btn-modal-server-add-share');
+    if (modalAddShareBtn) {
+      modalAddShareBtn.addEventListener('click', async () => {
+        const vaultId = this.currentShareModalVaultId;
+        const vaultName = this.currentShareModalVaultName;
+        if (!vaultId || !sService) return;
+
+        const emailInput = document.getElementById('modal-server-share-email');
+        const roleInput = document.getElementById('modal-server-share-role');
+        const email = (emailInput ? emailInput.value : '').trim();
+        const role = roleInput ? roleInput.value : 'editor';
+
+        if (!email || !email.includes('@')) {
+          showToast('Vui lòng nhập địa chỉ email Google hợp lệ', 'warning');
+          return;
+        }
+
+        try {
+          modalAddShareBtn.disabled = true;
+          showToast(`Đang cấp quyền cho ${email}...`, 'info');
+          await sService.shareVaultWithEmail(email, role, vaultId);
+          showToast(`Đã chia sẻ sổ "${vaultName}" cho ${email} thành công!`, 'success');
+          if (emailInput) emailInput.value = '';
+          const shares = await sService.fetchShares(vaultId);
+          this.renderModalServerShares(shares, true, vaultId);
+          this.renderServerSharesList();
+        } catch (err) {
+          showToast('Chia sẻ thất bại: ' + err.message, 'error');
+        } finally {
+          modalAddShareBtn.disabled = false;
+        }
+      });
+    }
+
+    // Xóa quyền thành viên trong Modal Chia Sẻ (Delegated Click)
+    const modalSharesListEl = document.getElementById('modal-server-share-list');
+    if (modalSharesListEl) {
+      modalSharesListEl.addEventListener('click', async (e) => {
+        const removeBtn = e.target.closest('.btn-modal-remove-share');
+        if (!removeBtn) return;
+        const shareId = removeBtn.getAttribute('data-share-id');
+        const shareEmail = removeBtn.getAttribute('data-share-email') || 'thành viên';
+        const vaultId = removeBtn.getAttribute('data-vault-id') || this.currentShareModalVaultId;
+        if (!shareId || !vaultId || !sService) return;
+
+        if (confirm(`Bạn có chắc muốn xóa quyền truy cập của "${shareEmail}" khỏi sổ này?`)) {
+          try {
+            await sService.removeShare(shareId, vaultId);
+            showToast(`Đã xóa quyền truy cập của ${shareEmail}`, 'info');
+            const shares = await sService.fetchShares(vaultId);
+            this.renderModalServerShares(shares, true, vaultId);
+            this.renderServerSharesList();
+          } catch (err) {
+            showToast('Lỗi khi xóa thành viên: ' + err.message, 'error');
+          }
         }
       });
     }

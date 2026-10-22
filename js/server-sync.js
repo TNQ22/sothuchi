@@ -153,14 +153,13 @@ class ServerSyncService {
         this.lastSyncTime = savedTime.value;
       }
 
-      // 6.5 Đọc Mật khẩu Mã hóa Sổ Máy Chủ (E2EE)
-      const savedServerPass = await db.settings.get('syncServerEncryptionPassword');
-      if (savedServerPass && savedServerPass.value) {
-        this.encryptionPassword = savedServerPass.value.trim();
+      // 6.5 Đọc Mật khẩu Mã hóa Sổ Máy Chủ (E2EE) cho Sổ hiện tại
+      if (this.activeVaultId) {
+        this.encryptionPassword = await this.getEncryptionPasswordForVault(this.activeVaultId);
       } else {
-        const fallbackPass = await db.settings.get('syncEncryptionPassword');
-        if (fallbackPass && fallbackPass.value) {
-          this.encryptionPassword = fallbackPass.value.trim();
+        const savedServerPass = await db.settings.get('syncServerEncryptionPassword');
+        if (savedServerPass && savedServerPass.value) {
+          this.encryptionPassword = savedServerPass.value.trim();
         }
       }
 
@@ -666,6 +665,9 @@ class ServerSyncService {
 
       // Xử lý giải mã E2EE nếu dữ liệu trên máy chủ đã được mã hóa
       if (serverData && serverData.encrypted && serverData.payload) {
+        const vaultPass = await this.getEncryptionPasswordForVault(vaultId);
+        this.encryptionPassword = vaultPass;
+
         if (!this.encryptionPassword) {
           throw new Error('Sổ trên máy chủ đã được mã hóa đầu cuối (E2EE). Vui lòng vào Cài đặt Máy Chủ Riêng > Nhập Mật khẩu Mã Hóa Sổ để mở khóa dữ liệu.');
         }
@@ -678,6 +680,11 @@ class ServerSyncService {
         } catch (decErr) {
           throw new Error('Mật khẩu mã hóa Sổ không chính xác! Không thể giải mã dữ liệu tài chính từ máy chủ.');
         }
+      } else {
+        // Sổ trên máy chủ KHÔNG mã hoá:
+        // Đặt mật khẩu của phiên làm việc với sổ này = null để không tự ý mã hóa đè lên sổ của người khác!
+        this.encryptionPassword = null;
+        await db.settings.put({ key: 'syncServerEncryptionPassword_' + vaultId, value: null });
       }
 
       // Kiểm tra xem sổ này trên server là sổ mới trống dữ liệu hay đã có dữ liệu
@@ -828,18 +835,22 @@ class ServerSyncService {
     return true;
   }
 
-  // Lấy danh sách thành viên được chia sẻ
-  async fetchShares(vaultId) {
-    if (!this.serverUrl || !this.token || !vaultId) return [];
+  // Lấy danh sách thành viên được chia sẻ của 1 sổ
+  async fetchShares(vaultId = null) {
+    const targetVaultId = vaultId || this.activeVaultId;
+    if (!this.serverUrl || !this.token || !targetVaultId) return [];
     try {
-      const res = await fetch(`${this.serverUrl}/api/vaults/${vaultId}/shares`, {
+      const res = await fetch(`${this.serverUrl}/api/vaults/${targetVaultId}/shares`, {
         headers: { Authorization: `Bearer ${this.token}` }
       });
       if (res.ok) {
         const data = await res.json();
-        this.shares = data.shares || [];
-        window.dispatchEvent(new CustomEvent('server-shares-updated', { detail: { shares: this.shares } }));
-        return this.shares;
+        const sharesList = data.shares || [];
+        if (targetVaultId === this.activeVaultId) {
+          this.shares = sharesList;
+          window.dispatchEvent(new CustomEvent('server-shares-updated', { detail: { shares: this.shares } }));
+        }
+        return sharesList;
       }
     } catch (e) {
       console.warn('[ServerSync] fetchShares error:', e);
@@ -847,17 +858,18 @@ class ServerSyncService {
     return [];
   }
 
-  // Chia sẻ Sổ cho Email Google khác
-  async shareVaultWithEmail(email, role = 'editor') {
+  // Chia sẻ Sổ cho Email Google khác (hỗ trợ chỉ định vaultId độc lập)
+  async shareVaultWithEmail(email, role = 'editor', vaultId = null) {
+    const targetVaultId = vaultId || this.activeVaultId;
     if (!this.serverUrl || !this.token) throw new Error('Yêu cầu kết nối máy chủ');
-    if (!this.activeVaultId) throw new Error('Chưa chọn sổ để chia sẻ');
+    if (!targetVaultId) throw new Error('Chưa chọn sổ để chia sẻ');
 
     const cleanEmail = (email || '').toLowerCase().trim();
     if (!cleanEmail || !cleanEmail.includes('@')) {
       throw new Error('Vui lòng nhập địa chỉ email Google hợp lệ');
     }
 
-    const res = await fetch(`${this.serverUrl}/api/vaults/${this.activeVaultId}/shares`, {
+    const res = await fetch(`${this.serverUrl}/api/vaults/${targetVaultId}/shares`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.token}`,
@@ -872,15 +884,18 @@ class ServerSyncService {
     }
 
     const data = await res.json();
-    await this.fetchShares(this.activeVaultId);
+    if (targetVaultId === this.activeVaultId) {
+      await this.fetchShares(this.activeVaultId);
+    }
     return data;
   }
 
-  // Xóa thành viên khỏi Sổ
-  async removeShare(shareId) {
-    if (!this.serverUrl || !this.token || !this.activeVaultId) throw new Error('Yêu cầu kết nối máy chủ');
+  // Xóa thành viên khỏi Sổ (hỗ trợ chỉ định vaultId độc lập)
+  async removeShare(shareId, vaultId = null) {
+    const targetVaultId = vaultId || this.activeVaultId;
+    if (!this.serverUrl || !this.token || !targetVaultId) throw new Error('Yêu cầu kết nối máy chủ');
 
-    const res = await fetch(`${this.serverUrl}/api/vaults/${this.activeVaultId}/shares/${shareId}`, {
+    const res = await fetch(`${this.serverUrl}/api/vaults/${targetVaultId}/shares/${shareId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${this.token}` }
     });
@@ -890,7 +905,9 @@ class ServerSyncService {
       throw new Error(err.error || 'Xóa thành viên thất bại');
     }
 
-    await this.fetchShares(this.activeVaultId);
+    if (targetVaultId === this.activeVaultId) {
+      await this.fetchShares(this.activeVaultId);
+    }
     return true;
   }
 
@@ -1137,7 +1154,7 @@ class ServerSyncService {
   }
 
   // Ép ghi đè toàn bộ dữ liệu cục bộ lên Máy chủ riêng (Force Overwrite)
-  async forceOverwriteServer() {
+  async forceOverwriteServer(customPassword = undefined) {
     if (!this.serverUrl || !this.token || !this.activeVaultId) {
       throw new Error('Chưa kết nối hoặc chưa chọn Sổ trên Máy Chủ Riêng.');
     }
@@ -1213,6 +1230,11 @@ class ServerSyncService {
     }
 
     const pushResult = await res.json();
+    if (pushResult && pushResult.version) {
+      this.lastVaultVersion = pushResult.version;
+      this.lastVaultUpdatedAt = pushResult.updated_at;
+      await db.settings.put({ key: 'syncServerLastVaultVersion', value: this.lastVaultVersion });
+    }
 
     if (typeof window.recalculateAccountBalances === 'function') {
       await window.recalculateAccountBalances();
@@ -1229,6 +1251,10 @@ class ServerSyncService {
     return pushResult;
   }
 
+  async overwriteVaultWithLocal(customPassword = undefined) {
+    return this.forceOverwriteServer(customPassword);
+  }
+
   // Đổi Mật Khẩu Mã Hóa Sổ (Re-encrypt vault with new password)
   async changeEncryptionPassword(...args) {
     if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
@@ -1243,7 +1269,7 @@ class ServerSyncService {
     await this.overwriteVaultWithLocal(cleanNewPass);
 
     // Cập nhật mật khẩu trong máy khách
-    this.setEncryptionPassword(cleanNewPass);
+    await this.setEncryptionPassword(cleanNewPass, this.activeVaultId);
 
     return { success: true };
   }
@@ -1257,15 +1283,36 @@ class ServerSyncService {
     await this.overwriteVaultWithLocal(null);
 
     // Xóa mật khẩu trên máy khách
-    this.setEncryptionPassword(null);
+    await this.setEncryptionPassword(null, this.activeVaultId);
 
     return { success: true };
   }
 
   // Thiết lập mật khẩu mã hóa sổ máy chủ (Zero-Knowledge E2EE)
-  setEncryptionPassword(password) {
+  async getEncryptionPasswordForVault(vaultId = this.activeVaultId) {
+    if (!vaultId) return this.encryptionPassword;
+    try {
+      const vPass = await db.settings.get('syncServerEncryptionPassword_' + vaultId);
+      if (vPass && vPass.value !== undefined) {
+        return vPass.value ? vPass.value.trim() : null;
+      }
+      const activeVault = this.getActiveVault();
+      if (!activeVault || activeVault.role === 'owner') {
+        const legacyPass = await db.settings.get('syncServerEncryptionPassword');
+        return legacyPass && legacyPass.value ? legacyPass.value.trim() : null;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async setEncryptionPassword(password, vaultId = this.activeVaultId) {
     this.encryptionPassword = password ? password.trim() : null;
-    db.settings.put({ key: 'syncServerEncryptionPassword', value: this.encryptionPassword });
+    if (vaultId) {
+      await db.settings.put({ key: 'syncServerEncryptionPassword_' + vaultId, value: this.encryptionPassword });
+    }
+    await db.settings.put({ key: 'syncServerEncryptionPassword', value: this.encryptionPassword });
   }
 
   // Bật/tắt tự động đồng bộ
@@ -1333,6 +1380,10 @@ class ServerSyncService {
       // Xử lý giải mã E2EE nếu dữ liệu trên máy chủ đã được mã hóa
       if (serverData && serverData.encrypted && serverData.payload) {
         if (!this.encryptionPassword) {
+          const vaultPass = await this.getEncryptionPasswordForVault(this.activeVaultId);
+          this.encryptionPassword = vaultPass;
+        }
+        if (!this.encryptionPassword) {
           throw new Error('Sổ trên máy chủ đã được mã hóa đầu cuối (E2EE). Vui lòng vào Cài đặt Máy Chủ Riêng > Nhập Mật khẩu Mã Hóa Sổ để mở khóa dữ liệu.');
         }
         if (!window.CryptoService) {
@@ -1344,6 +1395,9 @@ class ServerSyncService {
         } catch (decErr) {
           throw new Error('Mật khẩu mã hóa Sổ không chính xác! Không thể giải mã dữ liệu tài chính từ máy chủ.');
         }
+      } else {
+        // Sổ trên server không mã hóa -> đảm bảo mật khẩu là null để không tự mã hóa
+        this.encryptionPassword = null;
       }
 
       // 2. Gộp dữ liệu từ Server vào IndexedDB máy khách (bảo vệ tài khoản riêng tư)

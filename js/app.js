@@ -1413,6 +1413,9 @@ class App {
         case 'modal-server-vault-history':
           if (window.UISettings) window.UISettings.closeVaultHistoryModal();
           break;
+        case 'modal-server-vault-share':
+          if (window.UISettings) window.UISettings.closeVaultShareModal();
+          break;
         case 'modal-account-actions':
           if (window.UIAccounts) window.UIAccounts.closeActionSheet();
           break;

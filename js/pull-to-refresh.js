@@ -330,14 +330,55 @@ class PullToRefresh {
   async triggerRefresh() {
     this.isRefreshing = true;
     try {
+      // 1. Cập nhật thông tin sổ & danh sách chia sẻ mới nhất từ máy chủ riêng
+      if (window.serverSyncService && window.serverSyncService.serverUrl && window.serverSyncService.token) {
+        try {
+          await window.serverSyncService.fetchVaults();
+          if (window.serverSyncService.activeVaultId) {
+            await window.serverSyncService.fetchShares(window.serverSyncService.activeVaultId);
+          }
+          if (typeof window.serverSyncService.syncReceivedSharedItems === 'function') {
+            await window.serverSyncService.syncReceivedSharedItems();
+          }
+        } catch (serverInfoErr) {
+          console.warn('[PullToRefresh] Cập nhật thông tin sổ & chia sẻ:', serverInfoErr);
+        }
+      }
+
+      // 2. Kích hoạt đồng bộ dữ liệu giao dịch / tài chính hai chiều
       if (window.syncCoordinator) {
         await window.syncCoordinator.syncAll(false);
       } else if (window.serverSyncService) {
         await window.serverSyncService.sync();
       }
 
+      // 3. Nạp lại cấu hình thiết lập ứng dụng từ database (Theme, Privacy Mode, v.v.)
+      if (window.app && typeof window.app.loadInitialPreferences === 'function') {
+        await window.app.loadInitialPreferences();
+      }
+
+      // 4. Làm mới toàn bộ UI dữ liệu ứng dụng
       if (window.app && typeof window.app.refreshAll === 'function') {
         await window.app.refreshAll();
+      }
+
+      // 5. Cập nhật lại UI Cài Đặt và Chia Sẻ nếu đang mở
+      if (window.UISettings) {
+        if (typeof window.UISettings.renderServerSyncUI === 'function') {
+          window.UISettings.renderServerSyncUI();
+        }
+        if (typeof window.UISettings.updateHubBadges === 'function') {
+          window.UISettings.updateHubBadges();
+        }
+      }
+      if (window.UniversalShareModal && typeof window.UniversalShareModal.loadShareData === 'function') {
+        const modal = document.getElementById('modal-universal-share');
+        if (modal && modal.classList.contains('open')) {
+          await window.UniversalShareModal.loadShareData();
+        }
+      }
+      if (window.SyncCoordinator && typeof window.SyncCoordinator.updateVaultUI === 'function') {
+        window.SyncCoordinator.updateVaultUI();
       }
     } catch (err) {
       console.warn('[PullToRefresh] Lỗi làm mới:', err);

@@ -549,7 +549,7 @@ class DatabaseManager {
   getVaultShares(vaultId) {
     if (this.isSqlite) {
       const stmt = this.sqliteDb.prepare(`
-        SELECT vs.*, u.name as user_name, u.picture as user_picture
+        SELECT vs.*, vs.user_email as email, u.name as user_name, u.picture as user_picture
         FROM vault_shares vs
         LEFT JOIN users u ON LOWER(vs.user_email) = LOWER(u.email)
         WHERE vs.vault_id = ?
@@ -581,14 +581,14 @@ class DatabaseManager {
       const existing = this.sqliteDb.prepare('SELECT id FROM vault_shares WHERE vault_id = ? AND LOWER(user_email) = ?').get(vaultId, cleanEmail);
       if (existing) {
         this.sqliteDb.prepare('UPDATE vault_shares SET role = ? WHERE id = ?').run(shareRole, existing.id);
-        return { id: existing.id, vault_id: vaultId, user_email: cleanEmail, role: shareRole };
+        return { id: existing.id, vault_id: vaultId, user_email: cleanEmail, email: cleanEmail, role: shareRole };
       }
       const shareId = 'shr_' + crypto.randomBytes(8).toString('hex');
       this.sqliteDb.prepare(`
         INSERT INTO vault_shares (id, vault_id, user_email, role, invited_by, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
       `).run(shareId, vaultId, cleanEmail, shareRole, invitedBy, now);
-      return { id: shareId, vault_id: vaultId, user_email: cleanEmail, role: shareRole, created_at: now };
+      return { id: shareId, vault_id: vaultId, user_email: cleanEmail, email: cleanEmail, role: shareRole, created_at: now };
     } else {
       const existing = Object.values(this.jsonStore.vault_shares).find(
         s => s.vault_id === vaultId && s.user_email.toLowerCase() === cleanEmail
@@ -599,7 +599,7 @@ class DatabaseManager {
         return existing;
       }
       const shareId = 'shr_' + crypto.randomBytes(8).toString('hex');
-      const newShare = { id: shareId, vault_id: vaultId, user_email: cleanEmail, role: shareRole, invited_by: invitedBy, created_at: now };
+      const newShare = { id: shareId, vault_id: vaultId, user_email: cleanEmail, email: cleanEmail, role: shareRole, invited_by: invitedBy, created_at: now };
       this.jsonStore.vault_shares[shareId] = newShare;
       this.saveJsonStore();
       return newShare;
@@ -1429,7 +1429,7 @@ async function handleApiRequest(req, res, pathname, url) {
       // Đảm bảo người dùng luôn có ít nhất 1 Sổ Cá Nhân ban đầu
       const vaults = dbManager.getUserVaults(user.id, user.email);
       if (vaults.length === 0) {
-        dbManager.createVault(`Sổ của ${user.name}`, user.id);
+        dbManager.createVault('Sổ mặc định', user.id);
       }
 
       const session = dbManager.createSession(user.id, 90);
@@ -1472,7 +1472,7 @@ async function handleApiRequest(req, res, pathname, url) {
       // Đảm bảo người dùng luôn có ít nhất 1 Sổ Cá Nhân ban đầu
       const vaults = dbManager.getUserVaults(user.id, user.email);
       if (vaults.length === 0) {
-        dbManager.createVault('Sổ của ' + user.name, user.id);
+        dbManager.createVault('Sổ mặc định', user.id);
       }
 
       const session = dbManager.createSession(user.id, 90);
@@ -1599,7 +1599,7 @@ async function handleApiRequest(req, res, pathname, url) {
   if (req.method === 'GET' && pathname === '/api/vaults') {
     let vaults = dbManager.getUserVaults(currentUser.id, currentUser.email);
     if (vaults.length === 0) {
-      const newV = dbManager.createVault(`Sổ của ${currentUser.name}`, currentUser.id);
+      const newV = dbManager.createVault('Sổ mặc định', currentUser.id);
       vaults = [newV];
     }
     return sendJson(res, 200, { vaults });
@@ -1666,7 +1666,7 @@ async function handleApiRequest(req, res, pathname, url) {
         return sendJson(res, 403, { error: 'Chỉ Chủ sổ hoặc Editor mới có quyền đổi tên sổ' });
       }
       const body = await parseJsonBody(req);
-      const updated = dbManager.renameVault(vaultId, (body.name || '').trim() || 'Sổ Thu Chi');
+      const updated = dbManager.renameVault(vaultId, (body.name || '').trim() || 'Sổ mặc định');
       return sendJson(res, 200, { success: true, vault: updated });
     }
 
@@ -1744,7 +1744,7 @@ async function handleApiRequest(req, res, pathname, url) {
       return sendJson(res, 200, {
         vault: {
           id: vaultId,
-          name: vaultInfo?.name || 'Sổ',
+          name: vaultInfo?.name || 'Sổ mặc định',
           role: role,
           version: vaultData?.version || 1,
           updated_at: vaultData?.updated_at || vaultInfo?.updated_at,

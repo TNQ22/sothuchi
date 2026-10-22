@@ -315,23 +315,27 @@ body:has(#view-account-provider.active) .app-header {
 
 .header-brand-logo-btn {
   position: relative;
-  width: 36px;
-  height: 36px;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
   padding: 0;
   cursor: pointer;
-  border-radius: 0;
+  border-radius: 6px;
   flex-shrink: 0;
   outline: none;
   transition: transform 0.2s ease;
+  min-width: 40px;
+  max-width: 58px;
+  height: 40px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .header-brand-logo-btn:hover {
-  transform: scale(1.05);
+  transform: translateY(-1px);
   background: transparent;
   border: none;
 }
@@ -340,9 +344,27 @@ body:has(#view-account-provider.active) .app-header {
   transform: scale(0.95);
 }
 
+.header-brand-logo-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, margin 0.2s ease;
+}
+
+/* Nâng logo cao lên để có chỗ hiển thị thông tin sổ */
+.header-brand-logo-btn.has-vault-name .header-brand-logo-wrap,
+.header-brand-logo-btn.has-multi-vaults .header-brand-logo-wrap {
+  transform: translateY(-2px);
+  margin-top: -1px;
+}
+
 .header-brand-logo {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   display: block !important;
   flex-shrink: 0;
   object-fit: contain;
@@ -350,31 +372,32 @@ body:has(#view-account-provider.active) .app-header {
 }
 
 .header-brand-logo.is-app-logo {
-  filter: drop-shadow(0 2px 6px rgba(13, 148, 136, 0.3));
+  filter: drop-shadow(0 2px 5px rgba(16, 185, 129, 0.3));
 }
 
 .header-brand-logo.is-google-avatar {
   border-radius: 50%;
-  border: 1.5px solid var(--primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+  border: 1.5px solid var(--primary, #10b981);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
 }
 
 .header-brand-logo.is-dropbox-avatar {
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1.5px solid #0061ff;
-  box-shadow: 0 2px 8px rgba(0, 97, 255, 0.25);
+  box-shadow: 0 2px 6px rgba(0, 97, 255, 0.25);
   background: #0061ff;
   padding: 2px;
 }
 
+.header-brand-logo-wrap .sync-status-dot,
 .header-brand-logo-btn .sync-status-dot {
   position: absolute;
   bottom: -1px;
   right: -1px;
   top: auto;
   left: auto;
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   border: 2px solid var(--bg-surface, #ffffff);
   box-sizing: content-box;
@@ -382,9 +405,52 @@ body:has(#view-account-provider.active) .app-header {
   pointer-events: none;
 }
 
+body.dark .header-brand-logo-wrap .sync-status-dot,
+[data-theme="dark"] .header-brand-logo-wrap .sync-status-dot,
 body.dark .header-brand-logo-btn .sync-status-dot,
 [data-theme="dark"] .header-brand-logo-btn .sync-status-dot {
   border-color: #1e293b;
+}
+
+/* Thông tin sổ đặt bên dưới logo: hiển thị gọn, thu nhỏ chữ theo chiều dài, dài quá thì ẩn, xoá bỏ icon */
+.header-vault-subtext {
+  display: block;
+  width: 100%;
+  max-width: 54px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #10b981;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.1;
+  margin-top: 0px;
+  letter-spacing: -0.2px;
+  pointer-events: none;
+  transition: color 0.15s ease;
+}
+
+.vault-subtext-name {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-brand-logo-btn:hover .header-vault-subtext {
+  color: #34d399;
+}
+
+[data-theme="light"] .header-vault-subtext,
+body.light .header-vault-subtext {
+  color: #059669;
+}
+
+[data-theme="light"] .header-brand-logo-btn:hover .header-vault-subtext,
+body.light .header-brand-logo-btn:hover .header-vault-subtext {
+  color: #047857;
 }
 
 .page-title-badge {
@@ -9349,89 +9415,12 @@ html, body {
   z-index: 4;
 }
 
+/* Tương thích ngược: ẩn .header-vault-pill vì đã tích hợp thành subtext dưới logo */
 .header-vault-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 9px 4px 7px;
-  background: rgba(99, 102, 241, 0.12);
-  border: 1px solid rgba(99, 102, 241, 0.32);
-  border-radius: 20px;
-  color: var(--text-primary, #f8fafc);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  white-space: nowrap;
-  outline: none;
-  max-width: 145px;
-  flex-shrink: 0;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
+  display: none !important;
 }
 
-.header-vault-pill:hover {
-  background: rgba(99, 102, 241, 0.22);
-  border-color: rgba(99, 102, 241, 0.55);
-  transform: translateY(-1px);
-}
-
-.header-vault-pill:active {
-  transform: scale(0.97);
-}
-
-.header-vault-pill .vault-pill-icon {
-  width: 13px;
-  height: 13px;
-  color: #818cf8;
-  flex-shrink: 0;
-}
-
-.header-vault-pill .vault-pill-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-primary, #f8fafc);
-  line-height: 1.2;
-}
-
-.header-vault-pill .vault-pill-chevron {
-  width: 11px;
-  height: 11px;
-  color: var(--text-muted, #94a3b8);
-  flex-shrink: 0;
-  opacity: 0.8;
-}
-
-[data-theme="light"] .header-vault-pill,
-body.light .header-vault-pill {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: rgba(99, 102, 241, 0.25);
-  color: #3730a3;
-}
-
-[data-theme="light"] .header-vault-pill .vault-pill-icon,
-body.light .header-vault-pill .vault-pill-icon {
-  color: #4f46e5;
-}
-
-[data-theme="light"] .header-vault-pill .vault-pill-text,
-body.light .header-vault-pill .vault-pill-text {
-  color: #1e1b4b;
-}
-
-@media (max-width: 480px) {
-  .header-vault-pill {
-    max-width: 110px;
-    padding: 3px 7px 3px 6px;
-    font-size: 0.72rem;
-  }
-  .tx-header-vault-pill {
-    max-width: 95px;
-  }
-}
-
-/* Quick Vault Switcher in Sync Popover */
+/* Quick Vault Switcher in Sync Popover (Tông màu xanh lục chủ đạo) */
 .sync-popover-vault-container {
   margin-bottom: 12px;
   padding: 8px 10px;
@@ -9461,8 +9450,8 @@ body.light .header-vault-pill .vault-pill-text {
   font-weight: 600;
   padding: 1px 7px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.16);
-  color: #818cf8;
+  background: rgba(16, 185, 129, 0.16);
+  color: #10b981;
 }
 
 .sync-popover-vault-list {
@@ -9498,13 +9487,13 @@ body.light .header-vault-pill .vault-pill-text {
 
 .sync-vault-item:hover {
   background: var(--bg-hover, #1e293b);
-  border-color: rgba(99, 102, 241, 0.35);
+  border-color: rgba(16, 185, 129, 0.35);
   transform: translateY(-1px);
 }
 
 .sync-vault-item.active {
-  background: rgba(99, 102, 241, 0.12);
-  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.5);
   cursor: default;
 }
 
@@ -9538,8 +9527,8 @@ body.light .header-vault-pill .vault-pill-text {
 }
 
 .sync-vault-item.active .sync-vault-item-icon {
-  background: rgba(99, 102, 241, 0.2);
-  color: #818cf8;
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
 }
 
 .sync-vault-item-info {
@@ -9564,6 +9553,7 @@ body.light .header-vault-pill .vault-pill-text {
   margin-top: 2px;
 }
 
+/* Role Pills: Chủ sổ (Xanh lục), Chỉ xem (Vàng), Chỉnh sửa (Xanh dương) */
 .sync-vault-role-pill {
   font-size: 0.68rem !important;
   font-weight: 600 !important;
@@ -9574,26 +9564,29 @@ body.light .header-vault-pill .vault-pill-text {
   align-items: center !important;
 }
 
+/* 1. Chủ sổ: Màu xanh lục */
 .sync-vault-role-pill.owner {
-  background: rgba(168, 85, 247, 0.16) !important;
-  color: #c084fc !important;
-  border: 1px solid rgba(168, 85, 247, 0.28) !important;
-}
-
-body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.owner {
-  color: #7c3aed !important;
-}
-
-.sync-vault-role-pill.editor {
   background: rgba(16, 185, 129, 0.16) !important;
   color: #34d399 !important;
   border: 1px solid rgba(16, 185, 129, 0.28) !important;
 }
 
-body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.editor {
+body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.owner {
   color: #059669 !important;
 }
 
+/* 2. Chỉnh sửa: Màu xanh dương */
+.sync-vault-role-pill.editor {
+  background: rgba(59, 130, 246, 0.16) !important;
+  color: #60a5fa !important;
+  border: 1px solid rgba(59, 130, 246, 0.28) !important;
+}
+
+body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.editor {
+  color: #2563eb !important;
+}
+
+/* 3. Chỉ xem: Màu vàng */
 .sync-vault-role-pill.viewer {
   background: rgba(245, 158, 11, 0.16) !important;
   color: #fbbf24 !important;
@@ -9614,10 +9607,10 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   gap: 3px;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #818cf8;
+  color: #10b981;
   padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(99, 102, 241, 0.16);
+  background: rgba(16, 185, 129, 0.16);
 }
 
 .sync-vault-switch-btn {
@@ -9643,7 +9636,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 
 .vault-item-switching-text {
   font-size: 0.7rem;
-  color: #818cf8;
+  color: #10b981;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -11676,19 +11669,18 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 }
 
 .ptr-circle-badge {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(30, 41, 59, 0.94);
-  color: var(--text-primary, #f8fafc);
-  border: 1.5px solid var(--border-color, rgba(255, 255, 255, 0.14));
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  transition: border-color 0.2s ease, color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  background: transparent !important;
+  color: var(--text-muted, #94a3b8);
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition: color 0.2s ease, transform 0.15s ease;
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
@@ -11697,17 +11689,17 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 
 body.light .ptr-circle-badge,
 [data-theme="light"] .ptr-circle-badge {
-  background: rgba(255, 255, 255, 0.95);
-  color: #0f172a;
-  border-color: rgba(0, 0, 0, 0.12);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  background: transparent !important;
+  color: #64748b;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .ptr-indicator.ready .ptr-circle-badge {
-  border-color: var(--primary, #0d9488);
-  color: var(--primary, #0d9488);
-  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.4);
-  transform: scale(1.08);
+  border: none !important;
+  color: #10b981 !important;
+  box-shadow: none !important;
+  transform: scale(1.15);
 }
 
 .ptr-dots-spinner {
@@ -12008,6 +12000,17 @@ body.light .ptr-circle-badge,
   border: 1px solid transparent !important;
 }
 
+/* Chia sẻ sổ: Xanh lục (Emerald Green) */
+.btn-vault-icon.btn-vault-share {
+  color: #059669 !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+}
+.btn-vault-icon.btn-vault-share:hover {
+  background: rgba(16, 185, 129, 0.22) !important;
+  transform: scale(1.08) !important;
+}
+
 /* Đổi tên: Xanh dương (Blue) */
 .btn-vault-icon.btn-vault-rename {
   color: #2563eb !important;
@@ -12178,9 +12181,9 @@ body.light .ptr-circle-badge,
 
 .btn-share-role-icon.role-btn-viewer.active,
 .btn-share-role-icon.active[data-role="viewer"] {
-  background: #059669 !important;
+  background: #d97706 !important;
   color: #ffffff !important;
-  box-shadow: 0 1px 4px rgba(5, 150, 105, 0.35) !important;
+  box-shadow: 0 1px 4px rgba(217, 119, 6, 0.35) !important;
 }
 
 /* Viền bao sát màn hình trên di động */

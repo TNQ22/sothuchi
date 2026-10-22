@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1792590299261">
+  <link rel="stylesheet" href="./css/style.css?v=1792655571898">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1218,14 +1218,13 @@
             <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
           </button>
           <button type="button" id="header-brand-logo-btn" class="header-brand-logo-btn" title="Trạng thái sao lưu & đồng bộ" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
-            <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="header-brand-logo">
-            <span class="sync-status-dot" id="header-sync-dot"></span>
-            <span class="header-vault-badge-count" id="header-vault-badge-count" style="display: none;"></span>
-          </button>
-          <button type="button" id="header-vault-pill" class="header-vault-pill" style="display: none;" title="Đổi sổ làm việc nhanh" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
-            <i data-lucide="book-marked" class="vault-pill-icon"></i>
-            <span class="vault-pill-text" id="header-vault-name">Sổ chính</span>
-            <i data-lucide="chevrons-up-down" class="vault-pill-chevron"></i>
+            <div class="header-brand-logo-wrap">
+              <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="header-brand-logo">
+              <span class="sync-status-dot" id="header-sync-dot"></span>
+            </div>
+            <span id="header-vault-pill" class="header-vault-subtext" style="display: none;">
+              <span class="vault-subtext-name" id="header-vault-name">Sổ mặc định</span>
+            </span>
           </button>
           <h2 id="header-page-title" class="page-title-badge">Tổng Quan Tài Chính</h2>
         </div>
@@ -1302,7 +1301,7 @@
 
       <!-- Pull to refresh indicator (Vòng tròn gồm các chấm mô phỏng kéo tay - Apple Style) -->
       <div id="pull-to-refresh-indicator" class="ptr-indicator" style="position: fixed; left: 0; right: 0; top: 0; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 38; opacity: 0; transform: translate3d(0, 0, 0); will-change: transform, opacity;">
-        <div class="ptr-circle-badge" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(30, 41, 59, 0.94); color: #f8fafc; border: 1.5px solid rgba(255, 255, 255, 0.14); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); user-select: none; -webkit-user-select: none; flex-shrink: 0;">
+        <div class="ptr-circle-badge" style="display: flex; align-items: center; justify-content: center; background: transparent; color: var(--text-muted, #94a3b8); border: none; box-shadow: none; user-select: none; -webkit-user-select: none; flex-shrink: 0;">
           <svg class="ptr-dots-spinner" viewBox="0 0 24 24" width="22" height="22" style="display: block; transform-origin: center center;">
             <circle class="ptr-dot ptr-dot-0" cx="12.00" cy="4.20" r="1.45" fill="currentColor" style="opacity: 0.7;"></circle>
             <circle class="ptr-dot ptr-dot-1" cx="15.90" cy="5.24" r="1.45" fill="currentColor" style="opacity: 0.18;"></circle>
@@ -2616,40 +2615,9 @@
                     </div>
                   </div>
 
-                  <!-- 3. Chia sẻ Sổ Cho Thành Viên (Email Google) - Đồng bộ viền bao chuẩn server-vault-section-box -->
-                  <div id="server-sharing-panel" class="server-vault-section-box" style="display: none;">
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-weight: 600; font-size: 0.88rem; color: var(--text-primary);">
-                      <i data-lucide="user-plus" style="width: 15px; height: 15px; color: var(--primary);"></i>
-                      <span>Chia Sẻ Sổ Cho Thành Viên</span>
-                    </div>
-
-                    <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 10px;">
-                      <!-- Ô nhập email mở rộng tối đa diện tích hiển thị -->
-                      <input type="email" id="settings-server-share-email" class="form-control" placeholder="Email Google thành viên (vd: banbe@gmail.com)" style="flex: 1; min-width: 0; font-size: 0.82rem; padding: 7px 10px;">
-                      
-                      <!-- Cụm chọn quyền bằng icon gọn gàng: Bút (Ghi chép) / Mắt (Chỉ xem) -->
-                      <div class="share-role-icon-segmented" id="server-share-role-group">
-                        <button type="button" class="btn-share-role-icon role-btn-editor active" data-role="editor" title="Quyền Ghi Chép (Editor: Thêm, sửa, xóa giao dịch)">
-                          <i data-lucide="pencil" style="width: 13px; height: 13px;"></i>
-                        </button>
-                        <button type="button" class="btn-share-role-icon role-btn-viewer" data-role="viewer" title="Quyền Chỉ Xem (Viewer: Không được chỉnh sửa)">
-                          <i data-lucide="eye" style="width: 13px; height: 13px;"></i>
-                        </button>
-                        <input type="hidden" id="settings-server-share-role" value="editor">
-                      </div>
-
-                      <!-- Nút mời -->
-                      <button type="button" id="btn-server-add-share" class="btn-primary btn-sm" style="white-space: nowrap; width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Mời thành viên">
-                        <i data-lucide="send" style="width: 14px; height: 14px;"></i>
-                      </button>
-                    </div>
-
-                    <div id="server-shares-container">
-                      <div style="font-size: 0.76rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Thành viên đang tham gia:</div>
-                      <div id="server-shares-list" style="display: flex; flex-direction: column; gap: 6px;">
-                        <div style="font-size: 0.78rem; color: var(--text-muted); font-style: italic;">Chưa có thành viên nào được chia sẻ.</div>
-                      </div>
-                    </div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); padding: 4px 6px; display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                    <i data-lucide="info" style="width: 14px; height: 14px; flex-shrink: 0; color: #10b981;"></i>
+                    <span>Mẹo: Nhấn nút biểu tượng chia sẻ (<i data-lucide="user-plus" style="width: 12px; height: 12px; vertical-align: middle; color: #10b981;"></i>) trên từng cuốn sổ để mời thành viên độc lập cho riêng sổ đó.</span>
                   </div>
 
                   <!-- Select ẩn cho tương thích ngược -->
@@ -2961,14 +2929,13 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
               </button>
               <button type="button" id="tx-brand-logo-btn" class="header-brand-logo-btn" title="Trạng thái sao lưu & đồng bộ" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
-                <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="tx-brand-logo">
-                <span class="sync-status-dot" id="tx-sync-dot"></span>
-                <span class="header-vault-badge-count" id="tx-vault-badge-count" style="display: none;"></span>
-              </button>
-              <button type="button" id="tx-vault-pill" class="header-vault-pill tx-header-vault-pill" style="display: none;" title="Đổi sổ làm việc nhanh" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
-                <i data-lucide="book-marked" class="vault-pill-icon"></i>
-                <span class="vault-pill-text" id="tx-vault-name">Sổ chính</span>
-                <i data-lucide="chevrons-up-down" class="vault-pill-chevron"></i>
+                <div class="header-brand-logo-wrap">
+                  <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="tx-brand-logo">
+                  <span class="sync-status-dot" id="tx-sync-dot"></span>
+                </div>
+                <span id="tx-vault-pill" class="header-vault-subtext" style="display: none;">
+                  <span class="vault-subtext-name" id="tx-vault-name">Sổ mặc định</span>
+                </span>
               </button>
               <button type="button" class="btn-icon tx-header-btn" onclick="UITransactions.openHistoryView()" title="Lịch sử ghi chép">
                 <i data-lucide="history" style="width: 19px; height: 19px; color: var(--text-secondary);"></i>
@@ -6080,7 +6047,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
     <div class="modal-dialog" style="max-width: 580px;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
-          <div style="width: 34px; height: 34px; border-radius: 8px; background: rgba(168, 85, 247, 0.15); display: flex; align-items: center; justify-content: center; color: #a855f7;">
+          <div style="width: 34px; height: 34px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); display: flex; align-items: center; justify-content: center; color: #10b981;">
             <i data-lucide="history" style="width: 18px; height: 18px;"></i>
           </div>
           <div>
@@ -6104,6 +6071,82 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
       <div class="modal-footer" style="padding: 10px 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; font-size: 0.76rem; color: var(--text-muted); background: var(--bg-card);">
         <span>Tự động lưu giữ 20 bản snapshot gần nhất</span>
         <button type="button" class="btn-secondary btn-sm" onclick="UISettings.closeVaultHistoryModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Chia Sẻ Sổ Máy Chủ Riêng (Modal Theo Từng Sổ) -->
+  <div id="modal-server-vault-share" class="modal-overlay">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); display: flex; align-items: center; justify-content: center; color: #10b981;">
+            <i data-lucide="user-plus" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div>
+            <h3 id="server-share-modal-title" class="modal-title" style="font-size: 1.05rem; margin-bottom: 2px;">Chia Sẻ Sổ</h3>
+            <p id="server-share-vault-name" style="font-size: 0.78rem; color: var(--text-muted); margin: 0;">Sổ: Đang tải...</p>
+          </div>
+        </div>
+        <button class="btn-icon" onclick="UISettings.closeVaultShareModal()"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="modal-body" style="padding: 16px 18px; max-height: 70vh; overflow-y: auto;">
+        <!-- 1. Form thêm thành viên (Chỉ hiển thị cho Chủ Sổ) -->
+        <div id="server-share-form-wrap" class="server-vault-section-box" style="margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-weight: 600; font-size: 0.88rem; color: var(--text-primary);">
+            <i data-lucide="user-plus" style="width: 15px; height: 15px; color: #10b981;"></i>
+            <span>Mời Thành Viên Mới</span>
+          </div>
+          <div style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 10px;">
+            Thành viên chỉ cần đăng nhập máy chủ bằng email Google này để vào chung sổ.
+          </div>
+
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <input type="email" id="modal-server-share-email" class="form-control" placeholder="Email Google thành viên (vd: banbe@gmail.com)" style="flex: 1; min-width: 0; font-size: 0.82rem; padding: 7px 10px;">
+
+            <!-- Cụm chọn quyền bằng icon: Bút (Ghi chép) / Mắt (Chỉ xem) -->
+            <div class="share-role-icon-segmented" id="modal-server-share-role-group">
+              <button type="button" class="btn-share-role-icon role-btn-editor active" data-role="editor" title="Quyền Chỉnh Sửa (Editor: Thêm, sửa, xóa giao dịch)">
+                <i data-lucide="pencil" style="width: 13px; height: 13px;"></i>
+              </button>
+              <button type="button" class="btn-share-role-icon role-btn-viewer" data-role="viewer" title="Quyền Chỉ Xem (Viewer: Không được chỉnh sửa)">
+                <i data-lucide="eye" style="width: 13px; height: 13px;"></i>
+              </button>
+              <input type="hidden" id="modal-server-share-role" value="editor">
+            </div>
+
+            <!-- Nút gửi lời mời -->
+            <button type="button" id="btn-modal-server-add-share" class="btn-primary btn-sm" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Mời thành viên">
+              <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. Danh sách thành viên đang tham gia -->
+        <div class="server-vault-section-box" style="margin-bottom: 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="font-size: 0.86rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="users" style="width: 15px; height: 15px; color: #2563eb;"></i>
+              <span>Thành Viên Đang Tham Gia</span>
+            </div>
+            <span id="modal-server-share-count" class="badge" style="font-size: 0.7rem; padding: 2px 7px; background: rgba(59, 130, 246, 0.12); color: #3b82f6; border-radius: 9999px;">0 thành viên</span>
+          </div>
+
+          <div id="modal-server-share-loading" style="text-align: center; padding: 18px; color: var(--text-muted); font-size: 0.82rem;">
+            <i data-lucide="loader" class="spin" style="width: 20px; height: 20px; margin: 0 auto 6px; display: block;"></i>
+            Đang tải danh sách thành viên...
+          </div>
+          <div id="modal-server-share-empty" style="display: none; text-align: center; padding: 18px; color: var(--text-muted); font-size: 0.82rem; font-style: italic;">
+            Chưa có thành viên nào được chia sẻ sổ này.
+          </div>
+          <div id="modal-server-share-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 10px 18px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; font-size: 0.76rem; color: var(--text-muted); background: var(--bg-card);">
+        <span>Chỉ áp dụng quyền truy cập cho riêng cuốn sổ này</span>
+        <button type="button" class="btn-secondary btn-sm" onclick="UISettings.closeVaultShareModal()">Đóng</button>
       </div>
     </div>
   </div>
@@ -6432,10 +6475,10 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/db.js?v=2.8.0"></script>
   <script src="./js/google-drive.js?v=2.8.0"></script>
   <script src="./js/dropbox.js?v=2.8.0"></script>
-  <script src="./js/server-sync.js?v=2.8.0"></script>
+  <script src="./js/server-sync.js?v=1792655571898"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.8.0"></script>
-  <script src="./js/sync-coordinator.js?v=2.8.0"></script>
+  <script src="./js/sync-coordinator.js?v=1792655571898"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.8.0"></script>
@@ -6445,12 +6488,12 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/ui-share.js?v=2.8.0"></script>
   <script src="./js/ui-budgets.js?v=2.8.0"></script>
   <script src="./js/ui-analytics.js?v=2.8.0"></script>
-  <script src="./js/ui-settings.js?v=1792590299261"></script>
+  <script src="./js/ui-settings.js?v=1792655571898"></script>
   <script src="./js/server-auth-modals.js?v=2.8.0"></script>
 
   <!-- Main Entry Coordinator -->
   <script src="./js/pull-to-refresh.js?v=2.8.2"></script>
-  <script src="./js/app.js?v=2.8.0"></script>
+  <script src="./js/app.js?v=1792655571898"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
   <script>

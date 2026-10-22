@@ -445,7 +445,7 @@ class SyncCoordinator {
 
         vaultList.innerHTML = vaults.map(v => {
           const isActive = v.id === activeVaultId;
-          const roleLabel = v.role === 'owner' ? 'Chủ sổ' : (v.role === 'editor' ? 'Ghi chép' : 'Chỉ xem');
+          const roleLabel = v.role === 'owner' ? 'Chủ sổ' : (v.role === 'editor' ? 'Chỉnh sửa' : 'Chỉ xem');
           const roleClass = v.role || 'owner';
           const safeId = typeof escapeHTML === 'function' ? escapeHTML(v.id) : v.id;
           const safeName = typeof escapeHTML === 'function' ? escapeHTML(v.name) : v.name;
@@ -563,36 +563,42 @@ class SyncCoordinator {
     const headerBtn = document.getElementById('header-brand-logo-btn');
     const txBtn = document.getElementById('tx-brand-logo-btn');
 
-    const vaultNameText = activeVault ? activeVault.name : (vaults[0]?.name || 'Sổ chính');
+    const vaultNameText = activeVault ? activeVault.name : (vaults[0]?.name || 'Sổ mặc định');
 
-    if (hasMultiVaults) {
+    const hasServerVault = !!(sService && sService.token && (vaults.length > 0 || activeVault));
+
+    if (hasServerVault || hasMultiVaults) {
       if (headerPill) {
-        headerPill.style.display = 'inline-flex';
-        headerPill.setAttribute('title', `Sổ hiện tại: ${vaultNameText} (${vaults.length} sổ - Bấm để đổi)`);
+        headerPill.style.display = 'block';
+        headerPill.setAttribute('title', `Sổ: ${vaultNameText}${hasMultiVaults ? ` (${vaults.length} sổ - Bấm để đổi)` : ''}`);
       }
       if (txPill) {
-        txPill.style.display = 'inline-flex';
-        txPill.setAttribute('title', `Sổ hiện tại: ${vaultNameText} (${vaults.length} sổ - Bấm để đổi)`);
+        txPill.style.display = 'block';
+        txPill.setAttribute('title', `Sổ: ${vaultNameText}${hasMultiVaults ? ` (${vaults.length} sổ - Bấm để đổi)` : ''}`);
       }
       if (headerName) headerName.textContent = vaultNameText;
       if (txName) txName.textContent = vaultNameText;
 
       if (headerBadge) {
         headerBadge.textContent = vaults.length;
-        headerBadge.style.display = 'flex';
+        headerBadge.style.display = hasMultiVaults ? 'flex' : 'none';
       }
       if (txBadge) {
         txBadge.textContent = vaults.length;
-        txBadge.style.display = 'flex';
+        txBadge.style.display = hasMultiVaults ? 'flex' : 'none';
       }
 
       if (headerBtn) {
-        headerBtn.classList.add('has-multi-vaults');
-        headerBtn.setAttribute('title', `Sổ: ${vaultNameText} (${vaults.length} sổ) - Bấm để đổi sổ hoặc xem đồng bộ`);
+        headerBtn.classList.add('has-vault-name');
+        if (hasMultiVaults) headerBtn.classList.add('has-multi-vaults');
+        else headerBtn.classList.remove('has-multi-vaults');
+        headerBtn.setAttribute('title', `Sổ: ${vaultNameText}${hasMultiVaults ? ` (${vaults.length} sổ)` : ''} - Bấm để đổi sổ hoặc xem đồng bộ`);
       }
       if (txBtn) {
-        txBtn.classList.add('has-multi-vaults');
-        txBtn.setAttribute('title', `Sổ: ${vaultNameText} (${vaults.length} sổ) - Bấm để đổi sổ hoặc xem đồng bộ`);
+        txBtn.classList.add('has-vault-name');
+        if (hasMultiVaults) txBtn.classList.add('has-multi-vaults');
+        else txBtn.classList.remove('has-multi-vaults');
+        txBtn.setAttribute('title', `Sổ: ${vaultNameText}${hasMultiVaults ? ` (${vaults.length} sổ)` : ''} - Bấm để đổi sổ hoặc xem đồng bộ`);
       }
     } else {
       if (headerPill) headerPill.style.display = 'none';
@@ -601,11 +607,11 @@ class SyncCoordinator {
       if (txBadge) txBadge.style.display = 'none';
 
       if (headerBtn) {
-        headerBtn.classList.remove('has-multi-vaults');
+        headerBtn.classList.remove('has-vault-name', 'has-multi-vaults');
         headerBtn.setAttribute('title', 'Trạng thái sao lưu & đồng bộ');
       }
       if (txBtn) {
-        txBtn.classList.remove('has-multi-vaults');
+        txBtn.classList.remove('has-vault-name', 'has-multi-vaults');
         txBtn.setAttribute('title', 'Trạng thái sao lưu & đồng bộ');
       }
     }
