@@ -268,10 +268,10 @@ input, textarea, select, button {
 /* Top App Header */
 .app-header {
   min-height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
-  padding-top: max(16px, env(safe-area-inset-top, 0px));
-  padding-bottom: 12px;
-  padding-left: max(20px, env(safe-area-inset-left, 0px));
-  padding-right: max(20px, env(safe-area-inset-right, 0px));
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  padding-bottom: 8px;
+  padding-left: max(14px, env(safe-area-inset-left, 14px));
+  padding-right: max(14px, env(safe-area-inset-right, 14px));
   /* Solid background — NO backdrop-filter to avoid iOS GPU compositing layer cache issues */
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
@@ -281,6 +281,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-sizing: border-box;
 }
 
 body.view-new-transaction .app-header,
@@ -453,10 +454,32 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
   color: #047857;
 }
 
+/* Centered Header Title for all pages */
+.app-header-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: calc(100% - 150px);
+  z-index: 50;
+  pointer-events: none;
+  text-align: center;
+}
+
 .page-title-badge {
-  font-size: 1.25rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--text-primary);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.2px;
+  line-height: 1.2;
+  margin: 0;
+  padding: 0;
 }
 
 .header-actions {
@@ -1822,6 +1845,12 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
     top: auto !important;
     z-index: 40 !important;
     width: 100% !important;
+    min-height: calc(52px + env(safe-area-inset-top, 0px)) !important;
+    padding-top: max(8px, env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: 8px !important;
+    padding-left: max(14px, env(safe-area-inset-left, 14px)) !important;
+    padding-right: max(14px, env(safe-area-inset-right, 14px)) !important;
+    box-sizing: border-box !important;
   }
 
   /* Tất cả các tab chính đều cuộn độc lập bên trên thanh menu dưới */
@@ -1833,7 +1862,7 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior-y: none !important;
-    padding: 12px 10px 18px 10px !important;
+    padding: 12px 14px 20px 14px !important;
     box-sizing: border-box !important;
     max-width: 100% !important;
     width: 100% !important;
@@ -1884,13 +1913,13 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
     margin: 0 !important;
   }
 
-  #view-new-transaction .tx-page-body {
+    #view-new-transaction .tx-page-body {
     flex: 1 1 0% !important;
     min-height: 0 !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior-y: none !important;
-    padding: 10px 12px 6px 12px !important;
+    padding: 12px 14px 8px 14px !important;
     display: flex !important;
     flex-direction: column !important;
     gap: 8px !important;
@@ -1899,7 +1928,7 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
   #view-new-transaction .tx-bottom-action-row {
     flex-shrink: 0 !important;
     margin-top: auto !important;
-    padding: 8px 12px 10px 12px !important;
+    padding: 8px 14px 10px 14px !important;
     display: flex !important;
     gap: 10px !important;
     align-items: center !important;
@@ -1908,41 +1937,49 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
   }
 
   .tx-page-header {
-    padding: 6px 8px !important;
-    padding-top: max(6px, env(safe-area-inset-top, 0px)) !important;
-    padding-left: max(4px, env(safe-area-inset-left, 0px)) !important;
-    padding-right: max(6px, env(safe-area-inset-right, 0px)) !important;
-    gap: 4px !important;
+    min-height: calc(52px + env(safe-area-inset-top, 0px)) !important;
+    padding-top: max(8px, env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: 8px !important;
+    padding-left: max(14px, env(safe-area-inset-left, 14px)) !important;
+    padding-right: max(14px, env(safe-area-inset-right, 14px)) !important;
+    gap: 8px !important;
+    background: var(--bg-surface) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    box-sizing: border-box !important;
   }
 
-  .tx-header-left {
-    gap: 4px !important;
+  .tx-header-left,
+  .header-left {
+    gap: 6px !important;
   }
 
-  #tx-brand-logo-btn {
-    min-width: 34px !important;
-    max-width: 48px !important;
-    margin-left: -2px !important;
+  #tx-brand-logo-btn,
+  #header-brand-logo-btn {
+    min-width: 40px !important;
+    max-width: 72px !important;
+    margin-left: 0 !important;
   }
 
-  #tx-brand-logo-btn .header-vault-subtext {
-    max-width: 46px !important;
-    font-size: 0.50rem !important;
+  #tx-brand-logo-btn .header-vault-subtext,
+  #header-brand-logo-btn .header-vault-subtext {
+    max-width: 70px !important;
+    font-size: 0.54rem !important;
   }
 
   #tx-header-history-btn {
-    width: 34px !important;
-    height: 34px !important;
+    width: 36px !important;
+    height: 36px !important;
   }
 
-  .tx-header-right {
-    gap: 4px !important;
-    min-width: 34px !important;
+  .tx-header-right,
+  .header-actions {
+    gap: 6px !important;
+    min-width: 36px !important;
   }
 
   .tx-header-done-btn {
-    width: 34px !important;
-    height: 34px !important;
+    width: 36px !important;
+    height: 36px !important;
   }
 
   .tx-type-dropdown-btn {
@@ -2326,20 +2363,22 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
 
 /* Header of Transaction Page View & Modals */
 .tx-modal-header, .tx-page-header {
-  padding: 8px 10px;
+  min-height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   padding-top: max(8px, env(safe-area-inset-top, 0px));
-  padding-left: max(6px, env(safe-area-inset-left, 0px));
-  padding-right: max(8px, env(safe-area-inset-right, 0px));
+  padding-bottom: 8px;
+  padding-left: max(14px, env(safe-area-inset-left, 14px));
+  padding-right: max(14px, env(safe-area-inset-right, 14px));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--bg-card);
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
   position: sticky;
   top: 0;
   z-index: 20;
+  box-sizing: border-box;
   /* iOS 27: prevent backdrop-filter ghost by using solid opaque background.
      No backdrop-filter here — solid color only. */
   backdrop-filter: none !important;
@@ -2355,14 +2394,14 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
 }
 
 #tx-brand-logo-btn {
-  min-width: 36px;
-  max-width: 52px;
-  margin-left: -2px; /* Đẩy logo gần sát viền màn hình bên trái */
+  min-width: 40px;
+  max-width: 72px;
+  margin-left: 0;
 }
 
 #tx-brand-logo-btn .header-vault-subtext {
-  max-width: 50px;
-  font-size: 0.52rem;
+  max-width: 70px;
+  font-size: 0.54rem;
   overflow: hidden;
   text-overflow: clip;
   letter-spacing: -0.3px;
@@ -5698,12 +5737,12 @@ body.dark .switch .slider {
 @media (max-width: 768px) {
   /* Bóp lề ngoài sát gần mép màn hình hơn */
   #view-accounts.page-view {
-    padding: 10px 8px !important;
+    padding: 12px 14px 20px 14px !important;
   }
 
   /* Khung bao ngoài của từng nhóm tài sản */
   .accounts-group-container {
-    padding: 12px 9px !important; /* Bóp nhỏ lề 2 bên sát viền */
+    padding: 12px 12px !important; /* Bóp nhỏ lề 2 bên sát viền */
     margin-top: 14px !important;
     border-radius: 14px !important;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
@@ -6630,7 +6669,7 @@ html, body {
 /* Mobile Screen Tuning for Transactions View (< 768px): Sát lề như Tài khoản */
 @media (max-width: 768px) {
   #view-transactions.page-view {
-    padding: 10px 8px 16px 8px !important; /* Sát lề nhất có thể y như Tài khoản */
+    padding: 12px 14px 20px 14px !important;
   }
 
   .tx-header-acc-btn {
@@ -8088,7 +8127,7 @@ html, body {
 
 @media (max-width: 768px) {
   #view-budgets.page-view {
-    padding: 8px 12px 16px 12px !important;
+    padding: 12px 14px 20px 14px !important;
   }
 }
 
@@ -9195,11 +9234,11 @@ html, body {
 
 @media (max-width: 768px) {
   #view-dashboard.page-view {
-    padding: 10px 8px 24px 8px; /* Sát viền màn hình như view Tài khoản / Sổ giao dịch */
+    padding: 12px 14px 24px 14px !important;
   }
 
   .card-panel-recent-tx {
-    padding: 12px 6px 10px 6px !important; /* Thu hẹp padding của panel để tận dụng tối đa chiều rộng */
+    padding: 12px 10px 10px 10px !important; /* Thu hẹp padding của panel để tận dụng tối đa chiều rộng */
   }
 
   .card-panel-recent-tx .panel-header {
@@ -10017,7 +10056,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
    ========================================================================== */
 
 #view-settings.page-view {
-  padding: 6px 4px 28px 4px !important;
+  padding: 12px 14px 28px 14px !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
 }
@@ -12287,17 +12326,17 @@ body.light .ptr-circle-badge,
 /* Viền bao sát màn hình trên di động */
 @media (max-width: 768px) {
   #view-settings.page-view {
-    padding: 6px 4px 28px 4px !important;
+    padding: 12px 14px 28px 14px !important;
   }
   .settings-container {
-    padding: 0 2px 28px 2px !important;
+    padding: 0 4px 28px 4px !important;
   }
   .settings-card-clean {
-    padding: 12px 6px !important;
+    padding: 14px 12px !important;
     border-radius: var(--radius-md) !important;
   }
   .server-vault-section-box {
-    padding: 10px 6px !important;
+    padding: 12px 10px !important;
   }
 
   /* Mở rộng các vòng bao xát viền màn hình trong modal chia sẻ & cài đặt */

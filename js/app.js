@@ -750,7 +750,7 @@ class App {
     const titles = {
       dashboard: 'Tổng Quan Tài Chính',
       transactions: 'Sổ Giao Dịch',
-      debts: 'Sổ Vay Nợ (Cho Vay & Đi Vay)',
+      debts: 'Sổ Vay Nợ',
       accounts: 'Tài Khoản',
       budgets: 'Hạn Mức Ngân Sách',
       analytics: 'Báo Cáo & Phân Tích',
@@ -769,6 +769,7 @@ class App {
       'budget-cat-history': 'Lịch Sử Chi Tiêu'
     };
     const titleEl = document.getElementById('header-page-title');
+    const appHeaderCenter = document.getElementById('app-header-center');
     const txHeaderCenter = document.getElementById('tx-header-center');
     const txSearchBtn = document.getElementById('tx-header-search-btn');
     const txSearchBar = document.getElementById('tx-header-search-bar');
@@ -778,6 +779,7 @@ class App {
 
     if (viewId === 'transactions') {
       if (titleEl) titleEl.style.display = 'none';
+      if (appHeaderCenter) appHeaderCenter.style.display = 'none';
       if (txHeaderCenter) txHeaderCenter.style.display = 'flex';
       if (txSearchBtn) txSearchBtn.style.display = 'inline-flex';
       if (txSearchBar) txSearchBar.style.display = 'none';
@@ -800,6 +802,7 @@ class App {
         titleEl.style.display = '';
         titleEl.textContent = titles[viewId] || 'Sổ Thu Chi';
       }
+      if (appHeaderCenter) appHeaderCenter.style.display = 'flex';
       if (txHistoryBackBtn) txHistoryBackBtn.style.display = 'none';
       const brandLogoBtn = document.getElementById('header-brand-logo-btn') || brandLogo;
       if (brandLogoBtn) brandLogoBtn.style.display = 'inline-flex';
@@ -825,6 +828,7 @@ class App {
     const budgetSettingsBtn = document.getElementById('btn-budget-settings');
     if (viewId === 'budgets') {
       if (titleEl) titleEl.style.display = 'none';
+      if (appHeaderCenter) appHeaderCenter.style.display = 'none';
       if (brandLogo) brandLogo.style.display = '';
       if (budgetHeaderCenter) budgetHeaderCenter.style.display = 'flex';
       if (privacyBtn) privacyBtn.style.display = 'none';

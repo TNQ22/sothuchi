@@ -1,6 +1,35 @@
-const CACHE_NAME = 'sothuchi-pwa-v2.9.5';
+const CACHE_NAME = 'sothuchi-pwa-v2.9.6';
 
-const PRECACHE_ASSETS = [\n  './',\n  './index.html',\n  './manifest.json',\n  './css/style.css',\n  './vendor/dexie.min.js',\n  './vendor/chart.umd.min.js',\n  './vendor/lucide.min.js',\n  './js/config.js',\n  './js/custom-dialog.js',\n  './js/db.js',\n  './js/google-drive.js',\n  './js/dropbox.js',\n  './js/server-sync.js',\n  './js/backup.js',\n  './js/sync-coordinator.js',\n  './js/ui-calendar.js',\n  './js/ui-transactions.js',\n  './js/ui-debts.js',\n  './js/ui-accounts.js',\n  './js/ui-share.js',\n  './js/ui-budgets.js',\n  './js/ui-analytics.js',\n  './js/ui-settings.js',\n  './js/server-auth-modals.js',\n  './js/pull-to-refresh.js',\n  './js/app.js',\n  './icons/icon-192.png',\n  './icons/icon-512.png'\n];
+const PRECACHE_ASSETS = [
+  './',
+  './index.html',
+  './manifest.json',
+  './css/style.css',
+  './vendor/dexie.min.js',
+  './vendor/chart.umd.min.js',
+  './vendor/lucide.min.js',
+  './js/config.js',
+  './js/custom-dialog.js',
+  './js/db.js',
+  './js/google-drive.js',
+  './js/dropbox.js',
+  './js/server-sync.js',
+  './js/backup.js',
+  './js/sync-coordinator.js',
+  './js/ui-calendar.js',
+  './js/ui-transactions.js',
+  './js/ui-debts.js',
+  './js/ui-accounts.js',
+  './js/ui-share.js',
+  './js/ui-budgets.js',
+  './js/ui-analytics.js',
+  './js/ui-settings.js',
+  './js/server-auth-modals.js',
+  './js/pull-to-refresh.js',
+  './js/app.js',
+  './icons/icon-192.png',
+  './icons/icon-512.png'
+];
 
 // 1. Cài đặt Service Worker và Cache tĩnh các tài nguyên cốt lõi
 self.addEventListener('install', (event) => {

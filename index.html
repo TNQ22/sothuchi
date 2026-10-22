@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1792674409855">
+  <link rel="stylesheet" href="./css/style.css?v=1792681249125">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -85,7 +85,7 @@
    SETTINGS HUB & SUB-VIEWS REDESIGN (EDGE-TO-EDGE EXPANDED)
    ========================================================================== */
 #view-settings.page-view {
-  padding: 6px 4px 28px 4px !important;
+  padding: 12px 14px 28px 14px !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
 }
@@ -93,7 +93,7 @@
 .settings-container {
   max-width: 720px;
   margin: 0 auto;
-  padding: 2px 2px 32px 2px !important;
+  padding: 2px 0 32px 0 !important;
   width: 100%;
   box-sizing: border-box;
 }
@@ -1226,6 +1226,10 @@
               <span class="vault-subtext-name" id="header-vault-name">Sổ mặc định</span>
             </span>
           </button>
+        </div>
+
+        <!-- Header Center cho Tiêu Đề Các Trang (Căn Giữa Chuẩn Mọi Trang) -->
+        <div id="app-header-center" class="app-header-center">
           <h2 id="header-page-title" class="page-title-badge">Tổng Quan Tài Chính</h2>
         </div>
 
@@ -6527,7 +6531,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- Main Entry Coordinator -->
   <script src="./js/pull-to-refresh.js?v=2.8.2"></script>
-  <script src="./js/app.js?v=1792669466778"></script>
+  <script src="./js/app.js?v=1792681249125"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
   <script>
