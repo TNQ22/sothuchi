@@ -1907,6 +1907,56 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
     border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
   }
 
+  .tx-page-header {
+    padding: 6px 8px !important;
+    padding-top: max(6px, env(safe-area-inset-top, 0px)) !important;
+    padding-left: max(4px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(6px, env(safe-area-inset-right, 0px)) !important;
+    gap: 4px !important;
+  }
+
+  .tx-header-left {
+    gap: 4px !important;
+  }
+
+  #tx-brand-logo-btn {
+    min-width: 34px !important;
+    max-width: 48px !important;
+    margin-left: -2px !important;
+  }
+
+  #tx-brand-logo-btn .header-vault-subtext {
+    max-width: 46px !important;
+    font-size: 0.50rem !important;
+  }
+
+  #tx-header-history-btn {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  .tx-header-right {
+    gap: 4px !important;
+    min-width: 34px !important;
+  }
+
+  .tx-header-done-btn {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  .tx-type-dropdown-btn {
+    max-width: 132px !important;
+    padding: 4px 8px !important;
+    gap: 4px !important;
+    font-size: 0.82rem !important;
+  }
+
+  #tx-type-current-label {
+    max-width: 74px !important;
+    font-size: 0.82rem !important;
+  }
+
   /* Ẩn nút thêm trên thanh tiêu đề trên điện thoại */
   #header-add-btn {
     display: none !important;
@@ -2276,14 +2326,16 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
 
 /* Header of Transaction Page View & Modals */
 .tx-modal-header, .tx-page-header {
-  padding: 10px 14px;
-  padding-top: max(10px, env(safe-area-inset-top, 0px));
+  padding: 8px 10px;
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  padding-left: max(6px, env(safe-area-inset-left, 0px));
+  padding-right: max(8px, env(safe-area-inset-right, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-color);
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
   position: sticky;
   top: 0;
@@ -2297,9 +2349,38 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
 .tx-header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex: 0 0 auto;
-  min-width: 80px;
+  min-width: 0;
+}
+
+#tx-brand-logo-btn {
+  min-width: 36px;
+  max-width: 52px;
+  margin-left: -2px; /* Đẩy logo gần sát viền màn hình bên trái */
+}
+
+#tx-brand-logo-btn .header-vault-subtext {
+  max-width: 50px;
+  font-size: 0.52rem;
+  overflow: hidden;
+  text-overflow: clip;
+  letter-spacing: -0.3px;
+}
+
+#tx-brand-logo-btn .vault-subtext-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+#tx-header-history-btn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
 }
 
 .tx-header-right {
@@ -2307,8 +2388,9 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  flex: 0 0 84px;
-  width: 84px;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 36px;
 }
 
 .tx-header-center {
@@ -2330,6 +2412,7 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   cursor: pointer;
+  flex-shrink: 0;
   transition: all 0.15s;
 }
 
@@ -2342,6 +2425,7 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
   background: var(--primary);
   color: #ffffff;
   border-color: var(--primary);
+  flex-shrink: 0;
 }
 
 .tx-header-done-btn:hover {
@@ -2352,21 +2436,35 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
 .tx-type-dropdown-wrapper {
   position: relative;
   display: inline-block;
+  max-width: 100%;
 }
 
 .tx-type-dropdown-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-full);
-  padding: 6px 14px;
+  padding: 5px 10px;
   color: var(--text-primary);
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
+  max-width: 146px;
+  line-height: 1.15;
+}
+
+#tx-type-current-label {
+  display: inline-block;
+  max-width: 82px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.15;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 .tx-type-dropdown-btn:hover, .tx-type-dropdown-btn:focus {

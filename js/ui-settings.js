@@ -1396,7 +1396,7 @@ const UISettings = {
     // Đăng xuất Máy chủ
     const serverLogoutBtn = document.getElementById('btn-server-logout');
     if (serverLogoutBtn) {
-      serverLogoutBtn.addEventListener('click', () => {
+      serverLogoutBtn.addEventListener('click', async () => {
         if (window.ServerAuthModals) {
           window.ServerAuthModals.openLogoutModal();
         } else if (await showConfirm({
