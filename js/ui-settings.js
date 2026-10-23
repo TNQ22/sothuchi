@@ -544,6 +544,16 @@ const UISettings = {
       }
     }
 
+    // 1.2 Cập nhật đường dẫn Trang Quản Trị Máy Chủ
+    const adminLink = document.getElementById('btn-open-server-admin');
+    if (adminLink) {
+      if (sService.serverUrl && !isSelfHost) {
+        adminLink.href = sService.serverUrl.replace(/\/+$/, '') + '/admin';
+      } else {
+        adminLink.href = '/admin';
+      }
+    }
+
     // 1.5 Cập nhật Mật khẩu Mã Hóa Sổ (E2EE)
     const serverPassInput = document.getElementById('settings-server-vault-password');
     const encBadge = document.getElementById('server-encryption-badge');
@@ -732,7 +742,7 @@ const UISettings = {
           const isEditor = v.role === 'editor';
           const roleClass = isEditor ? 'editor' : 'viewer';
           const roleText = isEditor ? 'Chỉnh sửa' : 'Chỉ xem';
-          const ownerText = v.owner_email ? `<span style="opacity: 0.7; font-size: 0.72rem; margin-left: 5px;">• Từ: ${esc(v.owner_email)}</span>` : '';
+          const ownerText = v.owner_email ? `<span style="opacity: 0.7; font-size: 0.72rem; margin-left: 5px;">Từ: ${esc(v.owner_email)}</span>` : '';
           return `
             <div class="server-vault-row ${isActive ? 'is-active' : ''}" data-vault-id="${v.id}" role="button" tabindex="0" title="${isActive ? 'Sổ đang được chọn' : 'Chạm để chọn sổ này'}">
               <!-- Hàng trên: Tên sổ & Nhãn trạng thái -->

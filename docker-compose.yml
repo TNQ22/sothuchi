@@ -15,6 +15,12 @@ services:
       - PGID=${PGID:-1000}
       # Khóa bí mật JWT (Đọc JWT_SECRET từ .env nếu có)
       - JWT_SECRET=${JWT_SECRET:-sothuchi_super_secure_vault_secret_key_change_me_12345}
+      # --- TÀI KHOẢN QUẢN TRỊ VIÊN MÁY CHỦ SAO LƯU (ADMIN DASHBOARD /admin) ---
+      # Khai báo thông tin đăng nhập quản trị viên để kiểm tra người dùng và dọn rác
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123456}
+      # Danh sách Email Google có quyền Quản trị (ngăn cách bằng dấu phẩy)
+      - ADMIN_EMAILS=${ADMIN_EMAILS:-}
       # Google Client ID cho Backend Máy chủ
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-${VITE_GOOGLE_CLIENT_ID:-}}
       # Tên miền cho phép kết nối CORS (Đọc CORS_ORIGIN từ .env nếu có, mặc định *)

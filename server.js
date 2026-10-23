@@ -47,6 +47,14 @@ const JWT_SECRET = process.env.JWT_SECRET || 'sothuchi_vault_secret_' + crypto.r
 const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || '').trim();
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 
+// Cấu hình tài khoản quản trị viên máy chủ sao lưu (Admin Dashboard)
+const ADMIN_USER = (process.env.ADMIN_USER || 'admin').trim();
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'admin123456').trim();
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
+  .split(',')
+  .map(e => e.trim().toLowerCase())
+  .filter(Boolean);
+
 // Đảm bảo thư mục lưu trữ dữ liệu tồn tại và kiểm tra quyền ghi
 if (!fs.existsSync(DATA_DIR)) {
   try {
@@ -198,6 +206,13 @@ class DatabaseManager {
         CREATE INDEX IF NOT EXISTS idx_share_links_token ON item_share_links(token);
         CREATE INDEX IF NOT EXISTS idx_share_links_lookup ON item_share_links(vault_id, item_type, item_id);
 
+        CREATE TABLE IF NOT EXISTS admin_sessions (
+          token TEXT PRIMARY KEY,
+          username TEXT,
+          expires_at INTEGER,
+          created_at TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS shared_item_projections (
           id TEXT PRIMARY KEY,
           vault_id TEXT NOT NULL,
@@ -228,6 +243,7 @@ class DatabaseManager {
         this.jsonStore.item_shares = Array.isArray(this.jsonStore.item_shares) ? this.jsonStore.item_shares : [];
         this.jsonStore.item_share_links = Array.isArray(this.jsonStore.item_share_links) ? this.jsonStore.item_share_links : [];
         this.jsonStore.shared_item_projections = typeof this.jsonStore.shared_item_projections === 'object' && this.jsonStore.shared_item_projections !== null ? this.jsonStore.shared_item_projections : {};
+        this.jsonStore.admin_sessions = typeof this.jsonStore.admin_sessions === 'object' && this.jsonStore.admin_sessions !== null ? this.jsonStore.admin_sessions : {};
       } catch (e) {
         console.warn('[Storage] Không thể đọc JSON store, khởi tạo mới:', e.message);
       }
@@ -1094,6 +1110,704 @@ class DatabaseManager {
         }));
     }
   }
+
+
+  // ==============================================================================
+  // ADMIN MANAGEMENT METHODS (Quản trị Máy chủ sao lưu & Dọn rác)
+  // ==============================================================================
+  createAdminSession(username, expiresInDays = 7) {
+    const token = 'stc_adm_' + crypto.randomBytes(32).toString('hex');
+    const expiresAt = Date.now() + (expiresInDays * 24 * 60 * 60 * 1000);
+    const now = new Date().toISOString();
+
+    if (this.isSqlite) {
+      this.sqliteDb.prepare(`
+        INSERT INTO admin_sessions (token, username, expires_at, created_at)
+        VALUES (?, ?, ?, ?)
+      `).run(token, username, expiresAt, now);
+    } else {
+      this.jsonStore.admin_sessions = this.jsonStore.admin_sessions || {};
+      this.jsonStore.admin_sessions[token] = { token, username, expires_at: expiresAt, created_at: now };
+      this.saveJsonStore();
+    }
+    return { token, expiresAt };
+  }
+
+  getAdminSession(token) {
+    if (!token) return null;
+    const now = Date.now();
+    if (this.isSqlite) {
+      const stmt = this.sqliteDb.prepare('SELECT * FROM admin_sessions WHERE token = ? AND expires_at > ?');
+      return stmt.get(token, now) || null;
+    }
+    const s = (this.jsonStore.admin_sessions || {})[token];
+    if (s && s.expires_at > now) return s;
+    return null;
+  }
+
+  deleteAdminSession(token) {
+    if (!token) return;
+    if (this.isSqlite) {
+      this.sqliteDb.prepare('DELETE FROM admin_sessions WHERE token = ?').run(token);
+    } else if (this.jsonStore.admin_sessions) {
+      delete this.jsonStore.admin_sessions[token];
+      this.saveJsonStore();
+    }
+  }
+
+  getDatabaseStorageStats() {
+    let sizeBytes = 0;
+    const files = [];
+    try {
+      const mainDb = path.join(DATA_DIR, 'sothuchi.sqlite');
+      if (fs.existsSync(mainDb)) {
+        const s = fs.statSync(mainDb);
+        sizeBytes += s.size;
+        files.push({ name: 'sothuchi.sqlite', size: s.size });
+      }
+      const walDb = path.join(DATA_DIR, 'sothuchi.sqlite-wal');
+      if (fs.existsSync(walDb)) {
+        const s = fs.statSync(walDb);
+        sizeBytes += s.size;
+        files.push({ name: 'sothuchi.sqlite-wal', size: s.size });
+      }
+      const shmDb = path.join(DATA_DIR, 'sothuchi.sqlite-shm');
+      if (fs.existsSync(shmDb)) {
+        const s = fs.statSync(shmDb);
+        sizeBytes += s.size;
+        files.push({ name: 'sothuchi.sqlite-shm', size: s.size });
+      }
+      const jsonDb = path.join(DATA_DIR, 'sothuchi_store.json');
+      if (fs.existsSync(jsonDb)) {
+        const s = fs.statSync(jsonDb);
+        sizeBytes += s.size;
+        files.push({ name: 'sothuchi_store.json', size: s.size });
+      }
+    } catch (_) {}
+    return { sizeBytes, files };
+  }
+
+  getAdminOverview() {
+    const now = Date.now();
+    const nowIso = new Date().toISOString();
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    let allUsers = [];
+    let allVaults = [];
+    let allVaultData = [];
+    let allSessions = [];
+    let allHistory = [];
+    let allItemShares = [];
+    let allItemShareLinks = [];
+
+    if (this.isSqlite) {
+      allUsers = this.sqliteDb.prepare('SELECT * FROM users').all();
+      allVaults = this.sqliteDb.prepare('SELECT * FROM vaults').all();
+      allVaultData = this.sqliteDb.prepare('SELECT vault_id, LENGTH(data_json) as data_size, data_json, updated_at FROM vault_data').all();
+      allSessions = this.sqliteDb.prepare('SELECT * FROM sessions').all();
+      allHistory = this.sqliteDb.prepare('SELECT id, vault_id, version, synced_at, LENGTH(data_json) as data_size FROM vault_history').all();
+      allItemShares = this.sqliteDb.prepare('SELECT * FROM item_shares').all();
+      allItemShareLinks = this.sqliteDb.prepare('SELECT * FROM item_share_links').all();
+    } else {
+      allUsers = Object.values(this.jsonStore.users || {});
+      allVaults = Object.values(this.jsonStore.vaults || {});
+      allVaultData = Object.values(this.jsonStore.vault_data || {}).map(vd => ({
+        vault_id: vd.vault_id,
+        data_size: (vd.data_json || '').length,
+        data_json: vd.data_json,
+        updated_at: vd.updated_at
+      }));
+      allSessions = Object.values(this.jsonStore.sessions || {});
+      allHistory = this.jsonStore.vault_history || [];
+      allItemShares = this.jsonStore.item_shares || [];
+      allItemShareLinks = this.jsonStore.item_share_links || [];
+    }
+
+    const vaultDataMap = new Map();
+    for (const vd of allVaultData) {
+      let txCount = 0;
+      let isEncrypted = false;
+      try {
+        const parsed = JSON.parse(vd.data_json || '{}');
+        if (parsed.encrypted && parsed.payload) {
+          isEncrypted = true;
+        } else if (Array.isArray(parsed.transactions)) {
+          txCount = parsed.transactions.length;
+        }
+      } catch (_) {}
+      vaultDataMap.set(vd.vault_id, {
+        size: vd.data_size || 0,
+        txCount,
+        isEncrypted,
+        updatedAt: vd.updated_at
+      });
+    }
+
+    const testUsers = allUsers.filter(u => {
+      const gId = (u.google_id || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const name = (u.name || '').toLowerCase();
+      return gId.startsWith('quick_') || email.includes('test') || email.includes('demo') || email.endsWith('@example.com') || name.includes('test') || name.includes('demo');
+    });
+
+    let emptyVaultsCount = 0;
+    let testVaultsCount = 0;
+    let abandonedVaultsCount = 0;
+
+    for (const v of allVaults) {
+      const vData = vaultDataMap.get(v.id);
+      const isTestUserOwner = testUsers.some(tu => tu.id === v.owner_id);
+      const vName = (v.name || '').toLowerCase();
+      const isTestName = vName.includes('test') || vName.includes('demo') || vName.includes('nháp') || vName.includes('thử nghiệm');
+
+      if (isTestUserOwner || isTestName) {
+        testVaultsCount++;
+      }
+
+      if (!vData || (!vData.isEncrypted && vData.txCount === 0)) {
+        emptyVaultsCount++;
+      }
+
+      const lastUpdate = v.updated_at || (vData ? vData.updatedAt : null) || v.created_at;
+      if (lastUpdate && lastUpdate < thirtyDaysAgo) {
+        abandonedVaultsCount++;
+      }
+    }
+
+    const expiredSessions = allSessions.filter(s => s.expires_at <= now);
+    const expiredLinks = allItemShareLinks.filter(l => l.expires_at && l.expires_at <= nowIso);
+    const storageStats = this.getDatabaseStorageStats();
+
+    return {
+      users: {
+        total: allUsers.length,
+        testCount: testUsers.length,
+        realCount: allUsers.length - testUsers.length
+      },
+      vaults: {
+        total: allVaults.length,
+        emptyCount: emptyVaultsCount,
+        testCount: testVaultsCount,
+        abandonedCount: abandonedVaultsCount
+      },
+      garbage: {
+        totalGarbageItems: testUsers.length + emptyVaultsCount + expiredSessions.length + expiredLinks.length,
+        expiredSessionsCount: expiredSessions.length,
+        expiredLinksCount: expiredLinks.length,
+        emptyVaultsCount,
+        testVaultsCount,
+        testUsersCount: testUsers.length,
+        abandonedVaultsCount,
+        snapshotsCount: allHistory.length
+      },
+      sessions: {
+        total: allSessions.length,
+        active: allSessions.length - expiredSessions.length,
+        expired: expiredSessions.length
+      },
+      shares: {
+        itemSharesCount: allItemShares.length,
+        totalLinks: allItemShareLinks.length,
+        activeLinks: allItemShareLinks.length - expiredLinks.length,
+        expiredLinks: expiredLinks.length
+      },
+      storage: {
+        engine: this.isSqlite ? 'SQLite (node:sqlite WAL)' : 'JSON Store',
+        dbSizeBytes: storageStats.sizeBytes,
+        files: storageStats.files,
+        snapshotsTotal: allHistory.length
+      },
+      system: {
+        uptime: process.uptime(),
+        nodeVersion: process.version,
+        platform: process.platform,
+        memory: process.memoryUsage(),
+        adminUser: ADMIN_USER,
+        adminEmails: ADMIN_EMAILS,
+        serverTime: nowIso
+      }
+    };
+  }
+
+  getAdminUsersList() {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    let allUsers = [];
+    let allVaults = [];
+    let allVaultData = [];
+    let allSessions = [];
+
+    if (this.isSqlite) {
+      allUsers = this.sqliteDb.prepare('SELECT * FROM users ORDER BY created_at DESC').all();
+      allVaults = this.sqliteDb.prepare('SELECT * FROM vaults').all();
+      allVaultData = this.sqliteDb.prepare('SELECT vault_id, LENGTH(data_json) as data_size, data_json, updated_at FROM vault_data').all();
+      allSessions = this.sqliteDb.prepare('SELECT * FROM sessions').all();
+    } else {
+      allUsers = Object.values(this.jsonStore.users || {});
+      allVaults = Object.values(this.jsonStore.vaults || {});
+      allVaultData = Object.values(this.jsonStore.vault_data || {}).map(vd => ({
+        vault_id: vd.vault_id,
+        data_size: (vd.data_json || '').length,
+        data_json: vd.data_json,
+        updated_at: vd.updated_at
+      }));
+      allSessions = Object.values(this.jsonStore.sessions || {});
+    }
+
+    const vaultDataMap = new Map();
+    for (const vd of allVaultData) {
+      let txCount = 0;
+      let isEncrypted = false;
+      try {
+        const parsed = JSON.parse(vd.data_json || '{}');
+        if (parsed.encrypted && parsed.payload) isEncrypted = true;
+        else if (Array.isArray(parsed.transactions)) txCount = parsed.transactions.length;
+      } catch (_) {}
+      vaultDataMap.set(vd.vault_id, {
+        size: vd.data_size || 0,
+        txCount,
+        isEncrypted,
+        updatedAt: vd.updated_at
+      });
+    }
+
+    const now = Date.now();
+
+    return allUsers.map(user => {
+      const ownedVaults = allVaults.filter(v => v.owner_id === user.id);
+      let totalTransactions = 0;
+      let totalSizeBytes = 0;
+      let hasEncryptedVault = false;
+      let latestVaultUpdate = null;
+
+      for (const v of ownedVaults) {
+        const vd = vaultDataMap.get(v.id);
+        if (vd) {
+          totalTransactions += vd.txCount;
+          totalSizeBytes += vd.size;
+          if (vd.isEncrypted) hasEncryptedVault = true;
+          if (!latestVaultUpdate || (vd.updatedAt && vd.updatedAt > latestVaultUpdate)) {
+            latestVaultUpdate = vd.updatedAt;
+          }
+        }
+      }
+
+      const userSessions = allSessions.filter(s => s.user_id === user.id);
+      const activeSessions = userSessions.filter(s => s.expires_at > now);
+
+      const email = (user.email || '').toLowerCase();
+      const name = (user.name || '').toLowerCase();
+      const gId = (user.google_id || '').toLowerCase();
+
+      const isTestUser = gId.startsWith('quick_') || email.includes('test') || email.includes('demo') || email.endsWith('@example.com') || name.includes('test') || name.includes('demo');
+      const lastActive = latestVaultUpdate || user.updated_at || user.created_at;
+      const isAbandoned = (!activeSessions.length && lastActive < thirtyDaysAgo && totalTransactions === 0);
+
+      return {
+        id: user.id,
+        google_id: user.google_id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+        is_test_user: isTestUser,
+        is_abandoned: isAbandoned,
+        owned_vaults_count: ownedVaults.length,
+        owned_vaults: ownedVaults.map(v => ({ id: v.id, name: v.name, version: v.version })),
+        total_transactions: totalTransactions,
+        total_size_bytes: totalSizeBytes,
+        has_encrypted_vault: hasEncryptedVault,
+        active_sessions_count: activeSessions.length,
+        total_sessions_count: userSessions.length,
+        last_active: lastActive
+      };
+    });
+  }
+
+  deleteAdminVault(vaultId) {
+    if (this.isSqlite) {
+      this.sqliteDb.prepare('DELETE FROM item_shares WHERE vault_id = ?').run(vaultId);
+      this.sqliteDb.prepare('DELETE FROM item_share_links WHERE vault_id = ?').run(vaultId);
+      this.sqliteDb.prepare('DELETE FROM shared_item_projections WHERE vault_id = ?').run(vaultId);
+      this.sqliteDb.prepare('DELETE FROM vault_history WHERE vault_id = ?').run(vaultId);
+      this.sqliteDb.prepare('DELETE FROM vault_data WHERE vault_id = ?').run(vaultId);
+      this.sqliteDb.prepare('DELETE FROM vault_shares WHERE vault_id = ?').run(vaultId);
+      const res = this.sqliteDb.prepare('DELETE FROM vaults WHERE id = ?').run(vaultId);
+      return res.changes > 0;
+    } else {
+      delete this.jsonStore.vaults[vaultId];
+      delete this.jsonStore.vault_data[vaultId];
+      if (this.jsonStore.vault_history) {
+        this.jsonStore.vault_history = this.jsonStore.vault_history.filter(h => h.vault_id !== vaultId);
+      }
+      if (this.jsonStore.vault_shares) {
+        for (const k of Object.keys(this.jsonStore.vault_shares)) {
+          if (this.jsonStore.vault_shares[k].vault_id === vaultId) {
+            delete this.jsonStore.vault_shares[k];
+          }
+        }
+      }
+      if (this.jsonStore.item_shares) {
+        this.jsonStore.item_shares = this.jsonStore.item_shares.filter(s => s.vault_id !== vaultId);
+      }
+      if (this.jsonStore.item_share_links) {
+        this.jsonStore.item_share_links = this.jsonStore.item_share_links.filter(l => l.vault_id !== vaultId);
+      }
+      if (this.jsonStore.shared_item_projections) {
+        for (const k of Object.keys(this.jsonStore.shared_item_projections)) {
+          if (this.jsonStore.shared_item_projections[k].vault_id === vaultId) {
+            delete this.jsonStore.shared_item_projections[k];
+          }
+        }
+      }
+      this.saveJsonStore();
+      return true;
+    }
+  }
+
+  deleteAdminUser(userId) {
+    const user = this.findUserById(userId);
+    if (!user) return false;
+
+    let ownedVaults = [];
+    if (this.isSqlite) {
+      ownedVaults = this.sqliteDb.prepare('SELECT id FROM vaults WHERE owner_id = ?').all(userId);
+    } else {
+      ownedVaults = Object.values(this.jsonStore.vaults || {}).filter(v => v.owner_id === userId);
+    }
+    for (const v of ownedVaults) {
+      this.deleteAdminVault(v.id);
+    }
+
+    if (this.isSqlite) {
+      this.sqliteDb.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+      this.sqliteDb.prepare('DELETE FROM vault_shares WHERE LOWER(user_email) = ?').run((user.email || '').toLowerCase());
+      this.sqliteDb.prepare('DELETE FROM item_shares WHERE LOWER(user_email) = ? OR created_by = ?').run((user.email || '').toLowerCase(), userId);
+      this.sqliteDb.prepare('DELETE FROM item_share_links WHERE created_by = ?').run(userId);
+      this.sqliteDb.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    } else {
+      for (const t of Object.keys(this.jsonStore.sessions || {})) {
+        if (this.jsonStore.sessions[t].user_id === userId) {
+          delete this.jsonStore.sessions[t];
+        }
+      }
+      delete this.jsonStore.users[userId];
+      this.saveJsonStore();
+    }
+    return true;
+  }
+
+  getAdminVaultsList() {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    let allVaults = [];
+    let allVaultData = [];
+    let allHistory = [];
+    let allShares = [];
+
+    if (this.isSqlite) {
+      allVaults = this.sqliteDb.prepare(`
+        SELECT v.*, u.name as owner_name, u.email as owner_email, u.google_id as owner_google_id
+        FROM vaults v
+        LEFT JOIN users u ON v.owner_id = u.id
+        ORDER BY v.updated_at DESC
+      `).all();
+      allVaultData = this.sqliteDb.prepare('SELECT vault_id, data_json, updated_at, updated_by, LENGTH(data_json) as data_size FROM vault_data').all();
+      allHistory = this.sqliteDb.prepare('SELECT vault_id, id, version, synced_at FROM vault_history').all();
+      allShares = this.sqliteDb.prepare('SELECT vault_id, id, user_email, role FROM vault_shares').all();
+    } else {
+      const allUsers = Object.values(this.jsonStore.users || {});
+      const userMap = new Map(allUsers.map(u => [u.id, u]));
+      allVaults = Object.values(this.jsonStore.vaults || {}).map(v => {
+        const u = userMap.get(v.owner_id);
+        return {
+          ...v,
+          owner_name: u ? u.name : '',
+          owner_email: u ? u.email : '',
+          owner_google_id: u ? u.google_id : ''
+        };
+      });
+      allVaultData = Object.values(this.jsonStore.vault_data || {}).map(vd => ({
+        vault_id: vd.vault_id,
+        data_json: vd.data_json,
+        updated_at: vd.updated_at,
+        updated_by: vd.updated_by,
+        data_size: (vd.data_json || '').length
+      }));
+      allHistory = this.jsonStore.vault_history || [];
+      allShares = Object.values(this.jsonStore.vault_shares || {});
+    }
+
+    const dataMap = new Map(allVaultData.map(d => [d.vault_id, d]));
+    const historyCountMap = new Map();
+    for (const h of allHistory) {
+      historyCountMap.set(h.vault_id, (historyCountMap.get(h.vault_id) || 0) + 1);
+    }
+    const sharesMap = new Map();
+    for (const s of allShares) {
+      if (!sharesMap.has(s.vault_id)) sharesMap.set(s.vault_id, []);
+      sharesMap.get(s.vault_id).push(s);
+    }
+
+    return allVaults.map(vault => {
+      const vd = dataMap.get(vault.id);
+      let parsed = null;
+      let txCount = 0;
+      let accCount = 0;
+      let catCount = 0;
+      let debtCount = 0;
+      let budgetCount = 0;
+      let savingsCount = 0;
+      let isEncrypted = false;
+
+      if (vd && vd.data_json) {
+        try {
+          parsed = JSON.parse(vd.data_json);
+          if (parsed.encrypted && parsed.payload) {
+            isEncrypted = true;
+          } else {
+            txCount = Array.isArray(parsed.transactions) ? parsed.transactions.length : 0;
+            accCount = Array.isArray(parsed.accounts) ? parsed.accounts.length : 0;
+            catCount = Array.isArray(parsed.categories) ? parsed.categories.length : 0;
+            debtCount = Array.isArray(parsed.debts) ? parsed.debts.length : 0;
+            budgetCount = Array.isArray(parsed.budgets) ? parsed.budgets.length : 0;
+            savingsCount = Array.isArray(parsed.savings) ? parsed.savings.length : 0;
+          }
+        } catch (_) {}
+      }
+
+      const vName = (vault.name || '').toLowerCase();
+      const ownerGId = (vault.owner_google_id || '').toLowerCase();
+      const ownerEmail = (vault.owner_email || '').toLowerCase();
+
+      const isTestOwner = ownerGId.startsWith('quick_') || ownerEmail.includes('test') || ownerEmail.includes('demo');
+      const isTestName = vName.includes('test') || vName.includes('demo') || vName.includes('nháp') || vName.includes('thử nghiệm');
+      const isTest = isTestOwner || isTestName;
+      const isEmpty = !isEncrypted && txCount === 0;
+      const lastUpdate = vault.updated_at || (vd ? vd.updated_at : null) || vault.created_at;
+      const isAbandoned = lastUpdate < thirtyDaysAgo;
+
+      return {
+        id: vault.id,
+        name: vault.name,
+        owner_id: vault.owner_id,
+        owner_name: vault.owner_name || 'Không xác định',
+        owner_email: vault.owner_email || '',
+        version: vault.version || 1,
+        created_at: vault.created_at,
+        updated_at: vault.updated_at,
+        size_bytes: vd ? vd.data_size : 0,
+        is_encrypted: isEncrypted,
+        counts: {
+          transactions: txCount,
+          accounts: accCount,
+          categories: catCount,
+          debts: debtCount,
+          budgets: budgetCount,
+          savings: savingsCount
+        },
+        history_count: historyCountMap.get(vault.id) || 0,
+        shares: sharesMap.get(vault.id) || [],
+        is_test: isTest,
+        is_empty: isEmpty,
+        is_abandoned: isAbandoned,
+        last_active: lastUpdate
+      };
+    });
+  }
+
+  getAdminGarbageReport() {
+    const now = Date.now();
+    const nowIso = new Date().toISOString();
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const usersList = this.getAdminUsersList();
+    const vaultsList = this.getAdminVaultsList();
+
+    let allSessions = [];
+    let allShareLinks = [];
+    let allHistory = [];
+
+    if (this.isSqlite) {
+      allSessions = this.sqliteDb.prepare(`
+        SELECT s.token, s.user_id, s.expires_at, s.created_at, u.name as user_name, u.email as user_email
+        FROM sessions s
+        LEFT JOIN users u ON s.user_id = u.id
+      `).all();
+      allShareLinks = this.sqliteDb.prepare('SELECT * FROM item_share_links').all();
+      allHistory = this.sqliteDb.prepare('SELECT id, vault_id, version, synced_at, updated_by, LENGTH(data_json) as data_size FROM vault_history').all();
+    } else {
+      const allUsers = Object.values(this.jsonStore.users || {});
+      const userMap = new Map(allUsers.map(u => [u.id, u]));
+      allSessions = Object.values(this.jsonStore.sessions || {}).map(s => {
+        const u = userMap.get(s.user_id);
+        return {
+          ...s,
+          user_name: u ? u.name : '',
+          user_email: u ? u.email : ''
+        };
+      });
+      allShareLinks = this.jsonStore.item_share_links || [];
+      allHistory = this.jsonStore.vault_history || [];
+    }
+
+    const expiredSessions = allSessions.filter(s => s.expires_at <= now);
+    const expiredLinks = allShareLinks.filter(l => l.expires_at && l.expires_at <= nowIso);
+    const testUsers = usersList.filter(u => u.is_test_user);
+    const emptyVaults = vaultsList.filter(v => v.is_empty);
+    const testVaults = vaultsList.filter(v => v.is_test);
+    const abandonedVaults = vaultsList.filter(v => v.is_abandoned);
+
+    const historyByVault = new Map();
+    for (const h of allHistory) {
+      if (!historyByVault.has(h.vault_id)) historyByVault.set(h.vault_id, []);
+      historyByVault.get(h.vault_id).push(h);
+    }
+
+    const staleSnapshots = [];
+    for (const [vId, snaps] of historyByVault.entries()) {
+      snaps.sort((a, b) => (b.synced_at || '').localeCompare(a.synced_at || ''));
+      snaps.forEach((snap, idx) => {
+        if (idx >= 5 || (snap.synced_at && snap.synced_at < thirtyDaysAgo)) {
+          staleSnapshots.push({
+            id: snap.id,
+            vault_id: vId,
+            version: snap.version,
+            synced_at: snap.synced_at,
+            data_size: snap.data_size || 0
+          });
+        }
+      });
+    }
+
+    return {
+      expired_sessions: expiredSessions,
+      expired_links: expiredLinks,
+      test_users: testUsers,
+      empty_vaults: emptyVaults,
+      test_vaults: testVaults,
+      abandoned_vaults: abandonedVaults,
+      stale_snapshots: staleSnapshots,
+      summary: {
+        expired_sessions_count: expiredSessions.length,
+        expired_links_count: expiredLinks.length,
+        test_users_count: testUsers.length,
+        empty_vaults_count: emptyVaults.length,
+        test_vaults_count: testVaults.length,
+        abandoned_vaults_count: abandonedVaults.length,
+        stale_snapshots_count: staleSnapshots.length,
+        total_items: expiredSessions.length + expiredLinks.length + testUsers.length + emptyVaults.length + staleSnapshots.length
+      }
+    };
+  }
+
+  executeAdminCleanup(actions = []) {
+    const now = Date.now();
+    const nowIso = new Date().toISOString();
+    const results = {
+      purged_sessions: 0,
+      purged_links: 0,
+      pruned_snapshots: 0,
+      deleted_empty_vaults: 0,
+      deleted_test_users: 0,
+      vacuum_done: false
+    };
+
+    const actionList = Array.isArray(actions) ? actions : [actions];
+
+    // 1. Dọn dẹp phiên hết hạn
+    if (actionList.includes('purge_expired_sessions') || actionList.includes('all')) {
+      if (this.isSqlite) {
+        const res = this.sqliteDb.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(now);
+        results.purged_sessions = res.changes;
+      } else {
+        let count = 0;
+        for (const t of Object.keys(this.jsonStore.sessions || {})) {
+          if (this.jsonStore.sessions[t].expires_at <= now) {
+            delete this.jsonStore.sessions[t];
+            count++;
+          }
+        }
+        results.purged_sessions = count;
+      }
+    }
+
+    // 2. Dọn dẹp liên kết chia sẻ hết hạn
+    if (actionList.includes('purge_expired_links') || actionList.includes('all')) {
+      if (this.isSqlite) {
+        const res = this.sqliteDb.prepare('DELETE FROM item_share_links WHERE expires_at IS NOT NULL AND expires_at != "" AND expires_at <= ?').run(nowIso);
+        results.purged_links = res.changes;
+      } else {
+        const before = (this.jsonStore.item_share_links || []).length;
+        this.jsonStore.item_share_links = (this.jsonStore.item_share_links || []).filter(l => !l.expires_at || l.expires_at > nowIso);
+        results.purged_links = before - this.jsonStore.item_share_links.length;
+      }
+    }
+
+    // 3. Thu gọn snapshots (giữ 5 bản mới nhất cho mỗi vault)
+    if (actionList.includes('prune_snapshots') || actionList.includes('all')) {
+      const report = this.getAdminGarbageReport();
+      const idsToDelete = (report.stale_snapshots || []).map(s => s.id);
+      if (idsToDelete.length > 0) {
+        if (this.isSqlite) {
+          const deleteStmt = this.sqliteDb.prepare('DELETE FROM vault_history WHERE id = ?');
+          for (const sId of idsToDelete) {
+            deleteStmt.run(sId);
+          }
+          results.pruned_snapshots = idsToDelete.length;
+        } else {
+          this.jsonStore.vault_history = (this.jsonStore.vault_history || []).filter(h => !idsToDelete.includes(h.id));
+          results.pruned_snapshots = idsToDelete.length;
+        }
+      }
+    }
+
+    // 4. Xóa sổ trống
+    if (actionList.includes('delete_empty_vaults') || actionList.includes('all')) {
+      const vaults = this.getAdminVaultsList();
+      const emptyVaults = vaults.filter(v => v.is_empty);
+      for (const v of emptyVaults) {
+        this.deleteAdminVault(v.id);
+        results.deleted_empty_vaults++;
+      }
+    }
+
+    // 5. Xóa dữ liệu test (test users & their vaults)
+    if (actionList.includes('delete_test_data') || actionList.includes('delete_test_users')) {
+      const users = this.getAdminUsersList();
+      const testUsers = users.filter(u => u.is_test_user);
+      for (const tu of testUsers) {
+        this.deleteAdminUser(tu.id);
+        results.deleted_test_users++;
+      }
+    }
+
+    // 6. Vacuum database
+    if (actionList.includes('vacuum') || actionList.includes('all')) {
+      this.vacuumDatabase();
+      results.vacuum_done = true;
+    }
+
+    if (!this.isSqlite) {
+      this.saveJsonStore();
+    }
+
+    return results;
+  }
+
+  vacuumDatabase() {
+    if (this.isSqlite) {
+      try {
+        this.sqliteDb.exec('PRAGMA wal_checkpoint(TRUNCATE);');
+        this.sqliteDb.exec('VACUUM;');
+        this.sqliteDb.exec('PRAGMA optimize;');
+        return true;
+      } catch (err) {
+        console.warn('[Admin] Lỗi Vacuum database:', err.message);
+        return false;
+      }
+    }
+    return true;
+  }
 }
 
 const dbManager = new DatabaseManager();
@@ -1369,11 +2083,56 @@ function parseJsonBody(req, maxSize = 25 * 1024 * 1024) { // Tối đa 25MB cho 
   });
 }
 
-function getAuthUser(req) {
+function getBearerToken(req) {
   const authHeader = req.headers.authorization || '';
-  if (!authHeader.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7).trim();
+  if (authHeader.startsWith('Bearer ')) return authHeader.slice(7).trim();
+  if (req.headers['x-admin-token']) return String(req.headers['x-admin-token']).trim();
+  if (req.headers.cookie) {
+    const match = req.headers.cookie.match(/stc_admin_token=([^;]+)/);
+    if (match) return match[1].trim();
+  }
+  return null;
+}
+
+function getAuthUser(req) {
+  const token = getBearerToken(req);
+  if (!token) return null;
   return dbManager.getUserByToken(token);
+}
+
+function getAdminUser(req) {
+  const token = getBearerToken(req);
+  if (!token) return null;
+
+  // 1. Phiên admin bằng credential (username/password)
+  const adminSession = dbManager.getAdminSession(token);
+  if (adminSession) {
+    return {
+      type: 'admin_credential',
+      username: adminSession.username || ADMIN_USER,
+      email: (adminSession.username && adminSession.username.includes('@')) ? adminSession.username : null,
+      role: 'admin'
+    };
+  }
+
+  // 2. Token người dùng Google hợp lệ với email trong ADMIN_EMAILS hoặc ADMIN_USER
+  const user = dbManager.getUserByToken(token);
+  if (user) {
+    const email = (user.email || '').toLowerCase().trim();
+    const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_USER.toLowerCase() === email);
+    if (isAdmin) {
+      return {
+        type: 'google_admin',
+        username: user.name || user.email,
+        email: user.email,
+        picture: user.picture,
+        role: 'admin',
+        userId: user.id
+      };
+    }
+  }
+
+  return null;
 }
 
 // ==============================================================================
@@ -1390,6 +2149,171 @@ async function handleApiRequest(req, res, pathname, url) {
       'Access-Control-Max-Age': '86400'
     });
     return res.end();
+  }
+
+  // ==============================================================================
+  // ADMIN MANAGEMENT APIS (Trang Quản Trị Máy Chủ Sao Lưu)
+  // ==============================================================================
+
+  // A. Admin Login (Username & Password khai báo ở compose/env)
+  if (req.method === 'POST' && pathname === '/api/admin/login') {
+    try {
+      const body = await parseJsonBody(req);
+      const username = (body.username || '').trim();
+      const password = (body.password || '').trim();
+
+      if (!username || !password) {
+        return sendJson(res, 400, { error: 'Vui lòng nhập tên đăng nhập và mật khẩu quản trị' });
+      }
+
+      const isValidUser = (username === ADMIN_USER) || 
+                          (ADMIN_EMAILS.includes(username.toLowerCase()));
+      const isValidPassword = (password === ADMIN_PASSWORD);
+
+      if (!isValidUser || !isValidPassword) {
+        return sendJson(res, 401, { error: 'Tên đăng nhập hoặc mật khẩu không chính xác' });
+      }
+
+      const session = dbManager.createAdminSession(username, 7);
+      return sendJson(res, 200, {
+        success: true,
+        token: session.token,
+        expiresAt: session.expiresAt,
+        username,
+        role: 'admin'
+      });
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
+  // B. Admin Auth Status
+  if (req.method === 'GET' && pathname === '/api/admin/auth-status') {
+    const adminUser = getAdminUser(req);
+    return sendJson(res, 200, {
+      authenticated: !!adminUser,
+      adminUser: adminUser ? {
+        username: adminUser.username,
+        email: adminUser.email || null,
+        role: 'admin',
+        type: adminUser.type
+      } : null,
+      serverTime: new Date().toISOString(),
+      configuredAdminUser: ADMIN_USER
+    });
+  }
+
+  // C. Admin Logout
+  if (req.method === 'POST' && pathname === '/api/admin/logout') {
+    const token = getBearerToken(req);
+    if (token) {
+      dbManager.deleteAdminSession(token);
+    }
+    return sendJson(res, 200, { success: true, message: 'Đã đăng xuất' });
+  }
+
+  // Các API quản trị sau đây yêu cầu quyền Admin
+  if (pathname.startsWith('/api/admin/')) {
+    const adminUser = getAdminUser(req);
+    if (!adminUser) {
+      return sendJson(res, 403, { error: 'Yêu cầu quyền Quản Trị Viên (Unauthorized Admin Access)' });
+    }
+
+    // 1. Tổng quan & Thống kê
+    if (req.method === 'GET' && pathname === '/api/admin/overview') {
+      const overview = dbManager.getAdminOverview();
+      return sendJson(res, 200, overview);
+    }
+
+    // 2. Danh sách người dùng
+    if (req.method === 'GET' && pathname === '/api/admin/users') {
+      const users = dbManager.getAdminUsersList();
+      return sendJson(res, 200, { users });
+    }
+
+    // 3. Chi tiết / Xóa người dùng
+    const userMatch = pathname.match(/^\/api\/admin\/users\/([^/]+)$/);
+    if (userMatch) {
+      const userId = userMatch[1];
+      if (req.method === 'GET') {
+        const user = dbManager.findUserById(userId);
+        if (!user) return sendJson(res, 404, { error: 'Không tìm thấy người dùng' });
+        const userVaults = dbManager.getUserVaults(user.id, user.email);
+        return sendJson(res, 200, { user, vaults: userVaults });
+      }
+      if (req.method === 'DELETE') {
+        const ok = dbManager.deleteAdminUser(userId);
+        return sendJson(res, 200, { success: ok, message: 'Đã xóa người dùng và dữ liệu liên quan' });
+      }
+    }
+
+    // 4. Danh sách tất cả các sổ
+    if (req.method === 'GET' && pathname === '/api/admin/vaults') {
+      const vaults = dbManager.getAdminVaultsList();
+      return sendJson(res, 200, { vaults });
+    }
+
+    // 5. Chi tiết / Xóa sổ
+    const vaultMatch = pathname.match(/^\/api\/admin\/vaults\/([^/]+)$/);
+    if (vaultMatch) {
+      const vaultId = vaultMatch[1];
+      if (req.method === 'GET') {
+        const vault = dbManager.getVaultById(vaultId);
+        if (!vault) return sendJson(res, 404, { error: 'Không tìm thấy sổ' });
+        const vData = dbManager.getVaultData(vaultId);
+        const history = dbManager.getVaultHistory(vaultId);
+        return sendJson(res, 200, { vault, data: vData ? vData.data : null, history });
+      }
+      if (req.method === 'DELETE') {
+        const ok = dbManager.deleteAdminVault(vaultId);
+        return sendJson(res, 200, { success: ok, message: 'Đã xóa sổ thành công' });
+      }
+    }
+
+    // 5b. Thu gọn snapshot một sổ
+    const pruneVaultMatch = pathname.match(/^\/api\/admin\/vaults\/([^/]+)\/prune-history$/);
+    if (req.method === 'POST' && pruneVaultMatch) {
+      const vaultId = pruneVaultMatch[1];
+      if (dbManager.isSqlite) {
+        dbManager.sqliteDb.prepare(`
+          DELETE FROM vault_history
+          WHERE vault_id = ? AND id NOT IN (
+            SELECT id FROM vault_history WHERE vault_id = ? ORDER BY synced_at DESC LIMIT 1
+          )
+        `).run(vaultId, vaultId);
+      } else {
+        const vHistory = (dbManager.jsonStore.vault_history || []).filter(h => h.vault_id === vaultId);
+        vHistory.sort((a, b) => (b.synced_at || '').localeCompare(a.synced_at || ''));
+        const keepId = vHistory.length > 0 ? vHistory[0].id : null;
+        dbManager.jsonStore.vault_history = (dbManager.jsonStore.vault_history || []).filter(h => h.vault_id !== vaultId || h.id === keepId);
+        dbManager.saveJsonStore();
+      }
+      return sendJson(res, 200, { success: true, message: 'Đã thu gọn lịch sử snapshot' });
+    }
+
+    // 6. Báo cáo quét dữ liệu rác
+    if (req.method === 'GET' && pathname === '/api/admin/garbage') {
+      const report = dbManager.getAdminGarbageReport();
+      return sendJson(res, 200, report);
+    }
+
+    // 7. Thực thi dọn dẹp rác
+    if (req.method === 'POST' && pathname === '/api/admin/cleanup') {
+      const body = await parseJsonBody(req);
+      const actions = body.actions || (body.action ? [body.action] : []);
+      if (!actions.length) {
+        return sendJson(res, 400, { error: 'Thiếu tham số action hoặc actions' });
+      }
+      const results = dbManager.executeAdminCleanup(actions);
+      return sendJson(res, 200, { success: true, results });
+    }
+
+    // 8. Tối ưu hóa & nén SQLite Vacuum
+    if (req.method === 'POST' && pathname === '/api/admin/vacuum') {
+      const ok = dbManager.vacuumDatabase();
+      const storage = dbManager.getDatabaseStorageStats();
+      return sendJson(res, 200, { success: ok, storage });
+    }
   }
 
   // 1. Health check & Server Info
@@ -2060,6 +2984,7 @@ async function handleApiRequest(req, res, pathname, url) {
 function serveStaticFile(req, res, reqPath) {
   let safePath = decodeURI(reqPath.split('?')[0]);
   if (safePath === '/' || !safePath) safePath = '/index.html';
+  if (safePath === '/admin' || safePath === '/admin/') safePath = '/admin.html';
 
   // Chặn Directory Traversal
   const normalizedPath = path.normalize(safePath).replace(/^(\.\.[/\\])+/, '');
@@ -2109,6 +3034,12 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = url.pathname;
 
+  // Xử lý trang quản trị
+  if (pathname === '/admin' || pathname === '/admin/') {
+    serveStaticFile(req, res, '/admin.html');
+    return;
+  }
+
   // Xử lý các yêu cầu REST API
   if (pathname.startsWith('/api/') || pathname === '/health') {
     try {
@@ -2129,6 +3060,8 @@ server.listen(PORT, HOST, () => {
   console.log('  🚀 SỔ THU CHI - MÁY CHỦ RIÊNG ĐỒNG BỘ & ĐA NGƯỜI DÙNG');
   console.log('================================================================');
   console.log(`  🌐 Website & API: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
+  console.log(`  🛡️ Trang Quản Trị: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}/admin`);
+  console.log(`  👤 Admin User:    ${ADMIN_USER} (Mật khẩu cấu hình ở compose / .env)`);
   console.log(`  💾 Dữ liệu lưu tại: ${DATA_DIR}`);
   console.log(`  🔒 Database Engine: ${dbManager.isSqlite ? 'SQLite (node:sqlite)' : 'JSON File Store'}`);
   console.log(`  🔑 Google OAuth:    ${GOOGLE_CLIENT_ID ? 'Đã cấu hình' : 'Chờ client truyền token'}`);
