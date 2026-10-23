@@ -22,7 +22,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=1792714911594">
+  <link rel="stylesheet" href="./css/style.css?v=1792716138906">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -5984,7 +5984,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   </div>
 
   <!-- Micro Sync Status Popover (gắn với Logo Avatar & Trạng thái đồng bộ) -->
-          <div id="sync-popover-backdrop" class="sync-popover-backdrop" style="display: none;"></div>
+          <div id="sync-popover-backdrop" class="sync-popover-backdrop" style="display: none;" onclick="window.SyncCoordinator && window.SyncCoordinator.closePopover()"></div>
   <div id="sync-status-popover" class="sync-popover" style="display: none;">
               <div class="sync-popover-header">
                 <div class="sync-popover-status">
@@ -6005,21 +6005,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   <span class="sync-popover-vault-count" id="popover-vault-count-badge">2 sổ</span>
                 </div>
                 <div class="sync-popover-vault-list" id="popover-vault-list"></div>
-                <div class="sync-vault-quick-actions">
-                  <button type="button" onclick="window.SyncCoordinator && window.SyncCoordinator.quickCreateVault()" title="Tạo thêm sổ mới">
-                    <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
-                    <span>Tạo sổ mới</span>
-                  </button>
-                  <button type="button" onclick="window.SyncCoordinator && window.SyncCoordinator.quickCopyVault()" title="Sao chép sổ hiện tại">
-                    <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
-                    <span>Copy sổ</span>
-                  </button>
-                  <button type="button" onclick="window.SyncCoordinator && window.SyncCoordinator.openVaultSettings()" title="Vào cài đặt quản lý sổ">
-                    <i data-lucide="sliders-horizontal" style="width: 12px; height: 12px;"></i>
-                    <span>Quản lý sổ</span>
-                  </button>
                 </div>
-              </div>
               <div class="sync-popover-body">
                 <div class="sync-popover-detail">
                   <span class="sync-detail-label">Lần cuối:</span>
@@ -6508,7 +6494,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- App Core Modules -->
   <script src="./js/config.js?v=2.8.0"></script>
-  <script src="./js/custom-dialog.js?v=1792674409855"></script>
+  <script src="./js/custom-dialog.js?v=1792716138906"></script>
   <script src="./js/crypto.js"></script>
   <script src="./js/db.js?v=2.8.0"></script>
   <script src="./js/google-drive.js?v=2.8.0"></script>
@@ -6516,7 +6502,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/server-sync.js?v=1792669466778"></script>
   <script src="./js/csv-export.js"></script>
   <script src="./js/backup.js?v=2.8.0"></script>
-  <script src="./js/sync-coordinator.js?v=1792714911594"></script>
+  <script src="./js/sync-coordinator.js?v=1792716138906"></script>
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=2.8.0"></script>
@@ -6531,7 +6517,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- Main Entry Coordinator -->
   <script src="./js/pull-to-refresh.js?v=2.8.2"></script>
-  <script src="./js/app.js?v=1792714911594"></script>
+  <script src="./js/app.js?v=1792716138906"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
   <script>
