@@ -47,11 +47,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'sothuchi_vault_secret_' + crypto.r
 const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || '').trim();
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 
-// Cấu hình tài khoản quản trị viên máy chủ sao lưu (Admin Dashboard)
-const ADMIN_USER = (process.env.ADMIN_USER || 'admin').trim();
-const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'admin123456').trim();
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
-  .split(',')
+// Cấu hình Email quản trị viên máy chủ sao lưu (Admin Dashboard) - Chỉ xác thực qua ADMIN_EMAIL
+const ADMIN_EMAILS = [
+  ...(process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.split(',') : []),
+  ...(process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',') : [])
+]
   .map(e => e.trim().toLowerCase())
   .filter(Boolean);
 
@@ -1322,7 +1322,6 @@ class DatabaseManager {
         nodeVersion: process.version,
         platform: process.platform,
         memory: process.memoryUsage(),
-        adminUser: ADMIN_USER,
         adminEmails: ADMIN_EMAILS,
         serverTime: nowIso
       }
@@ -2104,32 +2103,20 @@ function getAdminUser(req) {
   const token = getBearerToken(req);
   if (!token) return null;
 
-  // 1. Phiên admin bằng credential (username/password)
-  const adminSession = dbManager.getAdminSession(token);
-  if (adminSession) {
+  // Lấy người dùng từ token phiên máy chủ (Google OAuth hoặc token phiên)
+  const user = dbManager.getUserByToken(token);
+  if (!user || !user.email) return null;
+
+  const email = (user.email || '').toLowerCase().trim();
+  // Kiểm tra email người dùng có nằm trong danh sách ADMIN_EMAIL được khai báo không
+  if (ADMIN_EMAILS.length > 0 && ADMIN_EMAILS.includes(email)) {
     return {
-      type: 'admin_credential',
-      username: adminSession.username || ADMIN_USER,
-      email: (adminSession.username && adminSession.username.includes('@')) ? adminSession.username : null,
+      id: user.id,
+      name: user.name || user.email,
+      email: user.email,
+      picture: user.picture || '',
       role: 'admin'
     };
-  }
-
-  // 2. Token người dùng Google hợp lệ với email trong ADMIN_EMAILS hoặc ADMIN_USER
-  const user = dbManager.getUserByToken(token);
-  if (user) {
-    const email = (user.email || '').toLowerCase().trim();
-    const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_USER.toLowerCase() === email);
-    if (isAdmin) {
-      return {
-        type: 'google_admin',
-        username: user.name || user.email,
-        email: user.email,
-        picture: user.picture,
-        role: 'admin',
-        userId: user.id
-      };
-    }
   }
 
   return null;
@@ -2155,51 +2142,31 @@ async function handleApiRequest(req, res, pathname, url) {
   // ADMIN MANAGEMENT APIS (Trang Quản Trị Máy Chủ Sao Lưu)
   // ==============================================================================
 
-  // A. Admin Login (Username & Password khai báo ở compose/env)
-  if (req.method === 'POST' && pathname === '/api/admin/login') {
-    try {
-      const body = await parseJsonBody(req);
-      const username = (body.username || '').trim();
-      const password = (body.password || '').trim();
-
-      if (!username || !password) {
-        return sendJson(res, 400, { error: 'Vui lòng nhập tên đăng nhập và mật khẩu quản trị' });
-      }
-
-      const isValidUser = (username === ADMIN_USER) || 
-                          (ADMIN_EMAILS.includes(username.toLowerCase()));
-      const isValidPassword = (password === ADMIN_PASSWORD);
-
-      if (!isValidUser || !isValidPassword) {
-        return sendJson(res, 401, { error: 'Tên đăng nhập hoặc mật khẩu không chính xác' });
-      }
-
-      const session = dbManager.createAdminSession(username, 7);
-      return sendJson(res, 200, {
-        success: true,
-        token: session.token,
-        expiresAt: session.expiresAt,
-        username,
-        role: 'admin'
-      });
-    } catch (err) {
-      return sendJson(res, 500, { error: err.message });
-    }
-  }
-
-  // B. Admin Auth Status
+    // A. Admin Auth Status (Xác thực người dùng qua ADMIN_EMAIL)
   if (req.method === 'GET' && pathname === '/api/admin/auth-status') {
+    const token = getBearerToken(req);
+    const user = token ? dbManager.getUserByToken(token) : null;
     const adminUser = getAdminUser(req);
+
     return sendJson(res, 200, {
       authenticated: !!adminUser,
       adminUser: adminUser ? {
-        username: adminUser.username,
-        email: adminUser.email || null,
-        role: 'admin',
-        type: adminUser.type
+        id: adminUser.id,
+        name: adminUser.name,
+        email: adminUser.email,
+        picture: adminUser.picture,
+        role: 'admin'
       } : null,
-      serverTime: new Date().toISOString(),
-      configuredAdminUser: ADMIN_USER
+      currentUser: user ? {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        picture: user.picture
+      } : null,
+      adminEmails: ADMIN_EMAILS,
+      adminEmailsConfigured: ADMIN_EMAILS.length > 0,
+      googleClientId: GOOGLE_CLIENT_ID || null,
+      serverTime: new Date().toISOString()
     });
   }
 
@@ -3061,7 +3028,7 @@ server.listen(PORT, HOST, () => {
   console.log('================================================================');
   console.log(`  🌐 Website & API: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
   console.log(`  🛡️ Trang Quản Trị: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}/admin`);
-  console.log(`  👤 Admin User:    ${ADMIN_USER} (Mật khẩu cấu hình ở compose / .env)`);
+  console.log(`  📧 Admin Email:   ${ADMIN_EMAILS.length > 0 ? ADMIN_EMAILS.join(', ') : 'Chưa cấu hình (khai báo ADMIN_EMAIL trong compose)'}`);
   console.log(`  💾 Dữ liệu lưu tại: ${DATA_DIR}`);
   console.log(`  🔒 Database Engine: ${dbManager.isSqlite ? 'SQLite (node:sqlite)' : 'JSON File Store'}`);
   console.log(`  🔑 Google OAuth:    ${GOOGLE_CLIENT_ID ? 'Đã cấu hình' : 'Chờ client truyền token'}`);

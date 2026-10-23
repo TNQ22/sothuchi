@@ -6,10 +6,14 @@
   <title>Quản Trị Máy Chủ Sao Lưu - Sổ Thu Chi</title>
   
   <link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg">
-  <link rel="stylesheet" href="./css/style.css?v=admin1">
+  <link rel="stylesheet" href="./css/style.css?v=admin2">
 
   <!-- Offline Lucide Icons Library -->
   <script src="./vendor/lucide.min.js"></script>
+
+  <!-- Google Identity Services (GIS) cho Đăng nhập Quản trị viên qua Google -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
   <script>
     // Lucide helper tương thích
     (function() {
@@ -56,7 +60,6 @@
   </script>
 
   <style>
-    /* Bổ sung tùy biến thẩm mỹ cho trang Admin chuẩn phong cách Sổ Thu Chi */
     body {
       min-height: 100vh;
       display: flex;
@@ -393,8 +396,8 @@
       </button>
 
       <!-- Badge người dùng Admin -->
-      <div id="admin-user-badge" class="settings-status-pill pill-gray" style="display: none; font-size: 0.74rem; font-weight: 600; padding: 4px 10px;">
-        <i data-lucide="user" style="width: 13px; height: 13px; margin-right: 4px;"></i>
+      <div id="admin-user-badge" class="settings-status-pill pill-teal" style="display: none; font-size: 0.74rem; font-weight: 600; padding: 4px 10px; align-items: center; gap: 5px;">
+        <img id="admin-avatar-small" src="./assets/icons/icon.svg" style="width: 16px; height: 16px; border-radius: 50%; object-fit: cover;">
         <span id="admin-username-display">admin</span>
       </div>
 
@@ -416,64 +419,52 @@
        ========================================== -->
   <main class="admin-layout-container">
 
-    <!-- 1. MÀN HÌNH ĐĂNG NHẬP ADMIN (Khi chưa xác thực) -->
-    <div id="view-login" style="display: none; max-width: 440px; margin: 40px auto 0 auto;">
-      <div class="settings-card-clean" style="text-align: center; padding: 28px 22px;">
-        <div style="width: 52px; height: 52px; border-radius: var(--radius-lg); background: linear-gradient(135deg, rgba(13, 148, 136, 0.2), rgba(16, 185, 129, 0.15)); color: var(--primary); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto;">
-          <i data-lucide="lock" style="width: 26px; height: 26px;"></i>
+    <!-- 1. MÀN HÌNH ĐĂNG NHẬP ADMIN (Xác thực qua ADMIN_EMAIL) -->
+    <div id="view-login" style="display: none; max-width: 480px; margin: 40px auto 0 auto;">
+      <div class="settings-card-clean" style="text-align: center; padding: 32px 24px;">
+        <div style="width: 56px; height: 56px; border-radius: var(--radius-lg); background: linear-gradient(135deg, rgba(13, 148, 136, 0.2), rgba(16, 185, 129, 0.15)); color: var(--primary); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto;">
+          <i data-lucide="shield-check" style="width: 30px; height: 30px;"></i>
         </div>
 
-        <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0 0 6px 0;">Đăng Nhập Quản Trị Viên</h2>
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 20px 0;">
-          Máy chủ sao lưu Sổ Thu Chi - Quản lý người dùng & dọn dẹp dữ liệu
+        <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0 0 6px 0;">Quản Trị Máy Chủ Sao Lưu</h2>
+        <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0 0 20px 0; line-height: 1.45;">
+          Quyền truy cập được giới hạn cho Email Quản trị viên khai báo trong biến <code style="color: var(--primary); font-weight: 600;">ADMIN_EMAIL</code> ở file Compose.
         </p>
 
-        <!-- Form đăng nhập với ADMIN_USER / ADMIN_PASSWORD -->
-        <form id="form-admin-login" onsubmit="event.preventDefault(); AdminApp.handleLogin();" style="text-align: left;">
-          <div class="form-group" style="margin-bottom: 12px;">
-            <label class="form-label" style="font-weight: 600; font-size: 0.82rem; margin-bottom: 6px; display: block;">
-              Tên đăng nhập / Email Admin
-            </label>
-            <div style="position: relative;">
-              <input type="text" id="input-admin-user" class="form-control" placeholder="admin" value="admin" required style="width: 100%; box-sizing: border-box; padding-left: 36px;">
-              <i data-lucide="user" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-muted);"></i>
-            </div>
+        <!-- Trạng thái 1: Chưa cấu hình ADMIN_EMAIL trong Compose -->
+        <div id="box-unconfigured-admin" style="display: none; text-align: left; padding: 12px 14px; border-radius: var(--radius-md); background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); margin-bottom: 18px;">
+          <div style="font-weight: 700; font-size: 0.84rem; color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+            <i data-lucide="alert-triangle" style="width: 15px; height: 15px;"></i>
+            Chưa Cấu Hình ADMIN_EMAIL
           </div>
-
-          <div class="form-group" style="margin-bottom: 16px;">
-            <label class="form-label" style="font-weight: 600; font-size: 0.82rem; margin-bottom: 6px; display: block;">
-              Mật khẩu Quản trị
-            </label>
-            <div style="position: relative;">
-              <input type="password" id="input-admin-pass" class="form-control" placeholder="Mật khẩu cấu hình ở compose" required style="width: 100%; box-sizing: border-box; padding-left: 36px; padding-right: 36px;">
-              <i data-lucide="key" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-muted);"></i>
-              <button type="button" id="btn-toggle-login-pass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; padding: 4px;" title="Hiện/ẩn mật khẩu">
-                <i data-lucide="eye" style="width: 15px; height: 15px;"></i>
-              </button>
-            </div>
+          <div style="font-size: 0.76rem; color: var(--text-secondary); line-height: 1.45;">
+            Vui lòng mở file <code>docker-compose.yml</code> (hoặc <code>.env</code>) trên máy chủ và thêm dòng:
+            <pre style="margin: 6px 0 0 0; background: #0f172a; padding: 6px 8px; border-radius: 4px; color: #38bdf8; font-size: 0.74rem;"><code>- ADMIN_EMAIL=email_cua_ban@gmail.com</code></pre>
           </div>
-
-          <div id="login-error-msg" style="display: none; padding: 8px 12px; border-radius: var(--radius-sm); background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #ef4444; font-size: 0.78rem; margin-bottom: 14px;"></div>
-
-          <button type="submit" id="btn-submit-login" class="btn-primary" style="width: 100%; padding: 10px 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <i data-lucide="log-in" style="width: 16px; height: 16px;"></i>
-            <span>Đăng Nhập Quản Trị</span>
-          </button>
-        </form>
-
-        <!-- Chú thích cấu hình Compose -->
-        <div style="margin-top: 18px; padding: 10px 12px; background: rgba(100, 116, 139, 0.08); border-radius: var(--radius-md); font-size: 0.75rem; color: var(--text-secondary); text-align: left; line-height: 1.45;">
-          <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px; display: flex; align-items: center; gap: 5px;">
-            <i data-lucide="info" style="width: 13px; height: 13px; color: var(--primary);"></i>
-            Khai báo trong docker-compose.yml:
-          </div>
-          <div>Mặc định ban đầu: User: <code>admin</code> | Pass: <code>admin123456</code>.</div>
-          <div style="margin-top: 4px; color: var(--text-muted);">Bạn có thể cấu hình <code>ADMIN_USER</code> & <code>ADMIN_PASSWORD</code> hoặc <code>ADMIN_EMAILS</code> trong file <code>docker-compose.yml</code>.</div>
         </div>
+
+        <!-- Trạng thái 2: Đang đăng nhập tài khoản khác KHÔNG có quyền Admin -->
+        <div id="box-unauthorized-user" style="display: none; text-align: left; padding: 12px 14px; border-radius: var(--radius-md); background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); margin-bottom: 18px;">
+          <div style="font-weight: 700; font-size: 0.84rem; color: #ef4444; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+            <i data-lucide="shield-alert" style="width: 15px; height: 15px;"></i>
+            Tài Khoản Không Có Quyền Quản Trị
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+            Email <strong id="unauth-email-display" style="color: var(--text-primary);"></strong> không nằm trong danh sách <code>ADMIN_EMAIL</code> của máy chủ.
+          </div>
+        </div>
+
+        <!-- Nút Đăng nhập bằng Google -->
+        <button type="button" id="btn-admin-google-login" class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 16px; font-weight: 600; margin-bottom: 0;">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+          <span id="btn-admin-google-text">Đăng Nhập Quản Trị Bằng Google</span>
+        </button>
+
+        <div id="login-error-msg" style="display: none; padding: 8px 12px; border-radius: var(--radius-sm); background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #ef4444; font-size: 0.78rem; margin-top: 14px; text-align: left;"></div>
       </div>
     </div>
 
-    <!-- 2. MÀN HÌNH DASHBOARD QUẢN TRỊ CHÍNH (Khi đã đăng nhập) -->
+    <!-- 2. MÀN HÌNH DASHBOARD QUẢN TRỊ CHÍNH (Khi đã xác thực thành công) -->
     <div id="view-dashboard" style="display: none;">
 
       <!-- Sub-header bar: Tóm tắt trạng thái máy chủ & nút chức năng nhanh -->
@@ -600,7 +591,7 @@
               </div>
             </div>
 
-            <!-- Các nút hành động dọn dẹp nhanh 1-chạm -->
+            <!-- Nút hành động dọn dẹp nhanh 1-chạm -->
             <div id="cleanup-action-buttons" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;">
               <button type="button" class="btn-primary btn-sm" id="btn-clean-all" onclick="AdminApp.runCleanup('all')" style="display: inline-flex; align-items: center; gap: 5px;">
                 <i data-lucide="trash" style="width: 14px; height: 14px;"></i>
@@ -699,39 +690,25 @@
            TAB 5: HỆ THỐNG & COMPOSE (Server & Docker Config)
            ======================================================== -->
       <div id="tab-system" class="admin-tab-content" style="display: none;">
-        <!-- Card 1: Cấu hình tài khoản Quản trị Compose -->
+        <!-- Card 1: Cấu hình Email Quản trị Compose -->
         <div class="settings-card-clean">
           <div style="font-weight: 700; font-size: 0.92rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-            <i data-lucide="sliders" style="width: 18px; height: 18px; color: var(--primary);"></i>
-            <span>Cấu Hình Quản Trị Viên Trong Docker Compose</span>
+            <i data-lucide="mail" style="width: 18px; height: 18px; color: var(--primary);"></i>
+            <span>Cấu Hình Email Quản Trị Trong Docker Compose</span>
           </div>
 
           <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 14px;">
-            Hệ thống tự động nạp tài khoản quản trị từ tệp <code>docker-compose.yml</code> hoặc <code>.env</code> trên máy chủ.
+            Hệ thống chỉ cấp quyền quản trị cho các tài khoản Email Google được khai báo trong biến <code>ADMIN_EMAIL</code> tại tệp <code>docker-compose.yml</code> hoặc <code>.env</code>.
           </div>
 
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-bottom: 14px;">
-            <div style="background: var(--bg-surface); padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Tài khoản Admin đầu vào</div>
-              <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-top: 2px;" id="sys-admin-user">admin</div>
-              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Biến <code>ADMIN_USER</code></div>
-            </div>
-
-            <div style="background: var(--bg-surface); padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Mật khẩu Admin</div>
-              <div style="font-size: 0.95rem; font-weight: 700; color: #10b981; margin-top: 2px;">•••••••• (Đã thiết lập)</div>
-              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Biến <code>ADMIN_PASSWORD</code></div>
-            </div>
-
-            <div style="background: var(--bg-surface); padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Email Google Admin</div>
-              <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-top: 2px;" id="sys-admin-emails">Chưa chỉ định</div>
-              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Biến <code>ADMIN_EMAILS</code></div>
-            </div>
+          <div style="background: var(--bg-surface); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 14px;">
+            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Danh Sách Email Quản Trị Viên Hiện Tại</div>
+            <div style="font-size: 1rem; font-weight: 700; color: var(--primary); margin-top: 4px;" id="sys-admin-emails">Chưa chỉ định</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">Biến môi trường: <code>ADMIN_EMAIL</code></div>
           </div>
 
           <!-- Mẫu Docker Compose chuẩn -->
-          <div style="margin-top: 14px;">
+          <div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary);">Mẫu khai báo docker-compose.yml:</span>
               <button type="button" class="btn-secondary btn-sm" onclick="AdminApp.copyComposeSnippet()" style="font-size: 0.72rem; padding: 3px 8px;">Sao chép</button>
@@ -747,10 +724,8 @@
       - PORT=8081
       - DATA_DIR=/app/data
       - JWT_SECRET=change_me_super_secret_key
-      # Tài khoản quản trị trang /admin
-      - ADMIN_USER=admin
-      - ADMIN_PASSWORD=admin123456
-      - ADMIN_EMAILS=
+      # Khai báo Email Quản trị viên máy chủ sao lưu (/admin)
+      - ADMIN_EMAIL=email_cua_ban@gmail.com
     volumes:
       - ./data:/app/data</code></pre>
           </div>
@@ -866,6 +841,6 @@
   <div id="toast-container" class="admin-toast-container"></div>
 
   <!-- Admin Frontend Application Script -->
-  <script src="./js/admin.js?v=admin1"></script>
+  <script src="./js/admin.js?v=admin2"></script>
 </body>
 </html>

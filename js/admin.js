@@ -1,6 +1,7 @@
 /**
  * SỔ THU CHI - ADMIN DASHBOARD CLIENT CONTROLLER
  * Trang quản trị máy chủ sao lưu:
+ * - Xác thực quản trị viên qua ADMIN_EMAIL (Google OAuth hoặc Email xác thực)
  * - Kiểm tra người dùng (thật vs test, đang hoạt động vs lãng quên)
  * - Quét và dọn dẹp dữ liệu rác (sổ trống, phiên hết hạn, liên kết hết hạn, snapshot cũ)
  * - Quản trị toàn bộ sổ & cascade delete an toàn
@@ -11,6 +12,7 @@
   const AdminApp = {
     token: null,
     currentAdmin: null,
+    serverAuthConfig: null,
     overviewData: null,
     usersData: [],
     vaultsData: [],
@@ -24,18 +26,43 @@
       this.initTheme();
       this.bindGlobalEvents();
 
-      // Kiểm tra token lưu trữ
-      this.token = localStorage.getItem('stc_admin_token') || '';
-      if (this.token) {
-        const isAuthed = await this.checkAuth();
-        if (isAuthed) {
-          this.showDashboard();
-          await this.refreshAllData();
-          return;
-        }
+      // Đọc token đã lưu (từ localStorage hoặc IndexedDB của app chính)
+      this.token = await this.getStoredToken();
+      
+      const authStatus = await this.checkAuth();
+      if (authStatus && authStatus.authenticated) {
+        this.showDashboard();
+        await this.refreshAllData();
+      } else {
+        this.showLogin(authStatus);
       }
+    },
 
-      this.showLogin();
+    // Lấy token lưu trữ
+    async getStoredToken() {
+      let token = localStorage.getItem('stc_admin_token') || localStorage.getItem('syncServerToken');
+      if (token) return token;
+
+      // Tìm trong IndexedDB của Sổ Thu Chi (nếu cùng origin)
+      try {
+        const idbReq = indexedDB.open('SoThuChiDB');
+        token = await new Promise((resolve) => {
+          idbReq.onsuccess = (e) => {
+            try {
+              const idb = e.target.result;
+              if (!idb.objectStoreNames.contains('settings')) return resolve(null);
+              const tx = idb.transaction('settings', 'readonly');
+              const store = tx.objectStore('settings');
+              const req = store.get('syncServerToken');
+              req.onsuccess = () => resolve(req.result ? req.result.value : null);
+              req.onerror = () => resolve(null);
+            } catch (_) { resolve(null); }
+          };
+          idbReq.onerror = () => resolve(null);
+        });
+      } catch (_) {}
+
+      return token || '';
     },
 
     // Quản lý theme Sáng / Tối đồng bộ
@@ -66,19 +93,10 @@
 
     // Gắn sự kiện giao diện
     bindGlobalEvents() {
-      // Toggle ẩn/hiện mật khẩu form đăng nhập
-      const btnTogglePass = document.getElementById('btn-toggle-login-pass');
-      const inputPass = document.getElementById('input-admin-pass');
-      if (btnTogglePass && inputPass) {
-        btnTogglePass.addEventListener('click', () => {
-          const isPass = inputPass.type === 'password';
-          inputPass.type = isPass ? 'text' : 'password';
-          const eyeIcon = btnTogglePass.querySelector('i, svg');
-          if (eyeIcon) {
-            eyeIcon.setAttribute('data-lucide', isPass ? 'eye-off' : 'eye');
-            if (window.lucide) lucide.createIcons();
-          }
-        });
+      // Nút Đăng nhập Google
+      const btnGoogleLogin = document.getElementById('btn-admin-google-login');
+      if (btnGoogleLogin) {
+        btnGoogleLogin.addEventListener('click', () => this.loginWithGoogle());
       }
 
       // Nút Đăng xuất
@@ -101,11 +119,12 @@
 
       const res = await fetch(endpoint, { ...options, headers });
       if (res.status === 401 || res.status === 403) {
-        if (!endpoint.includes('/api/admin/login')) {
+        if (!endpoint.includes('/api/admin/auth-status')) {
           this.token = null;
           localStorage.removeItem('stc_admin_token');
-          this.showLogin();
-          throw new Error('Phiên quản trị hết hạn, vui lòng đăng nhập lại.');
+          const status = await this.checkAuth();
+          this.showLogin(status);
+          throw new Error('Bạn không có quyền quản trị hoặc phiên đã hết hạn.');
         }
       }
       return res;
@@ -117,83 +136,186 @@
         const res = await this.fetchApi('/api/admin/auth-status');
         if (res.ok) {
           const data = await res.json();
+          this.serverAuthConfig = data;
           if (data.authenticated && data.adminUser) {
             this.currentAdmin = data.adminUser;
-            return true;
+            return data;
           }
+          return data;
         }
       } catch (_) {}
-      return false;
+      return null;
     },
 
     // Chuyển màn hình
-    showLogin() {
+    showLogin(authStatus = null) {
       document.getElementById('view-login').style.display = 'block';
       document.getElementById('view-dashboard').style.display = 'none';
       document.getElementById('admin-user-badge').style.display = 'none';
       document.getElementById('btn-admin-logout').style.display = 'none';
+
+      const unconfiguredBox = document.getElementById('box-unconfigured-admin');
+      const unauthBox = document.getElementById('box-unauthorized-user');
+      const unauthEmailDisplay = document.getElementById('unauth-email-display');
+
+      if (authStatus) {
+        // Trường hợp máy chủ chưa cấu hình ADMIN_EMAIL
+        if (authStatus.adminEmailsConfigured === false) {
+          if (unconfiguredBox) unconfiguredBox.style.display = 'block';
+          if (unauthBox) unauthBox.style.display = 'none';
+        } else if (authStatus.currentUser && !authStatus.authenticated) {
+          // Người dùng đã đăng nhập tài khoản nhưng email không nằm trong ADMIN_EMAIL
+          if (unconfiguredBox) unconfiguredBox.style.display = 'none';
+          if (unauthBox) {
+            unauthBox.style.display = 'block';
+            if (unauthEmailDisplay) {
+              unauthEmailDisplay.textContent = authStatus.currentUser.email || 'này';
+            }
+          }
+        } else {
+          if (unconfiguredBox) unconfiguredBox.style.display = 'none';
+          if (unauthBox) unauthBox.style.display = 'none';
+        }
+      } else {
+        if (unconfiguredBox) unconfiguredBox.style.display = 'none';
+        if (unauthBox) unauthBox.style.display = 'none';
+      }
+
       if (window.lucide) lucide.createIcons();
     },
 
     showDashboard() {
       document.getElementById('view-login').style.display = 'none';
       document.getElementById('view-dashboard').style.display = 'block';
+      
       const userBadge = document.getElementById('admin-user-badge');
       const userDisplay = document.getElementById('admin-username-display');
+      const userAvatar = document.getElementById('admin-avatar-small');
+
       if (userBadge && userDisplay && this.currentAdmin) {
-        userDisplay.textContent = this.currentAdmin.username || this.currentAdmin.email || 'Admin';
+        userDisplay.textContent = this.currentAdmin.name || this.currentAdmin.email || 'Admin';
+        if (userAvatar && this.currentAdmin.picture) {
+          userAvatar.src = this.currentAdmin.picture;
+        }
         userBadge.style.display = 'inline-flex';
       }
       document.getElementById('btn-admin-logout').style.display = 'inline-flex';
       if (window.lucide) lucide.createIcons();
     },
 
-    // Đăng nhập
-    async handleLogin() {
-      const usernameInput = document.getElementById('input-admin-user');
-      const passwordInput = document.getElementById('input-admin-pass');
+    showLoginError(msg) {
       const errorMsg = document.getElementById('login-error-msg');
-      const btnSubmit = document.getElementById('btn-submit-login');
-
-      const username = (usernameInput.value || '').trim();
-      const password = (passwordInput.value || '').trim();
-
-      if (!username || !password) {
-        errorMsg.textContent = 'Vui lòng điền đầy đủ tên đăng nhập và mật khẩu';
+      if (errorMsg) {
+        errorMsg.textContent = msg;
         errorMsg.style.display = 'block';
+      }
+    },
+
+    clearLoginError() {
+      const errorMsg = document.getElementById('login-error-msg');
+      if (errorMsg) errorMsg.style.display = 'none';
+    },
+
+    // 1. ĐĂNG NHẬP GOOGLE OAUTH
+    async loginWithGoogle() {
+      this.clearLoginError();
+      const btn = document.getElementById('btn-admin-google-login');
+      const btnText = document.getElementById('btn-admin-google-text');
+
+      // Lấy Client ID từ cấu hình máy chủ
+      let clientId = this.serverAuthConfig?.googleClientId;
+      if (!clientId) {
+        try {
+          const cfgRes = await fetch('/api/auth/config');
+          if (cfgRes.ok) {
+            const cfg = await cfgRes.json();
+            clientId = cfg.google_client_id;
+          }
+        } catch (_) {}
+      }
+
+      if (!clientId) {
+        this.showLoginError('Máy chủ chưa cấu hình GOOGLE_CLIENT_ID. Vui lòng khai báo GOOGLE_CLIENT_ID trong docker-compose.yml hoặc .env.');
         return;
       }
 
-      errorMsg.style.display = 'none';
-      btnSubmit.disabled = true;
-      btnSubmit.innerHTML = '<span>Đang kiểm tra...</span>';
+      if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+        this.showLoginError('Thư viện Google Identity Services chưa tải xong hoặc bị chặn bởi trình duyệt.');
+        return;
+      }
+
+      if (btn) btn.disabled = true;
+      if (btnText) btnText.textContent = 'Đang mở cửa sổ Google...';
 
       try {
-        const res = await fetch('/api/admin/login', {
+        const accessToken = await new Promise((resolve, reject) => {
+          let settled = false;
+          const timer = setTimeout(() => {
+            if (!settled) {
+              settled = true;
+              reject(new Error('Hết thời gian chờ phản hồi từ Google.'));
+            }
+          }, 90000);
+
+          try {
+            const tokenClient = google.accounts.oauth2.initTokenClient({
+              client_id: clientId,
+              scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
+              prompt: 'select_account',
+              callback: (resp) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                if (resp.error) {
+                  if (resp.error === 'popup_closed_by_user') {
+                    return reject(new Error('Cửa sổ đăng nhập Google đã bị đóng.'));
+                  }
+                  return reject(new Error(resp.error_description || resp.error));
+                }
+                resolve(resp.access_token);
+              }
+            });
+            tokenClient.requestAccessToken();
+          } catch (e) {
+            settled = true;
+            clearTimeout(timer);
+            reject(e);
+          }
+        });
+
+        if (btnText) btnText.textContent = 'Đang kiểm tra quyền Admin...';
+
+        // Gửi token xác thực lên máy chủ
+        const authRes = await fetch('/api/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+          body: JSON.stringify({ access_token: accessToken })
         });
-        const data = await res.json();
 
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Đăng nhập không thành công');
+        const authData = await authRes.json();
+        if (!authRes.ok || !authData.token) {
+          throw new Error(authData.error || 'Máy chủ từ chối xác thực Google');
         }
 
-        this.token = data.token;
-        localStorage.setItem('stc_admin_token', data.token);
-        this.currentAdmin = { username: data.username, role: data.role };
+        this.token = authData.token;
+        localStorage.setItem('stc_admin_token', this.token);
+        localStorage.setItem('syncServerToken', this.token);
 
-        this.showToast('Đăng nhập quản trị viên thành công', 'success');
-        this.showDashboard();
-        await this.refreshAllData();
+        // Kiểm tra quyền quản trị viên với ADMIN_EMAIL
+        const authStatus = await this.checkAuth();
+        if (authStatus && authStatus.authenticated) {
+          this.showToast(`Chào mừng Quản trị viên: ${this.currentAdmin.name || this.currentAdmin.email}`, 'success');
+          this.showDashboard();
+          await this.refreshAllData();
+        } else {
+          this.showLogin(authStatus);
+          this.showLoginError(`Tài khoản "${authData.user?.email}" không nằm trong danh sách ADMIN_EMAIL của máy chủ.`);
+        }
       } catch (err) {
-        errorMsg.textContent = err.message || 'Lỗi đăng nhập';
-        errorMsg.style.display = 'block';
+        this.showLoginError(err.message || 'Lỗi đăng nhập Google');
       } finally {
-        btnSubmit.disabled = false;
-        btnSubmit.innerHTML = '<i data-lucide="log-in" style="width: 16px; height: 16px;"></i> <span>Đăng Nhập Quản Trị</span>';
-        if (window.lucide) lucide.createIcons();
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.textContent = 'Đăng Nhập Quản Trị Bằng Google';
       }
     },
 
@@ -206,14 +328,16 @@
       if (!confirmed) return;
 
       try {
-        await this.fetchApi('/api/admin/logout', { method: 'POST' });
+        await this.fetchApi('/api/auth/logout', { method: 'POST' });
       } catch (_) {}
 
       this.token = null;
       this.currentAdmin = null;
       localStorage.removeItem('stc_admin_token');
       this.showToast('Đã đăng xuất', 'info');
-      this.showLogin();
+      
+      const authStatus = await this.checkAuth();
+      this.showLogin(authStatus);
     },
 
     // Chuyển Tab
@@ -790,10 +914,10 @@
 
     // 5. HIỂN THỊ TAB HỆ THỐNG
     renderSystemTab(data) {
-      document.getElementById('sys-admin-user').textContent = data.system.adminUser || 'admin';
       const emails = (data.system.adminEmails && data.system.adminEmails.length > 0) ?
-        data.system.adminEmails.join(', ') : 'Chưa chỉ định';
-      document.getElementById('sys-admin-emails').textContent = emails;
+        data.system.adminEmails.join(', ') : 'Chưa chỉ định (Khai báo ADMIN_EMAIL trong compose)';
+      const emailsEl = document.getElementById('sys-admin-emails');
+      if (emailsEl) emailsEl.textContent = emails;
 
       const filesContainer = document.getElementById('sys-storage-files-list');
       if (filesContainer && data.storage.files) {
