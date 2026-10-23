@@ -26,8 +26,25 @@
       this.initTheme();
       this.bindGlobalEvents();
 
+      // Kiểm tra token từ URL hash (khi mở trực tiếp từ Sổ Thu Chi)
+      if (window.location.hash) {
+        const hashStr = window.location.hash.substring(1);
+        const params = new URLSearchParams(hashStr);
+        const hashToken = params.get('token');
+        if (hashToken) {
+          this.token = hashToken;
+          localStorage.setItem('stc_admin_token', hashToken);
+          localStorage.setItem('syncServerToken', hashToken);
+          try {
+            window.history.replaceState(null, '', window.location.pathname);
+          } catch (_) {}
+        }
+      }
+
       // Đọc token đã lưu (từ localStorage hoặc IndexedDB của app chính)
-      this.token = await this.getStoredToken();
+      if (!this.token) {
+        this.token = await this.getStoredToken();
+      }
       
       const authStatus = await this.checkAuth();
       if (authStatus && authStatus.authenticated) {
@@ -97,6 +114,14 @@
       const btnGoogleLogin = document.getElementById('btn-admin-google-login');
       if (btnGoogleLogin) {
         btnGoogleLogin.addEventListener('click', () => this.loginWithGoogle());
+      }
+
+      // Input thêm admin email (Enter to submit)
+      const inputNewAdmin = document.getElementById('input-new-admin-email');
+      if (inputNewAdmin) {
+        inputNewAdmin.addEventListener('keyup', (e) => {
+          if (e.key === 'Enter') this.addAdminEmail();
+        });
       }
 
       // Nút Đăng xuất
@@ -367,7 +392,8 @@
           this.loadOverview(),
           this.loadUsers(),
           this.loadVaults(),
-          this.loadGarbageReport()
+          this.loadGarbageReport(),
+          this.loadAdmins()
         ]);
         this.showToast('Đã làm mới dữ liệu máy chủ', 'info');
       } catch (err) {
@@ -913,7 +939,125 @@
     },
 
     // 5. HIỂN THỊ TAB HỆ THỐNG
+
+    // 6. QUẢN LÝ QUYỀN QUẢN TRỊ VIÊN (Admin Permissions)
+    async loadAdmins() {
+      try {
+        const res = await this.fetchApi('/api/admin/admins');
+        if (!res.ok) return;
+        const data = await res.json();
+        this.renderAdminsList(data.admins || []);
+      } catch (_) {}
+    },
+
+    renderAdminsList(admins) {
+      const container = document.getElementById('admin-emails-container-list');
+      const countEl = document.getElementById('admin-emails-count');
+      if (countEl) countEl.textContent = admins.length;
+      if (!container) return;
+
+      if (!admins || admins.length === 0) {
+        container.innerHTML = `
+          <div style="padding: 12px; background: var(--bg-surface); border-radius: var(--radius-sm); color: var(--text-muted); font-size: 0.8rem; text-align: center;">
+            Chưa có email quản trị viên nào.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = admins.map(a => {
+        const isEnv = a.source === 'env';
+        const badge = isEnv
+          ? `<span class="settings-status-pill pill-teal" style="font-size: 0.65rem;" title="Khai báo cố định qua biến ADMIN_EMAIL trong Compose"><i data-lucide="container" style="width: 10px; height: 10px; margin-right: 3px;"></i>Compose / .env</span>`
+          : `<span class="settings-status-pill pill-amber" style="font-size: 0.65rem;" title="Cấp quyền trực tiếp từ giao diện Quản trị"><i data-lucide="database" style="width: 10px; height: 10px; margin-right: 3px;"></i>Cấp qua Dashboard</span>`;
+
+        const deleteBtn = a.can_delete
+          ? `<button type="button" class="btn-secondary btn-sm" onclick="AdminApp.removeAdminEmail('${this.escapeHTML(a.email)}')" title="Thu hồi quyền quản trị của email này" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3); font-size: 0.72rem; padding: 4px 8px;">
+               <i data-lucide="user-minus" style="width: 13px; height: 13px;"></i>
+               <span class="hide-on-mobile">Thu hồi</span>
+             </button>`
+          : `<span style="font-size: 0.72rem; color: var(--text-muted); font-style: italic;">(Mặc định Compose)</span>`;
+
+        const dateStr = a.created_at ? this.formatDate(a.created_at) : 'Khởi động máy chủ';
+
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); font-size: 0.82rem; gap: 8px;">
+            <div style="min-width: 0; flex: 1;">
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <strong style="color: var(--text-primary); font-size: 0.88rem;">${this.escapeHTML(a.email)}</strong>
+                ${badge}
+              </div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">
+                Người cấp: <strong>${this.escapeHTML(a.added_by)}</strong> &bull; Ngày cấp: ${dateStr}
+              </div>
+            </div>
+            <div style="flex-shrink: 0;">
+              ${deleteBtn}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (window.lucide) lucide.createIcons();
+    },
+
+    async addAdminEmail() {
+      const input = document.getElementById('input-new-admin-email');
+      const email = (input?.value || '').trim().toLowerCase();
+      if (!email || !email.includes('@')) {
+        this.showToast('Vui lòng nhập định dạng email hợp lệ', 'error');
+        return;
+      }
+
+      const confirmed = await this.showConfirm(
+        'Cấp Quyền Quản Trị Viên',
+        `Bạn có chắc chắn muốn cấp quyền Quản trị viên máy chủ cho email "${email}"? Tài khoản này sẽ có toàn quyền kiểm tra, quản lý và dọn dẹp dữ liệu máy chủ.`
+      );
+      if (!confirmed) return;
+
+      try {
+        const res = await this.fetchApi('/api/admin/admins', {
+          method: 'POST',
+          body: { email }
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.showToast(data.message || 'Cấp quyền admin thành công', 'success');
+          if (input) input.value = '';
+          this.renderAdminsList(data.admins || []);
+        } else {
+          throw new Error(data.error || 'Không thể cấp quyền admin');
+        }
+      } catch (err) {
+        this.showToast(err.message, 'error');
+      }
+    },
+
+    async removeAdminEmail(email) {
+      const confirmed = await this.showConfirm(
+        'Thu Hồi Quyền Quản Trị',
+        `Bạn có chắc chắn muốn thu hồi quyền Quản trị viên của email "${email}"?`
+      );
+      if (!confirmed) return;
+
+      try {
+        const res = await this.fetchApi(`/api/admin/admins/${encodeURIComponent(email)}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.showToast(data.message || 'Đã thu hồi quyền admin', 'info');
+          this.renderAdminsList(data.admins || []);
+        } else {
+          throw new Error(data.error || 'Không thể thu hồi quyền');
+        }
+      } catch (err) {
+        this.showToast(err.message, 'error');
+      }
+    },
+
     renderSystemTab(data) {
+      this.loadAdmins();
       const emails = (data.system.adminEmails && data.system.adminEmails.length > 0) ?
         data.system.adminEmails.join(', ') : 'Chưa chỉ định (Khai báo ADMIN_EMAIL trong compose)';
       const emailsEl = document.getElementById('sys-admin-emails');

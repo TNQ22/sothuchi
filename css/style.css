@@ -12706,3 +12706,12 @@ body.light .ptr-circle-badge,
   font-weight: 600 !important;
   border-radius: var(--radius-md) !important;
 }
+
+#server-admin-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+#server-admin-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--primary) !important;
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.2);
+}

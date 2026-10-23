@@ -101,7 +101,8 @@ class DatabaseManager {
       vault_data: {},
       vault_history: [],
       item_shares: [],
-      item_share_links: []
+      item_share_links: [],
+      server_admins: {}
     };
     this.jsonFilePath = path.join(DATA_DIR, 'sothuchi_store.json');
     this.initDatabase();
@@ -205,6 +206,12 @@ class DatabaseManager {
         );
         CREATE INDEX IF NOT EXISTS idx_share_links_token ON item_share_links(token);
         CREATE INDEX IF NOT EXISTS idx_share_links_lookup ON item_share_links(vault_id, item_type, item_id);
+
+        CREATE TABLE IF NOT EXISTS server_admins (
+          email TEXT PRIMARY KEY,
+          added_by TEXT,
+          created_at TEXT
+        );
 
         CREATE TABLE IF NOT EXISTS admin_sessions (
           token TEXT PRIMARY KEY,
@@ -1322,7 +1329,7 @@ class DatabaseManager {
         nodeVersion: process.version,
         platform: process.platform,
         memory: process.memoryUsage(),
-        adminEmails: ADMIN_EMAILS,
+        adminEmails: getAdminEmails(),
         serverTime: nowIso
       }
     };
@@ -1462,6 +1469,104 @@ class DatabaseManager {
       this.saveJsonStore();
       return true;
     }
+  }
+
+
+  getDynamicAdminEmails() {
+    try {
+      if (this.isSqlite) {
+        const rows = this.sqliteDb.prepare('SELECT email FROM server_admins').all();
+        return rows.map(r => (r.email || '').toLowerCase().trim()).filter(Boolean);
+      } else {
+        return Object.keys(this.jsonStore.server_admins || {}).map(e => e.toLowerCase().trim()).filter(Boolean);
+      }
+    } catch (_) {
+      return [];
+    }
+  }
+
+  getAllAdminsList() {
+    const envEmails = ADMIN_EMAILS;
+    let dynamicList = [];
+    try {
+      if (this.isSqlite) {
+        dynamicList = this.sqliteDb.prepare('SELECT email, added_by, created_at FROM server_admins ORDER BY created_at DESC').all();
+      } else {
+        dynamicList = Object.values(this.jsonStore.server_admins || {});
+      }
+    } catch (_) {}
+
+    const map = new Map();
+    // 1. Env emails
+    for (const email of envEmails) {
+      map.set(email, {
+        email,
+        source: 'env',
+        source_label: 'Docker Compose / .env',
+        added_by: 'Hệ thống (docker-compose)',
+        created_at: null,
+        can_delete: false
+      });
+    }
+
+    // 2. Dynamic emails
+    for (const item of dynamicList) {
+      const email = (item.email || '').toLowerCase().trim();
+      if (!email) continue;
+      if (map.has(email)) continue;
+      map.set(email, {
+        email,
+        source: 'database',
+        source_label: 'Cấp qua Dashboard',
+        added_by: item.added_by || 'admin',
+        created_at: item.created_at || new Date().toISOString(),
+        can_delete: true
+      });
+    }
+
+    return Array.from(map.values());
+  }
+
+  addAdminEmail(email, addedBy = 'admin') {
+    email = (email || '').toLowerCase().trim();
+    if (!email || !email.includes('@')) {
+      throw new Error('Địa chỉ email không hợp lệ');
+    }
+    const allAdmins = getAdminEmails();
+    if (allAdmins.includes(email)) {
+      throw new Error(`Email "${email}" đã có quyền quản trị máy chủ`);
+    }
+
+    const now = new Date().toISOString();
+    if (this.isSqlite) {
+      this.sqliteDb.prepare(`
+        INSERT INTO server_admins (email, added_by, created_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(email) DO UPDATE SET added_by = excluded.added_by, created_at = excluded.created_at
+      `).run(email, addedBy, now);
+    } else {
+      this.jsonStore.server_admins = this.jsonStore.server_admins || {};
+      this.jsonStore.server_admins[email] = { email, added_by: addedBy, created_at: now };
+      this.saveJsonStore();
+    }
+    return { email, added_by: addedBy, created_at: now };
+  }
+
+  removeAdminEmail(email) {
+    email = (email || '').toLowerCase().trim();
+    if (ADMIN_EMAILS.includes(email)) {
+      throw new Error(`Không thể xóa email "${email}" vì được cấu hình cố định trong docker-compose.yml`);
+    }
+
+    if (this.isSqlite) {
+      this.sqliteDb.prepare('DELETE FROM server_admins WHERE LOWER(email) = ?').run(email);
+    } else {
+      if (this.jsonStore.server_admins && this.jsonStore.server_admins[email]) {
+        delete this.jsonStore.server_admins[email];
+        this.saveJsonStore();
+      }
+    }
+    return true;
   }
 
   deleteAdminUser(userId) {
@@ -2099,6 +2204,13 @@ function getAuthUser(req) {
   return dbManager.getUserByToken(token);
 }
 
+function getAdminEmails() {
+  const envEmails = ADMIN_EMAILS;
+  const dbEmails = dbManager ? dbManager.getDynamicAdminEmails() : [];
+  const set = new Set([...envEmails, ...dbEmails]);
+  return Array.from(set);
+}
+
 function getAdminUser(req) {
   const token = getBearerToken(req);
   if (!token) return null;
@@ -2108,8 +2220,9 @@ function getAdminUser(req) {
   if (!user || !user.email) return null;
 
   const email = (user.email || '').toLowerCase().trim();
-  // Kiểm tra email người dùng có nằm trong danh sách ADMIN_EMAIL được khai báo không
-  if (ADMIN_EMAILS.length > 0 && ADMIN_EMAILS.includes(email)) {
+  // Kiểm tra email người dùng có nằm trong danh sách ADMIN_EMAIL được cấp quyền không
+  const allAdmins = getAdminEmails();
+  if (allAdmins.length > 0 && allAdmins.includes(email)) {
     return {
       id: user.id,
       name: user.name || user.email,
@@ -2184,6 +2297,45 @@ async function handleApiRequest(req, res, pathname, url) {
     const adminUser = getAdminUser(req);
     if (!adminUser) {
       return sendJson(res, 403, { error: 'Yêu cầu quyền Quản Trị Viên (Unauthorized Admin Access)' });
+    }
+
+    // 0. Quản lý danh sách email quản trị viên & cấp quyền admin
+    if (pathname === '/api/admin/admins') {
+      if (req.method === 'GET') {
+        return sendJson(res, 200, {
+          admins: dbManager.getAllAdminsList(),
+          currentAdminEmail: adminUser.email
+        });
+      }
+      if (req.method === 'POST') {
+        const body = await parseJsonBody(req);
+        const email = (body.email || '').trim();
+        try {
+          dbManager.addAdminEmail(email, adminUser.email);
+          return sendJson(res, 200, {
+            success: true,
+            message: `Đã cấp quyền quản trị cho email ${email}`,
+            admins: dbManager.getAllAdminsList()
+          });
+        } catch (err) {
+          return sendJson(res, 400, { error: err.message });
+        }
+      }
+    }
+
+    const adminEmailMatch = pathname.match(/^\/api\/admin\/admins\/([^/]+)$/);
+    if (req.method === 'DELETE' && adminEmailMatch) {
+      const email = decodeURIComponent(adminEmailMatch[1]);
+      try {
+        dbManager.removeAdminEmail(email);
+        return sendJson(res, 200, {
+          success: true,
+          message: `Đã thu hồi quyền quản trị của email ${email}`,
+          admins: dbManager.getAllAdminsList()
+        });
+      } catch (err) {
+        return sendJson(res, 400, { error: err.message });
+      }
     }
 
     // 1. Tổng quan & Thống kê
@@ -3028,7 +3180,7 @@ server.listen(PORT, HOST, () => {
   console.log('================================================================');
   console.log(`  🌐 Website & API: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
   console.log(`  🛡️ Trang Quản Trị: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}/admin`);
-  console.log(`  📧 Admin Email:   ${ADMIN_EMAILS.length > 0 ? ADMIN_EMAILS.join(', ') : 'Chưa cấu hình (khai báo ADMIN_EMAIL trong compose)'}`);
+  console.log(`  📧 Admin Email:   ${getAdminEmails().length > 0 ? getAdminEmails().join(', ') : 'Chưa cấu hình (khai báo ADMIN_EMAIL trong compose)'}`);
   console.log(`  💾 Dữ liệu lưu tại: ${DATA_DIR}`);
   console.log(`  🔒 Database Engine: ${dbManager.isSqlite ? 'SQLite (node:sqlite)' : 'JSON File Store'}`);
   console.log(`  🔑 Google OAuth:    ${GOOGLE_CLIENT_ID ? 'Đã cấu hình' : 'Chờ client truyền token'}`);

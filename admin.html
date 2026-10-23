@@ -519,7 +519,7 @@
         </button>
         <button type="button" class="admin-tab-btn" data-tab="tab-system" onclick="AdminApp.switchTab('tab-system')">
           <i data-lucide="settings" style="width: 16px; height: 16px;"></i>
-          <span>Hệ Thống & Compose</span>
+          <span>Phân Quyền & Hệ Thống</span>
         </button>
       </nav>
 
@@ -690,6 +690,35 @@
            TAB 5: HỆ THỐNG & COMPOSE (Server & Docker Config)
            ======================================================== -->
       <div id="tab-system" class="admin-tab-content" style="display: none;">
+        <!-- Card 0: Quản Lý & Cấp Quyền Quản Trị Viên (Admin) -->
+        <div class="settings-card-clean" style="margin-bottom: 14px;">
+          <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="user-check" style="width: 18px; height: 18px; color: var(--primary);"></i>
+            <span>Cấp Quyền Quản Trị Viên (Admin)</span>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 14px;">
+            Tài khoản Google có email trong danh sách này sẽ có toàn quyền truy cập trang quản trị máy chủ. Bạn có thể cấp quyền nhanh cho các email khác ngay tại đây hoặc khai báo trong biến <code>ADMIN_EMAIL</code> tại Docker Compose.
+          </div>
+
+          <!-- Form cấp quyền nhanh -->
+          <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+            <input type="email" id="input-new-admin-email" class="form-control" placeholder="Nhập email Google cần cấp quyền admin (ví dụ: colleague@gmail.com)" style="flex: 1; min-width: 240px; font-size: 0.84rem;">
+            <button type="button" class="btn-primary" onclick="AdminApp.addAdminEmail()" id="btn-add-admin-email" style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 0.82rem; padding: 8px 16px;">
+              <i data-lucide="user-plus" style="width: 15px; height: 15px;"></i>
+              <span>Cấp Quyền Admin</span>
+            </button>
+          </div>
+
+          <!-- Danh sách Admin -->
+          <div style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">
+            Danh Sách Quản Trị Viên Hiện Tại (<span id="admin-emails-count">0</span>)
+          </div>
+          <div id="admin-emails-container-list" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="padding: 12px; background: var(--bg-surface); border-radius: var(--radius-sm); color: var(--text-muted); font-size: 0.8rem; text-align: center;">Đang tải danh sách...</div>
+          </div>
+        </div>
+
+
         <!-- Card 1: Cấu hình Email Quản trị Compose -->
         <div class="settings-card-clean">
           <div style="font-weight: 700; font-size: 0.92rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">

@@ -544,15 +544,8 @@ const UISettings = {
       }
     }
 
-    // 1.2 Cập nhật đường dẫn Trang Quản Trị Máy Chủ
-    const adminLink = document.getElementById('btn-open-server-admin');
-    if (adminLink) {
-      if (sService.serverUrl && !isSelfHost) {
-        adminLink.href = sService.serverUrl.replace(/\/+$/, '') + '/admin';
-      } else {
-        adminLink.href = '/admin';
-      }
-    }
+    // 1.2 Cập nhật hiển thị Thẻ Quản Trị Máy Chủ (chỉ hiện khi có quyền admin)
+    this.checkAndRenderServerAdminCard();
 
     // 1.5 Cập nhật Mật khẩu Mã Hóa Sổ (E2EE)
     const serverPassInput = document.getElementById('settings-server-vault-password');
@@ -669,6 +662,49 @@ const UISettings = {
   },
 
   // Render danh sách Sổ trên Máy Chủ (Bảng Sổ đang đồng bộ & Bảng Sổ được chia sẻ riêng biệt)
+
+  // Kiểm tra và hiển thị Thẻ Quản Trị Máy Chủ nếu người dùng có quyền Admin
+  async checkAndRenderServerAdminCard() {
+    const adminCard = document.getElementById('server-admin-card');
+    if (!adminCard) return;
+
+    const sService = window.serverSyncService;
+    if (!sService || !sService.isLoggedIn() || !sService.token) {
+      adminCard.style.display = 'none';
+      return;
+    }
+
+    try {
+      const authStatus = await sService.checkAdminStatus();
+      if (authStatus && authStatus.authenticated && authStatus.adminUser) {
+        adminCard.style.display = 'block';
+        if (window.lucide) lucide.createIcons();
+      } else {
+        adminCard.style.display = 'none';
+      }
+    } catch (_) {
+      adminCard.style.display = 'none';
+    }
+  },
+
+  // Mở trang Quản trị máy chủ và chuyển thẳng token phiên để không cần đăng nhập lại
+  openServerAdmin() {
+    const sService = window.serverSyncService;
+    const isSelfHost = sService && sService.isSelfHosted();
+    let adminUrl = '/admin';
+    if (sService && sService.serverUrl && !isSelfHost) {
+      adminUrl = sService.serverUrl.replace(/\/+$/, '') + '/admin';
+    }
+    if (sService && sService.token) {
+      try {
+        localStorage.setItem('stc_admin_token', sService.token);
+        localStorage.setItem('syncServerToken', sService.token);
+      } catch (_) {}
+      adminUrl += '#token=' + encodeURIComponent(sService.token);
+    }
+    window.open(adminUrl, '_blank');
+  },
+
   renderServerVaultsLists() {
     const sService = window.serverSyncService;
     const myVaultsContainer = document.getElementById('server-my-vaults-list');

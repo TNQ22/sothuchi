@@ -451,6 +451,21 @@ class ServerSyncService {
   }
 
   // Lấy danh sách Sổ (Vaults)
+
+  // Kiểm tra quyền Quản trị viên máy chủ (/admin)
+  async checkAdminStatus() {
+    if (!this.serverUrl || !this.token) return { authenticated: false };
+    try {
+      const res = await fetch(`${this.serverUrl}/api/admin/auth-status`, {
+        headers: { Authorization: `Bearer ${this.token}` }
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (_) {}
+    return { authenticated: false };
+  }
+
   async fetchVaults() {
     if (!this.serverUrl || !this.token) return [];
     try {
