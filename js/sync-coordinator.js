@@ -579,6 +579,30 @@ class SyncCoordinator {
       if (headerName) headerName.textContent = vaultNameText;
       if (txName) txName.textContent = vaultNameText;
 
+      // Áp dụng màu theo quyền sổ (Chủ sổ: Emerald, Chỉnh sửa: Blue, Chỉ xem: Amber)
+      const role = (activeVault && activeVault.role) ? activeVault.role : 'owner';
+      const roleClasses = ['role-owner', 'role-editor', 'role-viewer'];
+      const activeRoleClass = `role-${role}`;
+
+      [headerPill, txPill, headerBtn, txBtn].forEach(el => {
+        if (!el) return;
+        roleClasses.forEach(cls => el.classList.remove(cls));
+        el.classList.add(activeRoleClass);
+        el.dataset.role = role;
+      });
+
+      const roleColors = {
+        owner: '#10b981',
+        editor: '#3b82f6',
+        viewer: '#f59e0b'
+      };
+      const vaultColor = (activeVault && activeVault.color) ? activeVault.color : (roleColors[role] || '#10b981');
+
+      if (headerName) headerName.style.color = vaultColor;
+      if (txName) txName.style.color = vaultColor;
+      if (headerPill) headerPill.style.color = vaultColor;
+      if (txPill) txPill.style.color = vaultColor;
+
       if (headerBadge) {
         headerBadge.textContent = vaults.length;
         headerBadge.style.display = hasMultiVaults ? 'flex' : 'none';
@@ -605,6 +629,17 @@ class SyncCoordinator {
       if (txPill) txPill.style.display = 'none';
       if (headerBadge) headerBadge.style.display = 'none';
       if (txBadge) txBadge.style.display = 'none';
+
+      const roleClasses = ['role-owner', 'role-editor', 'role-viewer'];
+      [headerPill, txPill, headerBtn, txBtn].forEach(el => {
+        if (!el) return;
+        roleClasses.forEach(cls => el.classList.remove(cls));
+        delete el.dataset.role;
+      });
+      if (headerName) headerName.style.color = '';
+      if (txName) txName.style.color = '';
+      if (headerPill) headerPill.style.color = '';
+      if (txPill) txPill.style.color = '';
 
       if (headerBtn) {
         headerBtn.classList.remove('has-vault-name', 'has-multi-vaults');

@@ -270,8 +270,8 @@ input, textarea, select, button {
   min-height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   padding-top: max(8px, env(safe-area-inset-top, 0px));
   padding-bottom: 8px;
-  padding-left: max(14px, env(safe-area-inset-left, 14px));
-  padding-right: max(14px, env(safe-area-inset-right, 14px));
+  padding-left: max(7px, env(safe-area-inset-left, 7px));
+  padding-right: max(7px, env(safe-area-inset-right, 7px));
   /* Solid background — NO backdrop-filter to avoid iOS GPU compositing layer cache issues */
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
@@ -417,7 +417,7 @@ body.dark .header-brand-logo-btn .sync-status-dot,
 .header-vault-subtext {
   display: block;
   width: 100%;
-  max-width: 86px;
+  max-width: 50px;
   font-size: 0.58rem;
   font-weight: 700;
   color: #10b981;
@@ -452,6 +452,68 @@ body.light .header-vault-subtext {
 [data-theme="light"] .header-brand-logo-btn:hover .header-vault-subtext,
 body.light .header-brand-logo-btn:hover .header-vault-subtext {
   color: #047857;
+}
+
+
+/* Màu tên sổ theo quyền sổ (Chủ sổ: Xanh lục, Chỉnh sửa: Xanh dương, Chỉ xem: Vàng) */
+.header-vault-subtext.role-owner,
+[data-role="owner"] .header-vault-subtext,
+.header-brand-logo-btn.role-owner .header-vault-subtext {
+  color: #10b981;
+}
+
+.header-vault-subtext.role-editor,
+[data-role="editor"] .header-vault-subtext,
+.header-brand-logo-btn.role-editor .header-vault-subtext {
+  color: #3b82f6 !important;
+}
+
+.header-vault-subtext.role-viewer,
+[data-role="viewer"] .header-vault-subtext,
+.header-brand-logo-btn.role-viewer .header-vault-subtext {
+  color: #f59e0b !important;
+}
+
+.header-brand-logo-btn:hover .header-vault-subtext.role-owner,
+.header-brand-logo-btn.role-owner:hover .header-vault-subtext {
+  color: #34d399;
+}
+.header-brand-logo-btn:hover .header-vault-subtext.role-editor,
+.header-brand-logo-btn.role-editor:hover .header-vault-subtext {
+  color: #60a5fa !important;
+}
+.header-brand-logo-btn:hover .header-vault-subtext.role-viewer,
+.header-brand-logo-btn.role-viewer:hover .header-vault-subtext {
+  color: #fbbf24 !important;
+}
+
+[data-theme="light"] .header-vault-subtext.role-owner,
+body.light .header-vault-subtext.role-owner,
+[data-theme="light"] .header-brand-logo-btn.role-owner .header-vault-subtext,
+body.light .header-brand-logo-btn.role-owner .header-vault-subtext {
+  color: #059669;
+}
+[data-theme="light"] .header-vault-subtext.role-editor,
+body.light .header-vault-subtext.role-editor,
+[data-theme="light"] .header-brand-logo-btn.role-editor .header-vault-subtext,
+body.light .header-brand-logo-btn.role-editor .header-vault-subtext {
+  color: #2563eb !important;
+}
+[data-theme="light"] .header-vault-subtext.role-viewer,
+body.light .header-vault-subtext.role-viewer,
+[data-theme="light"] .header-brand-logo-btn.role-viewer .header-vault-subtext,
+body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
+  color: #d97706 !important;
+}
+
+.header-brand-logo-btn.role-owner .header-brand-logo.is-google-avatar {
+  border-color: #10b981;
+}
+.header-brand-logo-btn.role-editor .header-brand-logo.is-google-avatar {
+  border-color: #3b82f6;
+}
+.header-brand-logo-btn.role-viewer .header-brand-logo.is-google-avatar {
+  border-color: #f59e0b;
 }
 
 /* Centered Header Title for all pages */
@@ -1848,8 +1910,8 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
     min-height: calc(52px + env(safe-area-inset-top, 0px)) !important;
     padding-top: max(8px, env(safe-area-inset-top, 0px)) !important;
     padding-bottom: 8px !important;
-    padding-left: max(14px, env(safe-area-inset-left, 14px)) !important;
-    padding-right: max(14px, env(safe-area-inset-right, 14px)) !important;
+    padding-left: max(7px, env(safe-area-inset-left, 7px)) !important;
+    padding-right: max(7px, env(safe-area-inset-right, 7px)) !important;
     box-sizing: border-box !important;
   }
 
@@ -1862,7 +1924,7 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior-y: none !important;
-    padding: 12px 14px 20px 14px !important;
+    padding: 12px 7px 20px 7px !important;
     box-sizing: border-box !important;
     max-width: 100% !important;
     width: 100% !important;
@@ -1919,7 +1981,7 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior-y: none !important;
-    padding: 12px 14px 8px 14px !important;
+    padding: 12px 7px 8px 7px !important;
     display: flex !important;
     flex-direction: column !important;
     gap: 8px !important;
@@ -1928,7 +1990,7 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
   #view-new-transaction .tx-bottom-action-row {
     flex-shrink: 0 !important;
     margin-top: auto !important;
-    padding: 8px 14px 10px 14px !important;
+    padding: 8px 7px 10px 7px !important;
     display: flex !important;
     gap: 10px !important;
     align-items: center !important;
@@ -1940,8 +2002,8 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
     min-height: calc(52px + env(safe-area-inset-top, 0px)) !important;
     padding-top: max(8px, env(safe-area-inset-top, 0px)) !important;
     padding-bottom: 8px !important;
-    padding-left: max(14px, env(safe-area-inset-left, 14px)) !important;
-    padding-right: max(14px, env(safe-area-inset-right, 14px)) !important;
+    padding-left: max(7px, env(safe-area-inset-left, 7px)) !important;
+    padding-right: max(7px, env(safe-area-inset-right, 7px)) !important;
     gap: 8px !important;
     background: var(--bg-surface) !important;
     border-bottom: 1px solid var(--border-color) !important;
@@ -1955,14 +2017,14 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
 
   #tx-brand-logo-btn,
   #header-brand-logo-btn {
-    min-width: 40px !important;
-    max-width: 72px !important;
+    min-width: 36px !important;
+    max-width: 52px !important;
     margin-left: 0 !important;
   }
 
   #tx-brand-logo-btn .header-vault-subtext,
   #header-brand-logo-btn .header-vault-subtext {
-    max-width: 70px !important;
+    max-width: 50px !important;
     font-size: 0.54rem !important;
   }
 
@@ -2366,8 +2428,8 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
   min-height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   padding-top: max(8px, env(safe-area-inset-top, 0px));
   padding-bottom: 8px;
-  padding-left: max(14px, env(safe-area-inset-left, 14px));
-  padding-right: max(14px, env(safe-area-inset-right, 14px));
+  padding-left: max(7px, env(safe-area-inset-left, 7px));
+  padding-right: max(7px, env(safe-area-inset-right, 7px));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2394,13 +2456,13 @@ body.light .header-brand-logo-btn:hover .header-vault-subtext {
 }
 
 #tx-brand-logo-btn {
-  min-width: 40px;
-  max-width: 72px;
+  min-width: 36px;
+  max-width: 52px;
   margin-left: 0;
 }
 
 #tx-brand-logo-btn .header-vault-subtext {
-  max-width: 70px;
+  max-width: 50px;
   font-size: 0.54rem;
   overflow: hidden;
   text-overflow: clip;
@@ -5737,7 +5799,7 @@ body.dark .switch .slider {
 @media (max-width: 768px) {
   /* Bóp lề ngoài sát gần mép màn hình hơn */
   #view-accounts.page-view {
-    padding: 12px 14px 20px 14px !important;
+    padding: 12px 7px 20px 7px !important;
   }
 
   /* Khung bao ngoài của từng nhóm tài sản */
@@ -6669,7 +6731,7 @@ html, body {
 /* Mobile Screen Tuning for Transactions View (< 768px): Sát lề như Tài khoản */
 @media (max-width: 768px) {
   #view-transactions.page-view {
-    padding: 12px 14px 20px 14px !important;
+    padding: 12px 7px 20px 7px !important;
   }
 
   .tx-header-acc-btn {
@@ -8127,7 +8189,7 @@ html, body {
 
 @media (max-width: 768px) {
   #view-budgets.page-view {
-    padding: 12px 14px 20px 14px !important;
+    padding: 12px 7px 20px 7px !important;
   }
 }
 
@@ -9234,7 +9296,7 @@ html, body {
 
 @media (max-width: 768px) {
   #view-dashboard.page-view {
-    padding: 12px 14px 24px 14px !important;
+    padding: 12px 7px 24px 7px !important;
   }
 
   .card-panel-recent-tx {
@@ -10056,7 +10118,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
    ========================================================================== */
 
 #view-settings.page-view {
-  padding: 12px 14px 28px 14px !important;
+  padding: 12px 7px 28px 7px !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
 }
@@ -12326,7 +12388,7 @@ body.light .ptr-circle-badge,
 /* Viền bao sát màn hình trên di động */
 @media (max-width: 768px) {
   #view-settings.page-view {
-    padding: 12px 14px 28px 14px !important;
+    padding: 12px 7px 28px 7px !important;
   }
   .settings-container {
     padding: 0 4px 28px 4px !important;
