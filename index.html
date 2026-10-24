@@ -23,6 +23,7 @@
 
   <!-- Core Stylesheet -->
   <link rel="stylesheet" href="./css/style.css?v=1792716138906">
+  <link rel="stylesheet" href="./css/admin-panel.css?v=2.8.0">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1977,6 +1978,21 @@
                   <i data-lucide="chevron-right" class="settings-item-arrow"></i>
                 </div>
 
+                                <!-- Mục Quản Trị Máy Chủ (Admin) - Tự động hiển thị khi tài khoản có quyền Admin -->
+                <div class="settings-nav-item" id="hub-item-server-admin" onclick="UISettings.openSection('server-admin')" style="display: none;">
+                  <div class="settings-item-icon-box" style="background: rgba(13, 148, 136, 0.15); color: var(--primary);">
+                    <i data-lucide="shield-check"></i>
+                  </div>
+                  <div class="settings-item-content">
+                    <div class="settings-item-title-row">
+                      <span class="settings-item-title">Quản Trị Máy Chủ</span>
+                      <span class="settings-status-pill pill-teal">Admin</span>
+                    </div>
+                    <div class="settings-item-desc">Dọn rác, kiểm tra người dùng, quản lý sổ & phân quyền</div>
+                  </div>
+                  <i data-lucide="chevron-right" class="settings-item-arrow"></i>
+                </div>
+
                 <!-- Mục 2: Dropbox -->
                 <div class="settings-nav-item" onclick="UISettings.openSection('dropbox')">
                   <div class="settings-item-icon-box icon-dropbox">
@@ -2939,6 +2955,181 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </button>
                 </div>
 
+              </div>
+            </div>
+
+            <!-- ==========================================
+                 PANEL 8: QUẢN TRỊ MÁY CHỦ (ADMIN DASHBOARD)
+                 ========================================== -->
+            <div id="panel-server-admin" class="settings-detail-panel">
+              <!-- Top Quick Info & Action Bar -->
+              <div class="admin-mobile-topbar">
+                <div class="admin-mobile-badges-row">
+                  <span style="display: inline-flex; align-items: center; gap: 4px;">
+                    <i data-lucide="database" style="width: 13px; height: 13px; color: var(--primary);"></i>
+                    <span>SQLite WAL</span>
+                  </span>
+                  <span style="display: inline-flex; align-items: center; gap: 4px;">
+                    <i data-lucide="hard-drive" style="width: 13px; height: 13px; color: #3b82f6;"></i>
+                    <strong id="admin-hdr-db-size">0 KB</strong>
+                  </span>
+                  <span style="display: inline-flex; align-items: center; gap: 4px;">
+                    <i data-lucide="clock" style="width: 13px; height: 13px; color: #10b981;"></i>
+                    <strong id="admin-hdr-uptime">0s</strong>
+                  </span>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <button type="button" class="btn-secondary btn-sm" onclick="UIAdmin.refreshAllData()" title="Làm mới dữ liệu" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.74rem; padding: 5px 8px;">
+                    <i data-lucide="refresh-cw" id="admin-btn-refresh-icon" style="width: 12px; height: 12px;"></i>
+                    <span>Làm mới</span>
+                  </button>
+                  <button type="button" class="btn-secondary btn-sm" onclick="UIAdmin.vacuumDatabase()" title="Tối ưu hóa file SQLite" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.74rem; padding: 5px 8px; color: var(--primary);">
+                    <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i>
+                    <span>Tối ưu</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Horizontal Scrollable Pill Tabs -->
+              <div class="admin-pill-bar" role="tablist">
+                <button type="button" class="admin-nav-pill-btn active" data-tab="admin-tab-overview" onclick="UIAdmin.switchTab('admin-tab-overview')">
+                  <i data-lucide="layout-dashboard" style="width: 14px; height: 14px;"></i>
+                  <span>Tổng Quan & Dọn Rác</span>
+                </button>
+                <button type="button" class="admin-nav-pill-btn" data-tab="admin-tab-users" onclick="UIAdmin.switchTab('admin-tab-users')">
+                  <i data-lucide="users" style="width: 14px; height: 14px;"></i>
+                  <span>Người Dùng (<span id="admin-pill-users-count">0</span>)</span>
+                </button>
+                <button type="button" class="admin-nav-pill-btn" data-tab="admin-tab-vaults" onclick="UIAdmin.switchTab('admin-tab-vaults')">
+                  <i data-lucide="layers" style="width: 14px; height: 14px;"></i>
+                  <span>Quản Lý Sổ (<span id="admin-pill-vaults-count">0</span>)</span>
+                </button>
+                <button type="button" class="admin-nav-pill-btn" data-tab="admin-tab-garbage" onclick="UIAdmin.switchTab('admin-tab-garbage')">
+                  <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                  <span>Quét Rác Chi Tiết</span>
+                  <span id="admin-pill-garbage-badge" class="settings-status-pill pill-amber" style="font-size: 0.6rem; padding: 0 5px; display: none;">0</span>
+                </button>
+                <button type="button" class="admin-nav-pill-btn" data-tab="admin-tab-admins" onclick="UIAdmin.switchTab('admin-tab-admins')">
+                  <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
+                  <span>Phân Quyền Admin</span>
+                </button>
+              </div>
+
+              <!-- TAB 1: TỔNG QUAN & DỌN RÁC NHANH -->
+              <div id="admin-tab-overview" class="admin-tab-pane">
+                <!-- 4 Stat Cards Grid -->
+                <div class="admin-mobile-stats-grid">
+                  <div class="admin-mobile-stat-box">
+                    <div class="admin-mobile-stat-val" id="admin-stat-users-total" style="color: #0d9488;">0</div>
+                    <div class="admin-mobile-stat-lbl">Người Dùng</div>
+                    <div class="admin-mobile-stat-sub" id="admin-stat-users-sub">0 test user</div>
+                  </div>
+                  <div class="admin-mobile-stat-box">
+                    <div class="admin-mobile-stat-val" id="admin-stat-vaults-total" style="color: #3b82f6;">0</div>
+                    <div class="admin-mobile-stat-lbl">Sổ Sao Lưu</div>
+                    <div class="admin-mobile-stat-sub" id="admin-stat-vaults-sub">0 sổ trống</div>
+                  </div>
+                  <div class="admin-mobile-stat-box">
+                    <div class="admin-mobile-stat-val" id="admin-stat-snapshots-total" style="color: #a855f7;">0</div>
+                    <div class="admin-mobile-stat-lbl">Bản Snapshots</div>
+                    <div class="admin-mobile-stat-sub" id="admin-stat-snapshots-sub">0 KB</div>
+                  </div>
+                  <div class="admin-mobile-stat-box">
+                    <div class="admin-mobile-stat-val" id="admin-stat-sessions-total" style="color: #f59e0b;">0</div>
+                    <div class="admin-mobile-stat-lbl">Phiên & Link</div>
+                    <div class="admin-mobile-stat-sub" id="admin-stat-sessions-sub">0 hết hạn</div>
+                  </div>
+                </div>
+
+                <!-- Trung tâm dọn rác 1-chạm -->
+                <div id="admin-quick-cleanup-card" class="settings-card-clean" style="transition: all 0.2s ease; margin-bottom: 12px;">
+                  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 6px;">
+                    <div>
+                      <div id="admin-cleanup-status-title" style="font-weight: 700; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
+                        <i data-lucide="check-circle-2" style="width: 17px; height: 17px; color: #10b981;"></i> Máy chủ sạch sẽ & tối ưu
+                      </div>
+                      <div id="admin-cleanup-status-desc" style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">
+                        Đang quét dữ liệu máy chủ...
+                      </div>
+                    </div>
+                    <button type="button" id="admin-btn-cleanup-all" class="btn-primary btn-sm" onclick="UIAdmin.runCleanup('all')" style="display: none; white-space: nowrap; font-size: 0.74rem; padding: 6px 10px;">
+                      Dọn Tất Cả Rác
+                    </button>
+                  </div>
+                  <div id="admin-cleanup-items-preview" style="margin-top: 8px;"></div>
+                </div>
+              </div>
+
+              <!-- TAB 2: NGƯỜI DÙNG -->
+              <div id="admin-tab-users" class="admin-tab-pane" style="display: none;">
+                <!-- Search & Filters -->
+                <div style="margin-bottom: 8px;">
+                  <input type="text" id="admin-users-search" class="form-control" placeholder="Tìm theo tên, email hoặc user ID..." style="font-size: 0.82rem; padding: 8px 12px; margin-bottom: 8px; width: 100%;">
+                  <div class="admin-filter-row">
+                    <button type="button" class="admin-filter-chip admin-user-filter-chip active" data-filter="all" onclick="UIAdmin.setUserFilter('all')">Tất cả</button>
+                    <button type="button" class="admin-filter-chip admin-user-filter-chip" data-filter="real" onclick="UIAdmin.setUserFilter('real')">Người dùng thật</button>
+                    <button type="button" class="admin-filter-chip admin-user-filter-chip" data-filter="test" onclick="UIAdmin.setUserFilter('test')">Tài khoản test</button>
+                    <button type="button" class="admin-filter-chip admin-user-filter-chip" data-filter="abandoned" onclick="UIAdmin.setUserFilter('abandoned')">Lãng quên (>30 ngày)</button>
+                  </div>
+                </div>
+
+                <!-- Users Mobile Feed -->
+                <div id="admin-users-list-container"></div>
+              </div>
+
+              <!-- TAB 3: QUẢN LÝ SỔ -->
+              <div id="admin-tab-vaults" class="admin-tab-pane" style="display: none;">
+                <!-- Search & Filters -->
+                <div style="margin-bottom: 8px;">
+                  <input type="text" id="admin-vaults-search" class="form-control" placeholder="Tìm theo tên sổ, email chủ sổ hoặc vault ID..." style="font-size: 0.82rem; padding: 8px 12px; margin-bottom: 8px; width: 100%;">
+                  <div class="admin-filter-row">
+                    <button type="button" class="admin-filter-chip admin-vault-filter-chip active" data-filter="all" onclick="UIAdmin.setVaultFilter('all')">Tất cả sổ</button>
+                    <button type="button" class="admin-filter-chip admin-vault-filter-chip" data-filter="normal" onclick="UIAdmin.setVaultFilter('normal')">Có dữ liệu</button>
+                    <button type="button" class="admin-filter-chip admin-vault-filter-chip" data-filter="empty" onclick="UIAdmin.setVaultFilter('empty')">Sổ trống (0 GD)</button>
+                    <button type="button" class="admin-filter-chip admin-vault-filter-chip" data-filter="test" onclick="UIAdmin.setVaultFilter('test')">Sổ thử nghiệm</button>
+                  </div>
+                </div>
+
+                <!-- Vaults Mobile Feed -->
+                <div id="admin-vaults-list-container"></div>
+              </div>
+
+              <!-- TAB 4: QUÉT RÁC CHI TIẾT -->
+              <div id="admin-tab-garbage" class="admin-tab-pane" style="display: none;">
+                <div id="admin-garbage-items-container"></div>
+              </div>
+
+              <!-- TAB 5: PHÂN QUYỀN ADMIN -->
+              <div id="admin-tab-admins" class="admin-tab-pane" style="display: none;">
+                <!-- Form cấp quyền nhanh -->
+                <div class="settings-card-clean" style="margin-bottom: 12px;">
+                  <div style="font-weight: 700; font-size: 0.86rem; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                    <i data-lucide="user-plus" style="width: 15px; height: 15px; color: var(--primary);"></i>
+                    <span>Cấp Quyền Admin Mới</span>
+                  </div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px;">
+                    Nhập email Google của người được ủy quyền quản trị. Tài khoản này sẽ có quyền truy cập menu Quản Trị Máy Chủ.
+                  </div>
+                  <div style="display: flex; gap: 8px;">
+                    <input type="email" id="admin-new-email-input" class="form-control" placeholder="admin@gmail.com" style="flex: 1; font-size: 0.82rem;">
+                    <button type="button" class="btn-primary btn-sm" onclick="UIAdmin.addAdminEmail()" style="white-space: nowrap; padding: 6px 14px;">
+                      Thêm
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Danh sách admin -->
+                <div class="settings-card-clean">
+                  <div style="font-weight: 700; font-size: 0.86rem; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                    <span style="display: flex; align-items: center; gap: 6px;">
+                      <i data-lucide="shield" style="width: 15px; height: 15px; color: var(--primary);"></i>
+                      <span>Danh Sách Quản Trị Viên</span>
+                    </span>
+                    <span id="admin-emails-badge-count" class="settings-status-pill pill-teal" style="font-size: 0.65rem;">0</span>
+                  </div>
+                  <div id="admin-emails-list-container"></div>
+                </div>
               </div>
             </div>
 
@@ -6539,6 +6730,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/server-auth-modals.js?v=2.8.0"></script>
 
   <!-- Main Entry Coordinator -->
+  <script src="./js/ui-admin.js?v=2.8.0"></script>
   <script src="./js/pull-to-refresh.js?v=2.8.2"></script>
   <script src="./js/app.js?v=1792716138906"></script>
 

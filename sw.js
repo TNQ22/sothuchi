@@ -1,10 +1,11 @@
-const CACHE_NAME = 'sothuchi-pwa-v2.9.8';
+const CACHE_NAME = 'sothuchi-pwa-v2.9.9';
 
 const PRECACHE_ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './css/style.css',
+  './css/admin-panel.css',
   './vendor/dexie.min.js',
   './vendor/chart.umd.min.js',
   './vendor/lucide.min.js',
@@ -24,6 +25,7 @@ const PRECACHE_ASSETS = [
   './js/ui-budgets.js',
   './js/ui-analytics.js',
   './js/ui-settings.js',
+  './js/ui-admin.js',
   './js/server-auth-modals.js',
   './js/pull-to-refresh.js',
   './js/app.js',

@@ -3155,8 +3155,8 @@ const server = http.createServer(async (req, res) => {
 
   // Xử lý trang quản trị
   if (pathname === '/admin' || pathname === '/admin/') {
-    serveStaticFile(req, res, '/admin.html');
-    return;
+    res.writeHead(302, { Location: '/?view=settings&section=server-admin' });
+    return res.end();
   }
 
   // Xử lý các yêu cầu REST API

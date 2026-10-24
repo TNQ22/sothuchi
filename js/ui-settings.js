@@ -68,6 +68,10 @@ const UISettings = {
       targetPanel.classList.add('active');
     }
 
+    if (sectionId === 'server-admin' && window.UIAdmin) {
+      window.UIAdmin.init();
+    }
+
     if (sectionId === 'appearance') {
       this.updateStorageUsage();
     }
@@ -80,7 +84,8 @@ const UISettings = {
       'local-folder': '<i data-lucide="folder-sync" style="color: #f59e0b; width: 20px; height: 20px;"></i> Sao Lưu Thư Mục PC',
       'backup-restore': '<i data-lucide="database" style="color: #ec4899; width: 20px; height: 20px;"></i> Sao Lưu & Khôi Phục File',
       'export-csv': '<i data-lucide="file-spreadsheet" style="color: #10b981; width: 20px; height: 20px;"></i> Xuất Dữ Liệu Excel (CSV)',
-      'appearance': '<i data-lucide="palette" style="color: #6366f1; width: 20px; height: 20px;"></i> Giao Diện & Hệ Thống'
+      'appearance': '<i data-lucide="palette" style="color: #6366f1; width: 20px; height: 20px;"></i> Giao Diện & Hệ Thống',
+      'server-admin': '<i data-lucide="shield-check" style="color: var(--primary); width: 20px; height: 20px;"></i> Quản Trị Máy Chủ'
     };
 
     if (titleEl && titleMap[sectionId]) {
@@ -666,45 +671,37 @@ const UISettings = {
   // Kiểm tra và hiển thị Thẻ Quản Trị Máy Chủ nếu người dùng có quyền Admin
   async checkAndRenderServerAdminCard() {
     const adminCard = document.getElementById('server-admin-card');
-    if (!adminCard) return;
+    const hubItem = document.getElementById('hub-item-server-admin');
+    const hideAll = () => {
+      if (adminCard) adminCard.style.display = 'none';
+      if (hubItem) hubItem.style.display = 'none';
+    };
 
     const sService = window.serverSyncService;
     const isLogged = sService && (typeof sService.isLoggedIn === 'function' ? sService.isLoggedIn() : !!sService.isLoggedIn);
     const token = (sService && sService.token) || (typeof localStorage !== 'undefined' ? (localStorage.getItem('syncServerToken') || localStorage.getItem('stc_admin_token')) : null);
     if (!isLogged && !token) {
-      adminCard.style.display = 'none';
+      hideAll();
       return;
     }
 
     try {
       const authStatus = await sService.checkAdminStatus();
       if (authStatus && authStatus.authenticated && authStatus.adminUser) {
-        adminCard.style.display = 'block';
+        if (adminCard) adminCard.style.display = 'block';
+        if (hubItem) hubItem.style.display = 'flex';
         if (window.lucide) lucide.createIcons();
       } else {
-        adminCard.style.display = 'none';
+        hideAll();
       }
     } catch (_) {
-      adminCard.style.display = 'none';
+      hideAll();
     }
   },
 
-  // Mở trang Quản trị máy chủ và chuyển thẳng token phiên để không cần đăng nhập lại
+  // Chuyển sang mục Quản Trị Máy Chủ trực tiếp ngay trong ứng dụng
   openServerAdmin() {
-    const sService = window.serverSyncService;
-    const isSelfHost = sService && sService.isSelfHosted();
-    let adminUrl = '/admin';
-    if (sService && sService.serverUrl && !isSelfHost) {
-      adminUrl = sService.serverUrl.replace(/\/+$/, '') + '/admin';
-    }
-    if (sService && sService.token) {
-      try {
-        localStorage.setItem('stc_admin_token', sService.token);
-        localStorage.setItem('syncServerToken', sService.token);
-      } catch (_) {}
-      adminUrl += '#token=' + encodeURIComponent(sService.token);
-    }
-    window.open(adminUrl, '_blank');
+    this.openSection('server-admin');
   },
 
   renderServerVaultsLists() {

@@ -1364,9 +1364,17 @@ class App {
     const params = new URLSearchParams(window.location.search);
     const action = params.get('action');
     const tab = params.get('tab');
+    const view = params.get('view') || tab;
+    const section = params.get('section');
     const hash = window.location.hash ? window.location.hash.replace('#', '') : null;
 
-    if (tab) {
+    if (view === 'settings' || hash === 'settings' || hash === 'server-admin' || section === 'server-admin' || params.get('admin') === '1') {
+      this.switchView('settings');
+      const targetSec = section || (hash === 'server-admin' ? 'server-admin' : (params.get('admin') === '1' ? 'server-admin' : null));
+      if (targetSec && window.UISettings) {
+        setTimeout(() => window.UISettings.openSection(targetSec), 120);
+      }
+    } else if (tab) {
       this.switchView(tab);
     } else if (hash && ['dashboard', 'transactions', 'debts', 'accounts', 'budgets', 'analytics', 'settings'].includes(hash)) {
       this.switchView(hash);
