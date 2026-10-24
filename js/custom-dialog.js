@@ -171,7 +171,9 @@
 
         titleTextEl.textContent = title;
         // Hỗ trợ cả văn bản có xuống dòng hoặc mã HTML an toàn
-        if (typeof message === 'string' && (message.includes('<') || message.includes('\n'))) {
+        if (typeof message === 'string' && message.includes('<')) {
+          messageEl.innerHTML = message;
+        } else if (typeof message === 'string' && message.includes('\n')) {
           messageEl.innerHTML = message.replace(/\n/g, '<br>');
         } else {
           messageEl.textContent = message || '';
@@ -184,10 +186,16 @@
 
         confirmTextEl.textContent = confirmText;
         if (danger) {
-          btnConfirm.className = 'btn-danger';
+          btnConfirm.className = opts.confirmClass || 'btn-danger-solid';
           badgeEl.className = 'custom-dialog-icon-badge danger';
+        } else if (opts.type === 'success' || opts.theme === 'emerald') {
+          btnConfirm.className = opts.confirmClass || 'btn-emerald';
+          badgeEl.className = 'custom-dialog-icon-badge success';
+        } else if (opts.type === 'warning') {
+          btnConfirm.className = opts.confirmClass || 'btn-primary';
+          badgeEl.className = 'custom-dialog-icon-badge warning';
         } else {
-          btnConfirm.className = 'btn-primary';
+          btnConfirm.className = opts.confirmClass || 'btn-primary';
           badgeEl.className = 'custom-dialog-icon-badge';
         }
 
@@ -247,7 +255,9 @@
         const confirmTextEl = modal.querySelector('#custom-dialog-confirm-text');
 
         titleTextEl.textContent = title;
-        if (typeof message === 'string' && (message.includes('<') || message.includes('\n'))) {
+        if (typeof message === 'string' && message.includes('<')) {
+          messageEl.innerHTML = message;
+        } else if (typeof message === 'string' && message.includes('\n')) {
           messageEl.innerHTML = message.replace(/\n/g, '<br>');
         } else {
           messageEl.textContent = message || '';
@@ -268,9 +278,15 @@
         btnCancel.style.display = 'inline-flex';
         btnCancel.textContent = cancelText;
 
+        const danger = !!opts.danger;
         confirmTextEl.textContent = confirmText;
-        btnConfirm.className = 'btn-primary';
-        badgeEl.className = 'custom-dialog-icon-badge';
+        if (danger) {
+          btnConfirm.className = opts.confirmClass || 'btn-danger-solid';
+          badgeEl.className = 'custom-dialog-icon-badge danger';
+        } else {
+          btnConfirm.className = opts.confirmClass || 'btn-primary';
+          badgeEl.className = 'custom-dialog-icon-badge';
+        }
 
         iconEl.setAttribute('data-lucide', iconName);
         modal.classList.add('open');
@@ -320,7 +336,9 @@
         const confirmTextEl = modal.querySelector('#custom-dialog-confirm-text');
 
         titleTextEl.textContent = title;
-        if (typeof message === 'string' && (message.includes('<') || message.includes('\n'))) {
+        if (typeof message === 'string' && message.includes('<')) {
+          messageEl.innerHTML = message;
+        } else if (typeof message === 'string' && message.includes('\n')) {
           messageEl.innerHTML = message.replace(/\n/g, '<br>');
         } else {
           messageEl.textContent = message || '';

@@ -306,11 +306,17 @@ const UIBudgets = {
 
     const toggle = document.getElementById('budget-setting-rollover-toggle');
     if (toggle) {
-      try {
-        const saved = await db.settings.get('budget_rollover_enabled');
-        toggle.checked = saved ? (saved.value === true || saved.value === 'true' || saved.value === 1) : true;
-      } catch (e) {
+      if (this.currentMode !== 'detailed') {
+        // Đang ở Ngân sách tổng (hoặc chưa chọn Detailed): đặt sẵn mặc định BẬT
+        // để khi người dùng kích hoạt sang Ngân sách chi tiết thì Rollover luôn bật mặc định
         toggle.checked = true;
+      } else {
+        try {
+          const saved = await db.settings.get('budget_rollover_enabled');
+          toggle.checked = saved ? (saved.value === true || saved.value === 'true' || saved.value === 1) : true;
+        } catch (e) {
+          toggle.checked = true;
+        }
       }
     }
     modal.classList.add('open');
@@ -325,6 +331,8 @@ const UIBudgets = {
   selectSettingMode(mode) {
     const cardSimple = document.getElementById('setting-mode-simple-card');
     const cardDetailed = document.getElementById('setting-mode-detailed-card');
+    const wasDetailed = cardDetailed && cardDetailed.classList.contains('active');
+
     if (cardSimple) {
       cardSimple.classList.toggle('active', mode === 'simple');
       const radio = cardSimple.querySelector('input[type="radio"]');
@@ -339,6 +347,15 @@ const UIBudgets = {
     if (rolloverGroup) {
       rolloverGroup.style.display = (mode === 'detailed') ? 'block' : 'none';
     }
+
+    // Khi người dùng bấm chọn kích hoạt Ngân sách Chi Tiết (từ Ngân sách Tổng hoặc bất kể thiết lập trước đó):
+    // Luôn mặc định BẬT chuyển tiếp số dư (Rollover). Chỉ tắt khi người dùng chủ động gạt tắt công tắc.
+    if (mode === 'detailed' && !wasDetailed) {
+      const toggle = document.getElementById('budget-setting-rollover-toggle');
+      if (toggle) {
+        toggle.checked = true;
+      }
+    }
   },
 
   async handleSettingsSubmit() {
@@ -346,7 +363,13 @@ const UIBudgets = {
     this.currentMode = selectedMode;
 
     const toggle = document.getElementById('budget-setting-rollover-toggle');
-    const rolloverVal = toggle ? toggle.checked : true;
+    let rolloverVal = toggle ? toggle.checked : true;
+
+    // Khi chuyển về Ngân sách Tổng, reset budget_rollover_enabled = true trong DB
+    // để bất kể khi nào Ngân sách Chi Tiết được kích hoạt lại trong tương lai, Rollover luôn bật mặc định
+    if (selectedMode === 'simple') {
+      rolloverVal = true;
+    }
 
     try {
       await db.settings.put({ key: 'budget_mode', value: selectedMode });
@@ -414,7 +437,7 @@ const UIBudgets = {
       const newItems = prevBudgets.map(b => ({
         categoryId: b.categoryId,
         month: targetMonth,
-        limitAmount: b.limitAmount,
+        limitAmount: Math.max(0, b.limitAmount || 0),
         isLocked: b.isLocked || 0,
         isOverall: b.isOverall || false,
         createdAt: now,
@@ -896,6 +919,18 @@ const UIBudgets = {
     const container = document.getElementById('budget-detailed-container');
     if (!container) return;
 
+    // Tự động dọn dẹp các bản ghi hạn mức âm ảo không hợp lệ (không có carryover bảo chứng và không có chi tiêu)
+    for (const b of categoryBudgets) {
+      if (b.limitAmount < 0) {
+        const prevCarry = (rolloverData?.categoryCarryover?.[String(b.categoryId)]) || 0;
+        const spent = spentByCat[b.categoryId] || 0;
+        if (prevCarry + b.limitAmount - spent < 0 && spent === 0) {
+          b.limitAmount = 0;
+          db.budgets.update(b.id, { limitAmount: 0, updatedAt: Date.now() }).catch(console.warn);
+        }
+      }
+    }
+
     const budgetMap = new Map(categoryBudgets.map(b => [Number(b.categoryId), b]));
     const totalBudgeted = categoryBudgets.reduce((sum, b) => sum + (b.limitAmount || 0), 0);
 
@@ -949,7 +984,7 @@ const UIBudgets = {
           </div>
           <div class="actual-to-budget-meta-item">
             <span class="actual-to-budget-meta-label">Đã Phân Bổ</span>
-            <span class="actual-to-budget-meta-val" style="color: var(--primary);">-${this.formatMoney(totalBudgeted)}</span>
+            <span class="actual-to-budget-meta-val" style="color: var(--primary);">${totalBudgeted > 0 ? `-${this.formatMoney(totalBudgeted)}` : (totalBudgeted < 0 ? `+${this.formatMoney(Math.abs(totalBudgeted))}` : '0₫')}</span>
           </div>
           <div class="actual-to-budget-meta-item">
             <span class="actual-to-budget-meta-label">Đã Chi Tiêu</span>
@@ -991,7 +1026,7 @@ const UIBudgets = {
       const rawAvailable = prevCarry + budgeted - spent;
       const isShifted = b && b.shiftToNextMonth === true;
 
-      if (rawAvailable < 0 && !isShifted) {
+      if (rawAvailable < 0 && !isShifted && spent > 0) {
         const overAmount = Math.abs(rawAvailable);
         overspentCats.push({ cat, budgeted, spent, prevCarry, available: rawAvailable, overAmount });
         totalOverspentThisMonth += overAmount;
@@ -1049,7 +1084,12 @@ const UIBudgets = {
         availText = `-${this.formatMoney(Math.abs(rawAvailable))}`;
       }
 
-      const budgetedText = budgeted > 0 ? this.formatMoney(budgeted) : '0đ';
+      let budgetedText = '0₫';
+      if (budgeted > 0) {
+        budgetedText = this.formatMoney(budgeted);
+      } else if (budgeted < 0) {
+        budgetedText = `-${this.formatMoney(Math.abs(budgeted))}`;
+      }
       const budgetedFontClass = this.getAmountFontClass(budgetedText);
 
       const spentText = spent > 0 ? `-${this.formatMoney(spent)}` : '0đ';
@@ -1071,7 +1111,7 @@ const UIBudgets = {
           </td>
 
           <td style="text-align: right; cursor: pointer;" onclick="UIBudgets.openQuickEditModal(${cat.id}, ${prevCarry})" title="Nhấp để sửa phân bổ">
-            <div class="actual-budget-cell ${budgeted > 0 ? 'has-budget' : 'is-zero'} ${budgetedFontClass}" role="button" tabindex="0">
+            <div class="actual-budget-cell ${budgeted !== 0 ? 'has-budget' : 'is-zero'} ${budgetedFontClass}" role="button" tabindex="0">
               <span>${budgetedText}</span>
             </div>
           </td>
@@ -1203,7 +1243,7 @@ const UIBudgets = {
           const prevCarry = categoryCarryover[String(cat.id)] || 0;
           const rawAvailable = prevCarry + budgeted - spent;
           const isShifted = b && b.shiftToNextMonth === true;
-          if (rawAvailable < 0 && !isShifted) {
+          if (rawAvailable < 0 && !isShifted && spent > 0) {
             detailedOverspent.push({ cat, deficit: Math.abs(rawAvailable) });
           }
         });
@@ -2721,7 +2761,7 @@ const UIBudgets = {
         const existing = targetMap.get(String(b.categoryId));
         if (existing) {
           await db.budgets.update(existing.id, {
-            limitAmount: b.limitAmount,
+            limitAmount: Math.max(0, b.limitAmount || 0),
             isLocked: b.isLocked || 0,
             isOverall: b.isOverall || false,
             updatedAt: now
@@ -3221,10 +3261,11 @@ const UIBudgets = {
     if (!this.rebalanceDataCache) return 0;
     const { categoryCarryover, budgetMap, spentByCat } = this.rebalanceDataCache;
     const prevCarry = categoryCarryover[String(catId)] || 0;
-    const budgeted = budgetMap.get(catId)?.limitAmount || 0;
-    const spent = spentByCat[catId] || 0;
+    const b = budgetMap.get(Number(catId)) || budgetMap.get(String(catId));
+    const budgeted = b?.limitAmount || 0;
+    const spent = (spentByCat[Number(catId)] !== undefined ? spentByCat[Number(catId)] : spentByCat[String(catId)]) || 0;
     const rawAvailable = prevCarry + budgeted - spent;
-    const isShifted = budgetMap.get(catId)?.shiftToNextMonth === true;
+    const isShifted = b?.shiftToNextMonth === true;
     return (isShifted && rawAvailable < 0) ? 0 : rawAvailable;
   },
 
@@ -3678,7 +3719,12 @@ const UIBudgets = {
       }
     }
 
-    const suggested = (deficit && deficit > 0) ? (maxAvailable > 0 ? Math.min(deficit, maxAvailable) : deficit) : (maxAvailable > 0 ? maxAvailable : 0);
+    let suggested = 0;
+    if (maxAvailable > 0) {
+      suggested = (deficit && deficit > 0) ? Math.min(deficit, maxAvailable) : maxAvailable;
+    } else {
+      suggested = 0;
+    }
 
     if (amountInput) {
       amountInput.value = suggested > 0 ? new Intl.NumberFormat('vi-VN').format(suggested) : '';
@@ -3692,6 +3738,10 @@ const UIBudgets = {
   closeRebalanceModal() {
     const modal = document.getElementById('modal-budget-rebalance');
     if (modal) modal.classList.remove('open');
+    this.rebalanceDataCache = null;
+    this.rebalanceTargetCat = null;
+    this.rebalanceSelectedSource = null;
+    this.rebalanceSelectedTarget = null;
   },
 
   async applyRebalance() {
@@ -3740,6 +3790,13 @@ const UIBudgets = {
         const sourceBudget = currentMonthBudgets.find(b => Number(b.categoryId) === sourceCatId);
         const currentSourceLimit = sourceBudget ? (sourceBudget.limitAmount || 0) : 0;
         const newSourceLimit = currentSourceLimit - amount;
+
+        const prevCarry1 = (this.rebalanceDataCache?.categoryCarryover?.[String(sourceCatId)]) || 0;
+        const spent1 = (this.rebalanceDataCache?.spentByCat?.[Number(sourceCatId)] !== undefined ? this.rebalanceDataCache?.spentByCat?.[Number(sourceCatId)] : this.rebalanceDataCache?.spentByCat?.[String(sourceCatId)]) || 0;
+        if (prevCarry1 + newSourceLimit - spent1 < 0) {
+          showToast(`Số tiền chuyển vượt quá số dư khả dụng thực tế của "${sourceCatName}"`, 'error');
+          return;
+        }
 
         if (sourceBudget) {
           await db.budgets.update(sourceBudget.id, { limitAmount: newSourceLimit, updatedAt: now });
@@ -3827,6 +3884,13 @@ const UIBudgets = {
         const sourceBudget = currentMonthBudgets.find(b => Number(b.categoryId) === sourceCatId);
         const currentSourceLimit = sourceBudget ? (sourceBudget.limitAmount || 0) : 0;
         const newSourceLimit = currentSourceLimit - amount;
+
+        const prevCarry2A = (this.rebalanceDataCache?.categoryCarryover?.[String(sourceCatId)]) || 0;
+        const spent2A = (this.rebalanceDataCache?.spentByCat?.[Number(sourceCatId)] !== undefined ? this.rebalanceDataCache?.spentByCat?.[Number(sourceCatId)] : this.rebalanceDataCache?.spentByCat?.[String(sourceCatId)]) || 0;
+        if (prevCarry2A + newSourceLimit - spent2A < 0) {
+          showToast(`Số tiền vượt quá số dư còn lại thực tế của "${sourceCatName}"`, 'error');
+          return;
+        }
 
         if (sourceBudget) {
           await db.budgets.update(sourceBudget.id, { limitAmount: newSourceLimit, updatedAt: now });
