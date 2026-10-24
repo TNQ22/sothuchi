@@ -2219,6 +2219,12 @@ function getAdminUser(req) {
   const user = dbManager.getUserByToken(token);
   if (!user || !user.email) return null;
 
+  // BẢO MẬT: Quyền Admin BẮT BUỘC phải đăng nhập bằng Google OAuth chính chủ, KHÔNG chấp nhận tài khoản quick_login
+  const gId = (user.google_id || '').toLowerCase();
+  if (gId.startsWith('quick_')) {
+    return null;
+  }
+
   const email = (user.email || '').toLowerCase().trim();
   // Kiểm tra email người dùng có nằm trong danh sách ADMIN_EMAIL được cấp quyền không
   const allAdmins = getAdminEmails();
@@ -2260,6 +2266,7 @@ async function handleApiRequest(req, res, pathname, url) {
     const token = getBearerToken(req);
     const user = token ? dbManager.getUserByToken(token) : null;
     const adminUser = getAdminUser(req);
+    const allAdmins = getAdminEmails();
 
     return sendJson(res, 200, {
       authenticated: !!adminUser,
@@ -2276,8 +2283,9 @@ async function handleApiRequest(req, res, pathname, url) {
         email: user.email,
         picture: user.picture
       } : null,
-      adminEmails: ADMIN_EMAILS,
-      adminEmailsConfigured: ADMIN_EMAILS.length > 0,
+      // BẢO MẬT: Chỉ trả về danh sách email admin cho tài khoản ĐÃ XÁC THỰC là Admin! Không tiết lộ cho người lạ
+      adminEmails: adminUser ? allAdmins : [],
+      adminEmailsConfigured: allAdmins.length > 0,
       googleClientId: GOOGLE_CLIENT_ID || null,
       serverTime: new Date().toISOString()
     });
@@ -2515,6 +2523,22 @@ async function handleApiRequest(req, res, pathname, url) {
       const name = (body.name || email.split('@')[0] || 'Người dùng').trim();
       if (!email) {
         return sendJson(res, 400, { error: 'Vui lòng cung cấp email tài khoản' });
+      }
+
+      // BẢO MẬT: Chặn tuyệt đối mạo danh email Quản trị viên qua Quick Login
+      const allAdmins = getAdminEmails();
+      if (allAdmins.includes(email)) {
+        return sendJson(res, 403, {
+          error: 'Email này thuộc danh sách Quản trị viên máy chủ. Bắt buộc phải đăng nhập bảo mật qua Google OAuth.'
+        });
+      }
+
+      // BẢO MẬT: Không cho phép Quick Login ghi đè/chiếm đoạt tài khoản đã liên kết với Google OAuth
+      const existingUser = dbManager.findUserByEmail(email);
+      if (existingUser && existingUser.google_id && !existingUser.google_id.startsWith('quick_')) {
+        return sendJson(res, 403, {
+          error: 'Email này đã được liên kết với tài khoản Google. Vui lòng đăng nhập bằng Google.'
+        });
       }
 
       const quickId = 'quick_' + crypto.createHash('md5').update(email).digest('hex');

@@ -442,6 +442,12 @@ class ServerSyncService {
     await db.settings.delete('syncServerUserProfile');
     await db.settings.delete('syncServerActiveVaultId');
     await db.settings.delete('syncServerVaults');
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('syncServerToken');
+        localStorage.removeItem('stc_admin_token');
+      }
+    } catch (_) {}
 
     if (wipeLocal && typeof window.wipeAndResetLocalDatabase === 'function') {
       await window.wipeAndResetLocalDatabase();

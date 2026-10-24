@@ -9292,6 +9292,9 @@ html, body {
   will-change: transform, opacity;
   transition: none !important;
   touch-action: pan-y !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  box-shadow: -8px 0 25px rgba(0, 0, 0, 0.25) !important;
 }
 
 @media (max-width: 768px) {
@@ -10164,6 +10167,12 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 }
 
 /* Settings Nav Item - Maximized width & edge-to-edge content */
+.settings-nav-item.is-hidden,
+.settings-nav-item[style*="display: none"],
+.settings-nav-item[style*="display:none"] {
+  display: none !important;
+}
+
 .settings-nav-item {
   display: flex !important;
   flex-direction: row !important;

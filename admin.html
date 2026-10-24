@@ -701,8 +701,11 @@
           </div>
 
           <!-- Form cấp quyền nhanh -->
-          <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
-            <input type="email" id="input-new-admin-email" class="form-control" placeholder="Nhập email Google cần cấp quyền admin (ví dụ: colleague@gmail.com)" style="flex: 1; min-width: 240px; font-size: 0.84rem;">
+          <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;">
+            <div class="server-share-email-wrapper" style="min-width: 240px;">
+              <input type="email" id="input-new-admin-email" class="form-control" placeholder="Nhập email Google cần cấp quyền admin hoặc chọn từ máy chủ..." autocomplete="off" style="width: 100%; box-sizing: border-box; font-size: 0.84rem;">
+              <div id="admin-standalone-email-dropdown" class="server-share-user-dropdown" style="display: none;"></div>
+            </div>
             <button type="button" class="btn-primary" onclick="AdminApp.addAdminEmail()" id="btn-add-admin-email" style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 0.82rem; padding: 8px 16px;">
               <i data-lucide="user-plus" style="width: 15px; height: 15px;"></i>
               <span>Cấp Quyền Admin</span>

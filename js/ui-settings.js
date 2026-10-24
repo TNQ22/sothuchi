@@ -68,8 +68,19 @@ const UISettings = {
       targetPanel.classList.add('active');
     }
 
-    if (sectionId === 'server-admin' && window.UIAdmin) {
-      window.UIAdmin.init();
+    if (sectionId === 'server-admin') {
+      const sService = window.serverSyncService;
+      const isLogged = sService && (typeof sService.isLoggedIn === 'function' ? sService.isLoggedIn() : !!sService.isLoggedIn);
+      const token = (sService && sService.token) || (typeof localStorage !== 'undefined' ? (localStorage.getItem('syncServerToken') || localStorage.getItem('stc_admin_token')) : null);
+      if (!isLogged && !token) {
+        if (typeof showToast === 'function') {
+          showToast('Yêu cầu đăng nhập máy chủ để vào Quản trị', 'error');
+        }
+        return this.backToHub();
+      }
+      if (window.UIAdmin) {
+        window.UIAdmin.init();
+      }
     }
 
     if (sectionId === 'appearance') {
@@ -239,6 +250,9 @@ const UISettings = {
       const themeLabels = { dark: 'Tối', light: 'Sáng', system: 'Hệ thống' };
       tBadge.textContent = themeLabels[themeVal] || 'Tối';
     }
+
+    // 6. Quản trị máy chủ (Đồng bộ hiển thị item trên Hub)
+    await this.checkAndRenderServerAdminCard();
   },
 
   async loadSettings() {
@@ -673,8 +687,25 @@ const UISettings = {
     const adminCard = document.getElementById('server-admin-card');
     const hubItem = document.getElementById('hub-item-server-admin');
     const hideAll = () => {
-      if (adminCard) adminCard.style.display = 'none';
-      if (hubItem) hubItem.style.display = 'none';
+      if (adminCard) {
+        adminCard.style.setProperty('display', 'none', 'important');
+        adminCard.classList.add('is-hidden');
+      }
+      if (hubItem) {
+        hubItem.style.setProperty('display', 'none', 'important');
+        hubItem.classList.add('is-hidden');
+      }
+    };
+    const showAll = () => {
+      if (adminCard) {
+        adminCard.style.setProperty('display', 'block', 'important');
+        adminCard.classList.remove('is-hidden');
+      }
+      if (hubItem) {
+        hubItem.style.setProperty('display', 'flex', 'important');
+        hubItem.classList.remove('is-hidden');
+      }
+      if (window.lucide) lucide.createIcons();
     };
 
     const sService = window.serverSyncService;
@@ -688,9 +719,7 @@ const UISettings = {
     try {
       const authStatus = await sService.checkAdminStatus();
       if (authStatus && authStatus.authenticated && authStatus.adminUser) {
-        if (adminCard) adminCard.style.display = 'block';
-        if (hubItem) hubItem.style.display = 'flex';
-        if (window.lucide) lucide.createIcons();
+        showAll();
       } else {
         hideAll();
       }
@@ -699,7 +728,6 @@ const UISettings = {
     }
   },
 
-  // Chuyển sang mục Quản Trị Máy Chủ trực tiếp ngay trong ứng dụng
   openServerAdmin() {
     this.openSection('server-admin');
   },

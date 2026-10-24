@@ -23,6 +23,27 @@ window.UIAdmin = {
 
   // 1. KHỞI TẠO MODULE
   async init() {
+    const sService = window.serverSyncService;
+    const token = (sService && sService.token) || (typeof localStorage !== 'undefined' ? (localStorage.getItem('syncServerToken') || localStorage.getItem('stc_admin_token')) : null);
+    if (!token) {
+      if (typeof showToast === 'function') showToast('Yêu cầu đăng nhập máy chủ để vào Quản trị', 'error');
+      if (window.UISettings && typeof window.UISettings.backToHub === 'function') window.UISettings.backToHub();
+      return;
+    }
+
+    try {
+      const authStatus = sService && typeof sService.checkAdminStatus === 'function' ? await sService.checkAdminStatus() : null;
+      if (!authStatus || !authStatus.authenticated || !authStatus.adminUser) {
+        if (typeof showToast === 'function') showToast('Bạn không có quyền quản trị máy chủ.', 'error');
+        if (window.UISettings && typeof window.UISettings.backToHub === 'function') window.UISettings.backToHub();
+        return;
+      }
+    } catch (_) {
+      if (typeof showToast === 'function') showToast('Không thể xác thực quyền quản trị', 'error');
+      if (window.UISettings && typeof window.UISettings.backToHub === 'function') window.UISettings.backToHub();
+      return;
+    }
+
     this.bindEventsOnce();
     this.switchTab(this.activeTab || 'admin-tab-overview');
     await this.refreshAllData();
@@ -45,13 +66,46 @@ window.UIAdmin = {
       vaultInput.addEventListener('input', () => this.renderVaultsList());
     }
 
-    // Add admin enter
+    // Add admin email input & dropdown events
     const addAdminInput = document.getElementById('admin-new-email-input');
+    const adminEmailDropdown = document.getElementById('admin-new-email-dropdown');
     if (addAdminInput) {
       addAdminInput.addEventListener('keyup', (e) => {
-        if (e.key === 'Enter') this.addAdminEmail();
+        if (e.key === 'Enter') {
+          this.hideAdminEmailDropdown();
+          this.addAdminEmail();
+        }
+      });
+      addAdminInput.addEventListener('focus', () => {
+        this.renderAdminEmailDropdown(addAdminInput.value);
+      });
+      addAdminInput.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.renderAdminEmailDropdown(addAdminInput.value);
+      });
+      addAdminInput.addEventListener('input', () => {
+        this.renderAdminEmailDropdown(addAdminInput.value);
       });
     }
+
+    if (adminEmailDropdown) {
+      adminEmailDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const item = e.target.closest('.server-share-user-item');
+        if (!item) return;
+        const email = item.getAttribute('data-email');
+        if (email) {
+          this.selectAdminEmail(email);
+        }
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      const wrapper = e.target.closest('.server-share-email-wrapper');
+      if (!wrapper) {
+        this.hideAdminEmailDropdown();
+      }
+    });
   },
 
   // 2. GỌI API BACKEND VỚI TOKEN XÁC THỰC HIỆN TẠI
@@ -644,7 +698,106 @@ window.UIAdmin = {
     if (window.lucide) lucide.createIcons();
   },
 
+  // Gợi ý danh sách tài khoản để cấp quyền Admin
+  async getAvailableUsersForDropdown() {
+    if (this.usersData && this.usersData.length > 0) {
+      return this.usersData;
+    }
+    try {
+      const res = await this.fetchApi('/api/admin/users');
+      if (res.ok) {
+        const data = await res.json();
+        this.usersData = data.users || [];
+        return this.usersData;
+      }
+    } catch (_) {}
+    return [];
+  },
+
+  async renderAdminEmailDropdown(filterText = '') {
+    const dropdown = document.getElementById('admin-new-email-dropdown');
+    if (!dropdown) return;
+
+    const allUsers = await this.getAvailableUsersForDropdown();
+    const query = (filterText || '').trim().toLowerCase();
+    const adminEmailsSet = new Set((this.adminsData || []).map(a => (a.email || '').toLowerCase()));
+
+    let users = (allUsers || []).filter(u => {
+      const uEmail = (u.email || '').toLowerCase();
+      if (!uEmail) return false;
+      if (!query) return true;
+      const uName = (u.name || '').toLowerCase();
+      return uEmail.includes(query) || uName.includes(query);
+    });
+
+    if (users.length === 0) {
+      if (!query) {
+        dropdown.style.display = 'none';
+        return;
+      }
+      dropdown.innerHTML = `
+        <div class="server-share-user-empty">
+          <span>Không tìm thấy tài khoản phù hợp trên máy chủ. Bạn có thể tiếp tục nhập đầy đủ email.</span>
+        </div>
+      `;
+      dropdown.style.display = 'block';
+      return;
+    }
+
+    const esc = (s) => this.escapeHTML(s || '');
+
+    dropdown.innerHTML = `
+      <div class="server-share-user-dropdown-header">
+        <span>Tài khoản trên máy chủ (${users.length})</span>
+        <span style="font-size: 0.64rem; font-weight: normal; opacity: 0.7;">Chọn để điền nhanh</span>
+      </div>
+      ${users.map(u => {
+        const uEmail = esc(u.email || '');
+        const uName = esc(u.name || u.email || 'Người dùng');
+        const firstLetter = (u.name || u.email || 'U').charAt(0).toUpperCase();
+        const isAdmin = adminEmailsSet.has((u.email || '').toLowerCase());
+        const avatarHtml = u.picture 
+          ? `<img src="${esc(u.picture)}" class="server-share-user-avatar" alt="${uName}">`
+          : `<div class="server-share-user-avatar-fallback">${esc(firstLetter)}</div>`;
+
+        const badgeHtml = isAdmin 
+          ? `<span class="settings-status-pill pill-teal" style="font-size: 0.62rem; padding: 1px 6px;">Admin</span>`
+          : '';
+
+        return `
+          <div class="server-share-user-item" data-email="${uEmail}">
+            ${avatarHtml}
+            <div class="server-share-user-info" style="min-width: 0; flex: 1;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                <span class="server-share-user-name">${uName}</span>
+                ${badgeHtml}
+              </div>
+              <div class="server-share-user-email">${uEmail}</div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    `;
+
+    dropdown.style.display = 'block';
+  },
+
+  hideAdminEmailDropdown() {
+    const dropdown = document.getElementById('admin-new-email-dropdown');
+    if (dropdown) dropdown.style.display = 'none';
+  },
+
+  selectAdminEmail(email) {
+    const input = document.getElementById('admin-new-email-input');
+    if (input) {
+      input.value = email;
+      input.focus();
+    }
+    this.hideAdminEmailDropdown();
+  },
+
   async addAdminEmail() {
+    this.hideAdminEmailDropdown();
     const input = document.getElementById('admin-new-email-input');
     const email = (input?.value || '').trim().toLowerCase();
     if (!email || !email.includes('@')) {

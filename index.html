@@ -1979,7 +1979,7 @@
                 </div>
 
                                 <!-- Mục Quản Trị Máy Chủ (Admin) - Tự động hiển thị khi tài khoản có quyền Admin -->
-                <div class="settings-nav-item" id="hub-item-server-admin" onclick="UISettings.openSection('server-admin')" style="display: none;">
+                <div class="settings-nav-item is-hidden" id="hub-item-server-admin" onclick="UISettings.openSection('server-admin')" style="display: none !important;">
                   <div class="settings-item-icon-box" style="background: rgba(13, 148, 136, 0.15); color: var(--primary);">
                     <i data-lucide="shield-check"></i>
                   </div>
@@ -3111,8 +3111,11 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px;">
                     Nhập email Google của người được ủy quyền quản trị. Tài khoản này sẽ có quyền truy cập menu Quản Trị Máy Chủ.
                   </div>
-                  <div style="display: flex; gap: 8px;">
-                    <input type="email" id="admin-new-email-input" class="form-control" placeholder="admin@gmail.com" style="flex: 1; font-size: 0.82rem;">
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <div class="server-share-email-wrapper">
+                      <input type="email" id="admin-new-email-input" class="form-control" placeholder="Email Google hoặc chọn từ máy chủ..." autocomplete="off" style="width: 100%; box-sizing: border-box; font-size: 0.82rem;">
+                      <div id="admin-new-email-dropdown" class="server-share-user-dropdown" style="display: none;"></div>
+                    </div>
                     <button type="button" class="btn-primary btn-sm" onclick="UIAdmin.addAdminEmail()" style="white-space: nowrap; padding: 6px 14px;">
                       Thêm
                     </button>

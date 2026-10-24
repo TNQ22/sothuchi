@@ -1009,6 +1009,39 @@ class App {
     }
   }
 
+  /**
+   * Kiểm tra xem màn hình hiện tại có cho phép vuốt/bấm trở về hay không
+   */
+  canGoBack() {
+    // 1. Cài đặt: Chỉ cho phép trở về khi đang ở màn hình con (sub-panel)
+    if (this.currentView === 'settings') {
+      return !!(window.UISettings && window.UISettings.currentSection);
+    }
+
+    // 2. Ghi chép: Chỉ cho phép trở về khi đang SỬA giao dịch hoặc mở từ menu tài khoản
+    if (this.currentView === 'new-transaction') {
+      const isEditing = !!document.getElementById('tx-id-input')?.value;
+      return isEditing || (this.openedFromAccountMenu && !!this.previousView);
+    }
+
+    // 3. Các màn hình con/biểu mẫu khác luôn hỗ trợ quay lại
+    const backEligibleViews = [
+      'transactions',
+      'category-picker',
+      'borrow-select',
+      'account-form',
+      'account-provider',
+      'savings-form',
+      'accumulation-form',
+      'asset-form',
+      'loan-form',
+      'budget-form',
+      'budget-category-form',
+      'budget-cat-history'
+    ];
+    return backEligibleViews.includes(this.currentView);
+  }
+
   setupPopstateListener() {
     // Since we use replaceState for all views, popstate should NOT fire during normal navigation.
     // This listener only handles the Android hardware back button press.
@@ -1018,191 +1051,190 @@ class App {
         return;
       }
 
-      if (this.currentView === 'settings' && window.UISettings && window.UISettings.currentSection) {
-        window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
+      window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
+      if (this.canGoBack()) {
         this.goBack();
-        return;
-      }
-
-      // category-picker & borrow-select always support back to new-transaction
-      if (['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history', 'transactions'].includes(this.currentView)) {
-        window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
-        this.goBack();
-      } else if (this.currentView === 'new-transaction') {
-        const isEditing = !!document.getElementById('tx-id-input')?.value;
-        const canBack = isEditing || (this.openedFromAccountMenu && !!this.previousView);
-        window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
-        if (canBack) {
-          this.goBack();
-        }
-      } else {
-        // All other views (primary tabs) are FIXED — ignore back button
-        window.history.replaceState({ view: this.currentView }, '', `#${this.currentView}`);
       }
     });
   }
 
   setupSwipeToBack() {
-    // view-transactions, new-transaction, category-picker, etc.: support swipe-to-back
-    const pages = document.querySelectorAll('#view-transactions, #view-new-transaction, #view-category-picker, #view-borrow-select, #view-account-form, #view-account-provider, #view-savings-form, #view-accumulation-form, #view-asset-form, #view-loan-form, #view-budget-form, #view-budget-category-form, #view-budget-cat-history, #view-settings');
-    if (!pages.length) return;
+    // Ngưỡng mép trái màn hình: CHỈ nhận diện khi ngón tay chạm sát mép trái (<= 28px)
+    // Giúp loại bỏ 100% tình trạng phản hồi nhầm khi cuộn trang hoặc thao tác trên màn hình
+    const EDGE_SWIPE_MAX_START_X = 28;
+    let startX = 0;
+    let startY = 0;
+    let currentX = 0;
+    let deltaX = 0;
+    let deltaY = 0;
+    let startTime = 0;
+    let isSwiping = false;
+    let canSwipe = false;
+    let gestureDirection = null; // null | 'horizontal' | 'vertical'
+    let activePage = null;
+    let justCompletedSwipe = false;
 
-    pages.forEach(page => {
-      let startX = 0;
-      let startY = 0;
-      let currentX = 0;
-      let deltaX = 0;
-      let deltaY = 0;
-      let startTime = 0;
-      let isSwiping = false;
-      let canSwipe = false;
+    document.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
 
-      page.addEventListener('touchstart', (e) => {
-        if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+      currentX = startX;
+      deltaX = 0;
+      deltaY = 0;
+      startTime = Date.now();
+      isSwiping = false;
+      canSwipe = false;
+      gestureDirection = null;
 
-        // Reset toàn bộ thông số cử chỉ vuốt ngay khi chạm tay vào màn hình
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        currentX = startX;
-        deltaX = 0;
-        deltaY = 0;
-        startTime = Date.now();
-        isSwiping = false;
+      // 1. KIỂM TRA SÁT MÉP TRÁI: Nếu không chạm sát mép (<= 28px), THOÁT NGAY!
+      if (startX > EDGE_SWIPE_MAX_START_X) {
+        return;
+      }
+
+      // 2. Không cho phép vuốt trang nếu đang có Modal/Dialog/Keypad mở
+      if (document.querySelector('.modal-overlay.open, #modal-keypad.open, .custom-dialog-overlay.open')) {
+        return;
+      }
+
+      // 3. Kiểm tra xem trang hiện tại có hỗ trợ quay lại (Back) hay không
+      if (!this.canGoBack()) {
+        return;
+      }
+
+      // 4. Lấy trang đang hoạt động
+      activePage = document.querySelector('.page-view.active');
+      if (!activePage) return;
+
+      // Xử lý riêng cho trang transactions nếu chưa có view nguồn
+      if (this.currentView === 'transactions') {
+        if (!this.txHistorySource && (!this.previousView || this.previousView === 'transactions')) {
+          this.txHistorySource = 'dashboard';
+          this.previousView = 'dashboard';
+        }
+      }
+
+      // 5. Bỏ qua nếu chạm vào control tương tác (input, button, filter slider...)
+      const el = (e.target && e.target.nodeType === 1) ? e.target : e.target?.parentElement;
+      if (el) {
+        if (['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName) || 
+            el.closest('input, select, textarea, button, .btn, .filter-bar, .tx-type-filter-bar, input[type="range"]')) {
+          return;
+        }
+      }
+
+      canSwipe = true;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!canSwipe || gestureDirection === 'vertical' || e.touches.length !== 1) return;
+      if (!activePage) return;
+
+      currentX = e.touches[0].clientX;
+      const currentY = e.touches[0].clientY;
+      deltaX = currentX - startX;
+      deltaY = currentY - startY;
+
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+
+      // Ngăn chặn vuốt lùi về phía bên trái (chỉ nhận cử chỉ kéo sang phải)
+      if (deltaX < -4) {
         canSwipe = false;
+        gestureDirection = 'vertical';
+        return;
+      }
 
-        // ONLY allow swipe on the currently ACTIVE page
-        if (!page.classList.contains('active')) return;
-
-        // Trang Lịch sử ghi chép (transactions):
-        // Luôn cho phép vuốt trở về màn hình trước đó (mặc định về Dashboard nếu mở từ Xem tất cả)
-        if (page.id === 'view-transactions') {
-          if (!this.txHistorySource && (!this.previousView || this.previousView === 'transactions')) {
-            this.txHistorySource = 'dashboard';
-            this.previousView = 'dashboard';
-          }
-        }
-
-        // Trang Cài đặt (settings): CHỈ cho phép vuốt trở về khi đang ở màn hình con (sub-page)
-        if (page.id === 'view-settings') {
-          if (!window.UISettings || !window.UISettings.currentSection) {
-            canSwipe = false;
-            return;
-          }
-        }
-
-        // Trang Ghi Chép (new-transaction):
-        // CHỈ cho phép vuốt trở về khi đang SỬA giao dịch HOẶC khi được mở từ menu 3 chấm của tài khoản
-        if (page.id === 'view-new-transaction') {
-          const isEditing = !!document.getElementById('tx-id-input')?.value;
-          const canBack = isEditing || (this.openedFromAccountMenu && !!this.previousView);
-          if (!canBack) {
-            canSwipe = false;
-            return;
-          }
-        }
-
-        const target = e.target;
-        // Skip if scrolling horizontally on filter bars
-        if (target.closest('.tx-type-filter-bar') || target.closest('.filter-bar')) {
-          if (startX > 45) {
-            canSwipe = false;
-            return;
-          }
-        }
-        // Skip if inside open keypad or category manager
-        if (target.closest('#modal-keypad.open') || target.closest('#modal-category-manager.open')) {
+      // Khóa hướng cử chỉ (Gesture Lock):
+      // Nếu cử chỉ có xu hướng cuộn dọc ngay từ đầu -> HỦY BỎ ngay lập tức để không cản trở cuộn trang
+      if (gestureDirection === null) {
+        if (absY >= 8 && absY >= absX) {
           canSwipe = false;
-          return;
-        }
-        // Skip if touching interactive input/select/button
-        if (['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName)) {
-          canSwipe = false;
+          gestureDirection = 'vertical';
           return;
         }
 
-        // Allow swipe starting from left area of screen
-        canSwipe = (startX <= window.innerWidth * 0.65 || startX <= 250);
-      }, { passive: true });
-
-      page.addEventListener('touchmove', (e) => {
-        if (!canSwipe || e.touches.length !== 1) return;
-        if (!page.classList.contains('active')) return;
-        currentX = e.touches[0].clientX;
-        deltaX = currentX - startX;
-        deltaY = e.touches[0].clientY - startY;
-
-        // Only handle drag towards right
-        if (deltaX > 8) {
-          // Horizontal gesture priority
-          if (Math.abs(deltaX) > Math.abs(deltaY) * 1.1) {
-            isSwiping = true;
-            page.classList.add('swiping');
-            const translateX = Math.max(0, deltaX);
-            page.style.transform = `translateX(${translateX}px)`;
-            const progress = Math.min(translateX / (window.innerWidth * 0.7), 1);
-            page.style.opacity = `${1 - progress * 0.25}`;
-          }
+        // Chỉ kích hoạt chế độ vuốt trở về khi chuyển động ngang sang phải rõ rệt
+        if (deltaX >= 10 && deltaX > absY * 1.5) {
+          gestureDirection = 'horizontal';
+          isSwiping = true;
+          activePage.classList.add('swiping');
         }
-      }, { passive: true });
+      }
 
-      const handleTouchEnd = () => {
-        if (!isSwiping) {
-          canSwipe = false;
-          return;
-        }
-        isSwiping = false;
-        canSwipe = false;
-        page.classList.remove('swiping');
-
-        const duration = Date.now() - startTime;
-        const velocity = deltaX / Math.max(duration, 1);
-        const threshold = Math.min(window.innerWidth * 0.25, 80);
-        const swipedDeltaX = deltaX;
-
-        // Reset deltaX sau 150ms để ngăn chặn việc click nhầm ngay sau khi vuốt,
-        // nhưng bảo đảm không gây nghẽn các click bình thường sau đó
-        setTimeout(() => {
-          deltaX = 0;
-        }, 150);
-
-        // Trigger back if past threshold or quick flick
-        if (swipedDeltaX > threshold || (swipedDeltaX > 35 && velocity > 0.3)) {
-          page.style.transition = 'transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease';
-          page.style.transform = 'translateX(100%)';
-          page.style.opacity = '0';
-          setTimeout(() => {
-            page.style.transform = '';
-            page.style.opacity = '';
-            page.style.transition = '';
-            // Since we use replaceState (no pushState), there's no popstate race.
-            // Just call goBack() directly — it will do the right thing based on currentView.
-            this.goBack();
-          }, 220);
-        } else {
-          // Snap back
-          page.style.transition = 'transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease';
-          page.style.transform = 'translateX(0)';
-          page.style.opacity = '1';
-          setTimeout(() => {
-            page.style.transform = '';
-            page.style.opacity = '';
-            page.style.transition = '';
-          }, 200);
-        }
-      };
-
-      page.addEventListener('touchend', handleTouchEnd, { passive: true });
-      page.addEventListener('touchcancel', handleTouchEnd, { passive: true });
-
-      // Ngăn chặn mở nhầm chi tiết khi người dùng vừa thực hiện cử chỉ vuốt trở về
-      page.addEventListener('click', (e) => {
-        if (deltaX > 12) {
-          e.stopPropagation();
+      if (isSwiping) {
+        // Ngăn chặn cuộn trang dọc khi đang trong tiến trình vuốt ngang trở về
+        if (e.cancelable) {
           e.preventDefault();
-          deltaX = 0;
         }
-      }, true);
-    });
+        const translateX = Math.max(0, deltaX);
+        activePage.style.transform = `translateX(${translateX}px)`;
+        const progress = Math.min(translateX / (window.innerWidth * 0.75), 1);
+        activePage.style.opacity = `${1 - progress * 0.25}`;
+      }
+    }, { passive: false });
+
+    const handleTouchEnd = () => {
+      if (!isSwiping || !activePage) {
+        canSwipe = false;
+        gestureDirection = null;
+        isSwiping = false;
+        return;
+      }
+
+      isSwiping = false;
+      canSwipe = false;
+      gestureDirection = null;
+      activePage.classList.remove('swiping');
+
+      const duration = Date.now() - startTime;
+      const velocity = deltaX / Math.max(duration, 1);
+      const threshold = Math.min(window.innerWidth * 0.3, 110);
+      const swipedDeltaX = deltaX;
+      const swipingPage = activePage;
+
+      // Đánh dấu để chặn click nhầm lên các phần tử bên dưới ngay sau khi nhả tay
+      justCompletedSwipe = true;
+      setTimeout(() => {
+        justCompletedSwipe = false;
+        deltaX = 0;
+      }, 200);
+
+      // Đạt ngưỡng kéo hoặc hất nhanh (flick) sang phải
+      if (swipedDeltaX > threshold || (swipedDeltaX > 45 && velocity > 0.35)) {
+        swipingPage.style.transition = 'transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease';
+        swipingPage.style.transform = 'translateX(100%)';
+        swipingPage.style.opacity = '0';
+        setTimeout(() => {
+          swipingPage.style.transform = '';
+          swipingPage.style.opacity = '';
+          swipingPage.style.transition = '';
+          this.goBack();
+        }, 220);
+      } else {
+        // Trượt trở về vị trí cũ nếu chưa đủ ngưỡng
+        swipingPage.style.transition = 'transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease';
+        swipingPage.style.transform = 'translateX(0)';
+        swipingPage.style.opacity = '1';
+        setTimeout(() => {
+          swipingPage.style.transform = '';
+          swipingPage.style.opacity = '';
+          swipingPage.style.transition = '';
+        }, 200);
+      }
+    };
+
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+    document.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+
+    // Ngăn chặn click nhầm vào các nút / thẻ khi vừa thực hiện cử chỉ vuốt
+    document.addEventListener('click', (e) => {
+      if (justCompletedSwipe) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    }, true);
   }
 
   /* ==================== UNIVERSAL CLEARABLE INPUTS (Nút X xóa nhanh) ==================== */
@@ -1540,43 +1572,78 @@ class App {
   }
 
   setupModalSwipeGestures() {
+    const EDGE_SWIPE_MAX_START_X = 28;
 
-    // Hỗ trợ vuốt xuống (hoặc vuốt sang phải) trên Modal/Action Sheet để đóng nhanh
-    document.querySelectorAll('.modal-overlay').forEach(overlay => {
-      let startX = 0;
-      let startY = 0;
-      let isTouching = false;
+    // Hỗ trợ cử chỉ vuốt trên Modal/Action Sheet:
+    // - Vuốt sang phải để đóng/trở về: CHỈ khi vuốt sát mép màn hình bên trái (<= 28px)
+    // - Vuốt xuống để đóng: chỉ dành cho Action Sheet / Bottom Sheet khi kéo từ đỉnh
+    document.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      const el = (e.target && e.target.nodeType === 1) ? e.target : e.target?.parentElement;
+      const overlay = el ? el.closest('.modal-overlay.open') : document.querySelector('.modal-overlay.open');
+      if (!overlay) return;
       const dialog = overlay.querySelector('.modal-dialog');
       if (!dialog) return;
 
-      dialog.addEventListener('touchstart', (e) => {
-        if (e.touches.length !== 1) return;
-        const target = e.target;
-        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
-        const scrollParent = target.closest('.modal-body, .action-sheet-body, #statement-history-list');
-        if (scrollParent && scrollParent.scrollTop > 5) return;
-
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        isTouching = true;
-      }, { passive: true });
-
-      dialog.addEventListener('touchend', (e) => {
-        if (!isTouching) return;
-        isTouching = false;
-        const endX = e.changedTouches[0].clientX;
-        const endY = e.changedTouches[0].clientY;
-        const deltaX = endX - startX;
-        const deltaY = endY - startY;
-
-        const isSwipeDown = deltaY > 60 && Math.abs(deltaY) > Math.abs(deltaX);
-        const isSwipeRight = deltaX > 80 && Math.abs(deltaX) > Math.abs(deltaY) && startX < window.innerWidth * 0.4;
-
-        if (isSwipeDown || isSwipeRight) {
-          this.dismissModal(overlay);
+      if (el) {
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || el.closest('input, select, textarea, button, .btn')) {
+          return;
         }
-      }, { passive: true });
-    });
+      }
+
+      const touch = e.touches[0];
+      overlay._swipeStartX = touch.clientX;
+      overlay._swipeStartY = touch.clientY;
+      overlay._swipeTouching = true;
+      overlay._swipeDirection = null;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+      const overlay = document.querySelector('.modal-overlay.open');
+      if (!overlay || !overlay._swipeTouching) return;
+      if (e.touches.length !== 1) return;
+
+      const currentX = e.touches[0].clientX;
+      const currentY = e.touches[0].clientY;
+      const deltaX = currentX - overlay._swipeStartX;
+      const deltaY = currentY - overlay._swipeStartY;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+
+      if (!overlay._swipeDirection) {
+        if (absY >= 8 && absY >= absX) {
+          overlay._swipeDirection = 'vertical';
+        } else if (absX >= 8 && absX > absY) {
+          overlay._swipeDirection = 'horizontal';
+        }
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+      const overlay = document.querySelector('.modal-overlay.open');
+      if (!overlay || !overlay._swipeTouching) return;
+      overlay._swipeTouching = false;
+
+      if (!e.changedTouches || e.changedTouches.length === 0) return;
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const deltaX = endX - overlay._swipeStartX;
+      const deltaY = endY - overlay._swipeStartY;
+      const startX = overlay._swipeStartX;
+
+      // Vuốt xuống để đóng: chỉ khi cuộn đang ở trên cùng
+      const el = (e.target && e.target.nodeType === 1) ? e.target : e.target?.parentElement;
+      const scrollParent = el ? el.closest('.modal-body, .action-sheet-body, #statement-history-list') : null;
+      const isAtTop = !scrollParent || scrollParent.scrollTop <= 2;
+      const isSwipeDown = isAtTop && deltaY > 70 && deltaY > Math.abs(deltaX) * 1.5;
+
+      // Vuốt sang phải để đóng (trở về): CHỈ hoạt động khi vuốt sát mép màn hình bên trái (<= 28px)
+      const isEdgeSwipeRight = startX <= EDGE_SWIPE_MAX_START_X && deltaX > 75 && deltaX > Math.abs(deltaY) * 1.5;
+
+      if (isSwipeDown || isEdgeSwipeRight) {
+        this.dismissModal(overlay);
+      }
+    }, { passive: true });
   }
 
 }
