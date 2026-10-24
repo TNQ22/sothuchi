@@ -685,25 +685,16 @@ const UISettings = {
   // Kiểm tra và hiển thị Thẻ Quản Trị Máy Chủ nếu người dùng có quyền Admin
   async checkAndRenderServerAdminCard() {
     const adminCard = document.getElementById('server-admin-card');
-    const hubItem = document.getElementById('hub-item-server-admin');
     const hideAll = () => {
       if (adminCard) {
         adminCard.style.setProperty('display', 'none', 'important');
         adminCard.classList.add('is-hidden');
-      }
-      if (hubItem) {
-        hubItem.style.setProperty('display', 'none', 'important');
-        hubItem.classList.add('is-hidden');
       }
     };
     const showAll = () => {
       if (adminCard) {
         adminCard.style.setProperty('display', 'block', 'important');
         adminCard.classList.remove('is-hidden');
-      }
-      if (hubItem) {
-        hubItem.style.setProperty('display', 'flex', 'important');
-        hubItem.classList.remove('is-hidden');
       }
       if (window.lucide) lucide.createIcons();
     };

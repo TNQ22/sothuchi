@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v2.9.9';
+const CACHE_NAME = 'sothuchi-pwa-v3.0.0';
 
 const PRECACHE_ASSETS = [
   './',
@@ -11,10 +11,12 @@ const PRECACHE_ASSETS = [
   './vendor/lucide.min.js',
   './js/config.js',
   './js/custom-dialog.js',
+  './js/crypto.js',
   './js/db.js',
   './js/google-drive.js',
   './js/dropbox.js',
   './js/server-sync.js',
+  './js/csv-export.js',
   './js/backup.js',
   './js/sync-coordinator.js',
   './js/ui-calendar.js',
@@ -29,29 +31,41 @@ const PRECACHE_ASSETS = [
   './js/server-auth-modals.js',
   './js/pull-to-refresh.js',
   './js/app.js',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
+  './assets/icons/icon.svg',
+  './assets/icons/icon-192.png',
+  './assets/icons/icon-512.png',
+  './assets/icons/icon-maskable.png'
 ];
 
-// 1. Cài đặt Service Worker và Cache tĩnh các tài nguyên cốt lõi
+// 1. Cài đặt Service Worker và Cache tĩnh các tài nguyên cốt lõi (Bảo đảm không bị sập nếu 1 asset lỗi)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Đang tải trước tài nguyên ngoại tuyến...');
-      return cache.addAll(PRECACHE_ASSETS);
+      console.log('[SW] Đang nạp tài nguyên ngoại tuyến phiên bản mới (v3.0.0)...');
+      return Promise.allSettled(
+        PRECACHE_ASSETS.map((asset) => {
+          return fetch(asset, { cache: 'no-cache' }).then((res) => {
+            if (res && res.status === 200) {
+              return cache.put(asset, res);
+            }
+          }).catch((err) => {
+            console.warn('[SW] Bỏ qua tài nguyên không tải được:', asset, err);
+          });
+        })
+      );
     }).then(() => {
       return self.skipWaiting();
     })
   );
 });
 
-// 2. Kích hoạt và dọn dẹp các bản Cache cũ
+// 2. Kích hoạt và dọn dẹp các bản Cache cũ ngay lập tức
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys
-          .filter((name) => name.startsWith('sothuchi-pwa-') && name !== CACHE_NAME)
+          .filter((name) => name !== CACHE_NAME)
           .map((name) => {
             console.log('[SW] Xóa bộ nhớ đệm phiên bản cũ:', name);
             return caches.delete(name);
@@ -63,13 +77,30 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 3. Chiến lược Network-First cho CSS/JS ứng dụng, Cache-First cho CDN/Fonts/Icons
+// 3. Lắng nghe thông điệp từ ứng dụng (Force Skip Waiting & Purge All)
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  if (event.data && event.data.type === 'PURGE_CACHE') {
+    event.waitUntil(
+      caches.keys().then((keys) => {
+        return Promise.all(keys.map((k) => caches.delete(k)));
+      }).then(() => {
+        return self.skipWaiting();
+      }).then(() => {
+        return self.clients.claim();
+      })
+    );
+  }
+});
+
+// 4. Chiến lược Network-First cho CSS/JS ứng dụng (kèm ignoreSearch fallback offline), Cache-First cho CDN/Icons
 self.addEventListener('fetch', (event) => {
-  // Bỏ qua các yêu cầu không phải GET hoặc chrome-extension/Google API
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
-  // Không cache các lệnh gọi API Google/Dropbox/Cloudflare/Sync Server
+  // Không can thiệp API ngoài
   if (
     url.origin !== self.location.origin &&
     (url.hostname.includes('googleapis.com') ||
@@ -81,13 +112,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Đối với file trong cùng domain (HTML, CSS, JS, hình ảnh nội bộ):
-  // Chiến lược: Network-First (Ưu tiên mạng để lấy bản mới nhất, rớt mạng thì fallback về Cache)
+  // File trong cùng domain: Network-First (cache: 'no-cache' để luôn lấy bản mới nếu online)
+  // Khi offline: lấy từ CacheStorage (sử dụng ignoreSearch: true để match dù có query param ?v=...)
   if (url.origin === self.location.origin) {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: 'no-cache' })
         .then((networkResponse) => {
-          // Chỉ lưu vào cache nếu response hợp lệ (status 200)
           if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
@@ -97,12 +127,12 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // Ngoại tuyến (Offline): Lấy từ cache
-          return caches.match(event.request).then((cachedResponse) => {
+          return caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
             if (cachedResponse) return cachedResponse;
-            // Nếu là yêu cầu trang (HTML) mà không có trong cache, trả về trang chủ index.html
             if (event.request.mode === 'navigate') {
-              return caches.match('./index.html');
+              return caches.match('./index.html', { ignoreSearch: true }).then((htmlRes) => {
+                return htmlRes || caches.match('./', { ignoreSearch: true });
+              });
             }
           });
         })
@@ -110,10 +140,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Đối với tài nguyên thư viện bên thứ 3 (Font, CDN Lucide, Google GIS script):
-  // Chiến lược: Stale-While-Revalidate hoặc Cache-First
+  // Thư viện bên thứ 3
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
@@ -131,6 +160,8 @@ self.addEventListener('fetch', (event) => {
           });
         }
         return networkResponse;
+      }).catch(() => {
+        return cachedResponse || new Response('', { status: 408, statusText: 'Offline' });
       });
     })
   );

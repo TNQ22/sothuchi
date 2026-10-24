@@ -4573,7 +4573,7 @@ const UIAccounts = {
 
     const modeWrap = document.querySelector('.accounts-display-mode-wrap');
     if (modeWrap) {
-      modeWrap.style.display = tab === 'all' ? 'inline-flex' : 'none';
+      modeWrap.style.display = 'inline-flex';
     }
 
     this.render();
@@ -4583,6 +4583,13 @@ const UIAccounts = {
     this.sharedViewMode = this.sharedViewMode === 'grouped' ? 'unified' : 'grouped';
     localStorage.setItem('sothuchi_shared_view_mode', this.sharedViewMode);
     this.updateSharedViewModeUI();
+    if (this.currentFilterTab !== 'all') {
+      this.currentFilterTab = 'all';
+      const tabBtns = document.querySelectorAll('.accounts-seg-tab');
+      tabBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === 'all');
+      });
+    }
     this.render();
   },
 

@@ -1119,7 +1119,7 @@ class App {
       const el = (e.target && e.target.nodeType === 1) ? e.target : e.target?.parentElement;
       if (el) {
         if (['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName) || 
-            el.closest('input, select, textarea, button, .btn, .filter-bar, .tx-type-filter-bar, input[type="range"]')) {
+            el.closest('input, select, textarea, button, .btn, .filter-bar, .tx-type-filter-bar, .accounts-filter-bar, .admin-pill-bar, input[type="range"]')) {
           return;
         }
       }
@@ -1668,3 +1668,54 @@ document.addEventListener('keydown', function(e) {
     }
   }
 }, true);
+
+// Hỗ trợ kéo ngang mượt mà bằng chuột cho các thanh Tab/Pill trên PC (như accounts-filter-bar, admin-pill-bar)
+function enableHorizontalDragScroll(selector) {
+  document.querySelectorAll(selector).forEach(el => {
+    if (!el || el._dragScrollBound) return;
+    el._dragScrollBound = true;
+    let isDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
+    let hasDragged = false;
+
+    el.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      isDown = true;
+      hasDragged = false;
+      startX = e.pageX - el.offsetLeft;
+      scrollLeft = el.scrollLeft;
+      el.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isDown) {
+        isDown = false;
+        if (el) el.style.cursor = '';
+      }
+    });
+
+    el.addEventListener('mousemove', (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - el.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      if (Math.abs(walk) > 4) {
+        hasDragged = true;
+      }
+      el.scrollLeft = scrollLeft - walk;
+    });
+
+    el.addEventListener('click', (e) => {
+      if (hasDragged) {
+        e.stopPropagation();
+        e.preventDefault();
+        hasDragged = false;
+      }
+    }, true);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  enableHorizontalDragScroll('.accounts-filter-bar, .admin-pill-bar, .tx-type-filter-bar');
+});

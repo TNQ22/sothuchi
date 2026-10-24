@@ -683,6 +683,65 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   color: #fda4af !important;
 }
 
+/* Solid Emerald and Danger Action Buttons (App Design Standard) */
+.btn-emerald {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff !important;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.88rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-emerald:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 15px rgba(16, 185, 129, 0.45);
+}
+
+.btn-emerald:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+}
+
+.btn-danger-solid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  color: #ffffff !important;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.88rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(244, 63, 94, 0.3);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-danger-solid:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 15px rgba(244, 63, 94, 0.45);
+}
+
+.btn-danger-solid:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(244, 63, 94, 0.25);
+}
+
 /* Page Views Container */
 .page-view {
   padding: 24px;
@@ -6924,33 +6983,71 @@ html, body {
 }
 
 /* 2. Settings Modal */
+#modal-budget-settings .modal-dialog {
+  max-width: 480px;
+  width: 100%;
+}
+
+#modal-budget-settings .modal-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px 20px;
+}
+
+#modal-budget-settings .modal-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 auto;
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+#modal-budget-settings .modal-header .btn-icon {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+}
+
 .budget-setting-mode-card,
 .budget-wallet-scope-card {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--border-color);
+  padding: 13px 15px;
+  border: 1.5px solid var(--border-color);
   border-radius: var(--radius-md);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   cursor: pointer;
   background: rgba(255, 255, 255, 0.02);
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
+  user-select: none;
 }
 
 .budget-setting-mode-card:hover,
 .budget-wallet-scope-card:hover {
-  border-color: rgba(13, 148, 136, 0.4);
+  border-color: rgba(13, 148, 136, 0.45);
   background: rgba(13, 148, 136, 0.04);
 }
 
 .budget-setting-mode-card.active,
 .budget-wallet-scope-card.active {
-  border-color: var(--primary);
-  background: rgba(13, 148, 136, 0.09);
+  border-color: var(--primary) !important;
+  background: rgba(13, 148, 136, 0.1) !important;
+  box-shadow: 0 0 0 1px rgba(13, 148, 136, 0.25);
 }
 
-.budget-setting-mode-card input[type="radio"],
+.budget-setting-mode-card input[type="radio"] {
+  display: none !important;
+}
+
 .budget-wallet-scope-card input[type="radio"] {
   accent-color: var(--primary);
   margin-top: 3px;
@@ -6961,22 +7058,35 @@ html, body {
 
 .budget-setting-mode-content {
   flex: 1;
+  width: 100%;
 }
 
 .budget-setting-mode-title {
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .budget-setting-mode-desc {
   font-size: 0.77rem;
   color: var(--text-muted);
-  margin-top: 3px;
-  line-height: 1.35;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.budget-setting-rollover-nested {
+  display: none;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(13, 148, 136, 0.25);
+  cursor: default;
+}
+
+#setting-mode-detailed-card.active .budget-setting-rollover-nested {
+  display: block;
 }
 
 .budget-settings-wallet-list {
@@ -10343,6 +10453,12 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   border-color: rgba(245, 158, 11, 0.25) !important;
 }
 
+.settings-status-pill.pill-red {
+  background: rgba(244, 63, 94, 0.14) !important;
+  color: #f43f5e !important;
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
+
 /* Minimal Hub Footer - Version with GitHub link only */
 .settings-hub-footer {
   text-align: center;
@@ -11200,54 +11316,58 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 .accounts-filter-bar {
   display: flex !important;
   align-items: center !important;
-  justify-content: space-between !important;
-  gap: 8px !important;
-  margin: 14px 0 16px 0 !important;
+  justify-content: flex-start !important;
+  gap: 6px !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  flex-wrap: nowrap !important;
+  white-space: nowrap !important;
   width: 100% !important;
   box-sizing: border-box !important;
+  margin: 10px 0 16px 0 !important;
+  padding: 2px 2px 8px 2px !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
 }
-
-.accounts-segmented-tabs {
-  display: inline-flex !important;
-  align-items: center !important;
-  background: rgba(17, 24, 39, 0.85) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 12px !important;
-  padding: 3px !important;
-  gap: 3px !important;
-  box-sizing: border-box !important;
+.accounts-filter-bar::-webkit-scrollbar {
+  display: none !important;
 }
 
 .accounts-seg-tab {
   appearance: none !important;
   -webkit-appearance: none !important;
-  background: transparent !important;
-  border: none !important;
+  background: var(--bg-surface, rgba(255, 255, 255, 0.05)) !important;
+  border: 1px solid var(--border-color) !important;
   outline: none !important;
-  color: #94a3b8 !important;
-  font-size: 0.8rem !important;
+  color: var(--text-secondary) !important;
+  font-size: 0.78rem !important;
   font-weight: 600 !important;
-  padding: 6px 12px !important;
-  border-radius: 9px !important;
+  padding: 7px 13px !important;
+  border-radius: 9999px !important;
   display: inline-flex !important;
   align-items: center !important;
   gap: 6px !important;
   cursor: pointer !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: all 0.15s ease !important;
   white-space: nowrap !important;
+  flex-shrink: 0 !important;
   line-height: 1.2 !important;
   font-family: inherit !important;
+  user-select: none !important;
 }
 
 .accounts-seg-tab:hover {
-  color: #f8fafc !important;
-  background: rgba(255, 255, 255, 0.04) !important;
+  color: var(--text-primary) !important;
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08)) !important;
 }
 
 .accounts-seg-tab.active {
   background: var(--primary, #0d9488) !important;
+  border-color: var(--primary, #0d9488) !important;
   color: #ffffff !important;
-  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.4) !important;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.35) !important;
 }
 
 .accounts-seg-tab .seg-count-badge {
@@ -11263,44 +11383,48 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 .accounts-display-mode-wrap {
   display: inline-flex !important;
   align-items: center !important;
+  flex-shrink: 0 !important;
 }
 
 .btn-toggle-view-mode {
   appearance: none !important;
   -webkit-appearance: none !important;
-  background: rgba(17, 24, 39, 0.7) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: var(--bg-surface, rgba(255, 255, 255, 0.05)) !important;
+  border: 1px solid var(--border-color) !important;
   outline: none !important;
-  color: #94a3b8 !important;
-  font-size: 0.76rem !important;
+  color: var(--text-secondary) !important;
+  font-size: 0.78rem !important;
   font-weight: 600 !important;
-  padding: 7px 11px !important;
-  border-radius: 10px !important;
+  padding: 7px 13px !important;
+  border-radius: 9999px !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 5px !important;
+  gap: 6px !important;
   cursor: pointer !important;
-  transition: all 0.2s ease !important;
+  transition: all 0.15s ease !important;
   white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  line-height: 1.2 !important;
   font-family: inherit !important;
+  user-select: none !important;
 }
 
 .btn-toggle-view-mode:hover {
-  background: rgba(255, 255, 255, 0.06) !important;
-  color: #f8fafc !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08)) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
 }
 
 .btn-toggle-view-mode.mode-grouped {
   color: #38bdf8 !important;
-  background: rgba(56, 189, 248, 0.1) !important;
-  border-color: rgba(56, 189, 248, 0.3) !important;
+  background: rgba(56, 189, 248, 0.12) !important;
+  border-color: rgba(56, 189, 248, 0.35) !important;
 }
 
 .btn-toggle-view-mode.mode-unified {
   color: #a78bfa !important;
-  background: rgba(167, 139, 250, 0.1) !important;
-  border-color: rgba(167, 139, 250, 0.3) !important;
+  background: rgba(167, 139, 250, 0.12) !important;
+  border-color: rgba(167, 139, 250, 0.35) !important;
 }
 
 /* UNIVERSAL SHARE SERVICES & CARDS - DARK THEME */
@@ -12421,27 +12545,35 @@ body.light .ptr-circle-badge,
 
   /* Mở rộng các vòng bao xát viền màn hình trong modal chia sẻ & cài đặt */
   #modal-server-vault-share .modal-dialog,
-  #modal-server-vault-history .modal-dialog {
+  #modal-server-vault-history .modal-dialog,
+  #modal-budget-settings .modal-dialog {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
     border-radius: var(--radius-md) !important;
   }
   #modal-server-vault-share .modal-body,
-  #modal-server-vault-history .modal-body {
-    padding: 12px 6px !important;
+  #modal-server-vault-history .modal-body,
+  #modal-budget-settings .modal-body {
+    padding: 14px 10px !important;
   }
   #modal-server-vault-share .modal-header,
-  #modal-server-vault-history .modal-header {
-    padding: 12px 10px !important;
+  #modal-server-vault-history .modal-header,
+  #modal-budget-settings .modal-header {
+    padding: 14px 12px !important;
+  }
+  #modal-budget-settings .modal-header .btn-icon {
+    right: 12px !important;
   }
   #modal-server-vault-share .modal-footer,
-  #modal-server-vault-history .modal-footer {
-    padding: 10px 10px !important;
+  #modal-server-vault-history .modal-footer,
+  #modal-budget-settings .modal-footer {
+    padding: 12px 10px !important;
   }
   #modal-server-vault-share.modal-overlay,
-  #modal-server-vault-history.modal-overlay {
-    padding: 8px 4px !important;
+  #modal-server-vault-history.modal-overlay,
+  #modal-budget-settings.modal-overlay {
+    padding: 8px 6px !important;
   }
 }
 
@@ -12688,7 +12820,8 @@ body.light .ptr-circle-badge,
 .custom-dialog-footer,
 #modal-server-logout .modal-footer,
 #modal-server-login-sync .modal-footer,
-#modal-receive-share .modal-footer {
+#modal-receive-share .modal-footer,
+#modal-budget-settings .modal-footer {
   padding: 14px 18px !important;
   border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08)) !important;
   display: flex !important;
@@ -12703,7 +12836,8 @@ body.light .ptr-circle-badge,
 .custom-dialog-footer button,
 #modal-server-logout .modal-footer button,
 #modal-server-login-sync .modal-footer button,
-#modal-receive-share .modal-footer button {
+#modal-receive-share .modal-footer button,
+#modal-budget-settings .modal-footer button {
   flex: 1 1 0% !important;
   min-width: 0 !important;
   width: 100% !important;

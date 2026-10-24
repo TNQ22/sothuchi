@@ -335,6 +335,10 @@ const UIBudgets = {
       const radio = cardDetailed.querySelector('input[type="radio"]');
       if (radio) radio.checked = (mode === 'detailed');
     }
+    const rolloverGroup = document.getElementById('budget-setting-rollover-group');
+    if (rolloverGroup) {
+      rolloverGroup.style.display = (mode === 'detailed') ? 'block' : 'none';
+    }
   },
 
   async handleSettingsSubmit() {

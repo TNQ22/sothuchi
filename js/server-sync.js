@@ -473,7 +473,17 @@ class ServerSyncService {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
-        return await res.json();
+        const data = await res.json();
+        if (!data || !data.authenticated) {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('stc_admin_token');
+          }
+        }
+        return data;
+      } else if (res.status === 401 || res.status === 403) {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('stc_admin_token');
+        }
       }
     } catch (_) {}
     return { authenticated: false };

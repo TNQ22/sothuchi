@@ -3155,9 +3155,11 @@ function serveStaticFile(req, res, reqPath) {
       'Access-Control-Allow-Origin': CORS_ORIGIN
     };
 
-    // PWA & Service Worker không cache vĩnh viễn để cập nhật tức thì
-    if (ext === '.html' || ext === '.json' || ext === '.js' || ext === '.css' || path.basename(filePath) === 'sw.js') {
-      headers['Cache-Control'] = 'no-cache, must-revalidate';
+    // PWA & Service Worker: Ngăn chặn triệt để trình duyệt & webview PWA lưu cache tĩnh cũ
+    if (ext === '.html' || ext === '.json' || ext === '.js' || ext === '.css' || path.basename(filePath) === 'sw.js' || path.basename(filePath) === 'manifest.json') {
+      headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+      headers['Pragma'] = 'no-cache';
+      headers['Expires'] = '0';
       if (path.basename(filePath) === 'sw.js') {
         headers['Service-Worker-Allowed'] = '/';
       }
