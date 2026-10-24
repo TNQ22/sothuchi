@@ -454,10 +454,17 @@ class ServerSyncService {
 
   // Kiểm tra quyền Quản trị viên máy chủ (/admin)
   async checkAdminStatus() {
-    if (!this.serverUrl || !this.token) return { authenticated: false };
+    const token = this.token || (typeof localStorage !== 'undefined' ? (localStorage.getItem('syncServerToken') || localStorage.getItem('stc_admin_token')) : null);
+    if (!token) return { authenticated: false };
+    let baseUrl = '';
+    if (this.serverUrl) {
+      baseUrl = this.serverUrl.replace(/\/+$/, '');
+    } else if (typeof window !== 'undefined' && window.location && window.location.protocol && window.location.protocol.startsWith('http')) {
+      baseUrl = window.location.origin;
+    }
     try {
-      const res = await fetch(`${this.serverUrl}/api/admin/auth-status`, {
-        headers: { Authorization: `Bearer ${this.token}` }
+      const res = await fetch(`${baseUrl}/api/admin/auth-status`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
         return await res.json();

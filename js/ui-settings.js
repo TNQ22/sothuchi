@@ -669,7 +669,9 @@ const UISettings = {
     if (!adminCard) return;
 
     const sService = window.serverSyncService;
-    if (!sService || !sService.isLoggedIn() || !sService.token) {
+    const isLogged = sService && (typeof sService.isLoggedIn === 'function' ? sService.isLoggedIn() : !!sService.isLoggedIn);
+    const token = (sService && sService.token) || (typeof localStorage !== 'undefined' ? (localStorage.getItem('syncServerToken') || localStorage.getItem('stc_admin_token')) : null);
+    if (!isLogged && !token) {
       adminCard.style.display = 'none';
       return;
     }
