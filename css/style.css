@@ -1844,16 +1844,17 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
 .keypad-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  grid-template-rows: repeat(5, minmax(36px, 40px));
+  gap: 5px;
 }
 
 .keypad-btn {
-  height: 46px;
+  height: 40px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -1874,19 +1875,38 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
 }
 
 .keypad-btn.action {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-secondary);
-  font-size: 0.95rem;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
-.keypad-btn.action-primary {
+[data-theme="light"] .keypad-btn.action {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.keypad-btn.action-primary,
+.keypad-btn-done {
   background: var(--primary);
-  color: #ffffff;
+  color: #ffffff !important;
   font-weight: 700;
 }
+
+.keypad-btn-done {
+  grid-column: 4;
+  grid-row: 4 / 6;
+  height: 100% !important;
+  font-size: 1.05rem;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.4);
+}
+
 .keypad-btn.action-primary:active,
-.keypad-btn.action-primary.pressed {
-  background: var(--primary-hover);
+.keypad-btn.action-primary.pressed,
+.keypad-btn-done:active,
+.keypad-btn-done.pressed {
+  background: var(--primary-hover) !important;
+  transform: scale(0.96);
 }
 
 
@@ -2169,21 +2189,68 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
     z-index: 120;
   }
 
-    /* Modal on mobile - Căn giữa màn hình theo yêu cầu */
+    /* Modal on mobile - Mở rộng sát viền, căn giữa màn hình */
   .modal-overlay {
     align-items: center;
     justify-content: center;
-    padding: 16px;
+    padding: 8px 6px max(8px, env(safe-area-inset-bottom, 0px));
   }
 
   .modal-dialog {
-    max-width: 480px;
+    max-width: 100%;
     width: 100%;
-    border-radius: var(--radius-lg);
-    max-height: 85dvh;
+    border-radius: 18px;
+    max-height: 90dvh;
     padding-bottom: 0;
     animation: none;
     transform: scale(0.96);
+  }
+
+  /* Mở rộng sát viền cho Modal Tùy chọn Còn lại & Cân đối Ngân sách */
+  #modal-budget-avail-options,
+  #modal-budget-rebalance {
+    padding: 8px 6px max(8px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  #modal-budget-avail-options .modal-dialog,
+  #modal-budget-rebalance .modal-dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 18px;
+    margin: 0 auto;
+  }
+
+  #modal-budget-avail-options .modal-header,
+  #modal-budget-rebalance .modal-header {
+    padding: 14px 14px;
+  }
+
+  #modal-budget-avail-options .modal-body {
+    padding: 12px 10px 14px 10px !important;
+    gap: 8px;
+  }
+
+  .avail-option-card {
+    padding: 12px 12px;
+    gap: 10px;
+  }
+
+  #modal-budget-rebalance .modal-body {
+    padding: 12px 10px !important;
+    gap: 10px;
+  }
+
+  .rebalance-cat-item,
+  .rebalance-source-item {
+    padding: 10px 12px;
+  }
+
+  .rebalance-modal-footer {
+    padding: 10px 12px;
+  }
+
+  .rebalance-amount-box {
+    padding: 10px 12px;
   }
 
   .modal-overlay.open .modal-dialog {
@@ -3312,30 +3379,30 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
 .keypad-popup-sheet {
   position: relative;
   width: 100%;
-  max-width: 500px;
+  max-width: 480px;
   background: var(--bg-surface);
-  border-radius: 20px 20px 0 0;
+  border-radius: 18px 18px 0 0;
   border-top: 1px solid var(--border-color);
-  padding: 14px 16px max(14px, env(safe-area-inset-bottom, 0px));
-  /* Trên mobile: thêm khoảng trống bằng chiều cao thanh nav dưới để không bị đè */
+  padding: 10px 14px max(8px, env(safe-area-inset-bottom, 0px));
   margin-bottom: 0;
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
   transform: translateY(100%);
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-
+  gap: 8px;
   cursor: default;
 }
 .keypad-popup-overlay.open .keypad-popup-sheet {
   transform: translateY(0);
 }
-/* Trên màn hình di động: đẩy keypad lên trên thanh điều hướng cuối */
+/* Trên màn hình di động: Bàn phím hạ sát cạnh dưới màn hình, giảm 1/3 chiều cao so với trước */
 @media (max-width: 768px) {
   .keypad-popup-sheet {
-    margin-bottom: var(--bottom-nav-height, 64px);
-    border-radius: 20px 20px 16px 16px;
+    margin-bottom: 0;
+    border-radius: 18px 18px 0 0;
+    max-width: 100%;
+    padding: 10px 12px max(10px, env(safe-area-inset-bottom, 8px));
   }
 }
 .keypad-popup-header {
@@ -3343,21 +3410,36 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--border-color);
-  padding-bottom: 10px;
+  padding-bottom: 6px;
+  gap: 8px;
+}
+.keypad-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.keypad-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .keypad-live-display {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 3px;
 }
 #keypad-live-val {
-  font-size: 1.9rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: var(--primary);
   letter-spacing: -0.02em;
   padding: 2px 6px;
   border-radius: 6px;
   transition: all 0.15s ease;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 #keypad-live-val.is-selected {
   background: var(--primary);
@@ -3365,9 +3447,225 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.4);
 }
 .keypad-live-cur {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text-muted);
+}
+
+/* Nút chế độ Ghi chép mẫu (Pill button - IMG_0015 & IMG_0017) */
+.keypad-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.keypad-mode-pill:hover {
+  border-color: var(--primary);
+}
+.keypad-mode-pill:active {
+  transform: scale(0.95);
+}
+.keypad-mode-pill.active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.4);
+}
+.keypad-mode-pill.active i,
+.keypad-mode-pill.active svg {
+  color: #ffffff;
+  stroke: #ffffff;
+}
+
+/* Panel Ghi chép mẫu (IMG_0017) */
+.keypad-templates-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 200px;
+  max-height: 225px;
+  animation: fadeIn 0.18s ease-out;
+}
+/* Hỗ trợ hiển thị 4x2 cố định và kéo ngang mượt mà */
+.keypad-templates-grid {
+  display: grid;
+  grid-template-rows: repeat(2, auto);
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 18px) / 4);
+  gap: 8px 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 2px 6px 2px;
+  scrollbar-width: none;
+}
+.keypad-templates-grid::-webkit-scrollbar {
+  display: none;
+}
+.keypad-template-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px 2px;
+  border-radius: var(--radius-md);
+  transition: transform 0.1s ease, background 0.1s ease;
+  user-select: none;
+  text-align: center;
+  scroll-snap-align: start;
+}
+.keypad-template-item:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.05);
+}
+.keypad-template-icon-bubble {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  position: relative;
+}
+/* Giá đè trực tiếp lên icon tinh gọn, hiện đại */
+.keypad-template-price-tag {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--primary);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  line-height: 1.15;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  letter-spacing: -0.01em;
+  pointer-events: none;
+}
+[data-theme="light"] .keypad-template-price-tag {
+  background: #ffffff;
+  border-color: rgba(13, 148, 136, 0.25);
+}
+.keypad-template-title {
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.18;
+  max-width: 76px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.keypad-templates-bottom {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid var(--border-color);
+  padding: 6px 0 2px 0;
+  margin-top: auto;
+  min-height: 40px;
+  width: 100%;
+}
+.keypad-template-pencil-btn {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.keypad-template-pencil-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.keypad-template-tabs {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: var(--bg-surface);
+  padding: 3px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  margin: 0 auto;
+}
+.keypad-template-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  padding: 5px 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.keypad-template-tab.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Template Manager List inside Modal */
+.template-manager-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  gap: 10px;
+}
+.template-manager-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+.template-manager-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 .keypad-done-pill {
   background: var(--primary);
@@ -8967,6 +9265,17 @@ html, body {
   text-decoration: underline;
 }
 
+/* Budget Avail Options & Rebalance Modal Dialogs */
+.modal-dialog-avail-options {
+  max-width: 440px;
+  width: 100%;
+}
+.modal-dialog-rebalance {
+  max-width: 480px;
+  width: 100%;
+  max-height: 88dvh;
+}
+
 /* Rebalance Modal 2-Step Styles */
 .rebalance-step-view {
   display: flex;
@@ -12862,4 +13171,34 @@ body.light .ptr-circle-badge,
   transform: translateY(-1px);
   border-color: var(--primary) !important;
   box-shadow: 0 4px 14px rgba(13, 148, 136, 0.2);
+}
+
+/* Toast Warning & Multi-line Support */
+.toast.warning {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+.toast.warning i {
+  color: #f59e0b;
+}
+
+.toast.multi-line {
+  border-radius: 14px;
+  padding: 9px 16px;
+  align-items: flex-start;
+  gap: 10px;
+}
+.toast.multi-line span {
+  white-space: pre-line;
+  text-align: left;
+  line-height: 1.5;
+  display: block;
+}
+
+/* Local-only status dots */
+.sync-status-dot.local {
+  background: #64748b;
+  box-shadow: none;
+}
+.sync-popover-dot.local {
+  background: #64748b;
 }

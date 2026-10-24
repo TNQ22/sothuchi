@@ -4748,61 +4748,160 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
       </div>
 
       <div class="keypad-popup-header">
-        <div class="keypad-live-display">
-          <span id="keypad-live-val">0</span>
-          <span class="keypad-live-cur">₫</span>
+        <div class="keypad-header-left">
+          <button type="button" id="btn-keypad-templates" class="keypad-mode-pill" onclick="UITransactions.toggleKeypadTemplates()" title="Ghi chép mẫu">
+            <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i>
+            <span>Ghi chép mẫu</span>
+          </button>
         </div>
-        <button type="button" class="btn-icon keypad-header-close-btn" onclick="UITransactions.closeKeypad()" title="Ẩn bàn phím" style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 255, 255, 0.08); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer; border: none;">
-          <i data-lucide="chevron-down" style="width: 20px; height: 20px;"></i>
-        </button>
+        <div class="keypad-header-right">
+          <div class="keypad-live-display">
+            <span id="keypad-live-val">0</span>
+            <span class="keypad-live-cur">₫</span>
+          </div>
+          <button type="button" class="btn-icon keypad-header-close-btn" onclick="UITransactions.closeKeypad()" title="Ẩn bàn phím">
+            <i data-lucide="chevron-down" style="width: 20px; height: 20px;"></i>
+          </button>
+        </div>
       </div>
 
-      <!-- Quick Chips -->
-      <div class="keypad-quick-row">
-        <span class="keypad-chip" data-val="10000">+10.000</span>
-        <span class="keypad-chip" data-val="20000">+20.000</span>
-        <span class="keypad-chip" data-val="50000">+50.000</span>
-        <span class="keypad-chip" data-val="100000">+100.000</span>
-        <span class="keypad-chip" data-val="200000">+200.000</span>
-        <span class="keypad-chip" data-val="500000">+500.000</span>
-        <span class="keypad-chip" data-val="1000000">+1.000.000</span>
-        <span class="keypad-chip" data-val="5000000">+5.000.000</span>
-      </div>
-
-      <!-- 4x4 Keypad Grid -->
-      <div class="keypad-grid">
-        <button type="button" class="keypad-btn" data-key="1">1</button>
-        <button type="button" class="keypad-btn" data-key="2">2</button>
-        <button type="button" class="keypad-btn" data-key="3">3</button>
-        <button type="button" class="keypad-btn action" data-key="backspace" title="Xóa lùi">⌫</button>
-
-        <button type="button" class="keypad-btn" data-key="4">4</button>
-        <button type="button" class="keypad-btn" data-key="5">5</button>
-        <button type="button" class="keypad-btn" data-key="6">6</button>
+      <!-- 5x4 Keypad Grid (Calculator Mode matching IMG_0015) -->
+      <div class="keypad-grid" id="keypad-calculator-grid">
+        <!-- Row 1: C ÷ x ⌫ -->
         <button type="button" class="keypad-btn action" data-key="clear" title="Xóa hết">C</button>
+        <button type="button" class="keypad-btn action" data-key="/" title="Chia">÷</button>
+        <button type="button" class="keypad-btn action" data-key="*" title="Nhân">x</button>
+        <button type="button" class="keypad-btn action" data-key="backspace" title="Xóa lùi">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none; display: block; margin: auto;">
+            <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
+            <line x1="18" y1="9" x2="12" y2="15"></line>
+            <line x1="12" y1="9" x2="18" y2="15"></line>
+          </svg>
+        </button>
 
+        <!-- Row 2: 7 8 9 - -->
         <button type="button" class="keypad-btn" data-key="7">7</button>
         <button type="button" class="keypad-btn" data-key="8">8</button>
         <button type="button" class="keypad-btn" data-key="9">9</button>
-        <button type="button" class="keypad-btn action" data-key="+" title="Cộng thêm">+</button>
+        <button type="button" class="keypad-btn action" data-key="-" title="Trừ">-</button>
 
-        <button type="button" class="keypad-btn action" data-key="000">000</button>
+        <!-- Row 3: 4 5 6 + -->
+        <button type="button" class="keypad-btn" data-key="4">4</button>
+        <button type="button" class="keypad-btn" data-key="5">5</button>
+        <button type="button" class="keypad-btn" data-key="6">6</button>
+        <button type="button" class="keypad-btn action" data-key="+" title="Cộng">+</button>
+
+        <!-- Row 4: 1 2 3 [Xong span 2 rows] -->
+        <button type="button" class="keypad-btn" data-key="1">1</button>
+        <button type="button" class="keypad-btn" data-key="2">2</button>
+        <button type="button" class="keypad-btn" data-key="3">3</button>
+        <button type="button" class="keypad-btn action-primary keypad-btn-done" data-key="done" title="Xong" aria-label="Xong">Xong</button>
+
+        <!-- Row 5: 0 000 , -->
         <button type="button" class="keypad-btn" data-key="0">0</button>
+        <button type="button" class="keypad-btn" data-key="000">000</button>
         <button type="button" class="keypad-btn action" data-key="," style="font-size: 1.3rem; font-weight: 700;">,</button>
-        <button type="button" class="keypad-btn action-primary" data-key="done" title="Ẩn bàn phím" aria-label="Ẩn bàn phím">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none; display: block; margin: auto;">
-            <rect x="2" y="4" width="20" height="12" rx="2"></rect>
-            <line x1="6" y1="8" x2="6.01" y2="8"></line>
-            <line x1="10" y1="8" x2="10.01" y2="8"></line>
-            <line x1="14" y1="8" x2="14.01" y2="8"></line>
-            <line x1="18" y1="8" x2="18.01" y2="8"></line>
-            <line x1="8" y1="11" x2="8.01" y2="11"></line>
-            <line x1="12" y1="11" x2="12.01" y2="11"></line>
-            <line x1="16" y1="11" x2="16.01" y2="11"></line>
-            <line x1="7" y1="13.5" x2="17" y2="13.5"></line>
-            <polyline points="16 19 12 22 8 19"></polyline>
-          </svg>
-        </button>
+      </div>
+
+      <!-- Templates Panel (Matching IMG_0017) -->
+      <div id="keypad-templates-panel" class="keypad-templates-panel" style="display: none;">
+        <div class="keypad-templates-grid" id="keypad-templates-grid">
+          <!-- Rendered via JS -->
+        </div>
+        <div class="keypad-templates-bottom">
+          <button type="button" class="btn-icon keypad-template-pencil-btn" onclick="UITransactions.openTemplateManagerModal()" title="Chỉnh sửa & Quản lý mẫu">
+            <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i>
+          </button>
+          <div class="keypad-template-tabs">
+            <button type="button" class="keypad-template-tab" id="tab-template-income" onclick="UITransactions.switchTemplateTab('income')">
+              Mẫu thu
+            </button>
+            <button type="button" class="keypad-template-tab active" id="tab-template-expense" onclick="UITransactions.switchTemplateTab('expense')">
+              Mẫu chi
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TEMPLATE MANAGER MODAL (QUẢN LÝ MẪU GHI CHÉP) ==================== -->
+  <div id="modal-template-manager" class="modal-overlay">
+    <div class="modal-backdrop" onclick="UITransactions.closeTemplateManagerModal()"></div>
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="edit-3" style="width: 20px; height: 20px; color: var(--primary);"></i>
+            <span>Mẫu ghi chép</span>
+          </h3>
+          <button type="button" class="btn-icon" onclick="UITransactions.closeTemplateManagerModal()" title="Đóng">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body" style="padding: 14px;">
+          <div id="template-manager-list" class="template-manager-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto;">
+          </div>
+          <button type="button" class="btn btn-outline" style="width: 100%; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="UITransactions.openTemplateEditor()">
+            <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+            <span>Thêm mẫu ghi chép mới</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TEMPLATE EDITOR MODAL (TẠO / SỬA MẪU) ==================== -->
+  <div id="modal-template-editor" class="modal-overlay">
+    <div class="modal-backdrop" onclick="UITransactions.closeTemplateEditor()"></div>
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title" id="template-editor-title">Tạo mẫu ghi chép</h3>
+          <button type="button" class="btn-icon" onclick="UITransactions.closeTemplateEditor()">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <form id="template-editor-form" onsubmit="UITransactions.handleSaveTemplate(event)">
+          <input type="hidden" id="tpl-id-input">
+          <div class="modal-body" style="padding: 14px; display: flex; flex-direction: column; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">Tên mẫu ghi chép <span style="color:red;">*</span></label>
+              <input type="text" id="tpl-title-input" class="form-control" placeholder="Ví dụ: Ăn sáng chay, Ăn tiệm..." required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Loại giao dịch</label>
+              <div class="form-row" style="display: flex; gap: 16px;">
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                  <input type="radio" name="tpl-type" id="tpl-type-expense" value="expense" checked onchange="UITransactions.onTemplateTypeChanged()">
+                  <span>Chi tiền (Mẫu chi)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                  <input type="radio" name="tpl-type" id="tpl-type-income" value="income" onchange="UITransactions.onTemplateTypeChanged()">
+                  <span>Thu tiền (Mẫu thu)</span>
+                </label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hạng mục / Danh mục <span style="color:red;">*</span></label>
+              <select id="tpl-category-select" class="form-control" required>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Số tiền mặc định (₫) (nhập 0 nếu muốn gõ mỗi lần)</label>
+              <input type="number" id="tpl-amount-input" class="form-control" placeholder="0" min="0" step="1000">
+            </div>
+          </div>
+          <div class="modal-footer" style="display: flex; justify-content: space-between; padding: 12px 14px;">
+            <button type="button" id="btn-delete-template" class="btn btn-danger" style="display: none;" onclick="UITransactions.handleDeleteTemplate()">
+              <i data-lucide="trash-2" style="width: 15px; height: 15px;"></i> Xóa
+            </button>
+            <div style="display: flex; gap: 8px; margin-left: auto;">
+              <button type="button" class="btn btn-secondary" onclick="UITransactions.closeTemplateEditor()">Hủy</button>
+              <button type="submit" class="btn btn-primary">Lưu mẫu</button>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -5236,7 +5335,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 </div>
 
                 <!-- Tùy chọn chuyển tiếp số dư (Rollover) trong Ngân sách chi tiết -->
-                <div class="budget-setting-rollover-nested" id="budget-setting-rollover-group" onclick="event.stopPropagation(); const t = document.getElementById('budget-setting-rollover-toggle'); if (t && event.target.tagName !== 'INPUT' && !event.target.closest('label')) { t.checked = !t.checked; }">
+                <div class="budget-setting-rollover-nested" id="budget-setting-rollover-group" onclick="event.stopPropagation()">
                   <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                     <div>
                       <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
@@ -6076,7 +6175,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   
   <!-- Modal: Tùy chọn Còn lại (Cân đối / Chuyển sang tháng sau) -->
   <div id="modal-budget-avail-options" class="modal-overlay" onclick="if(event.target === this) UIBudgets.closeAvailOptionsModal()">
-    <div class="modal-dialog" style="max-width: 440px; display: flex; flex-direction: column;">
+    <div class="modal-dialog modal-dialog-avail-options" style="display: flex; flex-direction: column;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
           <div id="avail-options-icon" class="actual-cat-icon" style="width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;"></div>
@@ -6119,7 +6218,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- Modal: Cân đối ngân sách (Bù đắp chi âm) - 2 Bước -->
   <div id="modal-budget-rebalance" class="modal-overlay" onclick="if(event.target === this) UIBudgets.closeRebalanceModal()">
-    <div class="modal-dialog" style="max-width: 480px; max-height: 85dvh; display: flex; flex-direction: column; overflow: hidden;">
+    <div class="modal-dialog modal-dialog-rebalance" style="display: flex; flex-direction: column; overflow: hidden;">
       
       <!-- STEP 1: Danh sách hạng mục cần cân đối -->
       <div id="rebalance-step-1" class="rebalance-step-view" style="display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden;">
@@ -6173,7 +6272,12 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           <!-- Amount Input Section -->
           <div id="rebalance-step2-amount-section" class="rebalance-amount-box">
             <label id="rebalance-step2-amount-label" class="form-label" style="font-size: 0.85rem; font-weight: 600; margin: 0;">Số tiền chuyển (₫):</label>
-            <input type="text" id="rebalance-amount-input" class="form-control money-input-lg" inputmode="numeric" style="font-size: 1.25rem; font-weight: 700;" placeholder="0">
+            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+              <input type="text" id="rebalance-amount-input" class="form-control money-input-lg" readonly inputmode="none" onclick="UIBudgets.openRebalanceKeypad()" style="font-size: 1.25rem; font-weight: 700; cursor: pointer; padding-right: 42px; width: 100%;" placeholder="0">
+              <div onclick="UIBudgets.openRebalanceKeypad()" style="position: absolute; right: 12px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; padding: 4px;" title="Mở bàn phím số">
+                <i data-lucide="calculator" style="width: 18px; height: 18px;"></i>
+              </div>
+            </div>
             <span id="rebalance-amount-hint" style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.3;"></span>
           </div>
 

@@ -488,79 +488,7 @@ const UITransactions = {
     }
 
     // Popup Keypad Button Handlers - Phản hồi tức thì <1ms, gõ nhanh không trễ và không nuốt phím
-    const triggerKey = (btn, e) => {
-      if (e && e.cancelable) {
-        try { e.preventDefault(); } catch (_) {}
-      }
-      const key = btn.dataset.key;
-      this.handleKeypadKey(key);
-      btn.classList.add('pressed');
-      setTimeout(() => btn.classList.remove('pressed'), 70);
-    };
-
-    document.querySelectorAll('#modal-keypad .keypad-btn').forEach(btn => {
-      let pointerHandled = false;
-      const isDone = btn.dataset.key === 'done';
-
-      if (isDone) {
-        let isDonePressed = false;
-
-        btn.addEventListener('pointerdown', (e) => {
-          pointerHandled = true;
-          isDonePressed = true;
-          btn.classList.add('pressed');
-          if (e.cancelable) {
-            try { e.preventDefault(); } catch (_) {}
-          }
-        }, { passive: false });
-
-        btn.addEventListener('pointerup', (e) => {
-          btn.classList.remove('pressed');
-          if (isDonePressed) {
-            isDonePressed = false;
-            if (e.cancelable) {
-              try { e.preventDefault(); } catch (_) {}
-            }
-            triggerKey(btn, e);
-          }
-        }, { passive: false });
-
-        btn.addEventListener('pointercancel', () => {
-          isDonePressed = false;
-          btn.classList.remove('pressed');
-        });
-
-        btn.addEventListener('click', (e) => {
-          if (e.cancelable) {
-            try { e.preventDefault(); } catch (_) {}
-          }
-          if (pointerHandled) {
-            pointerHandled = false;
-            return;
-          }
-          triggerKey(btn, e);
-        });
-      } else {
-        btn.addEventListener('pointerdown', (e) => {
-          pointerHandled = true;
-          if (e.cancelable) {
-            try { e.preventDefault(); } catch (_) {}
-          }
-          triggerKey(btn, e);
-        }, { passive: false });
-
-        btn.addEventListener('click', (e) => {
-          if (e.cancelable) {
-            try { e.preventDefault(); } catch (_) {}
-          }
-          if (pointerHandled) {
-            pointerHandled = false;
-            return;
-          }
-          triggerKey(btn, e);
-        });
-      }
-    });
+    this.bindKeypadEvents();
 
     // Popup Keypad Quick Chips (+10k, +50k, ...)
     const triggerChip = (chip, e) => {
@@ -776,6 +704,10 @@ const UITransactions = {
       const input = document.getElementById('budget-cat-amount');
       cur = input?.value?.trim() || '0';
       if (curSymbolEl) curSymbolEl.textContent = '₫';
+    } else if (target === 'rebalance-amount') {
+      const input = document.getElementById('rebalance-amount-input');
+      cur = input?.value?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = '₫';
     } else if (target === 'budget-quick-amount') {
       const bPanel = document.getElementById('keypad-budget-quick-panel');
       const qRow = document.querySelector('#modal-keypad .keypad-quick-row');
@@ -795,13 +727,22 @@ const UITransactions = {
       const qRow = document.querySelector('#modal-keypad .keypad-quick-row');
       const hClose = document.querySelector('#modal-keypad .keypad-header-close-btn');
       if (bPanel) bPanel.style.display = 'none';
-      if (qRow) qRow.style.display = 'flex';
+      if (qRow) qRow.style.display = 'none';
       if (hClose) hClose.style.display = 'flex';
       const input = document.getElementById('tx-amount-input');
       const amountText = document.getElementById('tx-amount-text');
       cur = input?.value?.trim() || amountText?.textContent?.trim() || '0';
       if (curSymbolEl) curSymbolEl.textContent = '₫';
     }
+
+    const btnTemplates = document.getElementById('btn-keypad-templates');
+    if (target === 'amount') {
+      if (btnTemplates) btnTemplates.style.display = 'inline-flex';
+    } else {
+      if (btnTemplates) btnTemplates.style.display = 'none';
+    }
+    this.toggleKeypadTemplates(false);
+    this.bindKeypadEvents();
 
     if (display) {
       display.textContent = cur || '0';
@@ -840,6 +781,7 @@ const UITransactions = {
 
     // Ghi nhận thời điểm đóng bàn phím để chặn form tự động lưu do click xuyên thấu
     this._keypadClosedTime = Date.now();
+    this.toggleKeypadTemplates(false);
 
     // Ngăn chặn triệt để ghost click / click xuyên thấu làm nhảy lung tung hoặc kích hoạt nút bên dưới
     let blocker = document.getElementById('keypad-touch-guard');
@@ -1024,6 +966,14 @@ const UITransactions = {
     } else if (this.activeKeypadTarget === 'budget-cat-amount') {
       const input = document.getElementById('budget-cat-amount');
       if (input) input.value = finalFormatted;
+    } else if (this.activeKeypadTarget === 'rebalance-amount') {
+      const input = document.getElementById('rebalance-amount-input');
+      if (input) {
+        input.value = finalFormatted;
+        try {
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        } catch (_) {}
+      }
     } else if (this.activeKeypadTarget === 'budget-quick-amount') {
       const input = document.getElementById('budget-quick-amount-input');
       if (input) input.value = finalFormatted;
@@ -1039,7 +989,7 @@ const UITransactions = {
       'account-balance', 'saving-amount', 'loan-amount', 'pay-loan-amount', 'acc-target-amount', 'asset-price', 'asset-quantity',
       'acc-current-amount', 'acc-recurring-amount',
       'asset-buyprice', 'asset-currentprice', 'asset-extracosts',
-      'settle-saving-amount', 'deposit-acc-amount', 'liquidate-asset-price', 'budget-form-amount', 'budget-overall-amount', 'budget-lock-amount', 'budget-cat-amount', 'budget-quick-amount'
+      'settle-saving-amount', 'deposit-acc-amount', 'liquidate-asset-price', 'budget-form-amount', 'budget-overall-amount', 'budget-lock-amount', 'budget-cat-amount', 'rebalance-amount', 'budget-quick-amount'
     ];
     if (!nonTxTargets.includes(this.activeKeypadTarget)) {
       this.saveDraft();
@@ -1083,9 +1033,89 @@ const UITransactions = {
     });
   },
 
+  bindKeypadEvents() {
+    const triggerKey = (btn, e) => {
+      if (e && e.cancelable) {
+        try { e.preventDefault(); } catch (_) {}
+      }
+      const key = btn.dataset.key;
+      this.handleKeypadKey(key);
+      btn.classList.add('pressed');
+      setTimeout(() => btn.classList.remove('pressed'), 70);
+    };
+
+    document.querySelectorAll('#modal-keypad .keypad-btn').forEach(btn => {
+      if (btn._keypadBound) return;
+      btn._keypadBound = true;
+      let pointerHandled = false;
+      const isDone = btn.dataset.key === 'done';
+
+      if (isDone) {
+        let isDonePressed = false;
+        btn.addEventListener('pointerdown', (e) => {
+          pointerHandled = true;
+          isDonePressed = true;
+          btn.classList.add('pressed');
+          if (e.cancelable) {
+            try { e.preventDefault(); } catch (_) {}
+          }
+        }, { passive: false });
+
+        btn.addEventListener('pointerup', (e) => {
+          btn.classList.remove('pressed');
+          if (isDonePressed) {
+            isDonePressed = false;
+            if (e.cancelable) {
+              try { e.preventDefault(); } catch (_) {}
+            }
+            triggerKey(btn, e);
+          }
+        }, { passive: false });
+
+        btn.addEventListener('pointercancel', () => {
+          isDonePressed = false;
+          btn.classList.remove('pressed');
+        });
+
+        btn.addEventListener('click', (e) => {
+          if (e.cancelable) {
+            try { e.preventDefault(); } catch (_) {}
+          }
+          if (pointerHandled) {
+            pointerHandled = false;
+            return;
+          }
+          triggerKey(btn, e);
+        });
+      } else {
+        btn.addEventListener('pointerdown', (e) => {
+          pointerHandled = true;
+          if (e.cancelable) {
+            try { e.preventDefault(); } catch (_) {}
+          }
+          triggerKey(btn, e);
+        }, { passive: false });
+
+        btn.addEventListener('click', (e) => {
+          if (e.cancelable) {
+            try { e.preventDefault(); } catch (_) {}
+          }
+          if (pointerHandled) {
+            pointerHandled = false;
+            return;
+          }
+          triggerKey(btn, e);
+        });
+      }
+    });
+  },
+
   handleKeypadKey(key) {
     const display = document.getElementById('keypad-live-val');
     if (!display) return;
+
+    const isOperator = (k) => ['+', '-', '*', 'x', '/', '÷'].includes(k);
+    const getOpChar = (k) => (k === '*' || k === 'x') ? 'x' : (k === '/' || k === '÷') ? '÷' : k;
 
     // Xử lý khi số liệu đang ở trạng thái bôi đen (chọn toàn bộ để ghi đè)
     if (this.keypadAutoSelect) {
@@ -1095,10 +1125,11 @@ const UITransactions = {
       if (key === 'clear' || key === 'backspace') {
         display.textContent = '0';
         return;
-      } else if (key === '+') {
+      } else if (isOperator(key)) {
         const cur = display.textContent.trim();
+        const op = getOpChar(key);
         if (cur && cur !== '0') {
-          display.textContent = cur + ' + ';
+          display.textContent = cur + ' ' + op + ' ';
         }
         return;
       } else if (key === 'done') {
@@ -1115,53 +1146,104 @@ const UITransactions = {
       }
     }
 
-    let cur = display.textContent.trim();
-    if (cur === '0' && key !== '+' && key !== 'backspace' && key !== 'clear' && key !== 'done') {
-      cur = '';
-    }
+    let cur = display.textContent.trimStart();
 
     if (key === 'clear') {
       display.textContent = '0';
-    } else if (key === 'backspace') {
-      if (cur.length > 0 && cur !== '0') {
-        let next = cur.slice(0, -1).trim();
-        if (!next) {
-          display.textContent = '0';
-        } else if (/^[0-9.]*$/.test(next)) {
-          const raw = next.replace(/\./g, '');
-          display.textContent = raw ? new Intl.NumberFormat('vi-VN').format(Number(raw)) : '0';
-        } else {
-          display.textContent = next;
-        }
-      }
-    } else if (key === '+') {
-      if (cur && cur !== '0' && !/[+\-*/]\s*$/.test(cur)) {
-        display.textContent = cur + ' + ';
-      }
-    } else if (key === 'done') {
+      return;
+    }
+
+    if (key === 'done') {
       this.closeKeypad();
-    } else if (key === ',' || key === '.') {
-      if (cur.includes('+')) {
-        const parts = cur.split('+');
-        const lastPart = parts[parts.length - 1].trim();
-        if (!lastPart.includes(',')) {
+      return;
+    }
+
+    if (key === 'backspace') {
+      if (!cur || cur === '0') {
+        display.textContent = '0';
+        return;
+      }
+      // Nếu đuôi đang là toán tử và khoảng trắng, ví dụ " + ", " - ", " x ", " ÷ "
+      if (/\s[+\-x÷*\/]\s$/.test(cur)) {
+        display.textContent = cur.slice(0, -3).trim() || '0';
+        return;
+      }
+      // Xóa 1 ký tự cuối
+      let next = cur.slice(0, -1).trim();
+      if (!next || next === '') {
+        display.textContent = '0';
+        return;
+      }
+      // Nếu là số thuần không có toán tử thì format lại số
+      if (/^[0-9.]*$/.test(next)) {
+        const raw = next.replace(/\./g, '');
+        display.textContent = raw ? new Intl.NumberFormat('vi-VN').format(Number(raw)) : '0';
+      } else {
+        display.textContent = next;
+      }
+      return;
+    }
+
+    // Toán tử +, -, x, ÷
+    if (isOperator(key)) {
+      const op = getOpChar(key);
+      if (!cur || cur === '0') {
+        if (key === '-') {
+          display.textContent = '-';
+        }
+        return;
+      }
+      // Nếu đã có toán tử ở cuối -> thay thế bằng toán tử mới
+      if (/\s[+\-x÷*\/]\s?$/.test(cur)) {
+        display.textContent = cur.replace(/\s[+\-x÷*\/]\s?$/, ' ' + op + ' ');
+      } else {
+        display.textContent = cur + ' ' + op + ' ';
+      }
+      return;
+    }
+
+    // Dấu phẩy thập phân
+    if (key === ',' || key === '.') {
+      const tokens = cur.split(/\s[+\-x÷*\/]\s/);
+      const lastToken = tokens[tokens.length - 1];
+      if (!lastToken.includes(',')) {
+        if (!lastToken || lastToken === '0') {
+          display.textContent = cur.replace(/0$/, '') + '0,';
+        } else {
           display.textContent = cur + ',';
         }
-      } else {
-        if (!cur.includes(',')) {
-          display.textContent = (cur || '0') + ',';
+      }
+      return;
+    }
+
+    // Nhập số: 0-9, 000
+    if (cur.trim() === '0') {
+      if (key === '000' || key === '0') return;
+      display.textContent = key;
+      return;
+    }
+
+    // Nếu biểu thức có chứa toán tử
+    if (/[+\-x÷*\/]/.test(cur)) {
+      const match = cur.match(/^(.*[+\-x÷*\/]\s)(.*)$/);
+      if (match) {
+        const prefix = match[1];
+        let operand = match[2];
+        if (operand.includes(',')) {
+          display.textContent = prefix + operand + key;
+        } else {
+          const raw = (operand.replace(/\./g, '') + key).replace(/^0+/, '');
+          const formatted = raw ? new Intl.NumberFormat('vi-VN').format(Number(raw)) : (key === '0' ? '0' : '');
+          display.textContent = prefix + (formatted || '0');
         }
-      }
-    } else {
-      // Numbers: 1-9, 0, 000
-      if (cur.includes('+')) {
-        display.textContent = cur + key;
-      } else if (cur.includes(',')) {
-        display.textContent = cur + key;
       } else {
-        const raw = (cur.replace(/\./g, '') + key).replace(/^0+/, '');
-        display.textContent = raw ? new Intl.NumberFormat('vi-VN').format(Number(raw)) : '0';
+        display.textContent = cur + key;
       }
+    } else if (cur.includes(',')) {
+      display.textContent = cur + key;
+    } else {
+      const raw = (cur.replace(/\./g, '') + key).replace(/^0+/, '');
+      display.textContent = raw ? new Intl.NumberFormat('vi-VN').format(Number(raw)) : '0';
     }
   },
 
@@ -1186,12 +1268,19 @@ const UITransactions = {
     clean = clean.replace(/(\d+(\.\d+)?)k/g, '($1 * 1000)');
     clean = clean.replace(/(\d+(\.\d+)?)tr/g, '($1 * 1000000)');
     clean = clean.replace(/(\d+(\.\d+)?)m/g, '($1 * 1000000)');
-    clean = clean.replace(/\./g, '').replace(/,/g, '');
+    clean = clean.replace(/÷/g, '/');
+    clean = clean.replace(/x/g, '*');
+    clean = clean.replace(/×/g, '*');
+    clean = clean.replace(/\./g, '').replace(/,/g, '.');
+    clean = clean.replace(/[+\-*/\s]+$/, '');
 
-    if (/^[0-9+\-*/ ()]+$/.test(clean)) {
+    if (/^[0-9+\-*/ ().]+$/.test(clean)) {
       try {
         const result = Function(`'use strict'; return (${clean})`)();
-        if (typeof result === 'number' && !isNaN(result) && result >= 0) {
+        if (typeof result === 'number' && !isNaN(result) && isFinite(result) && result >= 0) {
+          if (this.activeKeypadTarget === 'asset-quantity') {
+            return Math.round(result * 1000) / 1000;
+          }
           return Math.round(result);
         }
       } catch (err) {
@@ -1199,6 +1288,456 @@ const UITransactions = {
       }
     }
     return null;
+  },
+
+  /* ==================== TRANSACTION TEMPLATES (GHI CHÉP MẪU) ==================== */
+  currentTemplateTab: 'expense',
+
+  toggleKeypadTemplates(forceState) {
+    const btn = document.getElementById('btn-keypad-templates');
+    const grid = document.getElementById('keypad-calculator-grid');
+    const panel = document.getElementById('keypad-templates-panel');
+    if (!grid || !panel) return;
+
+    const isCurrentlyShowing = panel.style.display !== 'none';
+    const showTemplates = forceState !== undefined ? forceState : !isCurrentlyShowing;
+
+    if (showTemplates) {
+      grid.style.display = 'none';
+      panel.style.display = 'flex';
+      if (btn) btn.classList.add('active');
+      const formType = document.getElementById('tx-type-input')?.value || 'expense';
+      this.currentTemplateTab = formType === 'income' ? 'income' : 'expense';
+      this.switchTemplateTab(this.currentTemplateTab);
+    } else {
+      panel.style.display = 'none';
+      grid.style.display = 'grid';
+      if (btn) btn.classList.remove('active');
+    }
+  },
+
+  switchTemplateTab(tab) {
+    this.currentTemplateTab = tab;
+    document.querySelectorAll('.keypad-template-tab').forEach(el => el.classList.remove('active'));
+    const activeTab = document.getElementById(`tab-template-${tab}`);
+    if (activeTab) activeTab.classList.add('active');
+    this.renderKeypadTemplates();
+  },
+
+  async getTemplates(type = null) {
+    if (!db.recurring) return [];
+    try {
+      let list = [];
+      try {
+        list = await db.recurring.where('frequency').equals('template').toArray();
+      } catch (_) {
+        const all = await db.recurring.toArray();
+        list = all.filter(t => t.frequency === 'template' || t.isTemplate === 1);
+      }
+      if (!list || list.length === 0) {
+        await this.seedDefaultTemplates();
+        try {
+          list = await db.recurring.where('frequency').equals('template').toArray();
+        } catch (_) {
+          const all = await db.recurring.toArray();
+          list = all.filter(t => t.frequency === 'template' || t.isTemplate === 1);
+        }
+      }
+      list = (list || []).filter(t => !t.isDeleted);
+      if (type) {
+        list = list.filter(t => t.type === type);
+      }
+      return list;
+    } catch (err) {
+      console.warn('Error loading templates:', err);
+      return [];
+    }
+  },
+
+  async seedDefaultTemplates() {
+    try {
+      const categories = await db.categories.where('isDeleted').equals(0).toArray();
+      const getCat = (name, type) => categories.find(c => c.name.toLowerCase().includes(name.toLowerCase()) && c.type === type) || categories.find(c => c.type === type);
+
+      const catAnUong = getCat('ăn uống', 'expense');
+      const catXang = getCat('xăng', 'expense');
+      const catCho = getCat('chợ', 'expense');
+      const catLuong = getCat('lương', 'income');
+      const catThuong = getCat('thưởng', 'income');
+
+      const now = new Date().toISOString();
+      const defaults = [
+        {
+          title: 'Ăn sáng chay',
+          type: 'expense',
+          amount: 25000,
+          categoryId: catAnUong?.id || 1,
+          icon: 'utensils',
+          color: '#0d9488',
+          frequency: 'template',
+          isTemplate: 1,
+          isDeleted: 0,
+          updatedAt: now
+        },
+        {
+          title: 'Ăn tiệm',
+          type: 'expense',
+          amount: 45000,
+          categoryId: catAnUong?.id || 1,
+          icon: 'utensils',
+          color: '#0f766e',
+          frequency: 'template',
+          isTemplate: 1,
+          isDeleted: 0,
+          updatedAt: now
+        },
+        {
+          title: 'Khoáng lạt Thạch Bích',
+          type: 'expense',
+          amount: 15000,
+          categoryId: catAnUong?.id || 1,
+          icon: 'coffee',
+          color: '#14b8a6',
+          frequency: 'template',
+          isTemplate: 1,
+          isDeleted: 0,
+          updatedAt: now
+        },
+        {
+          title: 'Đổ xăng',
+          type: 'expense',
+          amount: 50000,
+          categoryId: catXang?.id || 3,
+          icon: 'car',
+          color: '#f59e0b',
+          frequency: 'template',
+          isTemplate: 1,
+          isDeleted: 0,
+          updatedAt: now
+        },
+        {
+          title: 'Đi chợ & Siêu thị',
+          type: 'expense',
+          amount: 100000,
+          categoryId: catCho?.id || 2,
+          icon: 'shopping-cart',
+          color: '#ec4899',
+          frequency: 'template',
+          isTemplate: 1,
+          isDeleted: 0,
+          updatedAt: now
+        },
+        {
+          title: 'Lương tháng',
+          type: 'income',
+          amount: 0,
+          categoryId: catLuong?.id || 13,
+          icon: 'banknote',
+          color: '#10b981',
+          frequency: 'template',
+          isTemplate: 1,
+          isDeleted: 0,
+          updatedAt: now
+        },
+        {
+          title: 'Thưởng & Tip',
+          type: 'income',
+          amount: 0,
+          categoryId: catThuong?.id || 14,
+          icon: 'award',
+          color: '#059669',
+          frequency: 'template',
+          isTemplate: 1,
+          isDeleted: 0,
+          updatedAt: now
+        }
+      ];
+
+      await db.recurring.bulkAdd(defaults);
+    } catch (e) {
+      console.warn('seedDefaultTemplates error:', e);
+    }
+  },
+
+  formatCompactAmount(amount) {
+    if (!amount || amount <= 0) return '';
+    if (amount >= 1000000000) {
+      const val = amount / 1000000000;
+      return (Number.isInteger(val) ? val : val.toFixed(1).replace('.0', '')) + 'tỷ';
+    }
+    if (amount >= 1000000) {
+      const val = amount / 1000000;
+      return (Number.isInteger(val) ? val : val.toFixed(1).replace('.0', '')) + 'tr';
+    }
+    if (amount >= 1000) {
+      const val = amount / 1000;
+      return (Number.isInteger(val) ? val : val.toFixed(1).replace('.0', '')) + 'k';
+    }
+    return String(amount);
+  },
+
+  async renderKeypadTemplates() {
+    const container = document.getElementById('keypad-templates-grid');
+    if (!container) return;
+
+    const type = this.currentTemplateTab || 'expense';
+    const templates = await this.getTemplates(type);
+
+    let html = '';
+    templates.forEach(t => {
+      const bg = t.color ? t.color + '22' : 'rgba(13, 148, 136, 0.15)';
+      const color = t.color || 'var(--primary)';
+      const safeTitle = (t.title || 'Mẫu').replace(/"/g, '&quot;');
+      const compactPrice = t.amount > 0 ? this.formatCompactAmount(t.amount) : '';
+      const priceTag = compactPrice ? `<span class="keypad-template-price-tag">${compactPrice}</span>` : '';
+
+      html += `
+        <div class="keypad-template-item" onclick="UITransactions.applyTemplate(${t.id})">
+          <div class="keypad-template-icon-bubble" style="background: ${bg}; color: ${color};">
+            <i data-lucide="${t.icon || 'tag'}" style="width: 20px; height: 20px;"></i>
+            ${priceTag}
+          </div>
+          <span class="keypad-template-title">${safeTitle}</span>
+        </div>
+      `;
+    });
+
+    html += `
+      <div class="keypad-template-item" onclick="UITransactions.openTemplateEditor()">
+        <div class="keypad-template-icon-bubble" style="background: rgba(255, 255, 255, 0.05); border: 1px dashed var(--border-color); color: var(--text-muted);">
+          <i data-lucide="plus" style="width: 20px; height: 20px;"></i>
+        </div>
+        <span class="keypad-template-title" style="color: var(--text-muted);">Thêm mẫu</span>
+      </div>
+    `;
+
+    container.innerHTML = html;
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async applyTemplate(id) {
+    const tpl = await db.recurring.get(Number(id));
+    if (!tpl) return;
+
+    // 1. Switch form type if needed
+    if (tpl.type) {
+      const typeBtn = document.querySelector(`.tx-type-pill[data-type="${tpl.type}"]`);
+      if (typeBtn) typeBtn.click();
+    }
+
+    // 2. Select category
+    if (tpl.categoryId) {
+      await this.selectCategoryById(Number(tpl.categoryId));
+    }
+
+    // 3. Set note
+    const noteInput = document.getElementById('tx-note-input');
+    if (noteInput) {
+      noteInput.value = tpl.title || '';
+    }
+
+    // 4. Set amount
+    if (tpl.amount && tpl.amount > 0) {
+      const display = document.getElementById('keypad-live-val');
+      if (display) display.textContent = new Intl.NumberFormat('vi-VN').format(tpl.amount);
+      const amtInput = document.getElementById('tx-amount-input');
+      const amtText = document.getElementById('tx-amount-text');
+      if (amtInput) amtInput.value = tpl.amount;
+      if (amtText) amtText.textContent = new Intl.NumberFormat('vi-VN').format(tpl.amount);
+      showToast(`Đã áp dụng mẫu "${tpl.title}" (${new Intl.NumberFormat('vi-VN').format(tpl.amount)}₫)`, 'success');
+      this.closeKeypad();
+    } else {
+      showToast(`Đã chọn mẫu "${tpl.title}", hãy nhập số tiền`, 'info');
+      this.toggleKeypadTemplates(false);
+    }
+
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async openTemplateManagerModal() {
+    const modal = document.getElementById('modal-template-manager');
+    if (!modal) return;
+    await this.renderTemplateManagerList();
+    modal.classList.add('open');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeTemplateManagerModal() {
+    const modal = document.getElementById('modal-template-manager');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async renderTemplateManagerList() {
+    const container = document.getElementById('template-manager-list');
+    if (!container) return;
+    const templates = await this.getTemplates();
+
+    if (templates.length === 0) {
+      container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;">Chưa có mẫu ghi chép nào</div>`;
+      return;
+    }
+
+    let html = '';
+    for (const t of templates) {
+      const cat = t.categoryId ? await db.categories.get(Number(t.categoryId)) : null;
+      const catName = cat ? cat.name : 'Chưa gán danh mục';
+      const typeBadge = t.type === 'income' 
+        ? '<span style="color:#10b981;font-size:0.72rem;background:rgba(16,185,129,0.1);padding:2px 6px;border-radius:4px;">Thu</span>' 
+        : '<span style="color:#f43f5e;font-size:0.72rem;background:rgba(244,63,94,0.1);padding:2px 6px;border-radius:4px;">Chi</span>';
+      const amtStr = t.amount > 0 ? `<span style="font-weight:600;font-size:0.78rem;">${new Intl.NumberFormat('vi-VN').format(t.amount)}₫</span>` : '<span style="color:var(--text-muted);font-size:0.75rem;">Nhập mỗi lần</span>';
+
+      html += `
+        <div class="template-manager-row">
+          <div class="template-manager-info">
+            <div style="width:36px;height:36px;border-radius:10px;background:${t.color ? t.color + '22' : 'rgba(13, 148, 136, 0.15)'};color:${t.color || 'var(--primary)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i data-lucide="${t.icon || 'tag'}" style="width:18px;height:18px;"></i>
+            </div>
+            <div style="min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-weight:600;font-size:0.86rem;color:var(--text-primary);">${t.title}</span>
+                ${typeBadge}
+              </div>
+              <div style="font-size:0.74rem;color:var(--text-muted);margin-top:2px;">
+                ${catName} • ${amtStr}
+              </div>
+            </div>
+          </div>
+          <div class="template-manager-actions">
+            <button type="button" class="btn-icon" style="width:30px;height:30px;border-radius:6px;" onclick="UITransactions.openTemplateEditor(${t.id})" title="Chỉnh sửa">
+              <i data-lucide="edit" style="width:15px;height:15px;color:var(--primary);"></i>
+            </button>
+            <button type="button" class="btn-icon" style="width:30px;height:30px;border-radius:6px;" onclick="UITransactions.handleDeleteTemplate(${t.id})" title="Xóa">
+              <i data-lucide="trash-2" style="width:15px;height:15px;color:var(--expense);"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+    container.innerHTML = html;
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async openTemplateEditor(id = null) {
+    const modal = document.getElementById('modal-template-editor');
+    if (!modal) return;
+
+    const titleEl = document.getElementById('template-editor-title');
+    const idInput = document.getElementById('tpl-id-input');
+    const titleInput = document.getElementById('tpl-title-input');
+    const amountInput = document.getElementById('tpl-amount-input');
+    const delBtn = document.getElementById('btn-delete-template');
+
+    let currentType = 'expense';
+
+    if (id) {
+      const t = await db.recurring.get(Number(id));
+      if (!t) return;
+      if (titleEl) titleEl.textContent = 'Sửa mẫu ghi chép';
+      if (idInput) idInput.value = t.id;
+      if (titleInput) titleInput.value = t.title || '';
+      if (amountInput) amountInput.value = t.amount || 0;
+      currentType = t.type || 'expense';
+      if (currentType === 'income') {
+        const r = document.getElementById('tpl-type-income');
+        if (r) r.checked = true;
+      } else {
+        const r = document.getElementById('tpl-type-expense');
+        if (r) r.checked = true;
+      }
+      if (delBtn) delBtn.style.display = 'inline-flex';
+      await this.populateTemplateCategories(currentType, t.categoryId);
+    } else {
+      if (titleEl) titleEl.textContent = 'Tạo mẫu ghi chép mới';
+      if (idInput) idInput.value = '';
+      if (titleInput) titleInput.value = '';
+      if (amountInput) amountInput.value = '';
+      const r = document.getElementById('tpl-type-expense');
+      if (r) r.checked = true;
+      if (delBtn) delBtn.style.display = 'none';
+      await this.populateTemplateCategories('expense');
+    }
+
+    modal.classList.add('open');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeTemplateEditor() {
+    const modal = document.getElementById('modal-template-editor');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async onTemplateTypeChanged() {
+    const isIncome = document.getElementById('tpl-type-income')?.checked;
+    await this.populateTemplateCategories(isIncome ? 'income' : 'expense');
+  },
+
+  async populateTemplateCategories(type, selectedId = null) {
+    const select = document.getElementById('tpl-category-select');
+    if (!select) return;
+    const cats = await db.categories.where('isDeleted').equals(0).toArray();
+    const filtered = cats.filter(c => c.type === type);
+    select.innerHTML = filtered.map(c => `
+      <option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${c.name}</option>
+    `).join('');
+  },
+
+  async handleSaveTemplate(e) {
+    if (e) e.preventDefault();
+    const idInput = document.getElementById('tpl-id-input');
+    const titleInput = document.getElementById('tpl-title-input');
+    const amountInput = document.getElementById('tpl-amount-input');
+    const catSelect = document.getElementById('tpl-category-select');
+    const isIncome = document.getElementById('tpl-type-income')?.checked;
+
+    const title = titleInput?.value?.trim();
+    if (!title) {
+      showToast('Vui lòng nhập tên mẫu', 'warning');
+      return;
+    }
+
+    const categoryId = Number(catSelect?.value) || 1;
+    const cat = await db.categories.get(categoryId);
+    const amount = Number(amountInput?.value) || 0;
+    const type = isIncome ? 'income' : 'expense';
+    const now = new Date().toISOString();
+
+    const tplData = {
+      title,
+      type,
+      amount,
+      categoryId,
+      icon: cat?.icon || 'tag',
+      color: cat?.color || 'var(--primary)',
+      frequency: 'template',
+      isTemplate: 1,
+      isDeleted: 0,
+      updatedAt: now
+    };
+
+    if (idInput && idInput.value) {
+      await db.recurring.update(Number(idInput.value), tplData);
+      showToast('Đã cập nhật mẫu ghi chép', 'success');
+    } else {
+      await db.recurring.add(tplData);
+      showToast('Đã tạo mẫu ghi chép mới', 'success');
+    }
+
+    this.closeTemplateEditor();
+    await this.renderTemplateManagerList();
+    await this.renderKeypadTemplates();
+  },
+
+  async handleDeleteTemplate(id = null) {
+    const targetId = id || Number(document.getElementById('tpl-id-input')?.value);
+    if (!targetId) return;
+
+    if (!confirm('Bạn có chắc chắn muốn xóa mẫu ghi chép này?')) return;
+
+    await db.recurring.update(targetId, { isDeleted: 1, updatedAt: new Date().toISOString() });
+    showToast('Đã xóa mẫu ghi chép', 'success');
+    this.closeTemplateEditor();
+    await this.renderTemplateManagerList();
+    await this.renderKeypadTemplates();
   },
 
   /* ==================== QUICK CATEGORY GRID (2x4 FIXED) ==================== */
@@ -1566,7 +2105,7 @@ const UITransactions = {
     const nameBox = document.getElementById('tx-selected-cat-name');
     const subBox = document.getElementById('tx-selected-cat-subtext');
     if (iconBox) {
-      iconBox.style.background = 'rgba(14, 165, 233, 0.15)';
+      iconBox.style.background = 'rgba(13, 148, 136, 0.15)';
       iconBox.style.color = '#0ea5e9';
       iconBox.innerHTML = '<i data-lucide="arrow-right-left"></i>';
     }

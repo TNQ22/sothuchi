@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v3.0.0';
+const CACHE_NAME = 'sothuchi-pwa-v3.0.8';
 
 const PRECACHE_ASSETS = [
   './',
@@ -41,7 +41,7 @@ const PRECACHE_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Đang nạp tài nguyên ngoại tuyến phiên bản mới (v3.0.0)...');
+      console.log('[SW] Đang nạp tài nguyên ngoại tuyến phiên bản mới (v3.0.1)...');
       return Promise.allSettled(
         PRECACHE_ASSETS.map((asset) => {
           return fetch(asset, { cache: 'no-cache' }).then((res) => {
@@ -95,52 +95,76 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// 4. Chiến lược Network-First cho CSS/JS ứng dụng (kèm ignoreSearch fallback offline), Cache-First cho CDN/Icons
+// 4. Chiến lược Cache-First / Stale-While-Revalidate: Nạp Cache tức thì (0ms), tự động làm mới ngầm nếu có kết nối
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
-  // Không can thiệp API ngoài
+  // Bỏ qua các API nội bộ (/api/...) và dịch vụ bên ngoài (để mạng xử lý trực tiếp)
   if (
-    url.origin !== self.location.origin &&
-    (url.hostname.includes('googleapis.com') ||
-     url.hostname.includes('google.com') ||
-     url.hostname.includes('dropbox.com') ||
-     url.hostname.includes('dropboxapi.com') ||
-     url.pathname.startsWith('/api/'))
+    url.pathname.startsWith('/api/') ||
+    (url.origin !== self.location.origin && (
+      url.hostname.includes('googleapis.com') ||
+      url.hostname.includes('google.com') ||
+      url.hostname.includes('dropbox.com') ||
+      url.hostname.includes('dropboxapi.com')
+    ))
   ) {
     return;
   }
 
-  // File trong cùng domain: Network-First (cache: 'no-cache' để luôn lấy bản mới nếu online)
-  // Khi offline: lấy từ CacheStorage (sử dụng ignoreSearch: true để match dù có query param ?v=...)
+  // A. Toàn bộ file nội bộ (HTML, CSS, JS, Assets): Stale-While-Revalidate
+  // -> Load từ Cache trước ngay lập tức, sau đó kiểm tra và làm mới ngầm ở background
   if (url.origin === self.location.origin) {
     event.respondWith(
-      fetch(event.request, { cache: 'no-cache' })
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          return caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
-            if (cachedResponse) return cachedResponse;
-            if (event.request.mode === 'navigate') {
-              return caches.match('./index.html', { ignoreSearch: true }).then((htmlRes) => {
-                return htmlRes || caches.match('./', { ignoreSearch: true });
+      caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
+        // Luồng ngầm fetch từ mạng để cập nhật Cache
+        const networkUpdatePromise = fetch(event.request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+              const responseToCache = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseToCache);
               });
             }
+            return networkResponse;
+          })
+          .catch(() => null);
+
+        // 1. Đã có trong cache: Trả về NGAY LẬP TỨC (instant 0ms)
+        if (cachedResponse) {
+          event.waitUntil(networkUpdatePromise);
+          return cachedResponse;
+        }
+
+        // 2. Nếu là Navigate (mở trang) mà chưa khớp URL cụ thể, thử lấy index.html trong cache
+        if (event.request.mode === 'navigate') {
+          return caches.match('./index.html', { ignoreSearch: true }).then((cachedHtml) => {
+            if (cachedHtml) {
+              event.waitUntil(networkUpdatePromise);
+              return cachedHtml;
+            }
+            return networkUpdatePromise.then((netRes) => {
+              if (netRes) return netRes;
+              return caches.match('./', { ignoreSearch: true });
+            });
           });
-        })
+        }
+
+        // 3. Chưa có trong cache (lần mở đầu tiên): Chờ phản hồi từ mạng
+        return networkUpdatePromise.then((networkResponse) => {
+          if (networkResponse) return networkResponse;
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html', { ignoreSearch: true });
+          }
+          return new Response('', { status: 503, statusText: 'Offline' });
+        });
+      })
     );
     return;
   }
 
-  // Thư viện bên thứ 3
+  // B. Thư viện bên thứ 3 (Lucide, Google Fonts...): Cache-First
   event.respondWith(
     caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
       if (cachedResponse) {

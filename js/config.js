@@ -16,11 +16,22 @@ const EnvConfig = {
   async load() {
     if (this.isLoaded) return this.data;
 
+    // Phục hồi nhanh từ LocalStorage nếu có sẵn (giúp app khởi động tức thì 0ms)
+    try {
+      const cached = localStorage.getItem('env_config_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === 'object') {
+          Object.assign(this.data, parsed);
+        }
+      }
+    } catch (_) {}
+
     // 1. Thử lấy cấu hình cấp sẵn từ API Server nếu chạy trên máy chủ Docker/Node
     if (typeof window !== 'undefined' && window.location && window.location.protocol && window.location.protocol.startsWith('http')) {
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 1800);
+        const timer = setTimeout(() => controller.abort(), 1000);
         const apiRes = await fetch('./api/config', {
           cache: 'no-store',
           signal: controller.signal
@@ -35,6 +46,7 @@ const EnvConfig = {
                 this.data[k] = v;
               }
             }
+            try { localStorage.setItem('env_config_cache', JSON.stringify(this.data)); } catch (_) {}
             console.log('[EnvConfig] Đã nạp cấu hình PWA cấp sẵn từ máy chủ Docker:', Object.keys(this.data));
           }
         }
@@ -47,6 +59,7 @@ const EnvConfig = {
       if (response && response.ok) {
         const text = await response.text();
         this.parse(text);
+        try { localStorage.setItem('env_config_cache', JSON.stringify(this.data)); } catch (_) {}
         console.log('[EnvConfig] Đã tải cấu hình từ file .env thành công.');
       }
     } catch (e) {
@@ -96,5 +109,16 @@ const EnvConfig = {
     return defaultValue;
   }
 };
+
+// Khởi tạo ngay lập tức từ bộ nhớ đệm LocalStorage để có sẵn cấu hình đồng bộ không cần chờ fetch
+try {
+  const cachedEnv = localStorage.getItem('env_config_cache');
+  if (cachedEnv) {
+    const parsedCache = JSON.parse(cachedEnv);
+    if (parsedCache && typeof parsedCache === 'object') {
+      Object.assign(EnvConfig.data, parsedCache);
+    }
+  }
+} catch (_) {}
 
 window.EnvConfig = EnvConfig;

@@ -3540,6 +3540,11 @@ const UIBudgets = {
       amountInput.value = suggested > 0 ? new Intl.NumberFormat('vi-VN').format(suggested) : '';
     }
 
+    const keypadLiveVal1 = document.getElementById('keypad-live-val');
+    if (keypadLiveVal1 && window.UITransactions?.activeKeypadTarget === 'rebalance-amount') {
+      keypadLiveVal1.textContent = suggested > 0 ? new Intl.NumberFormat('vi-VN').format(suggested) : '0';
+    }
+
     if (hintEl) {
       let hintText = `Số dư khả dụng có thể chuyển: ${this.formatMoney(surplus)}`;
       if (deficit > 0) {
@@ -3730,12 +3735,29 @@ const UIBudgets = {
       amountInput.value = suggested > 0 ? new Intl.NumberFormat('vi-VN').format(suggested) : '';
     }
 
+    const keypadLiveVal2 = document.getElementById('keypad-live-val');
+    if (keypadLiveVal2 && window.UITransactions?.activeKeypadTarget === 'rebalance-amount') {
+      keypadLiveVal2.textContent = suggested > 0 ? new Intl.NumberFormat('vi-VN').format(suggested) : '0';
+    }
+
     if (hintEl) {
       hintEl.textContent = maxAvailable > 0 ? `Nguồn này có sẵn: ${this.formatMoney(maxAvailable)}` : 'Chưa chọn nguồn hoặc nguồn có 0 ₫';
     }
   },
 
+  openRebalanceKeypad() {
+    if (window.UITransactions && typeof window.UITransactions.openKeypad === 'function') {
+      window.UITransactions.openKeypad('rebalance-amount');
+    }
+  },
+
   closeRebalanceModal() {
+    if (window.UITransactions && typeof window.UITransactions.closeKeypad === 'function') {
+      const keypad = document.getElementById('modal-keypad');
+      if (keypad && keypad.classList.contains('open') && window.UITransactions.activeKeypadTarget === 'rebalance-amount') {
+        window.UITransactions.closeKeypad(true);
+      }
+    }
     const modal = document.getElementById('modal-budget-rebalance');
     if (modal) modal.classList.remove('open');
     this.rebalanceDataCache = null;

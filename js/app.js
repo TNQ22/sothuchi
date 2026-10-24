@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SỔ THU CHI - MAIN APPLICATION CONTROLLER
  * Routing, View Management, Event Handling, PWA ServiceWorker
  */
@@ -22,16 +22,24 @@ function showToast(message, type = 'info') {
   const existing = container.querySelectorAll('.toast');
   existing.forEach(t => t.remove());
 
+  const isMultiLine = typeof message === 'string' && message.includes('\n');
+  const hasEmojiIcon = typeof message === 'string' && (/^[✅❌⚠️ℹ️]/.test(message.trim()) || isMultiLine);
+
   const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
+  toast.className = `toast ${type}${isMultiLine ? ' multi-line' : ''}`;
   let iconName = 'info';
   if (type === 'success') iconName = 'check-circle-2';
   if (type === 'error') iconName = 'alert-triangle';
+  if (type === 'warning') iconName = 'alert-circle';
 
-  toast.innerHTML = `
-    <i data-lucide="${iconName}"></i>
-    <span>${escapeHTML(message)}</span>
-  `;
+  if (hasEmojiIcon) {
+    toast.innerHTML = `<span style="font-size: 0.85rem;">${escapeHTML(message)}</span>`;
+  } else {
+    toast.innerHTML = `
+      <i data-lucide="${iconName}"></i>
+      <span>${escapeHTML(message)}</span>
+    `;
+  }
   container.appendChild(toast);
   if (window.lucide) lucide.createIcons();
 
@@ -58,8 +66,9 @@ function showToast(message, type = 'info') {
     }, 200);
   };
 
-  // 1. Tự động tắt sau 2 giây
-  timer = setTimeout(() => dismiss('up'), 2000);
+  // 1. Tự động tắt sau 2 giây (hoặc 4 giây nếu nhiều dòng)
+  const duration = isMultiLine ? 4000 : 2000;
+  timer = setTimeout(() => dismiss('up'), duration);
 
   // 2. Chạm hoặc click vào là tắt thông báo luôn
   toast.addEventListener('click', (e) => {
@@ -148,10 +157,10 @@ class App {
   }
 
   async init() {
-    // 0. Render icons immediately & Load .env configuration
+    // 0. Render icons immediately & Load .env configuration in background
     if (window.lucide) lucide.createIcons();
     if (window.EnvConfig && window.EnvConfig.load) {
-      await window.EnvConfig.load().catch(e => console.warn('EnvConfig load error:', e));
+      window.EnvConfig.load().catch(e => console.warn('EnvConfig load error:', e));
     }
 
     // 1. Initialize IndexedDB
@@ -162,29 +171,6 @@ class App {
       await window.UITransactions.init();
       window.UITransactions.clearDraft();
       await window.UITransactions.resetForm('expense');
-    }
-
-    // 3. Initialize Google Drive Sync, Local Backup & SyncCoordinator (non-blocking)
-    if (window.serverSyncService) {
-      await window.serverSyncService.init().catch(e => console.warn('ServerSync init error:', e));
-      if (window.SyncCoordinator) {
-        window.SyncCoordinator.registerAdapter('custom-server', window.serverSyncService);
-      }
-    }
-    if (window.googleDriveService) {
-      await window.googleDriveService.init().catch(e => console.warn('Drive init error:', e));
-    }
-    if (window.dropboxService) {
-      await window.dropboxService.init().catch(e => console.warn('Dropbox init error:', e));
-      if (window.SyncCoordinator) {
-        window.SyncCoordinator.registerAdapter('dropbox', window.dropboxService);
-      }
-    }
-    if (window.BackupService && window.BackupService.init) {
-      await window.BackupService.init().catch(e => console.warn('BackupService init error:', e));
-    }
-    if (window.SyncCoordinator && window.SyncCoordinator.init) {
-      await window.SyncCoordinator.init().catch(e => console.warn('SyncCoordinator init error:', e));
     }
 
     // Cập nhật Avatar tài khoản Google/Dropbox hoặc App Logo lên Header và Trang Ghi Chép
@@ -231,67 +217,95 @@ class App {
       }
     });
 
-    // 4. Setup Other UI Modules
+    // 3. Setup Other UI Modules
     window.UIDebts.init();
     window.UIAccounts.init();
     window.UIBudgets.init();
     window.UIAnalytics.init();
     window.UISettings.init();
 
-    // 5. Setup Routing & Navigation
+    // 4. Setup Routing & Navigation
     this.setupNavigation();
 
-    // 6. Setup Touch Swipe Gestures (Swipe from left to right to go back)
+    // 5. Setup Touch Swipe Gestures (Swipe from left to right to go back)
     this.setupSwipeToBack();
     this.setupModalSwipeGestures();
     this.setupModalBackdropDismiss();
 
-    // 7. Setup Global Shortcuts & Listeners
+    // 6. Setup Global Shortcuts & Listeners
     this.setupGlobalShortcuts();
     this.setupClearableInputs();
 
-    // 8. Apply Saved Theme & Privacy Mode
+    // 7. Apply Saved Theme & Privacy Mode
     await this.loadInitialPreferences();
 
-    // 9. Render initial data for background tabs
+    // 8. Render initial data for background tabs
     await this.refreshAll();
 
     // Render icons again after dynamic DOM render
     if (window.lucide) lucide.createIcons();
 
-    // Tự động đồng bộ dữ liệu từ Google Drive khi mở app
-    if (window.googleDriveService && window.googleDriveService.clientId && window.googleDriveService.autoSync) {
-      if (window.googleDriveService.hasValidToken()) {
-        console.log('[GoogleDrive] Token còn hạn, tự động đồng bộ khi mở app...');
-        if (window.SyncCoordinator) {
-          window.SyncCoordinator.syncAll(true).catch(e => console.warn('Startup sync:', e));
-        } else {
-          window.googleDriveService.sync().catch(e => console.warn('Startup sync:', e));
+    // 9. Khởi chạy Cloud Sync & Đồng bộ ngầm ở background (hoàn toàn Non-Blocking)
+    (async () => {
+      try {
+        if (window.serverSyncService) {
+          await window.serverSyncService.init().catch(e => console.warn('ServerSync init error:', e));
+          if (window.SyncCoordinator) {
+            window.SyncCoordinator.registerAdapter('custom-server', window.serverSyncService);
+          }
         }
-      } else if (window.googleDriveService.userProfile?.email) {
-        // Token đã hết hạn nhưng đã có email -> Thử tự động gia hạn ngầm (Silent Auto-Auth)
-        console.log('[GoogleDrive] Thử gia hạn ngầm phiên đăng nhập với email đã nhớ...');
-        window.googleDriveService.requestToken({ prompt: '', interactive: false })
-          .then(async () => {
-            console.log('[GoogleDrive] Gia hạn ngầm thành công khi mở app! Bắt đầu đồng bộ...');
-            if (window.SyncCoordinator) {
-              await window.SyncCoordinator.syncAll(true);
-            } else {
-              await window.googleDriveService.sync();
-            }
-            await this.refreshAll();
-          })
-          .catch(err => {
-            console.log('[GoogleDrive] Trình duyệt chặn kết nối ngầm (sẵn sàng kết nối khi bấm vào Avatar):', err.message);
-          });
-      }
-    }
+        if (window.googleDriveService) {
+          await window.googleDriveService.init().catch(e => console.warn('Drive init error:', e));
+        }
+        if (window.dropboxService) {
+          await window.dropboxService.init().catch(e => console.warn('Dropbox init error:', e));
+          if (window.SyncCoordinator) {
+            window.SyncCoordinator.registerAdapter('dropbox', window.dropboxService);
+          }
+        }
+        if (window.BackupService && window.BackupService.init) {
+          await window.BackupService.init().catch(e => console.warn('BackupService init error:', e));
+        }
+        if (window.SyncCoordinator && window.SyncCoordinator.init) {
+          await window.SyncCoordinator.init().catch(e => console.warn('SyncCoordinator init error:', e));
+        }
 
-    // Tự động đồng bộ với Máy Chủ Riêng khi mở app
-    if (window.serverSyncService && window.serverSyncService.isAutoSyncEnabled()) {
-      console.log('[ServerSync] Tự động đồng bộ với Máy Chủ Riêng khi mở app...');
-      window.serverSyncService.sync().catch(e => console.warn('[ServerSync] Startup sync error:', e));
-    }
+        // Tự động đồng bộ dữ liệu từ Google Drive khi mở app
+        if (window.googleDriveService && window.googleDriveService.clientId && window.googleDriveService.autoSync) {
+          if (window.googleDriveService.hasValidToken()) {
+            console.log('[GoogleDrive] Token còn hạn, tự động đồng bộ khi mở app...');
+            if (window.SyncCoordinator) {
+              window.SyncCoordinator.syncAll(true).catch(e => console.warn('Startup sync:', e));
+            } else {
+              window.googleDriveService.sync().catch(e => console.warn('Startup sync:', e));
+            }
+          } else if (window.googleDriveService.userProfile?.email) {
+            console.log('[GoogleDrive] Thử gia hạn ngầm phiên đăng nhập với email đã nhớ...');
+            window.googleDriveService.requestToken({ prompt: '', interactive: false })
+              .then(async () => {
+                console.log('[GoogleDrive] Gia hạn ngầm thành công khi mở app! Bắt đầu đồng bộ...');
+                if (window.SyncCoordinator) {
+                  await window.SyncCoordinator.syncAll(true);
+                } else {
+                  await window.googleDriveService.sync();
+                }
+                await this.refreshAll();
+              })
+              .catch(err => {
+                console.log('[GoogleDrive] Trình duyệt chặn kết nối ngầm (sẵn sàng kết nối khi bấm vào Avatar):', err.message);
+              });
+          }
+        }
+
+        // Tự động đồng bộ với Máy Chủ Riêng khi mở app
+        if (window.serverSyncService && window.serverSyncService.isAutoSyncEnabled()) {
+          console.log('[ServerSync] Tự động đồng bộ với Máy Chủ Riêng khi mở app...');
+          window.serverSyncService.sync().catch(e => console.warn('[ServerSync] Startup sync error:', e));
+        }
+      } catch (err) {
+        console.warn('Background sync init error:', err);
+      }
+    })();
 
     // 10. Register Service Worker for PWA
     this.registerServiceWorker();
