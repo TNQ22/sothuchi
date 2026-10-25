@@ -22,8 +22,8 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=3.0.17">
-  <link rel="stylesheet" href="./css/admin-panel.css?v=3.0.17">
+  <link rel="stylesheet" href="./css/style.css?v=3.0.18">
+  <link rel="stylesheet" href="./css/admin-panel.css?v=3.0.18">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -3630,10 +3630,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           </div>
 
         </div>
-        <!-- Nút tròn nổi (+) góc phải bên dưới để thêm mẫu mới -->
-        <button type="button" class="template-fab-btn" onclick="UITransactions.openTemplateEditor()" title="Thêm mẫu ghi chép">
-          <i data-lucide="plus" style="width: 26px; height: 26px;"></i>
-        </button>
+
       </section>
 
       <!-- View: Sửa / Thêm Mẫu Ghi Chép (Dedicated Sub-Page with Transaction Form Layout) -->
@@ -4896,6 +4893,11 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         <span>Cài đặt</span>
       </a>
     </nav>
+
+    <!-- Nút tròn nổi FAB (+) góc phải bên dưới trang Quản lý mẫu ghi chép (gốc cố định vững chắc, không bao giờ nhảy khi chạm) -->
+    <button type="button" id="template-fab-btn" class="template-fab-btn" onclick="UITransactions.openTemplateEditor()" title="Thêm mẫu ghi chép">
+      <i data-lucide="plus" style="width: 26px; height: 26px;"></i>
+    </button>
   </div>
 
   <!-- ==================== POPUP NUMERIC KEYPAD BOTTOM SHEET ==================== -->
@@ -6939,32 +6941,32 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./vendor/chart.umd.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=3.0.17"></script>
-  <script src="./js/custom-dialog.js?v=3.0.17"></script>
-  <script src="./js/crypto.js?v=3.0.17"></script>
-  <script src="./js/db.js?v=3.0.17"></script>
-  <script src="./js/google-drive.js?v=3.0.17"></script>
-  <script src="./js/dropbox.js?v=3.0.17"></script>
-  <script src="./js/server-sync.js?v=3.0.17"></script>
-  <script src="./js/csv-export.js?v=3.0.17"></script>
-  <script src="./js/backup.js?v=3.0.17"></script>
-  <script src="./js/sync-coordinator.js?v=3.0.17"></script>
+  <script src="./js/config.js?v=3.0.18"></script>
+  <script src="./js/custom-dialog.js?v=3.0.18"></script>
+  <script src="./js/crypto.js?v=3.0.18"></script>
+  <script src="./js/db.js?v=3.0.18"></script>
+  <script src="./js/google-drive.js?v=3.0.18"></script>
+  <script src="./js/dropbox.js?v=3.0.18"></script>
+  <script src="./js/server-sync.js?v=3.0.18"></script>
+  <script src="./js/csv-export.js?v=3.0.18"></script>
+  <script src="./js/backup.js?v=3.0.18"></script>
+  <script src="./js/sync-coordinator.js?v=3.0.18"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=3.0.17"></script>
-  <script src="./js/ui-transactions.js?v=3.0.17"></script>
-  <script src="./js/ui-debts.js?v=3.0.17"></script>
-  <script src="./js/ui-accounts.js?v=3.0.17"></script>
-  <script src="./js/ui-share.js?v=3.0.17"></script>
-  <script src="./js/ui-budgets.js?v=3.0.17"></script>
-  <script src="./js/ui-analytics.js?v=3.0.17"></script>
-  <script src="./js/ui-settings.js?v=3.0.17"></script>
-  <script src="./js/server-auth-modals.js?v=3.0.17"></script>
+  <script src="./js/ui-calendar.js?v=3.0.18"></script>
+  <script src="./js/ui-transactions.js?v=3.0.18"></script>
+  <script src="./js/ui-debts.js?v=3.0.18"></script>
+  <script src="./js/ui-accounts.js?v=3.0.18"></script>
+  <script src="./js/ui-share.js?v=3.0.18"></script>
+  <script src="./js/ui-budgets.js?v=3.0.18"></script>
+  <script src="./js/ui-analytics.js?v=3.0.18"></script>
+  <script src="./js/ui-settings.js?v=3.0.18"></script>
+  <script src="./js/server-auth-modals.js?v=3.0.18"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/ui-admin.js?v=3.0.17"></script>
-  <script src="./js/pull-to-refresh.js?v=3.0.17"></script>
-  <script src="./js/app.js?v=3.0.17"></script>
+  <script src="./js/ui-admin.js?v=3.0.18"></script>
+  <script src="./js/pull-to-refresh.js?v=3.0.18"></script>
+  <script src="./js/app.js?v=3.0.18"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
   <script>

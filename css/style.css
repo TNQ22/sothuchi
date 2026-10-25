@@ -2310,7 +2310,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   body:has(#view-template-manager.active) #view-template-manager,
   body:has(#view-template-editor.active) #view-template-editor {
     bottom: calc(65px + max(16px, env(safe-area-inset-bottom, 0px))) !important;
-    height: auto !important;
+    height: calc(100dvh - 65px - max(16px, env(safe-area-inset-bottom, 0px))) !important;
     max-height: calc(100dvh - 65px - max(16px, env(safe-area-inset-bottom, 0px))) !important;
     padding-bottom: 0 !important;
   }
@@ -3781,6 +3781,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
 
 /* Nút tròn nổi FAB (+) góc phải bên dưới trang Quản lý mẫu */
 .template-fab-btn {
+  display: none !important;
   position: fixed;
   right: 20px;
   bottom: calc(65px + max(16px, env(safe-area-inset-bottom, 0px)) + 18px);
@@ -3791,12 +3792,17 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   color: #ffffff;
   border: none;
   box-shadow: 0 4px 18px rgba(13, 148, 136, 0.45);
-  display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 999;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s ease, background 0.15s ease;
+}
+body.view-template-manager .template-fab-btn,
+body:has(#view-template-manager.active) .template-fab-btn {
+  display: flex !important;
 }
 @media (min-width: 769px) {
   .template-fab-btn {
