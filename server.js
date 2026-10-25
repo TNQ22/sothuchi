@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SỔ THU CHI - DEDICATED SYNC & MULTI-USER SERVER
  * Máy chủ riêng đồng bộ & Chia sẻ qua Tài khoản Google
  * - 100% Zero external dependencies (Dùng chuẩn thư viện Node.js built-in)
@@ -3113,7 +3113,7 @@ function serveStaticFile(req, res, reqPath) {
     };
 
     // PWA & Service Worker: Ngăn chặn triệt để trình duyệt & webview PWA lưu cache tĩnh cũ
-    if (ext === '.html' || ext === '.json' || ext === '.js' || ext === '.css' || path.basename(filePath) === 'sw.js' || path.basename(filePath) === 'manifest.json') {
+    if (ext === '.html' || ext === '.json' || ext === '.js' || ext === '.css' || path.basename(filePath) === 'sw.js' || path.basename(filePath) === 'manifest.json' || filePath.includes('assets' + path.sep + 'icons') || filePath.includes('assets/icons')) {
       headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
       headers['Pragma'] = 'no-cache';
       headers['Expires'] = '0';

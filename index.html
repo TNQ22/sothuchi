@@ -11,17 +11,17 @@
   <meta name="author" content="Sổ Thu Chi App">
   
   <!-- PWA & Mobile Capabilities -->
-  <link rel="manifest" href="./manifest.json">
+  <link rel="manifest" href="./manifest.json?v=3.0.19">
   <meta name="theme-color" content="#0a0f1d">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Sổ Thu Chi">
   
   <!-- App Icons -->
-  <link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg">
-  <link rel="icon" media="(prefers-color-scheme: light)" type="image/png" sizes="192x192" href="./assets/icons/pwa-icon-light-192.png">
-  <link rel="icon" media="(prefers-color-scheme: dark)" type="image/png" sizes="192x192" href="./assets/icons/pwa-icon-dark-192.png">
-  <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg?v=3.0.19">
+  <link rel="icon" media="(prefers-color-scheme: light)" type="image/png" sizes="192x192" href="./assets/icons/pwa-icon-light-192.png?v=3.0.19">
+  <link rel="icon" media="(prefers-color-scheme: dark)" type="image/png" sizes="192x192" href="./assets/icons/pwa-icon-dark-192.png?v=3.0.19">
+  <link rel="apple-touch-icon" href="./assets/icons/icon-192.png?v=3.0.19">
 
   <!-- Core Stylesheet -->
   <link rel="stylesheet" href="./css/style.css?v=3.0.19">
@@ -1154,7 +1154,7 @@
     <!-- Desktop Sidebar -->
     <aside class="app-sidebar">
       <div class="brand-section">
-        <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="brand-logo">
+        <img src="./assets/icons/icon.svg?v=3.0.19" alt="Logo Sổ Thu Chi" class="brand-logo">
         <div class="brand-info">
           <h1>Sổ Thu Chi</h1>
           <span class="brand-badge">Offline-First</span>
@@ -1224,7 +1224,7 @@
           </button>
           <button type="button" id="header-brand-logo-btn" class="header-brand-logo-btn" title="Trạng thái sao lưu & đồng bộ" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
             <div class="header-brand-logo-wrap">
-              <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="header-brand-logo">
+              <img src="./assets/icons/icon.svg?v=3.0.19" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="header-brand-logo">
               <span class="sync-status-dot" id="header-sync-dot"></span>
             </div>
             <span id="header-vault-pill" class="header-vault-subtext" style="display: none;">
@@ -3148,7 +3148,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               </button>
               <button type="button" id="tx-brand-logo-btn" class="header-brand-logo-btn" title="Trạng thái sao lưu & đồng bộ" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
                 <div class="header-brand-logo-wrap">
-                  <img src="./assets/icons/icon.svg" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="tx-brand-logo">
+                  <img src="./assets/icons/icon.svg?v=3.0.19" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="tx-brand-logo">
                   <span class="sync-status-dot" id="tx-sync-dot"></span>
                 </div>
                 <span id="tx-vault-pill" class="header-vault-subtext" style="display: none;">
@@ -6596,7 +6596,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- Modal: Universal Share & Permissions Manager -->
   <div id="modal-universal-share" class="modal-overlay" data-no-swipe-dismiss="true">
-    <div class="modal-dialog" style="max-width: 540px;">
+    <div class="modal-dialog">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
           <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(59, 130, 246, 0.15); display: flex; align-items: center; justify-content: center; color: #3b82f6;">
@@ -6625,50 +6625,52 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           </div>
         </div>
 
-        <!-- Chọn dịch vụ sao lưu và chia sẻ dạng dropdown -->
-        <div class="share-service-select-wrap">
-          <label for="universal-share-service-select" style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">
+        <!-- Dropdown chọn dịch vụ sao lưu & chia sẻ (Giao diện chuẩn nút thu chi kèm icon) -->
+        <div class="share-service-dropdown-wrap">
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">
             <i data-lucide="layers" style="width: 15px; height: 15px; color: var(--primary);"></i>
             <span>Dịch vụ sao lưu và chia sẻ:</span>
           </label>
-          <select id="universal-share-service-select" class="share-service-select" onchange="UniversalShareModal.switchService(this.value)">
-            <option value="server">Máy Chủ Riêng (Self-Hosted)</option>
-            <option value="google-drive">Google Drive (Sắp hỗ trợ)</option>
-            <option value="dropbox">Dropbox (Sắp hỗ trợ)</option>
-          </select>
-        </div>
-
-        <!-- Khung chia sẻ qua Server -->
-        <div id="universal-share-server-section">
-          <!-- Nếu chưa kết nối server -->
-          <div id="share-server-not-connected-msg" style="display: none;"></div>
-
-          <!-- Nếu đã kết nối server: Giao diện tabs -->
-          <div id="share-server-main-controls">
-            <div class="share-tabs-nav">
-              <button type="button" class="share-tab-btn active" id="tab-share-email-btn" onclick="UniversalShareModal.switchTab('email')">
-                <i data-lucide="mail" style="width: 15px; height: 15px;"></i> Chia sẻ qua Email Google
-              </button>
-              <button type="button" class="share-tab-btn" id="tab-share-link-btn" onclick="UniversalShareModal.switchTab('link')">
-                <i data-lucide="link" style="width: 15px; height: 15px;"></i> Chia sẻ bằng Liên kết (Link)
-              </button>
-            </div>
-
-            <!-- Tab Email -->
-            <div id="tab-share-email-content">
-              <div class="share-form-box">
-                <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">Thêm thành viên theo Email Google</label>
-                <div class="share-form-row">
-                  <input type="email" id="share-email-input" class="form-control" placeholder="example@gmail.com" style="flex: 1; min-width: 180px; font-size: 0.85rem;">
-                  <select id="share-email-role" class="share-role-select">
-                    <option value="viewer">Chỉ xem (Viewer)</option>
-                    <option value="editor">Chỉnh sửa (Editor)</option>
-                  </select>
-                  <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 7px 14px; white-space: nowrap;" onclick="UniversalShareModal.handleAddEmailShare()">
-                    <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i> Mời
-                  </button>
+          <div class="share-service-dropdown-wrapper" id="share-service-dropdown-wrapper">
+            <button type="button" id="share-service-dropdown-btn" class="share-service-dropdown-btn" onclick="UniversalShareModal.toggleServiceDropdown(event)">
+              <span id="share-service-current-icon" class="share-service-badge-icon">
+                <i data-lucide="server" style="width: 18px; height: 18px; color: #10b981;"></i>
+              </span>
+              <span id="share-service-current-label">Máy Chủ Riêng (Self-Hosted)</span>
+              <span id="share-service-current-status" class="share-service-status-pill connected">Đã kết nối</span>
+              <i data-lucide="chevron-down" class="share-service-chevron" style="width: 15px; height: 15px; color: var(--text-muted); margin-left: auto;"></i>
+            </button>
+            <div id="share-service-dropdown-menu" class="share-service-dropdown-menu" style="display: none;">
+              <div class="share-service-option active" data-service="server" onclick="UniversalShareModal.selectService('server', event)">
+                <div class="share-service-option-info">
+                  <span class="share-service-option-icon server">
+                    <i data-lucide="server" style="width: 18px; height: 18px; color: #10b981;"></i>
+                  </span>
+                  <span class="share-service-option-title">Máy Chủ Riêng (Self-Hosted)</span>
                 </div>
+                <span class="share-service-status-pill" id="share-service-option-server-pill">Đã kết nối</span>
               </div>
+              <div class="share-service-option" data-service="google-drive" onclick="UniversalShareModal.selectService('google-drive', event)">
+                <div class="share-service-option-info">
+                  <span class="share-service-option-icon google-drive">
+                    <svg viewBox="0 0 87.3 78" style="width: 18px; height: 16px;"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg>
+                  </span>
+                  <span class="share-service-option-title">Google Drive</span>
+                </div>
+                <span class="share-service-status-pill planned">Sắp hỗ trợ</span>
+              </div>
+              <div class="share-service-option" data-service="dropbox" onclick="UniversalShareModal.selectService('dropbox', event)">
+                <div class="share-service-option-info">
+                  <span class="share-service-option-icon dropbox">
+                    <i data-lucide="box" style="width: 18px; height: 18px; color: #0061ff;"></i>
+                  </span>
+                  <span class="share-service-option-title">Dropbox</span>
+                </div>
+                <span class="share-service-status-pill planned">Sắp hỗ trợ</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
               <div class="share-section-title">
                 <i data-lucide="users" style="width: 15px; height: 15px;"></i>
@@ -7103,7 +7105,14 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
             await Promise.allSettled([
               fetch('./?_cb=' + bust, { cache: 'reload' }),
               fetch('./index.html?_cb=' + bust, { cache: 'reload' }),
+              fetch('./manifest.json?_cb=' + bust, { cache: 'reload' }),
               fetch('./sw.js?_cb=' + bust, { cache: 'reload' }),
+              fetch('./assets/icons/icon.svg?_cb=' + bust, { cache: 'reload' }),
+              fetch('./assets/icons/icon-192.png?_cb=' + bust, { cache: 'reload' }),
+              fetch('./assets/icons/icon-512.png?_cb=' + bust, { cache: 'reload' }),
+              fetch('./assets/icons/icon-maskable.png?_cb=' + bust, { cache: 'reload' }),
+              fetch('./assets/icons/pwa-icon-light-192.png?_cb=' + bust, { cache: 'reload' }),
+              fetch('./assets/icons/pwa-icon-dark-192.png?_cb=' + bust, { cache: 'reload' }),
               fetch('./css/style.css?_cb=' + bust, { cache: 'reload' }),
               fetch('./css/admin-panel.css?_cb=' + bust, { cache: 'reload' }),
               fetch('./js/app.js?_cb=' + bust, { cache: 'reload' }),

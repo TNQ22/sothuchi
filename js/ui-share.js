@@ -66,6 +66,7 @@ const UniversalShareModal = {
   },
 
   close() {
+    this.closeServiceDropdown();
     const modal = document.getElementById('modal-universal-share');
     if (modal) modal.classList.remove('open');
   },
@@ -108,17 +109,99 @@ const UniversalShareModal = {
     this.renderServices();
   },
 
-  renderServices() {
-    const selectEl = document.getElementById('universal-share-service-select');
-    if (selectEl) {
-      selectEl.value = this.currentService;
+  toggleServiceDropdown(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
+    const menu = document.getElementById('share-service-dropdown-menu');
+    if (!menu) return;
+    const isShown = menu.style.display === 'block';
+    menu.style.display = isShown ? 'none' : 'block';
+  },
+
+  closeServiceDropdown() {
+    const menu = document.getElementById('share-service-dropdown-menu');
+    if (menu) menu.style.display = 'none';
+  },
+
+  selectService(serviceId, e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    this.currentService = serviceId;
+    this.closeServiceDropdown();
+    this.renderServices();
+    this.loadShareData();
+  },
+
+  renderServices() {
+    const sService = window.serverSyncService;
+    const isServerReachable = Boolean(sService && (sService.connectionStatus === 'connected' || sService.serverUrl));
+    const isServerLoggedIn = Boolean(sService && sService.token && sService.userProfile);
+
+    let serverStatusText = 'Chưa kết nối';
+    let serverStatusClass = 'not-connected';
+    if (isServerLoggedIn) {
+      serverStatusText = 'Đã kết nối';
+      serverStatusClass = 'connected';
+    } else if (isServerReachable) {
+      serverStatusText = 'Sẵn sàng';
+      serverStatusClass = 'ready';
+    }
+
+    // Cập nhật badge trên menu option của Server
+    const serverPill = document.getElementById('share-service-option-server-pill');
+    if (serverPill) {
+      serverPill.textContent = serverStatusText;
+      serverPill.className = `share-service-status-pill ${serverStatusClass}`;
+    }
+
+    const configs = {
+      'server': {
+        label: 'Máy Chủ Riêng (Self-Hosted)',
+        iconHtml: '<i data-lucide="server" style="width: 18px; height: 18px; color: #10b981;"></i>',
+        statusText: serverStatusText,
+        statusClass: serverStatusClass
+      },
+      'google-drive': {
+        label: 'Google Drive',
+        iconHtml: '<svg viewBox="0 0 87.3 78" style="width: 18px; height: 16px;"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg>',
+        statusText: 'Sắp hỗ trợ',
+        statusClass: 'planned'
+      },
+      'dropbox': {
+        label: 'Dropbox',
+        iconHtml: '<i data-lucide="box" style="width: 18px; height: 18px; color: #0061ff;"></i>',
+        statusText: 'Sắp hỗ trợ',
+        statusClass: 'planned'
+      }
+    };
+
+    const cur = configs[this.currentService] || configs['server'];
+
+    const iconEl = document.getElementById('share-service-current-icon');
+    const labelEl = document.getElementById('share-service-current-label');
+    const statusEl = document.getElementById('share-service-current-status');
+
+    if (iconEl) iconEl.innerHTML = cur.iconHtml;
+    if (labelEl) labelEl.textContent = cur.label;
+    if (statusEl) {
+      statusEl.textContent = cur.statusText;
+      statusEl.className = `share-service-status-pill ${cur.statusClass}`;
+    }
+
+    // Đánh dấu active trong menu
+    document.querySelectorAll('.share-service-option').forEach(opt => {
+      opt.classList.toggle('active', opt.dataset.service === this.currentService);
+    });
+
+    if (window.lucide) lucide.createIcons();
   },
 
   switchService(serviceId) {
-    this.currentService = serviceId;
-    this.renderServices();
-    this.loadShareData();
+    this.selectService(serviceId);
   },
 
   goToSettings(section) {
@@ -733,4 +816,11 @@ window.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     ReceiveShareModal.checkUrlForShareToken();
   }, 1000);
+});
+
+// Đóng dropdown dịch vụ khi click ngoài
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#share-service-dropdown-wrapper')) {
+    if (window.UniversalShareModal) UniversalShareModal.closeServiceDropdown();
+  }
 });
