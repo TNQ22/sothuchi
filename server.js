@@ -2201,7 +2201,16 @@ function getBearerToken(req) {
 function getAuthUser(req) {
   const token = getBearerToken(req);
   if (!token) return null;
-  return dbManager.getUserByToken(token);
+  const user = dbManager.getUserByToken(token);
+  if (!user || !user.email) return null;
+
+  // BẢO MẬT: Bắt buộc 100% tài khoản phải xác thực qua Google OAuth thật
+  // Vô hiệu hóa và chặn hoàn toàn mọi phiên đăng nhập không qua Google (quick_*)
+  const gId = (user.google_id || '').toLowerCase();
+  if (gId.startsWith('quick_')) {
+    return null;
+  }
+  return user;
 }
 
 function getAdminEmails() {
@@ -2515,63 +2524,11 @@ async function handleApiRequest(req, res, pathname, url) {
     }
   }
 
-  // 3b. Quick Login / Xác thực nhanh máy chủ (Dành cho mạng nội bộ / Docker / LAN không cần cấu hình Google OAuth)
-  if (req.method === 'POST' && pathname === '/api/auth/quick') {
-    try {
-      const body = await parseJsonBody(req);
-      const email = (body.email || '').trim().toLowerCase();
-      const name = (body.name || email.split('@')[0] || 'Người dùng').trim();
-      if (!email) {
-        return sendJson(res, 400, { error: 'Vui lòng cung cấp email tài khoản' });
-      }
-
-      // BẢO MẬT: Chặn tuyệt đối mạo danh email Quản trị viên qua Quick Login
-      const allAdmins = getAdminEmails();
-      if (allAdmins.includes(email)) {
-        return sendJson(res, 403, {
-          error: 'Email này thuộc danh sách Quản trị viên máy chủ. Bắt buộc phải đăng nhập bảo mật qua Google OAuth.'
-        });
-      }
-
-      // BẢO MẬT: Không cho phép Quick Login ghi đè/chiếm đoạt tài khoản đã liên kết với Google OAuth
-      const existingUser = dbManager.findUserByEmail(email);
-      if (existingUser && existingUser.google_id && !existingUser.google_id.startsWith('quick_')) {
-        return sendJson(res, 403, {
-          error: 'Email này đã được liên kết với tài khoản Google. Vui lòng đăng nhập bằng Google.'
-        });
-      }
-
-      const quickId = 'quick_' + crypto.createHash('md5').update(email).digest('hex');
-      const user = dbManager.upsertUser({
-        googleId: quickId,
-        email,
-        name,
-        picture: body.avatar || null
-      });
-
-      // Đảm bảo người dùng luôn có ít nhất 1 Sổ Cá Nhân ban đầu
-      const vaults = dbManager.getUserVaults(user.id, user.email);
-      if (vaults.length === 0) {
-        dbManager.createVault('Sổ mặc định', user.id);
-      }
-
-      const session = dbManager.createSession(user.id, 90);
-
-      return sendJson(res, 200, {
-        success: true,
-        token: session.token,
-        expiresAt: session.expiresAt,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          picture: user.picture
-        }
-      });
-    } catch (err) {
-      console.warn('[API] Đăng nhập nhanh lỗi:', err.message);
-      return sendJson(res, 500, { error: err.message || 'Xác thực máy chủ thất bại' });
-    }
+  // 3b. Vô hiệu hóa hoàn toàn Quick Login - Yêu cầu 100% Google OAuth
+  if (pathname === '/api/auth/quick') {
+    return sendJson(res, 403, {
+      error: 'Phương thức đăng nhập không qua Google đã bị vô hiệu hóa hoàn toàn. Máy chủ yêu cầu xác thực 100% qua tài khoản Google.'
+    });
   }
 
   // --- PUBLIC ENDPOINTS CHO CHIA SẺ & PHÂN QUYỀN ---
