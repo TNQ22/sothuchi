@@ -734,6 +734,8 @@ class App {
     document.body.classList.toggle('view-borrow-select', viewId === 'borrow-select');
     document.body.classList.toggle('view-account-form', viewId === 'account-form');
     document.body.classList.toggle('view-account-provider', viewId === 'account-provider');
+    document.body.classList.toggle('view-template-manager', viewId === 'template-manager');
+    document.body.classList.toggle('view-template-editor', viewId === 'template-editor');
 
 
     // Update active nav links

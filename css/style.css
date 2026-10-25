@@ -2283,6 +2283,8 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   body.view-accumulation-form .mobile-bottom-nav,
   body.view-loan-form .mobile-bottom-nav,
   body.view-asset-form .mobile-bottom-nav,
+  body.view-template-manager .mobile-bottom-nav,
+  body.view-template-editor .mobile-bottom-nav,
   body:has(#view-category-picker.active) .mobile-bottom-nav,
   body:has(#view-borrow-select.active) .mobile-bottom-nav,
   body:has(#view-budget-form.active) .mobile-bottom-nav,
@@ -2292,7 +2294,9 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   body:has(#view-savings-form.active) .mobile-bottom-nav,
   body:has(#view-accumulation-form.active) .mobile-bottom-nav,
   body:has(#view-loan-form.active) .mobile-bottom-nav,
-  body:has(#view-asset-form.active) .mobile-bottom-nav {
+  body:has(#view-asset-form.active) .mobile-bottom-nav,
+  body:has(#view-template-manager.active) .mobile-bottom-nav,
+  body:has(#view-template-editor.active) .mobile-bottom-nav {
     display: none !important;
   }
 
@@ -2307,7 +2311,11 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   body.view-category-picker .app-header,
   body.view-borrow-select .app-header,
   body.view-budget-form .app-header,
-  body.view-budget-category-form .app-header {
+  body.view-budget-category-form .app-header,
+  body.view-template-manager .app-header,
+  body.view-template-editor .app-header,
+  body:has(#view-template-manager.active) .app-header,
+  body:has(#view-template-editor.active) .app-header {
     display: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
@@ -3726,7 +3734,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 99;
+  z-index: 999;
   transition: transform 0.15s ease, background 0.15s ease;
 }
 .template-fab-btn:active {

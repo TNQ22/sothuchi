@@ -1597,6 +1597,7 @@ const UITransactions = {
     }
     this.currentTemplateManagerTab = this.currentTemplateTab || 'expense';
     await this.switchTemplateManagerTab(this.currentTemplateManagerTab);
+    if (window.lucide) lucide.createIcons();
   },
 
   async switchTemplateManagerTab(tab) {
