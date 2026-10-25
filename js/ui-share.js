@@ -105,119 +105,32 @@ const UniversalShareModal = {
   },
 
   async loadServices() {
-    if (window.serverSyncService && typeof window.serverSyncService.getAvailableServices === 'function') {
-      const data = await window.serverSyncService.getAvailableServices();
-      this.services = data.services || [];
-      this.renderServices();
-    }
+    this.renderServices();
   },
 
   renderServices() {
-    const container = document.getElementById('universal-share-services-list');
-    if (!container) return;
-
-    const sService = window.serverSyncService;
-    const isServerReachable = Boolean(sService && (sService.connectionStatus === 'connected' || sService.serverUrl));
-    const isServerLoggedIn = Boolean(sService && sService.token && sService.userProfile);
-
-    let serverStatusText = 'Chưa kết nối';
-    let serverStatusClass = 'not-connected';
-    if (isServerLoggedIn) {
-      serverStatusText = 'Đã kết nối';
-      serverStatusClass = 'connected';
-    } else if (isServerReachable) {
-      serverStatusText = 'Sẵn sàng';
-      serverStatusClass = 'ready';
+    const selectEl = document.getElementById('universal-share-service-select');
+    if (selectEl) {
+      selectEl.value = this.currentService;
     }
-
-    const services = [
-      {
-        id: 'server',
-        name: 'Máy Chủ Riêng (Self-Hosted)',
-        statusText: serverStatusText,
-        statusClass: serverStatusClass,
-        isConnected: isServerReachable,
-        isLoggedIn: isServerLoggedIn,
-        supported: true,
-        icon: 'server',
-        desc: 'Đồng bộ tức thì 2 chiều. Chia sẻ ví & sổ độc lập qua Email hoặc Liên kết với phân quyền Xem/Sửa.'
-      },
-      {
-        id: 'google-drive',
-        name: 'Google Drive',
-        statusText: 'Sắp hỗ trợ',
-        statusClass: 'planned',
-        isConnected: false,
-        supported: false,
-        icon: 'cloud',
-        desc: 'Sao lưu dự phòng toàn bộ sổ vào Google Drive cá nhân. Chia sẻ độc lập từng tài khoản qua Drive đang hoàn thiện.'
-      },
-      {
-        id: 'dropbox',
-        name: 'Dropbox',
-        statusText: 'Sắp hỗ trợ',
-        statusClass: 'planned',
-        isConnected: false,
-        supported: false,
-        icon: 'box',
-        desc: 'Sao lưu đám mây Dropbox. Chia sẻ độc lập từng tài khoản/sổ qua Dropbox đang hoàn thiện.'
-      }
-    ];
-
-    let html = '';
-    services.forEach(s => {
-      const isSelected = this.currentService === s.id;
-      html += `
-        <div class="share-service-card ${isSelected ? 'selected' : ''} ${!s.supported ? 'disabled' : ''}"
-             onclick="UniversalShareModal.switchService('${s.id}')">
-          <div class="share-service-icon-wrap ${s.id}">
-            <i data-lucide="${s.icon}"></i>
-          </div>
-          <div class="share-service-body">
-            <div class="share-service-top-row">
-              <span class="share-service-name">${s.name}</span>
-              <span class="share-service-status-badge ${s.statusClass}">
-                ${s.statusText}
-              </span>
-            </div>
-            <p class="share-service-desc">${s.desc}</p>
-          </div>
-        </div>
-      `;
-    });
-
-    container.innerHTML = html;
-    if (window.lucide) lucide.createIcons();
   },
 
   switchService(serviceId) {
     this.currentService = serviceId;
     this.renderServices();
+    this.loadShareData();
+  },
 
-    const serverSection = document.getElementById('universal-share-server-section');
-    const cloudNoticeSection = document.getElementById('universal-share-cloud-notice');
-
-    if (serviceId === 'server') {
-      if (serverSection) serverSection.style.display = 'block';
-      if (cloudNoticeSection) cloudNoticeSection.style.display = 'none';
-      this.loadShareData();
-    } else {
-      if (serverSection) serverSection.style.display = 'none';
-      if (cloudNoticeSection) {
-        cloudNoticeSection.style.display = 'block';
-        const serviceName = serviceId === 'google-drive' ? 'Google Drive' : 'Dropbox';
-        cloudNoticeSection.innerHTML = `
-          <div class="share-cloud-notice-box">
-            <div class="share-notice-icon">
-              <i data-lucide="info" style="width: 28px; height: 28px;"></i>
-            </div>
-            <h4>Dịch vụ ${serviceName}</h4>
-            <p>Hiện tại dịch vụ này hỗ trợ sao lưu dự phòng toàn bộ sổ vào tài khoản đám mây cá nhân của bạn. Cơ chế chia sẻ độc lập từng tài khoản/sổ phân quyền cho ${serviceName} đang được phát triển và sẽ sẵn sàng trong bản phát hành tới.</p>
-            <p style="margin-top: 10px; font-weight: 500; color: var(--primary-color);">Vui lòng chọn "Máy Chủ Riêng (Self-Hosted)" để chia sẻ và phân quyền ngay lập tức.</p>
-          </div>
-        `;
-        if (window.lucide) lucide.createIcons();
-      }
+  goToSettings(section) {
+    const targetSection = section || (this.currentService === 'google-drive' ? 'google-drive' : (this.currentService === 'dropbox' ? 'dropbox' : 'server'));
+    this.close();
+    if (window.app && typeof window.app.switchView === 'function') {
+      window.app.switchView('settings');
+    }
+    if (window.UISettings && typeof window.UISettings.openSection === 'function') {
+      setTimeout(() => {
+        window.UISettings.openSection(targetSection);
+      }, 100);
     }
   },
 
@@ -235,99 +148,174 @@ const UniversalShareModal = {
   },
 
   async loadShareData() {
-    if (this.currentService !== 'server') return;
-
     const notConnectedBox = document.getElementById('share-server-not-connected-msg');
     const mainBox = document.getElementById('share-server-main-controls');
+    const cloudNoticeSection = document.getElementById('universal-share-cloud-notice');
+    const serverSection = document.getElementById('universal-share-server-section');
     const sService = window.serverSyncService;
 
-    // 1. Nếu chưa có serverUrl
-    if (!sService || !sService.serverUrl) {
-      if (notConnectedBox) {
-        notConnectedBox.style.display = 'block';
-        notConnectedBox.innerHTML = `
-          <div class="share-auth-prompt-card not-configured">
-            <div class="share-auth-icon-wrap warn" style="margin: 0 auto 8px;">
-              <i data-lucide="server-off" style="width: 32px; height: 32px; color: #f59e0b;"></i>
-            </div>
-            <h4 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-bottom: 4px;">Chưa Cấu Hình Máy Chủ Riêng</h4>
-            <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 14px; line-height: 1.45;">Vui lòng vào mục Cài đặt > Máy Chủ Riêng để thiết lập địa chỉ máy chủ trước khi chia sẻ.</p>
-            <button type="button" class="btn-primary btn-sm" onclick="UniversalShareModal.close(); UISettings.openSection('server');">
-              <i data-lucide="settings" style="width: 14px; height: 14px;"></i> Cài Đặt Máy Chủ Riêng
-            </button>
-          </div>
-        `;
+    // 1. MÁY CHỦ RIÊNG (SELF-HOSTED)
+    if (this.currentService === 'server') {
+      if (serverSection) serverSection.style.display = 'block';
+      if (cloudNoticeSection) cloudNoticeSection.style.display = 'none';
+
+      // Thử refresh session nếu đã có serverUrl và token nhưng profile chưa sync
+      if (sService && sService.serverUrl && sService.token && !sService.userProfile) {
+        if (typeof sService.refreshSession === 'function') {
+          try { await sService.refreshSession(); } catch (_) {}
+        }
       }
-      if (mainBox) mainBox.style.display = 'none';
-      if (window.lucide) lucide.createIcons();
-      return;
-    }
 
-    // 2. Nếu đã có serverUrl nhưng chưa có token -> thử kiểm tra refresh session
-    if (!sService.token || !sService.userProfile) {
-      if (typeof sService.refreshSession === 'function') {
-        try {
-          await sService.refreshSession();
-        } catch (_) {}
-      }
-    }
+      const isServerLoggedIn = Boolean(sService && sService.serverUrl && sService.token && sService.userProfile);
 
-    // 3. Nếu chưa đăng nhập: Yêu cầu đăng nhập 100% bằng tài khoản Google
-    if (!sService.token || !sService.userProfile) {
-      if (notConnectedBox) {
-        notConnectedBox.style.display = 'block';
-
-        notConnectedBox.innerHTML = `
-          <div class="share-auth-prompt-card ready">
-            <div class="share-server-status-pill">
-              <span class="status-dot"></span>
-              <span>Máy chủ đã kết nối: <strong>${escapeHTML(sService.serverUrl)}</strong></span>
-            </div>
-            <h4 style="margin: 12px 0 6px 0; font-size: 0.98rem; font-weight: 700; color: #f8fafc;">Đăng Nhập Tài Khoản Google</h4>
-            <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.45; margin-bottom: 16px;">
-              Để chia sẻ độc lập và phân quyền ví này cho người khác, bạn cần đăng nhập bằng tài khoản Google để xác thực quyền sở hữu dữ liệu.
-            </p>
-
-            <div style="display: flex; align-items: center; justify-content: center; margin-top: 8px;">
-              <button type="button" class="btn-primary" style="padding: 10px 22px; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 8px; font-weight: 600;" onclick="UniversalShareModal.handleGoogleLogin()">
-                <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
-                Đăng nhập bằng Google
+      if (!isServerLoggedIn) {
+        if (mainBox) mainBox.style.display = 'none';
+        if (notConnectedBox) {
+          notConnectedBox.style.display = 'block';
+          notConnectedBox.innerHTML = `
+            <div class="share-auth-prompt-card not-configured" style="text-align: center; padding: 24px 18px;">
+              <div class="share-auth-icon-wrap warn" style="margin: 0 auto 12px; width: 48px; height: 48px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); display: flex; align-items: center; justify-content: center;">
+                <i data-lucide="cloud-off" style="width: 24px; height: 24px; color: #f59e0b;"></i>
+              </div>
+              <h4 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-bottom: 6px;">Cần kết nối tới dịch vụ sao lưu để có thể bắt đầu chia sẻ.</h4>
+              <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 18px; line-height: 1.45;">Vui lòng hoàn tất kết nối và đăng nhập tài khoản trong phần Cài đặt của ứng dụng.</p>
+              <button type="button" class="btn-primary" style="padding: 10px 22px; font-size: 0.84rem; display: inline-flex; align-items: center; gap: 8px; margin: 0 auto; border-radius: 8px; font-weight: 600;" onclick="UniversalShareModal.goToSettings('server')">
+                <i data-lucide="settings" style="width: 15px; height: 15px;"></i> Chuyển đến Cài đặt
               </button>
             </div>
-          </div>
+          `;
+        }
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+
+      // Đã kết nối và đăng nhập thành công
+      if (notConnectedBox) notConnectedBox.style.display = 'none';
+      if (mainBox) mainBox.style.display = 'block';
+
+      // Cập nhật banner trạng thái máy chủ
+      const existingStatus = document.getElementById('share-server-active-pill');
+      if (!existingStatus) {
+        const pillDiv = document.createElement('div');
+        pillDiv.id = 'share-server-active-pill';
+        pillDiv.className = 'share-server-status-pill';
+        pillDiv.style.marginBottom = '12px';
+        pillDiv.innerHTML = `
+          <span class="status-dot"></span>
+          <span>Máy chủ: <strong>${escapeHTML(sService.serverUrl)}</strong> (${escapeHTML(sService.userProfile.email)})</span>
+        `;
+        mainBox.insertBefore(pillDiv, mainBox.firstChild);
+      } else {
+        existingStatus.innerHTML = `
+          <span class="status-dot"></span>
+          <span>Máy chủ: <strong>${escapeHTML(sService.serverUrl)}</strong> (${escapeHTML(sService.userProfile.email)})</span>
         `;
       }
-      if (mainBox) mainBox.style.display = 'none';
+
+      const emailListEl = document.getElementById('share-email-members-list');
+      const linkListEl = document.getElementById('share-active-links-list');
+
+      if (emailListEl) emailListEl.innerHTML = '<div class="share-loading-spinner"><i data-lucide="loader-2" class="spin"></i> Đang tải danh sách phân quyền...</div>';
+      if (linkListEl) linkListEl.innerHTML = '<div class="share-loading-spinner"><i data-lucide="loader-2" class="spin"></i> Đang tải danh sách liên kết...</div>';
+      if (window.lucide) lucide.createIcons();
+
+      try {
+        const res = await window.serverSyncService.getItemShares(this.currentType, this.currentId);
+        this.shares = res.shares || [];
+        const rawLinks = res.links || [];
+        for (const l of rawLinks) {
+          l.shareKey = await window.serverSyncService.getItemShareKey(l.token) || await window.serverSyncService.getItemShareKey(`${this.currentType}_${this.currentId}`);
+        }
+        this.links = rawLinks;
+
+        this.renderEmailShares();
+        this.renderShareLinks();
+      } catch (err) {
+        console.warn('Lỗi tải dữ liệu chia sẻ:', err);
+        if (emailListEl) emailListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
+        if (linkListEl) linkListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
+      }
+      return;
+    }
+
+    // 2. GOOGLE DRIVE
+    if (this.currentService === 'google-drive') {
+      if (serverSection) serverSection.style.display = 'none';
+      const isDriveConnected = Boolean(window.googleDriveService && (window.googleDriveService.userProfile || window.googleDriveService.isConnected));
+
+      if (!isDriveConnected) {
+        if (cloudNoticeSection) {
+          cloudNoticeSection.style.display = 'block';
+          cloudNoticeSection.innerHTML = `
+            <div class="share-auth-prompt-card not-configured" style="text-align: center; padding: 24px 18px;">
+              <div class="share-auth-icon-wrap warn" style="margin: 0 auto 12px; width: 48px; height: 48px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); display: flex; align-items: center; justify-content: center;">
+                <i data-lucide="cloud-off" style="width: 24px; height: 24px; color: #f59e0b;"></i>
+              </div>
+              <h4 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-bottom: 6px;">Cần kết nối tới dịch vụ sao lưu để có thể bắt đầu chia sẻ.</h4>
+              <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 18px; line-height: 1.45;">Vui lòng kết nối tài khoản Google Drive trong phần Cài đặt.</p>
+              <button type="button" class="btn-primary" style="padding: 10px 22px; font-size: 0.84rem; display: inline-flex; align-items: center; gap: 8px; margin: 0 auto; border-radius: 8px; font-weight: 600;" onclick="UniversalShareModal.goToSettings('google-drive')">
+                <i data-lucide="settings" style="width: 15px; height: 15px;"></i> Chuyển đến Cài đặt
+              </button>
+            </div>
+          `;
+        }
+      } else {
+        if (cloudNoticeSection) {
+          cloudNoticeSection.style.display = 'block';
+          cloudNoticeSection.innerHTML = `
+            <div class="share-cloud-notice-box">
+              <div class="share-notice-icon">
+                <i data-lucide="info" style="width: 28px; height: 28px;"></i>
+              </div>
+              <h4>Dịch vụ Google Drive</h4>
+              <p>Hiện tại Google Drive hỗ trợ sao lưu dự phòng toàn bộ sổ vào tài khoản đám mây cá nhân. Cơ chế chia sẻ độc lập từng tài khoản/sổ qua Drive đang được hoàn thiện.</p>
+              <p style="margin-top: 10px; font-weight: 500; color: var(--primary-color);">Vui lòng chọn <strong>Máy Chủ Riêng (Self-Hosted)</strong> để phân quyền và chia sẻ tức thì.</p>
+            </div>
+          `;
+        }
+      }
       if (window.lucide) lucide.createIcons();
       return;
     }
 
-    // 4. Đã kết nối và đăng nhập thành công
-    if (notConnectedBox) notConnectedBox.style.display = 'none';
-    if (mainBox) mainBox.style.display = 'block';
+    // 3. DROPBOX
+    if (this.currentService === 'dropbox') {
+      if (serverSection) serverSection.style.display = 'none';
+      const isDropboxConnected = Boolean(window.dropboxService && (window.dropboxService.userProfile || window.dropboxService.isConnected));
 
-    const emailListEl = document.getElementById('share-email-members-list');
-    const linkListEl = document.getElementById('share-active-links-list');
-
-    if (emailListEl) emailListEl.innerHTML = '<div class="share-loading-spinner"><i data-lucide="loader-2" class="spin"></i> Đang tải danh sách phân quyền...</div>';
-    if (linkListEl) linkListEl.innerHTML = '<div class="share-loading-spinner"><i data-lucide="loader-2" class="spin"></i> Đang tải danh sách liên kết...</div>';
-    if (window.lucide) lucide.createIcons();
-
-    try {
-      const res = await window.serverSyncService.getItemShares(this.currentType, this.currentId);
-      this.shares = res.shares || [];
-      const rawLinks = res.links || [];
-      for (const l of rawLinks) {
-        l.shareKey = await window.serverSyncService.getItemShareKey(l.token) || await window.serverSyncService.getItemShareKey(`${this.currentType}_${this.currentId}`);
+      if (!isDropboxConnected) {
+        if (cloudNoticeSection) {
+          cloudNoticeSection.style.display = 'block';
+          cloudNoticeSection.innerHTML = `
+            <div class="share-auth-prompt-card not-configured" style="text-align: center; padding: 24px 18px;">
+              <div class="share-auth-icon-wrap warn" style="margin: 0 auto 12px; width: 48px; height: 48px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); display: flex; align-items: center; justify-content: center;">
+                <i data-lucide="cloud-off" style="width: 24px; height: 24px; color: #f59e0b;"></i>
+              </div>
+              <h4 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-bottom: 6px;">Cần kết nối tới dịch vụ sao lưu để có thể bắt đầu chia sẻ.</h4>
+              <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 18px; line-height: 1.45;">Vui lòng kết nối tài khoản Dropbox trong phần Cài đặt.</p>
+              <button type="button" class="btn-primary" style="padding: 10px 22px; font-size: 0.84rem; display: inline-flex; align-items: center; gap: 8px; margin: 0 auto; border-radius: 8px; font-weight: 600;" onclick="UniversalShareModal.goToSettings('dropbox')">
+                <i data-lucide="settings" style="width: 15px; height: 15px;"></i> Chuyển đến Cài đặt
+              </button>
+            </div>
+          `;
+        }
+      } else {
+        if (cloudNoticeSection) {
+          cloudNoticeSection.style.display = 'block';
+          cloudNoticeSection.innerHTML = `
+            <div class="share-cloud-notice-box">
+              <div class="share-notice-icon">
+                <i data-lucide="info" style="width: 28px; height: 28px;"></i>
+              </div>
+              <h4>Dịch vụ Dropbox</h4>
+              <p>Hiện tại Dropbox hỗ trợ sao lưu dự phòng toàn bộ sổ vào đám mây. Cơ chế chia sẻ độc lập từng tài khoản/sổ qua Dropbox đang được hoàn thiện.</p>
+              <p style="margin-top: 10px; font-weight: 500; color: var(--primary-color);">Vui lòng chọn <strong>Máy Chủ Riêng (Self-Hosted)</strong> để phân quyền và chia sẻ tức thì.</p>
+            </div>
+          `;
+        }
       }
-      this.links = rawLinks;
-
-      this.renderEmailShares();
-      this.renderShareLinks();
-    } catch (err) {
-      console.warn('Lỗi tải dữ liệu chia sẻ:', err);
-      if (emailListEl) emailListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
-      if (linkListEl) linkListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
+      if (window.lucide) lucide.createIcons();
+      return;
     }
   },
 

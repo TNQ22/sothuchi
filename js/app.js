@@ -1547,6 +1547,9 @@ class App {
         case 'modal-item-actions':
           if (window.UIAccounts) window.UIAccounts.closeItemActionSheet();
           break;
+        case 'modal-universal-share':
+          if (window.UniversalShareModal) window.UniversalShareModal.close();
+          break;
         case 'modal-category-manager':
           if (window.UITransactions) window.UITransactions.closeCategoryManager();
           break;
@@ -1633,7 +1636,7 @@ class App {
 
     // Hỗ trợ cử chỉ vuốt trên Modal/Action Sheet:
     // - Vuốt sang phải để đóng/trở về: CHỈ khi vuốt sát mép màn hình bên trái (<= 28px)
-    // - Vuốt xuống để đóng: chỉ dành cho Action Sheet / Bottom Sheet khi kéo từ đỉnh
+    // - Vuốt xuống để đóng: BẮT BUỘC bắt đầu từ đỉnh (Header / Drag Handle), tuyệt đối không đóng khi người dùng vuốt/cuộn trong nội dung
     document.addEventListener('touchstart', (e) => {
       if (e.touches.length !== 1) return;
       const el = (e.target && e.target.nodeType === 1) ? e.target : e.target?.parentElement;
@@ -1653,6 +1656,8 @@ class App {
       overlay._swipeStartY = touch.clientY;
       overlay._swipeTouching = true;
       overlay._swipeDirection = null;
+      // Ghi nhận cử chỉ có bắt đầu từ header / drag handle hay không
+      overlay._swipeStartOnHeader = Boolean(el && el.closest('.modal-header, .sheet-drag-handle, .modal-drag-handle, .action-sheet-header, .keypad-header'));
     }, { passive: true });
 
     document.addEventListener('touchmove', (e) => {
@@ -1681,6 +1686,11 @@ class App {
       if (!overlay || !overlay._swipeTouching) return;
       overlay._swipeTouching = false;
 
+      // Không tự đóng modal nếu modal đánh dấu cấm vuốt đóng hoặc là modal chia sẻ
+      if (overlay.dataset.noSwipeDismiss === 'true' || overlay.id === 'modal-universal-share') {
+        return;
+      }
+
       if (!e.changedTouches || e.changedTouches.length === 0) return;
       const endX = e.changedTouches[0].clientX;
       const endY = e.changedTouches[0].clientY;
@@ -1688,11 +1698,12 @@ class App {
       const deltaY = endY - overlay._swipeStartY;
       const startX = overlay._swipeStartX;
 
-      // Vuốt xuống để đóng: chỉ khi cuộn đang ở trên cùng
+      // Vuốt xuống để đóng: CHỈ khi cử chỉ bắt đầu từ đỉnh (Header / Drag Handle) và cuộn đang ở trên cùng
+      const isHeaderDrag = Boolean(overlay._swipeStartOnHeader);
       const el = (e.target && e.target.nodeType === 1) ? e.target : e.target?.parentElement;
       const scrollParent = el ? el.closest('.modal-body, .action-sheet-body, #statement-history-list') : null;
       const isAtTop = !scrollParent || scrollParent.scrollTop <= 2;
-      const isSwipeDown = isAtTop && deltaY > 70 && deltaY > Math.abs(deltaX) * 1.5;
+      const isSwipeDown = isHeaderDrag && isAtTop && deltaY > 120 && deltaY > Math.abs(deltaX) * 1.5;
 
       // Vuốt sang phải để đóng (trở về): CHỈ hoạt động khi vuốt sát mép màn hình bên trái (<= 28px)
       const isEdgeSwipeRight = startX <= EDGE_SWIPE_MAX_START_X && deltaX > 75 && deltaX > Math.abs(deltaY) * 1.5;

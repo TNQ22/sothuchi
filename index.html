@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi" data-theme="dark">
 <head>
   <meta charset="UTF-8">
@@ -19,11 +19,13 @@
   
   <!-- App Icons -->
   <link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg">
+  <link rel="icon" media="(prefers-color-scheme: light)" type="image/png" sizes="192x192" href="./assets/icons/pwa-icon-light-192.png">
+  <link rel="icon" media="(prefers-color-scheme: dark)" type="image/png" sizes="192x192" href="./assets/icons/pwa-icon-dark-192.png">
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=3.0.18">
-  <link rel="stylesheet" href="./css/admin-panel.css?v=3.0.18">
+  <link rel="stylesheet" href="./css/style.css?v=3.0.19">
+  <link rel="stylesheet" href="./css/admin-panel.css?v=3.0.19">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -6593,7 +6595,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   </div>
 
   <!-- Modal: Universal Share & Permissions Manager -->
-  <div id="modal-universal-share" class="modal-overlay">
+  <div id="modal-universal-share" class="modal-overlay" data-no-swipe-dismiss="true">
     <div class="modal-dialog" style="max-width: 540px;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
@@ -6623,13 +6625,17 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           </div>
         </div>
 
-        <!-- Bước 1: Chọn dịch vụ sao lưu / chia sẻ -->
-        <div class="share-section-title">
-          <i data-lucide="layers" style="width: 15px; height: 15px;"></i>
-          <span>Dịch Vụ Sao Lưu & Chia Sẻ</span>
-        </div>
-        <div class="share-services-grid" id="universal-share-services-list">
-          <!-- Dynamically populated services -->
+        <!-- Chọn dịch vụ sao lưu và chia sẻ dạng dropdown -->
+        <div class="share-service-select-wrap">
+          <label for="universal-share-service-select" style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">
+            <i data-lucide="layers" style="width: 15px; height: 15px; color: var(--primary);"></i>
+            <span>Dịch vụ sao lưu và chia sẻ:</span>
+          </label>
+          <select id="universal-share-service-select" class="share-service-select" onchange="UniversalShareModal.switchService(this.value)">
+            <option value="server">Máy Chủ Riêng (Self-Hosted)</option>
+            <option value="google-drive">Google Drive (Sắp hỗ trợ)</option>
+            <option value="dropbox">Dropbox (Sắp hỗ trợ)</option>
+          </select>
         </div>
 
         <!-- Khung chia sẻ qua Server -->
@@ -6941,32 +6947,32 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./vendor/chart.umd.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=3.0.18"></script>
-  <script src="./js/custom-dialog.js?v=3.0.18"></script>
-  <script src="./js/crypto.js?v=3.0.18"></script>
-  <script src="./js/db.js?v=3.0.18"></script>
-  <script src="./js/google-drive.js?v=3.0.18"></script>
-  <script src="./js/dropbox.js?v=3.0.18"></script>
-  <script src="./js/server-sync.js?v=3.0.18"></script>
-  <script src="./js/csv-export.js?v=3.0.18"></script>
-  <script src="./js/backup.js?v=3.0.18"></script>
-  <script src="./js/sync-coordinator.js?v=3.0.18"></script>
+  <script src="./js/config.js?v=3.0.19"></script>
+  <script src="./js/custom-dialog.js?v=3.0.19"></script>
+  <script src="./js/crypto.js?v=3.0.19"></script>
+  <script src="./js/db.js?v=3.0.19"></script>
+  <script src="./js/google-drive.js?v=3.0.19"></script>
+  <script src="./js/dropbox.js?v=3.0.19"></script>
+  <script src="./js/server-sync.js?v=3.0.19"></script>
+  <script src="./js/csv-export.js?v=3.0.19"></script>
+  <script src="./js/backup.js?v=3.0.19"></script>
+  <script src="./js/sync-coordinator.js?v=3.0.19"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=3.0.18"></script>
-  <script src="./js/ui-transactions.js?v=3.0.18"></script>
-  <script src="./js/ui-debts.js?v=3.0.18"></script>
-  <script src="./js/ui-accounts.js?v=3.0.18"></script>
-  <script src="./js/ui-share.js?v=3.0.18"></script>
-  <script src="./js/ui-budgets.js?v=3.0.18"></script>
-  <script src="./js/ui-analytics.js?v=3.0.18"></script>
-  <script src="./js/ui-settings.js?v=3.0.18"></script>
-  <script src="./js/server-auth-modals.js?v=3.0.18"></script>
+  <script src="./js/ui-calendar.js?v=3.0.19"></script>
+  <script src="./js/ui-transactions.js?v=3.0.19"></script>
+  <script src="./js/ui-debts.js?v=3.0.19"></script>
+  <script src="./js/ui-accounts.js?v=3.0.19"></script>
+  <script src="./js/ui-share.js?v=3.0.19"></script>
+  <script src="./js/ui-budgets.js?v=3.0.19"></script>
+  <script src="./js/ui-analytics.js?v=3.0.19"></script>
+  <script src="./js/ui-settings.js?v=3.0.19"></script>
+  <script src="./js/server-auth-modals.js?v=3.0.19"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/ui-admin.js?v=3.0.18"></script>
-  <script src="./js/pull-to-refresh.js?v=3.0.18"></script>
-  <script src="./js/app.js?v=3.0.18"></script>
+  <script src="./js/ui-admin.js?v=3.0.19"></script>
+  <script src="./js/pull-to-refresh.js?v=3.0.19"></script>
+  <script src="./js/app.js?v=3.0.19"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
   <script>

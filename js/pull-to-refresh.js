@@ -162,7 +162,7 @@ class PullToRefresh {
 
   isAtTop(target) {
     // Không pull khi đang mở modal, dialog, action sheet, bàn phím số, hoặc form ghi chép
-    if (document.querySelector('.modal.open, .dialog.open, #modal-keypad.open, #action-sheet.open, .page-view.active.tx-page-view')) {
+    if (document.querySelector('.modal.open, .modal-overlay.open, .dialog.open, #modal-keypad.open, #action-sheet.open, .page-view.active.tx-page-view, .keypad-popup-overlay.open')) {
       return false;
     }
 

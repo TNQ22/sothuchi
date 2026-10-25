@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v3.0.18';
+const CACHE_NAME = 'sothuchi-pwa-v3.0.19';
 
 const PRECACHE_ASSETS = [
   './',
@@ -34,14 +34,20 @@ const PRECACHE_ASSETS = [
   './assets/icons/icon.svg',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
-  './assets/icons/icon-maskable.png'
+  './assets/icons/icon-maskable.png',
+  './assets/icons/pwa-icon-light-192.png',
+  './assets/icons/pwa-icon-light-512.png',
+  './assets/icons/pwa-icon-dark-192.png',
+  './assets/icons/pwa-icon-dark-512.png',
+  './assets/icons/icon-inapp-transparent.png',
+  './assets/icons/icon-inapp-transparent.svg'
 ];
 
 // 1. Cài đặt Service Worker và Cache tĩnh các tài nguyên cốt lõi (Bảo đảm không bị sập nếu 1 asset lỗi)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Đang nạp tài nguyên ngoại tuyến phiên bản mới (v3.0.1)...');
+      console.log('[SW] Đang nạp tài nguyên ngoại tuyến phiên bản mới (v3.0.19)...');
       return Promise.allSettled(
         PRECACHE_ASSETS.map((asset) => {
           return fetch(asset, { cache: 'no-cache' }).then((res) => {
