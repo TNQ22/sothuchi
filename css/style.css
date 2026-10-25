@@ -3661,13 +3661,47 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: 8px 8px;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  gap: 8px;
+  border-radius: var(--radius-md, 12px);
+  gap: 6px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: background 0.15s ease;
+  transition: border-color 0.15s, background-color 0.15s, transform 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.template-manager-row.dragging {
+  opacity: 0.35;
+  transform: scale(0.98);
+}
+.template-manager-row.drag-over {
+  border-top: 2px solid var(--primary);
+}
+.template-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: grab;
+  padding: 8px 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  touch-action: none;
+  transition: color 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.template-drag-handle:hover {
+  color: var(--text-primary);
+}
+.template-drag-handle:active {
+  cursor: grabbing;
+}
+.template-drag-handle i,
+.template-drag-handle svg {
+  width: 16px;
+  height: 16px;
 }
 .template-reorder-btns {
   display: flex;

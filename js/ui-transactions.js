@@ -1636,18 +1636,13 @@ const UITransactions = {
       const isLast = i === templates.length - 1;
 
       html += `
-        <div class="template-manager-row" data-id="${t.id}">
-          <!-- Nút điều chỉnh thứ tự nhanh (Sắp xếp) -->
-          <div class="template-reorder-btns">
-            <button type="button" class="template-reorder-btn" onclick="UITransactions.moveTemplate(${t.id}, 'up')" ${isFirst ? 'disabled' : ''} title="Di chuyển lên">
-              <i data-lucide="chevron-up" style="width: 14px; height: 14px;"></i>
-            </button>
-            <button type="button" class="template-reorder-btn" onclick="UITransactions.moveTemplate(${t.id}, 'down')" ${isLast ? 'disabled' : ''} title="Di chuyển xuống">
-              <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
-            </button>
+        <div class="template-manager-row" draggable="true" data-id="${t.id}">
+          <!-- Kéo thả sắp xếp giống tài khoản chi tiêu -->
+          <div class="template-drag-handle" title="Kéo để sắp xếp vị trí">
+            <i data-lucide="grip-vertical" style="width: 16px; height: 16px;"></i>
           </div>
 
-          <div class="template-manager-info">
+          <div class="template-manager-info" onclick="UITransactions.openTemplateEditor(${t.id})" style="cursor: pointer;">
             <div style="width:38px;height:38px;border-radius:10px;background:${t.color ? t.color + '22' : 'rgba(13, 148, 136, 0.15)'};color:${t.color || 'var(--primary)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               <i data-lucide="${t.icon || 'tag'}" style="width:19px;height:19px;"></i>
             </div>
@@ -1675,6 +1670,127 @@ const UITransactions = {
     }
     container.innerHTML = html;
     if (window.lucide) lucide.createIcons();
+    this.setupTemplateDragAndDrop(container);
+  },
+
+  setupTemplateDragAndDrop(container) {
+    if (!container) return;
+    const items = container.querySelectorAll('.template-manager-row');
+    let draggedItem = null;
+    let touchTargetItem = null;
+
+    items.forEach(item => {
+      // 1. Desktop HTML5 Drag & Drop
+      item.addEventListener('dragstart', (e) => {
+        draggedItem = item;
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', item.dataset.id);
+      });
+
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        items.forEach(i => i.classList.remove('drag-over'));
+        draggedItem = null;
+      });
+
+      item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (draggedItem && draggedItem !== item) {
+          items.forEach(i => i.classList.remove('drag-over'));
+          item.classList.add('drag-over');
+        }
+      });
+
+      item.addEventListener('dragleave', () => {
+        item.classList.remove('drag-over');
+      });
+
+      item.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        item.classList.remove('drag-over');
+        if (draggedItem && draggedItem !== item) {
+          const fromId = draggedItem.dataset.id;
+          const toId = item.dataset.id;
+          await this.reorderTemplates(fromId, toId);
+        }
+      });
+
+      // 2. Mobile Touch Drag & Drop on the grip handle
+      const handle = item.querySelector('.template-drag-handle');
+      if (handle) {
+        handle.addEventListener('touchstart', (e) => {
+          draggedItem = item;
+          touchTargetItem = null;
+          item.classList.add('dragging');
+          if (navigator.vibrate) {
+            try { navigator.vibrate(20); } catch (_) {}
+          }
+        }, { passive: true });
+
+        handle.addEventListener('touchmove', (e) => {
+          if (!draggedItem) return;
+          const touch = e.touches[0];
+          const el = document.elementFromPoint(touch.clientX, touch.clientY);
+          const targetRow = el ? el.closest('.template-manager-row') : null;
+
+          items.forEach(i => i.classList.remove('drag-over'));
+          if (targetRow && targetRow !== draggedItem && container.contains(targetRow)) {
+            targetRow.classList.add('drag-over');
+            touchTargetItem = targetRow;
+          } else {
+            touchTargetItem = null;
+          }
+        }, { passive: true });
+
+        const handleTouchEnd = async () => {
+          if (!draggedItem) return;
+          draggedItem.classList.remove('dragging');
+          items.forEach(i => i.classList.remove('drag-over'));
+
+          if (touchTargetItem && touchTargetItem !== draggedItem) {
+            const fromId = draggedItem.dataset.id;
+            const toId = touchTargetItem.dataset.id;
+            draggedItem = null;
+            touchTargetItem = null;
+            await this.reorderTemplates(fromId, toId);
+          } else {
+            draggedItem = null;
+            touchTargetItem = null;
+          }
+        };
+
+        handle.addEventListener('touchend', handleTouchEnd);
+        handle.addEventListener('touchcancel', () => {
+          if (draggedItem) draggedItem.classList.remove('dragging');
+          items.forEach(i => i.classList.remove('drag-over'));
+          draggedItem = null;
+          touchTargetItem = null;
+        });
+      }
+    });
+  },
+
+  async reorderTemplates(fromId, toId) {
+    if (fromId === toId) return;
+    const type = this.currentTemplateManagerTab || 'expense';
+    const templates = await this.getTemplates(type);
+
+    const fromIndex = templates.findIndex(t => String(t.id) === String(fromId));
+    const toIndex = templates.findIndex(t => String(t.id) === String(toId));
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const [moved] = templates.splice(fromIndex, 1);
+    templates.splice(toIndex, 0, moved);
+
+    const now = new Date().toISOString();
+    for (let i = 0; i < templates.length; i++) {
+      await db.recurring.update(templates[i].id, { order: i, updatedAt: now });
+    }
+
+    await this.renderTemplateManagerPage();
+    await this.renderKeypadTemplates();
   },
 
   async moveTemplate(id, direction) {
