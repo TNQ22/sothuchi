@@ -53,6 +53,7 @@ const UniversalShareModal = {
     const modal = document.getElementById('modal-universal-share');
     if (!modal) return;
 
+    this.closeServiceDropdown();
     this.renderHeader();
     this.renderServices();
     this.switchTab('email');
@@ -115,14 +116,26 @@ const UniversalShareModal = {
       e.stopPropagation();
     }
     const menu = document.getElementById('share-service-dropdown-menu');
+    const btn = document.getElementById('share-service-dropdown-btn');
     if (!menu) return;
-    const isShown = menu.style.display === 'block';
-    menu.style.display = isShown ? 'none' : 'block';
+    const isShown = menu.classList.contains('show') || menu.style.display === 'flex';
+    if (isShown) {
+      this.closeServiceDropdown();
+    } else {
+      menu.classList.add('show');
+      menu.style.setProperty('display', 'flex', 'important');
+      if (btn) btn.classList.add('active');
+    }
   },
 
   closeServiceDropdown() {
     const menu = document.getElementById('share-service-dropdown-menu');
-    if (menu) menu.style.display = 'none';
+    const btn = document.getElementById('share-service-dropdown-btn');
+    if (menu) {
+      menu.classList.remove('show');
+      menu.style.setProperty('display', 'none', 'important');
+    }
+    if (btn) btn.classList.remove('active');
   },
 
   selectService(serviceId, e) {
@@ -833,9 +846,11 @@ window.addEventListener('DOMContentLoaded', () => {
   }, 1000);
 });
 
-// Đóng dropdown dịch vụ khi click ngoài
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('#share-service-dropdown-wrapper')) {
-    if (window.UniversalShareModal) UniversalShareModal.closeServiceDropdown();
-  }
+// Đóng dropdown dịch vụ khi click hoặc chạm ngoài
+['click', 'touchend'].forEach(evtType => {
+  document.addEventListener(evtType, (e) => {
+    if (!e.target.closest('#share-service-dropdown-wrapper')) {
+      if (window.UniversalShareModal) UniversalShareModal.closeServiceDropdown();
+    }
+  }, { passive: true });
 });

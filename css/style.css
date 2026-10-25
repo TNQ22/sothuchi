@@ -13686,6 +13686,16 @@ body.light .ptr-circle-badge,
   flex-shrink: 0 !important;
 }
 
+.share-service-chevron {
+  flex-shrink: 0 !important;
+  transition: transform 0.2s ease !important;
+}
+
+.share-service-dropdown-btn.active .share-service-chevron,
+.share-service-dropdown-btn.open .share-service-chevron {
+  transform: rotate(180deg) !important;
+}
+
 .share-service-dropdown-menu {
   position: absolute !important;
   top: calc(100% + 6px) !important;
@@ -13698,9 +13708,35 @@ body.light .ptr-circle-badge,
   z-index: 100 !important;
   overflow: hidden !important;
   padding: 6px !important;
-  display: flex !important;
+  display: none !important;
   flex-direction: column !important;
   gap: 3px !important;
+}
+
+.share-service-dropdown-menu.show,
+.share-service-dropdown-menu.open {
+  display: flex !important;
+}
+
+@media (max-width: 480px) {
+  .share-service-dropdown-btn {
+    padding: 6px 10px !important;
+    gap: 6px !important;
+  }
+  #share-service-current-label {
+    font-size: 0.82rem !important;
+  }
+  .share-service-status-pill {
+    font-size: 0.65rem !important;
+    padding: 2px 6px !important;
+  }
+  .share-service-option {
+    padding: 8px 10px !important;
+    font-size: 0.84rem !important;
+  }
+  .share-service-option-title {
+    font-size: 0.84rem !important;
+  }
 }
 
 .share-service-option {
