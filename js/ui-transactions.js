@@ -1512,7 +1512,8 @@ const UITransactions = {
       const displayTitle = this.resolveTemplateVariables(t.title || 'Mẫu');
       const safeTitle = (displayTitle || 'Mẫu').replace(/"/g, '&quot;');
       const compactPrice = t.amount > 0 ? this.formatCompactAmount(t.amount) : '';
-      const priceTag = compactPrice ? `<span class="keypad-template-price-tag">${compactPrice}</span>` : '';
+      const priceTypeClass = t.type === 'income' ? 'income' : 'expense';
+      const priceTag = compactPrice ? `<span class="keypad-template-price-tag ${priceTypeClass}">${compactPrice}</span>` : '';
 
       html += `
         <div class="keypad-template-item" onclick="UITransactions.applyTemplate(${t.id})">
@@ -1525,14 +1526,7 @@ const UITransactions = {
       `;
     });
 
-    html += `
-      <div class="keypad-template-item" onclick="UITransactions.openTemplateEditor()">
-        <div class="keypad-template-icon-bubble" style="background: rgba(255, 255, 255, 0.05); border: 1px dashed var(--border-color); color: var(--text-muted);">
-          <i data-lucide="plus" style="width: 20px; height: 20px;"></i>
-        </div>
-        <span class="keypad-template-title" style="color: var(--text-muted);">Thêm mẫu</span>
-      </div>
-    `;
+
 
     container.innerHTML = html;
     if (window.lucide) lucide.createIcons();
