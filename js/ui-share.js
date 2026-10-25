@@ -151,11 +151,22 @@ const UniversalShareModal = {
       serverStatusClass = 'ready';
     }
 
+    const statusStyles = {
+      'connected': { bg: 'rgba(16, 185, 129, 0.16)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' },
+      'ready': { bg: 'rgba(59, 130, 246, 0.16)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)' },
+      'not-connected': { bg: 'rgba(239, 68, 68, 0.16)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' },
+      'planned': { bg: 'rgba(148, 163, 184, 0.16)', color: '#94a3b8', border: '1px solid rgba(148, 163, 184, 0.25)' }
+    };
+
     // Cập nhật badge trên menu option của Server
     const serverPill = document.getElementById('share-service-option-server-pill');
     if (serverPill) {
       serverPill.textContent = serverStatusText;
       serverPill.className = `share-service-status-pill ${serverStatusClass}`;
+      const sSt = statusStyles[serverStatusClass] || statusStyles['ready'];
+      serverPill.style.background = sSt.bg;
+      serverPill.style.color = sSt.color;
+      serverPill.style.border = sSt.border;
     }
 
     const configs = {
@@ -190,6 +201,10 @@ const UniversalShareModal = {
     if (statusEl) {
       statusEl.textContent = cur.statusText;
       statusEl.className = `share-service-status-pill ${cur.statusClass}`;
+      const cSt = statusStyles[cur.statusClass] || statusStyles['planned'];
+      statusEl.style.background = cSt.bg;
+      statusEl.style.color = cSt.color;
+      statusEl.style.border = cSt.border;
     }
 
     // Đánh dấu active trong menu

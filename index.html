@@ -11,21 +11,21 @@
   <meta name="author" content="Sổ Thu Chi App">
   
   <!-- PWA & Mobile Capabilities -->
-  <link rel="manifest" href="./manifest.json?v=3.0.19">
+  <link rel="manifest" href="./manifest.json?v=3.0.20">
   <meta name="theme-color" content="#0a0f1d">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Sổ Thu Chi">
   
   <!-- App Icons -->
-  <link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg?v=3.0.19">
-  <link rel="icon" media="(prefers-color-scheme: light)" type="image/png" sizes="192x192" href="./assets/icons/pwa-icon-light-192.png?v=3.0.19">
-  <link rel="icon" media="(prefers-color-scheme: dark)" type="image/png" sizes="192x192" href="./assets/icons/pwa-icon-dark-192.png?v=3.0.19">
-  <link rel="apple-touch-icon" href="./assets/icons/icon-192.png?v=3.0.19">
+  <link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg?v=3.0.20">
+  <link rel="icon" media="(prefers-color-scheme: light)" type="image/png" sizes="192x192" href="./assets/icons/pwa-icon-light-192.png?v=3.0.20">
+  <link rel="icon" media="(prefers-color-scheme: dark)" type="image/png" sizes="192x192" href="./assets/icons/pwa-icon-dark-192.png?v=3.0.20">
+  <link rel="apple-touch-icon" href="./assets/icons/icon-192.png?v=3.0.20">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=3.0.19">
-  <link rel="stylesheet" href="./css/admin-panel.css?v=3.0.19">
+  <link rel="stylesheet" href="./css/style.css?v=3.0.20">
+  <link rel="stylesheet" href="./css/admin-panel.css?v=3.0.20">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1154,7 +1154,7 @@
     <!-- Desktop Sidebar -->
     <aside class="app-sidebar">
       <div class="brand-section">
-        <img src="./assets/icons/icon.svg?v=3.0.19" alt="Logo Sổ Thu Chi" class="brand-logo">
+        <img src="./assets/icons/icon.svg?v=3.0.20" alt="Logo Sổ Thu Chi" class="brand-logo">
         <div class="brand-info">
           <h1>Sổ Thu Chi</h1>
           <span class="brand-badge">Offline-First</span>
@@ -1224,7 +1224,7 @@
           </button>
           <button type="button" id="header-brand-logo-btn" class="header-brand-logo-btn" title="Trạng thái sao lưu & đồng bộ" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
             <div class="header-brand-logo-wrap">
-              <img src="./assets/icons/icon.svg?v=3.0.19" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="header-brand-logo">
+              <img src="./assets/icons/icon.svg?v=3.0.20" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="header-brand-logo">
               <span class="sync-status-dot" id="header-sync-dot"></span>
             </div>
             <span id="header-vault-pill" class="header-vault-subtext" style="display: none;">
@@ -3148,7 +3148,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               </button>
               <button type="button" id="tx-brand-logo-btn" class="header-brand-logo-btn" title="Trạng thái sao lưu & đồng bộ" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
                 <div class="header-brand-logo-wrap">
-                  <img src="./assets/icons/icon.svg?v=3.0.19" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="tx-brand-logo">
+                  <img src="./assets/icons/icon.svg?v=3.0.20" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="tx-brand-logo">
                   <span class="sync-status-dot" id="tx-sync-dot"></span>
                 </div>
                 <span id="tx-vault-pill" class="header-vault-subtext" style="display: none;">
@@ -6626,47 +6626,51 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         </div>
 
         <!-- Dropdown chọn dịch vụ sao lưu & chia sẻ (Giao diện chuẩn nút thu chi kèm icon) -->
-        <div class="share-service-dropdown-wrap">
+        <div class="share-service-dropdown-wrap" style="margin-bottom: 16px; position: relative;">
           <label style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">
             <i data-lucide="layers" style="width: 15px; height: 15px; color: var(--primary);"></i>
             <span>Dịch vụ sao lưu và chia sẻ:</span>
           </label>
-          <div class="share-service-dropdown-wrapper" id="share-service-dropdown-wrapper">
-            <button type="button" id="share-service-dropdown-btn" class="share-service-dropdown-btn" onclick="UniversalShareModal.toggleServiceDropdown(event)">
-              <span id="share-service-current-icon" class="share-service-badge-icon">
-                <i data-lucide="server" style="width: 18px; height: 18px; color: #10b981;"></i>
-              </span>
-              <span id="share-service-current-label">Máy Chủ Riêng (Self-Hosted)</span>
-              <span id="share-service-current-status" class="share-service-status-pill connected">Đã kết nối</span>
-              <i data-lucide="chevron-down" class="share-service-chevron" style="width: 15px; height: 15px; color: var(--text-muted); margin-left: auto;"></i>
+          <div class="share-service-dropdown-wrapper" id="share-service-dropdown-wrapper" style="position: relative; width: 100%;">
+            <button type="button" id="share-service-dropdown-btn" class="share-service-dropdown-btn" onclick="UniversalShareModal.toggleServiceDropdown(event)" style="display: flex !important; align-items: center !important; justify-content: space-between !important; width: 100% !important; background: var(--bg-card, #1e293b) !important; border: 1px solid var(--border-color, rgba(255, 255, 255, 0.14)) !important; border-radius: 9999px !important; padding: 7px 14px !important; color: var(--text-primary, #f8fafc) !important; box-sizing: border-box !important; -webkit-appearance: none !important; appearance: none !important; cursor: pointer !important; text-align: left !important; line-height: 1.2 !important;">
+              <div class="share-service-btn-left" style="display: flex !important; align-items: center !important; gap: 8px !important; min-width: 0 !important; flex: 1 !important;">
+                <span id="share-service-current-icon" class="share-service-badge-icon" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; width: 22px !important; height: 22px !important; flex-shrink: 0 !important;">
+                  <i data-lucide="server" style="width: 18px; height: 18px; color: #10b981;"></i>
+                </span>
+                <span id="share-service-current-label" style="font-size: 0.88rem !important; font-weight: 700 !important; color: var(--text-primary, #f8fafc) !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;">Máy Chủ Riêng (Self-Hosted)</span>
+              </div>
+              <div class="share-service-btn-right" style="display: flex !important; align-items: center !important; gap: 6px !important; flex-shrink: 0 !important;">
+                <span id="share-service-current-status" class="share-service-status-pill connected" style="font-size: 0.68rem !important; font-weight: 700 !important; padding: 2px 8px !important; border-radius: 9999px !important; white-space: nowrap !important; background: rgba(16, 185, 129, 0.16); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">Đã kết nối</span>
+                <i data-lucide="chevron-down" class="share-service-chevron" style="width: 15px; height: 15px; color: var(--text-muted, #94a3b8) !important; flex-shrink: 0 !important;"></i>
+              </div>
             </button>
-            <div id="share-service-dropdown-menu" class="share-service-dropdown-menu" style="display: none;">
-              <div class="share-service-option active" data-service="server" onclick="UniversalShareModal.selectService('server', event)">
-                <div class="share-service-option-info">
-                  <span class="share-service-option-icon server">
+            <div id="share-service-dropdown-menu" class="share-service-dropdown-menu" style="display: none; position: absolute !important; top: calc(100% + 6px) !important; left: 0 !important; right: 0 !important; background: var(--bg-surface, #0f172a) !important; border: 1px solid var(--border-color, rgba(255, 255, 255, 0.16)) !important; border-radius: 12px !important; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55) !important; z-index: 100 !important; overflow: hidden !important; padding: 6px !important; flex-direction: column !important; gap: 3px !important;">
+              <div class="share-service-option active" data-service="server" onclick="UniversalShareModal.selectService('server', event)" style="display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 10px !important; padding: 10px 12px !important; border-radius: 8px !important; cursor: pointer !important; font-size: 0.88rem !important; font-weight: 600 !important; color: var(--text-primary, #f8fafc) !important;">
+                <div class="share-service-option-info" style="display: flex !important; align-items: center !important; gap: 10px !important;">
+                  <span class="share-service-option-icon server" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; width: 22px !important; height: 22px !important; flex-shrink: 0 !important;">
                     <i data-lucide="server" style="width: 18px; height: 18px; color: #10b981;"></i>
                   </span>
                   <span class="share-service-option-title">Máy Chủ Riêng (Self-Hosted)</span>
                 </div>
-                <span class="share-service-status-pill" id="share-service-option-server-pill">Đã kết nối</span>
+                <span class="share-service-status-pill connected" id="share-service-option-server-pill" style="font-size: 0.68rem !important; font-weight: 700 !important; padding: 2px 8px !important; border-radius: 9999px !important; white-space: nowrap !important; background: rgba(16, 185, 129, 0.16); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">Đã kết nối</span>
               </div>
-              <div class="share-service-option" data-service="google-drive" onclick="UniversalShareModal.selectService('google-drive', event)">
-                <div class="share-service-option-info">
-                  <span class="share-service-option-icon google-drive">
+              <div class="share-service-option" data-service="google-drive" onclick="UniversalShareModal.selectService('google-drive', event)" style="display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 10px !important; padding: 10px 12px !important; border-radius: 8px !important; cursor: pointer !important; font-size: 0.88rem !important; font-weight: 600 !important; color: var(--text-primary, #f8fafc) !important;">
+                <div class="share-service-option-info" style="display: flex !important; align-items: center !important; gap: 10px !important;">
+                  <span class="share-service-option-icon google-drive" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; width: 22px !important; height: 22px !important; flex-shrink: 0 !important;">
                     <svg viewBox="0 0 87.3 78" style="width: 18px; height: 16px;"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg>
                   </span>
                   <span class="share-service-option-title">Google Drive</span>
                 </div>
-                <span class="share-service-status-pill planned">Sắp hỗ trợ</span>
+                <span class="share-service-status-pill planned" style="font-size: 0.68rem !important; font-weight: 700 !important; padding: 2px 8px !important; border-radius: 9999px !important; white-space: nowrap !important; background: rgba(148, 163, 184, 0.16); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.25);">Sắp hỗ trợ</span>
               </div>
-              <div class="share-service-option" data-service="dropbox" onclick="UniversalShareModal.selectService('dropbox', event)">
-                <div class="share-service-option-info">
-                  <span class="share-service-option-icon dropbox">
+              <div class="share-service-option" data-service="dropbox" onclick="UniversalShareModal.selectService('dropbox', event)" style="display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 10px !important; padding: 10px 12px !important; border-radius: 8px !important; cursor: pointer !important; font-size: 0.88rem !important; font-weight: 600 !important; color: var(--text-primary, #f8fafc) !important;">
+                <div class="share-service-option-info" style="display: flex !important; align-items: center !important; gap: 10px !important;">
+                  <span class="share-service-option-icon dropbox" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; width: 22px !important; height: 22px !important; flex-shrink: 0 !important;">
                     <i data-lucide="box" style="width: 18px; height: 18px; color: #0061ff;"></i>
                   </span>
                   <span class="share-service-option-title">Dropbox</span>
                 </div>
-                <span class="share-service-status-pill planned">Sắp hỗ trợ</span>
+                <span class="share-service-status-pill planned" style="font-size: 0.68rem !important; font-weight: 700 !important; padding: 2px 8px !important; border-radius: 9999px !important; white-space: nowrap !important; background: rgba(148, 163, 184, 0.16); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.25);">Sắp hỗ trợ</span>
               </div>
             </div>
           </div>
@@ -6949,32 +6953,32 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./vendor/chart.umd.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=3.0.19"></script>
-  <script src="./js/custom-dialog.js?v=3.0.19"></script>
-  <script src="./js/crypto.js?v=3.0.19"></script>
-  <script src="./js/db.js?v=3.0.19"></script>
-  <script src="./js/google-drive.js?v=3.0.19"></script>
-  <script src="./js/dropbox.js?v=3.0.19"></script>
-  <script src="./js/server-sync.js?v=3.0.19"></script>
-  <script src="./js/csv-export.js?v=3.0.19"></script>
-  <script src="./js/backup.js?v=3.0.19"></script>
-  <script src="./js/sync-coordinator.js?v=3.0.19"></script>
+  <script src="./js/config.js?v=3.0.20"></script>
+  <script src="./js/custom-dialog.js?v=3.0.20"></script>
+  <script src="./js/crypto.js?v=3.0.20"></script>
+  <script src="./js/db.js?v=3.0.20"></script>
+  <script src="./js/google-drive.js?v=3.0.20"></script>
+  <script src="./js/dropbox.js?v=3.0.20"></script>
+  <script src="./js/server-sync.js?v=3.0.20"></script>
+  <script src="./js/csv-export.js?v=3.0.20"></script>
+  <script src="./js/backup.js?v=3.0.20"></script>
+  <script src="./js/sync-coordinator.js?v=3.0.20"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=3.0.19"></script>
-  <script src="./js/ui-transactions.js?v=3.0.19"></script>
-  <script src="./js/ui-debts.js?v=3.0.19"></script>
-  <script src="./js/ui-accounts.js?v=3.0.19"></script>
-  <script src="./js/ui-share.js?v=3.0.19"></script>
-  <script src="./js/ui-budgets.js?v=3.0.19"></script>
-  <script src="./js/ui-analytics.js?v=3.0.19"></script>
-  <script src="./js/ui-settings.js?v=3.0.19"></script>
-  <script src="./js/server-auth-modals.js?v=3.0.19"></script>
+  <script src="./js/ui-calendar.js?v=3.0.20"></script>
+  <script src="./js/ui-transactions.js?v=3.0.20"></script>
+  <script src="./js/ui-debts.js?v=3.0.20"></script>
+  <script src="./js/ui-accounts.js?v=3.0.20"></script>
+  <script src="./js/ui-share.js?v=3.0.20"></script>
+  <script src="./js/ui-budgets.js?v=3.0.20"></script>
+  <script src="./js/ui-analytics.js?v=3.0.20"></script>
+  <script src="./js/ui-settings.js?v=3.0.20"></script>
+  <script src="./js/server-auth-modals.js?v=3.0.20"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/ui-admin.js?v=3.0.19"></script>
-  <script src="./js/pull-to-refresh.js?v=3.0.19"></script>
-  <script src="./js/app.js?v=3.0.19"></script>
+  <script src="./js/ui-admin.js?v=3.0.20"></script>
+  <script src="./js/pull-to-refresh.js?v=3.0.20"></script>
+  <script src="./js/app.js?v=3.0.20"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
   <script>

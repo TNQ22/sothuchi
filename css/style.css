@@ -13592,6 +13592,9 @@ body.light .ptr-circle-badge,
 .share-service-dropdown-btn {
   display: flex !important;
   align-items: center !important;
+  justify-content: space-between !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
   gap: 8px !important;
   background: var(--bg-card, #1e293b) !important;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.14)) !important;
@@ -13665,6 +13668,21 @@ body.light .ptr-circle-badge,
 }
 
 .share-service-chevron {
+  flex-shrink: 0 !important;
+}
+
+.share-service-btn-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+}
+
+.share-service-btn-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
   flex-shrink: 0 !important;
 }
 
