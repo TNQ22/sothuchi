@@ -2283,8 +2283,6 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   body.view-accumulation-form .mobile-bottom-nav,
   body.view-loan-form .mobile-bottom-nav,
   body.view-asset-form .mobile-bottom-nav,
-  body.view-template-manager .mobile-bottom-nav,
-  body.view-template-editor .mobile-bottom-nav,
   body:has(#view-category-picker.active) .mobile-bottom-nav,
   body:has(#view-borrow-select.active) .mobile-bottom-nav,
   body:has(#view-budget-form.active) .mobile-bottom-nav,
@@ -2294,10 +2292,16 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   body:has(#view-savings-form.active) .mobile-bottom-nav,
   body:has(#view-accumulation-form.active) .mobile-bottom-nav,
   body:has(#view-loan-form.active) .mobile-bottom-nav,
-  body:has(#view-asset-form.active) .mobile-bottom-nav,
+  body:has(#view-asset-form.active) .mobile-bottom-nav {
+    display: none !important;
+  }
+
+  /* Mẫu ghi chép: luôn hiển thị thanh menu dưới cố định */
+  body.view-template-manager .mobile-bottom-nav,
+  body.view-template-editor .mobile-bottom-nav,
   body:has(#view-template-manager.active) .mobile-bottom-nav,
   body:has(#view-template-editor.active) .mobile-bottom-nav {
-    display: none !important;
+    display: flex !important;
   }
 
   body.view-budget-form .tx-page-view,
@@ -3756,7 +3760,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
 .template-fab-btn {
   position: fixed;
   right: 20px;
-  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--bottom-nav-height, 64px) + 16px + env(safe-area-inset-bottom, 0px));
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -3770,6 +3774,11 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   cursor: pointer;
   z-index: 999;
   transition: transform 0.15s ease, background 0.15s ease;
+}
+@media (min-width: 769px) {
+  .template-fab-btn {
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  }
 }
 .template-fab-btn:active {
   transform: scale(0.92);

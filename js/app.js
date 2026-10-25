@@ -745,7 +745,9 @@ class App {
     });
 
     document.querySelectorAll('.mobile-nav-item').forEach(item => {
-      item.classList.toggle('active', item.dataset.view === viewId);
+      const isActive = item.dataset.view === viewId ||
+        ((viewId === 'template-manager' || viewId === 'template-editor') && item.dataset.view === 'new-transaction');
+      item.classList.toggle('active', isActive);
     });
 
     // Show/hide view pages
