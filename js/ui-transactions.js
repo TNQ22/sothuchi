@@ -722,6 +722,17 @@ const UITransactions = {
         cur = '0';
       }
       if (curSymbolEl) curSymbolEl.textContent = '₫';
+    } else if (target === 'tpl-amount') {
+      const bPanel = document.getElementById('keypad-budget-quick-panel');
+      const qRow = document.querySelector('#modal-keypad .keypad-quick-row');
+      const hClose = document.querySelector('#modal-keypad .keypad-header-close-btn');
+      if (bPanel) bPanel.style.display = 'none';
+      if (qRow) qRow.style.display = 'none';
+      if (hClose) hClose.style.display = 'flex';
+      const input = document.getElementById('tpl-page-amount-input');
+      const amountText = document.getElementById('tpl-page-amount-display');
+      cur = input?.value?.trim() || amountText?.textContent?.trim() || '0';
+      if (curSymbolEl) curSymbolEl.textContent = '₫';
     } else {
       const bPanel = document.getElementById('keypad-budget-quick-panel');
       const qRow = document.querySelector('#modal-keypad .keypad-quick-row');
@@ -977,6 +988,12 @@ const UITransactions = {
     } else if (this.activeKeypadTarget === 'budget-quick-amount') {
       const input = document.getElementById('budget-quick-amount-input');
       if (input) input.value = finalFormatted;
+    } else if (this.activeKeypadTarget === 'tpl-amount') {
+      const input = document.getElementById('tpl-page-amount-input');
+      const amountText = document.getElementById('tpl-page-amount-display');
+      const rawNum = finalFormatted.replace(/\./g, '');
+      if (input) input.value = rawNum;
+      if (amountText) amountText.textContent = finalFormatted;
     } else {
       const input = document.getElementById('tx-amount-input');
       const amountText = document.getElementById('tx-amount-text');
@@ -989,7 +1006,7 @@ const UITransactions = {
       'account-balance', 'saving-amount', 'loan-amount', 'pay-loan-amount', 'acc-target-amount', 'asset-price', 'asset-quantity',
       'acc-current-amount', 'acc-recurring-amount',
       'asset-buyprice', 'asset-currentprice', 'asset-extracosts',
-      'settle-saving-amount', 'deposit-acc-amount', 'liquidate-asset-price', 'budget-form-amount', 'budget-overall-amount', 'budget-lock-amount', 'budget-cat-amount', 'rebalance-amount', 'budget-quick-amount'
+      'settle-saving-amount', 'deposit-acc-amount', 'liquidate-asset-price', 'budget-form-amount', 'budget-overall-amount', 'budget-lock-amount', 'budget-cat-amount', 'rebalance-amount', 'budget-quick-amount', 'tpl-amount'
     ];
     if (!nonTxTargets.includes(this.activeKeypadTarget)) {
       this.saveDraft();
@@ -1492,7 +1509,8 @@ const UITransactions = {
     templates.forEach(t => {
       const bg = t.color ? t.color + '22' : 'rgba(13, 148, 136, 0.15)';
       const color = t.color || 'var(--primary)';
-      const safeTitle = (t.title || 'Mẫu').replace(/"/g, '&quot;');
+      const displayTitle = this.resolveTemplateVariables(t.title || 'Mẫu');
+      const safeTitle = (displayTitle || 'Mẫu').replace(/"/g, '&quot;');
       const compactPrice = t.amount > 0 ? this.formatCompactAmount(t.amount) : '';
       const priceTag = compactPrice ? `<span class="keypad-template-price-tag">${compactPrice}</span>` : '';
 
@@ -1526,22 +1544,40 @@ const UITransactions = {
 
     // 1. Switch form type if needed
     if (tpl.type) {
-      const typeBtn = document.querySelector(`.tx-type-pill[data-type="${tpl.type}"]`);
-      if (typeBtn) typeBtn.click();
+      this.handleHeaderTypeChange(tpl.type);
     }
 
-    // 2. Select category
+    // 2. Select category if template has category
     if (tpl.categoryId) {
       await this.selectCategoryById(Number(tpl.categoryId));
     }
 
-    // 3. Set note
-    const noteInput = document.getElementById('tx-note-input');
-    if (noteInput) {
-      noteInput.value = tpl.title || '';
+    // 3. Select account if template has account preset
+    if (tpl.accountId) {
+      const acc = await db.accounts.get(Number(tpl.accountId));
+      if (acc && !acc.isDeleted) {
+        await this.selectAccount(acc.id, acc.name, acc.type);
+      }
     }
 
-    // 4. Set amount
+    // 4. Set note with dynamic variables resolved
+    const txDateStr = document.getElementById('tx-date-input')?.value;
+    const dateObj = txDateStr ? new Date(txDateStr + 'T12:00:00') : new Date();
+
+    const noteTemplate = (tpl.note !== undefined && tpl.note !== null && tpl.note !== '') 
+      ? tpl.note 
+      : (tpl.title || '');
+    const resolvedNote = this.resolveTemplateVariables(noteTemplate, dateObj);
+
+    const noteInput = document.getElementById('tx-note-input');
+    if (noteInput) {
+      noteInput.value = resolvedNote;
+      try {
+        noteInput.dispatchEvent(new Event('input', { bubbles: true }));
+      } catch (_) {}
+    }
+
+    // 5. Set amount
     if (tpl.amount && tpl.amount > 0) {
       const display = document.getElementById('keypad-live-val');
       if (display) display.textContent = new Intl.NumberFormat('vi-VN').format(tpl.amount);
@@ -1557,6 +1593,7 @@ const UITransactions = {
     }
 
     if (window.lucide) lucide.createIcons();
+    this.saveDraft();
   },
 
   async openTemplateManagerPage() {
@@ -1626,6 +1663,7 @@ const UITransactions = {
               <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">
                 ${catName} • ${amtStr}
               </div>
+              ${t.note ? `<div style="font-size:0.74rem;color:var(--primary);margin-top:3px;display:flex;align-items:center;gap:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i data-lucide="file-text" style="width:12px;height:12px;flex-shrink:0;"></i> <span>${escapeHTML(t.note)}</span> <span style="color:var(--text-muted);font-size:0.7rem;">(→ ${escapeHTML(this.resolveTemplateVariables(t.note))})</span></div>` : ''}
             </div>
           </div>
 
@@ -1669,127 +1707,476 @@ const UITransactions = {
     await this.renderKeypadTemplates();
   },
 
-  async openTemplateEditor(id = null) {
-    const modal = document.getElementById('modal-template-editor');
-    if (!modal) return;
+  /* ==================== TEMPLATE EDITOR PAGE (TẠO / SỬA MẪU GHI CHÉP) ==================== */
+  resolveTemplateVariables(templateStr, dateObj = new Date()) {
+    if (!templateStr || typeof templateStr !== 'string') return '';
+    const now = (dateObj instanceof Date && !isNaN(dateObj)) ? dateObj : new Date();
 
-    const titleEl = document.getElementById('template-editor-title');
-    const idInput = document.getElementById('tpl-id-input');
-    const titleInput = document.getElementById('tpl-title-input');
-    const amountInput = document.getElementById('tpl-amount-input');
-    const delBtn = document.getElementById('btn-delete-template');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const d = String(now.getDate());
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const m = String(now.getMonth() + 1);
+    const thang = `Tháng ${m}`;
+    const yyyy = String(now.getFullYear());
+    const yy = String(now.getFullYear()).slice(-2);
+
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prev_mm = String(prevDate.getMonth() + 1).padStart(2, '0');
+    const prev_m = String(prevDate.getMonth() + 1);
+
+    const nextDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const next_mm = String(nextDate.getMonth() + 1).padStart(2, '0');
+    const next_m = String(nextDate.getMonth() + 1);
+
+    const q = String(Math.floor(now.getMonth() / 3) + 1);
+    const quy = `Quý ${q}`;
+
+    // ISO week
+    const target = new Date(now.valueOf());
+    const dayNr = (now.getDay() + 6) % 7;
+    target.setDate(target.getDate() - dayNr + 3);
+    const firstThursday = target.valueOf();
+    target.setMonth(0, 1);
+    if (target.getDay() !== 4) {
+      target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+    }
+    const week = String(1 + Math.ceil((firstThursday - target) / 604800000));
+
+    const daysLong = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    const daysShort = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    const thu = daysLong[now.getDay()];
+    const t_short = daysShort[now.getDay()];
+
+    const fullDate = `${dd}/${mm}/${yyyy}`;
+    const shortDate = `${dd}/${mm}`;
+
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const time = `${hh}:${min}`;
+
+    let res = templateStr;
+
+    const replacements = [
+      { pattern: /(?:\$|{{)PREV_MM(?:}})?/gi, val: prev_mm },
+      { pattern: /(?:\$|{{)PREV_M(?:}})?/gi, val: prev_m },
+      { pattern: /(?:\$|{{)NEXT_MM(?:}})?/gi, val: next_mm },
+      { pattern: /(?:\$|{{)NEXT_M(?:}})?/gi, val: next_m },
+      { pattern: /(?:\$|{{)YYYY(?:}})?/gi, val: yyyy },
+      { pattern: /(?:\$|{{)YY(?!Y)(?:}})?/gi, val: yy },
+      { pattern: /(?:\$|{{)(?:THANG|MONTH)(?:}})?/gi, val: thang },
+      { pattern: /(?:\$|{{)SHORT_DATE(?:}})?/gi, val: shortDate },
+      { pattern: /(?:\$|{{)DATE(?:}})?/gi, val: fullDate },
+      { pattern: /(?:\$|{{)TIME(?:}})?/gi, val: time },
+      { pattern: /(?:\$|{{)QUY(?:}})?/gi, val: quy },
+      { pattern: /(?:\$|{{)WEEK(?:}})?/gi, val: week },
+      { pattern: /(?:\$|{{)(?:THU|DOW)(?:}})?/gi, val: thu },
+      { pattern: /(?:\$|{{)MM(?:}})?/gi, val: mm },
+      { pattern: /(?:\$|{{)M(?!M)(?:}})?/gi, val: m },
+      { pattern: /(?:\$|{{)DD(?:}})?/gi, val: dd },
+      { pattern: /(?:\$|{{)D(?!D)(?:}})?/gi, val: d },
+      { pattern: /(?:\$|{{)Q(?:}})?/gi, val: q },
+      { pattern: /(?:\$|{{)HH(?:}})?/gi, val: hh },
+      { pattern: /(?:\$|{{)MIN(?:}})?/gi, val: min },
+      { pattern: /(?:\$|{{)T(?!HU)(?:}})?/gi, val: t_short }
+    ];
+
+    for (const r of replacements) {
+      res = res.replace(r.pattern, r.val);
+    }
+
+    return res;
+  },
+
+  async openTemplateEditor(id = null) {
+    this.closeKeypad(true);
+    this._templateEditorPrevView = (window.app && window.app.currentView) || 'template-manager';
+
+    const titleEl = document.getElementById('template-editor-header-title');
+    const idInput = document.getElementById('tpl-page-id-input');
+    const titleInput = document.getElementById('tpl-page-title-input');
+    const amountInput = document.getElementById('tpl-page-amount-input');
+    const amountDisplay = document.getElementById('tpl-page-amount-display');
+    const noteInput = document.getElementById('tpl-page-note-input');
+    const delBtn = document.getElementById('tpl-page-delete-btn');
+    const clearTitleBtn = document.getElementById('btn-clear-tpl-title');
 
     let currentType = 'expense';
 
     if (id) {
       const t = await db.recurring.get(Number(id));
       if (!t) return;
-      if (titleEl) titleEl.textContent = 'Sửa mẫu ghi chép';
+      this.editingTemplateId = t.id;
+      if (titleEl) titleEl.textContent = 'Sửa Mẫu Ghi Chép';
       if (idInput) idInput.value = t.id;
-      if (titleInput) titleInput.value = t.title || '';
-      if (amountInput) amountInput.value = t.amount || 0;
-      currentType = t.type || 'expense';
-      if (currentType === 'income') {
-        const r = document.getElementById('tpl-type-income');
-        if (r) r.checked = true;
-      } else {
-        const r = document.getElementById('tpl-type-expense');
-        if (r) r.checked = true;
+      if (titleInput) {
+        titleInput.value = t.title || '';
+        if (clearTitleBtn) clearTitleBtn.style.display = t.title ? 'inline-flex' : 'none';
       }
+      const amt = Number(t.amount) || 0;
+      if (amountInput) amountInput.value = amt;
+      if (amountDisplay) amountDisplay.textContent = amt > 0 ? new Intl.NumberFormat('vi-VN').format(amt) : '0';
+      if (noteInput) {
+        noteInput.value = t.note || '';
+        this.handleTemplateNoteInput(noteInput.value);
+      }
+      currentType = t.type || 'expense';
+      this.switchTemplateEditorType(currentType);
+
+      if (t.categoryId) {
+        const cat = await db.categories.get(Number(t.categoryId));
+        if (cat) {
+          this.setTemplateCategory(cat);
+        } else {
+          this.clearTemplateCategory();
+        }
+      } else {
+        this.clearTemplateCategory();
+      }
+
+      if (t.accountId) {
+        await this.setTemplateAccount(t.accountId);
+      } else {
+        this.clearTemplateAccount();
+      }
+
       if (delBtn) delBtn.style.display = 'inline-flex';
-      await this.populateTemplateCategories(currentType, t.categoryId);
     } else {
-      if (titleEl) titleEl.textContent = 'Tạo mẫu ghi chép mới';
+      this.editingTemplateId = null;
+      if (titleEl) titleEl.textContent = 'Tạo Mẫu Ghi Chép';
       if (idInput) idInput.value = '';
-      if (titleInput) titleInput.value = '';
-      if (amountInput) amountInput.value = '';
-      const r = document.getElementById('tpl-type-expense');
-      if (r) r.checked = true;
+      if (titleInput) {
+        titleInput.value = '';
+        if (clearTitleBtn) clearTitleBtn.style.display = 'none';
+      }
+      if (amountInput) amountInput.value = '0';
+      if (amountDisplay) amountDisplay.textContent = '0';
+      if (noteInput) {
+        noteInput.value = '';
+        this.handleTemplateNoteInput('');
+      }
+      currentType = this.currentTemplateManagerTab || this.currentTemplateTab || 'expense';
+      this.switchTemplateEditorType(currentType);
+      this.clearTemplateCategory();
+      this.clearTemplateAccount();
       if (delBtn) delBtn.style.display = 'none';
-      await this.populateTemplateCategories('expense');
     }
 
-    modal.classList.add('open');
+    this.toggleTemplateVariablesHelp(false);
+
+    if (window.app) {
+      window.app.switchView('template-editor');
+    }
+
     if (window.lucide) lucide.createIcons();
   },
 
   closeTemplateEditor() {
-    const modal = document.getElementById('modal-template-editor');
-    if (modal) modal.classList.remove('open');
+    if (window.app && window.app.currentView === 'template-editor') {
+      window.app.goBack();
+    }
   },
 
-  async onTemplateTypeChanged() {
-    const isIncome = document.getElementById('tpl-type-income')?.checked;
-    await this.populateTemplateCategories(isIncome ? 'income' : 'expense');
+  switchTemplateEditorType(type) {
+    this.currentTemplateEditorType = type;
+    const tabExp = document.getElementById('tpl-editor-tab-expense');
+    const tabInc = document.getElementById('tpl-editor-tab-income');
+    if (tabExp) tabExp.classList.toggle('active', type === 'expense');
+    if (tabInc) tabInc.classList.toggle('active', type === 'income');
+
+    const amountDisplay = document.getElementById('tpl-page-amount-display');
+    if (amountDisplay) {
+      amountDisplay.style.color = type === 'income' ? '#10b981' : '#f43f5e';
+    }
+
+    if (this.templateEditorCategory && this.templateEditorCategory.type !== type) {
+      this.clearTemplateCategory();
+    }
   },
 
-  async populateTemplateCategories(type, selectedId = null) {
-    const select = document.getElementById('tpl-category-select');
-    if (!select) return;
-    const cats = await db.categories.where('isDeleted').equals(0).toArray();
-    const filtered = cats.filter(c => c.type === type);
-    select.innerHTML = filtered.map(c => `
-      <option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${c.name}</option>
+  openTemplateCategoryPicker() {
+    this._categoryPickerMode = 'template';
+    const type = this.currentTemplateEditorType || 'expense';
+    this.currentCatTab = type;
+    if (window.app) {
+      window.app.switchView('category-picker');
+    }
+    this.switchCategoryTab(type);
+  },
+
+  setTemplateCategory(cat) {
+    if (!cat) return;
+    this.templateEditorCategory = cat;
+    const catIdInput = document.getElementById('tpl-page-category-id');
+    const nameEl = document.getElementById('tpl-selected-cat-name');
+    const subEl = document.getElementById('tpl-selected-cat-subtext');
+    const iconBubble = document.getElementById('tpl-selected-cat-icon');
+    const clearBtn = document.getElementById('btn-clear-tpl-cat');
+
+    if (catIdInput) catIdInput.value = cat.id;
+    if (nameEl) nameEl.textContent = cat.name;
+    if (subEl) subEl.textContent = 'Chạm để thay đổi danh mục';
+    if (iconBubble) {
+      iconBubble.style.background = cat.color ? cat.color + '22' : 'rgba(13, 148, 136, 0.15)';
+      iconBubble.style.color = cat.color || 'var(--primary)';
+      iconBubble.innerHTML = `<i data-lucide="${cat.icon || 'tag'}"></i>`;
+    }
+    if (clearBtn) clearBtn.style.display = 'inline-flex';
+    if (window.lucide) lucide.createIcons();
+  },
+
+  clearTemplateCategory(e) {
+    if (e) e.stopPropagation();
+    this.templateEditorCategory = null;
+    const catIdInput = document.getElementById('tpl-page-category-id');
+    const nameEl = document.getElementById('tpl-selected-cat-name');
+    const subEl = document.getElementById('tpl-selected-cat-subtext');
+    const iconBubble = document.getElementById('tpl-selected-cat-icon');
+    const clearBtn = document.getElementById('btn-clear-tpl-cat');
+
+    if (catIdInput) catIdInput.value = '';
+    if (nameEl) nameEl.textContent = 'Chưa chọn hạng mục';
+    if (subEl) subEl.textContent = 'Chạm để chọn danh mục (tùy chọn)';
+    if (iconBubble) {
+      iconBubble.style.background = 'rgba(148, 163, 184, 0.15)';
+      iconBubble.style.color = 'var(--text-muted)';
+      iconBubble.innerHTML = `<i data-lucide="tag"></i>`;
+    }
+    if (clearBtn) clearBtn.style.display = 'none';
+    if (window.lucide) lucide.createIcons();
+  },
+
+  openTemplateAccountPicker() {
+    const curVal = document.getElementById('tpl-page-account-id')?.value || '';
+    const type = this.currentTemplateEditorType || 'expense';
+    const title = type === 'income' ? 'Chọn Tài Khoản Nhận' : 'Chọn Nguồn Tiền';
+    if (window.UIAccounts) {
+      window.UIAccounts.openPickerBottomSheet({
+        title,
+        currentAccountId: curVal,
+        onSelect: async (accId) => {
+          if (!accId) return;
+          await this.setTemplateAccount(accId);
+        }
+      });
+    }
+  },
+
+  async setTemplateAccount(accId) {
+    const acc = await db.accounts.get(Number(accId));
+    if (!acc) return;
+    const input = document.getElementById('tpl-page-account-id');
+    const label = document.getElementById('tpl-account-label');
+    const subtext = document.getElementById('tpl-account-subtext');
+    const iconBubble = document.getElementById('tpl-account-icon-bubble');
+    const clearBtn = document.getElementById('btn-clear-tpl-account');
+
+    if (input) input.value = acc.id;
+    if (label) label.textContent = acc.name;
+    if (subtext) subtext.textContent = 'Số dư: ' + new Intl.NumberFormat('vi-VN').format(acc.balance || 0) + '₫';
+    if (iconBubble) {
+      iconBubble.style.background = acc.color ? acc.color + '22' : 'rgba(99, 102, 241, 0.15)';
+      iconBubble.style.color = acc.color || 'var(--primary)';
+    }
+    if (clearBtn) clearBtn.style.display = 'inline-flex';
+    if (window.lucide) lucide.createIcons();
+  },
+
+  clearTemplateAccount(e) {
+    if (e) e.stopPropagation();
+    const input = document.getElementById('tpl-page-account-id');
+    const label = document.getElementById('tpl-account-label');
+    const subtext = document.getElementById('tpl-account-subtext');
+    const iconBubble = document.getElementById('tpl-account-icon-bubble');
+    const clearBtn = document.getElementById('btn-clear-tpl-account');
+
+    if (input) input.value = '';
+    if (label) label.textContent = 'Chưa chọn tài khoản';
+    if (subtext) subtext.textContent = 'Mặc định giữ nguyên tài khoản khi ghi';
+    if (iconBubble) {
+      iconBubble.style.background = 'rgba(148, 163, 184, 0.15)';
+      iconBubble.style.color = 'var(--text-muted)';
+    }
+    if (clearBtn) clearBtn.style.display = 'none';
+  },
+
+  handleTemplateNoteInput(val) {
+    const clearBtn = document.getElementById('btn-clear-tpl-note');
+    if (clearBtn) {
+      clearBtn.style.display = val ? 'inline-flex' : 'none';
+    }
+    const previewWrap = document.getElementById('tpl-note-preview-wrap');
+    const previewVal = document.getElementById('tpl-note-preview-val');
+    if (!val || !val.trim()) {
+      if (previewWrap) previewWrap.style.display = 'none';
+      return;
+    }
+    const resolved = this.resolveTemplateVariables(val);
+    if (previewWrap && previewVal) {
+      if (resolved !== val) {
+        previewWrap.style.display = 'flex';
+        previewVal.textContent = resolved;
+      } else {
+        previewWrap.style.display = 'none';
+      }
+    }
+  },
+
+  clearTemplateNote(e) {
+    if (e) e.stopPropagation();
+    const input = document.getElementById('tpl-page-note-input');
+    if (input) {
+      input.value = '';
+      this.handleTemplateNoteInput('');
+      input.focus();
+    }
+  },
+
+  toggleTemplateVariablesHelp(forceState) {
+    const panel = document.getElementById('tpl-variables-help-panel');
+    const btn = document.getElementById('btn-tpl-var-help');
+    if (!panel) return;
+    const isShowing = panel.style.display !== 'none';
+    const show = forceState !== undefined ? forceState : !isShowing;
+    panel.style.display = show ? 'block' : 'none';
+    if (btn) {
+      btn.style.background = show ? 'rgba(13, 148, 136, 0.15)' : 'var(--bg-card)';
+      btn.style.borderColor = show ? 'var(--primary)' : 'var(--border-color)';
+    }
+    if (show) {
+      this.renderTemplateVariablesHelpTable();
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  insertTemplateVariable(token) {
+    const input = document.getElementById('tpl-page-note-input');
+    if (!input) return;
+    const start = input.selectionStart || input.value.length;
+    const end = input.selectionEnd || input.value.length;
+    const text = input.value;
+    input.value = text.substring(0, start) + token + text.substring(end);
+    input.focus();
+    const newPos = start + token.length;
+    input.setSelectionRange(newPos, newPos);
+    this.handleTemplateNoteInput(input.value);
+  },
+
+  renderTemplateVariablesHelpTable() {
+    const container = document.getElementById('tpl-variables-table-list');
+    if (!container) return;
+    const now = new Date();
+    const vars = [
+      { token: '$MM', desc: 'Tháng 2 chữ số (01 - 12)', eg: this.resolveTemplateVariables('$MM', now) },
+      { token: '$M', desc: 'Tháng 1-2 chữ số (1 - 12)', eg: this.resolveTemplateVariables('$M', now) },
+      { token: '$PREV_MM', desc: 'Tháng trước (2 chữ số: 01 - 12)', eg: this.resolveTemplateVariables('$PREV_MM', now) },
+      { token: '$NEXT_MM', desc: 'Tháng sau (2 chữ số: 01 - 12)', eg: this.resolveTemplateVariables('$NEXT_MM', now) },
+      { token: '$YYYY', desc: 'Năm đầy đủ 4 chữ số', eg: this.resolveTemplateVariables('$YYYY', now) },
+      { token: '$YY', desc: 'Năm 2 chữ số cuối', eg: this.resolveTemplateVariables('$YY', now) },
+      { token: '$DD', desc: 'Ngày trong tháng (01 - 31)', eg: this.resolveTemplateVariables('$DD', now) },
+      { token: '$D', desc: 'Ngày 1-2 chữ số (1 - 31)', eg: this.resolveTemplateVariables('$D', now) },
+      { token: '$DATE', desc: 'Ngày đầy đủ (DD/MM/YYYY)', eg: this.resolveTemplateVariables('$DATE', now) },
+      { token: '$SHORT_DATE', desc: 'Ngày ngắn (DD/MM)', eg: this.resolveTemplateVariables('$SHORT_DATE', now) },
+      { token: '$Q', desc: 'Số quý trong năm (1 - 4)', eg: 'Q' + this.resolveTemplateVariables('$Q', now) },
+      { token: '$QUY', desc: 'Tên quý tiếng Việt', eg: this.resolveTemplateVariables('$QUY', now) },
+      { token: '$WEEK', desc: 'Số tuần trong năm', eg: 'Tuần ' + this.resolveTemplateVariables('$WEEK', now) },
+      { token: '$THU', desc: 'Thứ trong tuần (Thứ Hai - Chủ Nhật)', eg: this.resolveTemplateVariables('$THU', now) },
+      { token: '$T', desc: 'Thứ viết tắt (T2 - CN)', eg: this.resolveTemplateVariables('$T', now) },
+      { token: '$TIME', desc: 'Giờ phút hiện tại (HH:MM)', eg: this.resolveTemplateVariables('$TIME', now) }
+    ];
+
+    container.innerHTML = vars.map(v => `
+      <div class="tpl-var-row" onclick="UITransactions.insertTemplateVariable('${v.token}')" title="Bấm để chèn ${v.token}">
+        <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+          <span class="tpl-var-badge">${v.token}</span>
+          <span class="tpl-var-desc">${v.desc}</span>
+        </div>
+        <div class="tpl-var-val">${v.eg}</div>
+      </div>
     `).join('');
   },
 
-  async handleSaveTemplate(e) {
-    if (e) e.preventDefault();
-    const idInput = document.getElementById('tpl-id-input');
-    const titleInput = document.getElementById('tpl-title-input');
-    const amountInput = document.getElementById('tpl-amount-input');
-    const catSelect = document.getElementById('tpl-category-select');
-    const isIncome = document.getElementById('tpl-type-income')?.checked;
+  async handleSaveTemplatePage(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const idInput = document.getElementById('tpl-page-id-input');
+    const titleInput = document.getElementById('tpl-page-title-input');
+    const amountInput = document.getElementById('tpl-page-amount-input');
+    const catIdInput = document.getElementById('tpl-page-category-id');
+    const accIdInput = document.getElementById('tpl-page-account-id');
+    const noteInput = document.getElementById('tpl-page-note-input');
 
     const title = titleInput?.value?.trim();
     if (!title) {
-      showToast('Vui lòng nhập tên mẫu', 'warning');
+      showToast('Vui lòng nhập tên mẫu ghi chép', 'warning');
+      if (titleInput) titleInput.focus();
       return;
     }
 
-    const categoryId = Number(catSelect?.value) || 1;
-    const cat = await db.categories.get(categoryId);
-    const amount = Number(amountInput?.value) || 0;
-    const type = isIncome ? 'income' : 'expense';
-    const now = new Date().toISOString();
+    const type = this.currentTemplateEditorType || 'expense';
+    const rawAmt = amountInput?.value ? String(amountInput.value).replace(/\./g, '') : '0';
+    const amount = Number(rawAmt) || 0;
+    const categoryId = catIdInput?.value ? Number(catIdInput.value) : null;
+    const accountId = accIdInput?.value ? Number(accIdInput.value) : null;
+    const note = noteInput?.value?.trim() || '';
 
+    let cat = null;
+    if (categoryId) {
+      cat = await db.categories.get(categoryId);
+    }
+
+    const now = new Date().toISOString();
     const tplData = {
       title,
       type,
       amount,
-      categoryId,
-      icon: cat?.icon || 'tag',
-      color: cat?.color || 'var(--primary)',
+      categoryId: categoryId || null,
+      accountId: accountId || null,
+      note,
+      icon: cat?.icon || (type === 'income' ? 'arrow-up-circle' : 'arrow-down-circle'),
+      color: cat?.color || (type === 'income' ? '#10b981' : '#f43f5e'),
       frequency: 'template',
       isTemplate: 1,
       isDeleted: 0,
       updatedAt: now
     };
 
-    if (idInput && idInput.value) {
-      await db.recurring.update(Number(idInput.value), tplData);
+    const targetId = idInput?.value ? Number(idInput.value) : null;
+    if (targetId) {
+      await db.recurring.update(targetId, tplData);
       showToast('Đã cập nhật mẫu ghi chép', 'success');
     } else {
+      const existing = await this.getTemplates(type);
+      const maxOrder = existing.reduce((max, t) => Math.max(max, t.order || 0), 0);
+      tplData.order = maxOrder + 1;
       await db.recurring.add(tplData);
       showToast('Đã tạo mẫu ghi chép mới', 'success');
     }
 
-    this.closeTemplateEditor();
     await this.renderTemplateManagerPage();
     await this.renderKeypadTemplates();
+
+    if (window.app) {
+      window.app.goBack();
+    }
+  },
+
+  async handleSaveTemplate(e) {
+    return this.handleSaveTemplatePage(e);
   },
 
   async handleDeleteTemplate(id = null) {
-    const targetId = id || Number(document.getElementById('tpl-id-input')?.value);
+    const targetId = id || Number(document.getElementById('tpl-page-id-input')?.value);
     if (!targetId) return;
 
     if (!confirm('Bạn có chắc chắn muốn xóa mẫu ghi chép này?')) return;
 
     await db.recurring.update(targetId, { isDeleted: 1, updatedAt: new Date().toISOString() });
     showToast('Đã xóa mẫu ghi chép', 'success');
-    this.closeTemplateEditor();
     await this.renderTemplateManagerPage();
     await this.renderKeypadTemplates();
+
+    if (window.app && window.app.currentView === 'template-editor') {
+      window.app.goBack();
+    }
   },
 
   /* ==================== QUICK CATEGORY GRID (2x4 FIXED) ==================== */
@@ -1902,6 +2289,14 @@ const UITransactions = {
   },
 
   async selectCategory(cat) {
+    if (this._categoryPickerMode === 'template') {
+      this._categoryPickerMode = null;
+      this.setTemplateCategory(cat);
+      if (window.app) {
+        window.app.switchView('template-editor', true);
+      }
+      return;
+    }
     this.selectedCategory = cat;
     document.getElementById('tx-type-input').value = cat.type;
     document.getElementById('tx-category-id-input').value = cat.id;

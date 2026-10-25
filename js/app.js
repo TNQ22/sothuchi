@@ -937,6 +937,31 @@ class App {
       }
     }
 
+    // Sub-pages: template-editor → template-manager (or new-transaction)
+    if (this.currentView === 'template-editor') {
+      const prev = (window.UITransactions && window.UITransactions._templateEditorPrevView) || 'template-manager';
+      this.switchView(prev, true);
+      if (prev === 'new-transaction') {
+        setTimeout(() => {
+          if (window.UITransactions) {
+            window.UITransactions.openKeypad('amount');
+            window.UITransactions.toggleKeypadTemplates(true);
+          }
+        }, 120);
+      }
+      return;
+    }
+
+    if (this.currentView === 'category-picker') {
+      if (window.UITransactions && window.UITransactions._categoryPickerMode === 'template') {
+        window.UITransactions._categoryPickerMode = null;
+        this.switchView('template-editor', true);
+        return;
+      }
+      this.switchView('new-transaction', true);
+      return;
+    }
+
     // Sub-pages (category-picker, borrow-select, template-manager) → back to new-transaction
     if (this.currentView === 'template-manager') {
       this.switchView('new-transaction', true);
@@ -1055,6 +1080,7 @@ class App {
       'transactions',
       'category-picker',
       'template-manager',
+      'template-editor',
       'borrow-select',
       'account-form',
       'account-provider',

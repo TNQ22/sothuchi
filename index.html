@@ -3636,6 +3636,173 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         </div>
       </section>
 
+      <!-- View: Sửa / Thêm Mẫu Ghi Chép (Dedicated Sub-Page with Transaction Form Layout) -->
+      <section id="view-template-editor" class="page-view tx-page-view">
+        <div class="tx-page-card-wrapper" style="position: relative; min-height: 100vh;">
+          <!-- Page Header -->
+          <div class="tx-page-header">
+            <div class="tx-header-left">
+              <button type="button" class="btn-icon tx-header-btn" onclick="window.app.goBack()" title="Trở lại">
+                <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+            <div class="tx-header-center">
+              <span id="template-editor-header-title" style="font-weight: 700; font-size: 1.05rem; color: var(--text-primary);">Tạo Mẫu Ghi Chép</span>
+            </div>
+            <div class="tx-header-right">
+              <button type="button" class="btn-icon tx-header-btn tx-header-done-btn" onclick="UITransactions.handleSaveTemplatePage(event)" title="Lưu mẫu ghi chép">
+                <i data-lucide="check" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+          </div>
+
+          <form id="template-editor-page-form" onsubmit="UITransactions.handleSaveTemplatePage(event)">
+            <input type="hidden" id="tpl-page-id-input">
+            <input type="hidden" id="tpl-page-category-id" value="">
+            <input type="hidden" id="tpl-page-account-id" value="">
+            <input type="hidden" id="tpl-page-amount-input" value="0">
+
+            <div class="tx-page-body" style="padding: 12px 14px 100px 14px; display: flex; flex-direction: column; gap: 10px;">
+              <!-- 1. Trên cùng là 2 tab thu chi 2 bên để chọn -->
+              <div class="tpl-editor-tabs">
+                <button type="button" class="tpl-editor-tab active" id="tpl-editor-tab-expense" data-type="expense" onclick="UITransactions.switchTemplateEditorType('expense')">
+                  <i data-lucide="arrow-down-circle" style="width: 18px; height: 18px;"></i>
+                  <span>Chi tiền (Mẫu chi)</span>
+                </button>
+                <button type="button" class="tpl-editor-tab" id="tpl-editor-tab-income" data-type="income" onclick="UITransactions.switchTemplateEditorType('income')">
+                  <i data-lucide="arrow-up-circle" style="width: 18px; height: 18px;"></i>
+                  <span>Thu tiền (Mẫu thu)</span>
+                </button>
+              </div>
+
+              <!-- 2. Bên dưới nó là ô Tên mẫu -->
+              <div class="tx-section-card" style="padding: 12px 14px;">
+                <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block;">
+                  Tên mẫu ghi chép <span style="color: var(--expense, #f43f5e);">*</span>
+                </label>
+                <div class="input-clearable-wrapper" style="position: relative;">
+                  <input type="text" id="tpl-page-title-input" class="tx-clean-input form-control" placeholder="Ví dụ: Ăn sáng chay, Quỹ gia đình, Tiền phòng..." required style="font-size: 0.95rem; font-weight: 600; padding: 10px 32px 10px 12px; width: 100%;" oninput="document.getElementById('btn-clear-tpl-title').style.display = this.value ? 'inline-flex' : 'none';">
+                  <button type="button" class="btn-clear-input" id="btn-clear-tpl-title" title="Xóa tên mẫu" onclick="document.getElementById('tpl-page-title-input').value=''; this.style.display='none'; document.getElementById('tpl-page-title-input').focus();">
+                    <i data-lucide="x"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 3. Và bên dưới là bắt đầu ô nhập số tiền -->
+              <div class="tx-section-card tx-amount-card" onclick="UITransactions.openKeypad('tpl-amount')" style="cursor: pointer;">
+                <div class="tx-amount-centered-display">
+                  <span id="tpl-page-amount-display" class="tx-amount-val" style="color: #f43f5e;">0</span>
+                  <span class="tx-amount-cur">₫</span>
+                </div>
+                <div style="text-align: center; font-size: 0.74rem; color: var(--text-muted); margin-top: 4px;">
+                  Nhập 0 nếu muốn gõ số tiền mỗi lần ghi chép
+                </div>
+              </div>
+
+              <!-- 4. Riêng chọn hạng mục mặc định trống và không có hay dùng vì không phù hợp -->
+              <div class="tx-section-card tx-category-card" id="tpl-category-section-card">
+                <div class="category-selected-row" id="tpl-selected-category-card" onclick="UITransactions.openTemplateCategoryPicker()">
+                  <div class="category-selected-left">
+                    <div id="tpl-selected-cat-icon" class="category-icon-bubble" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted);">
+                      <i data-lucide="tag"></i>
+                    </div>
+                    <div>
+                      <div id="tpl-selected-cat-name" style="font-weight: 600; font-size: 0.95rem;">Chưa chọn hạng mục</div>
+                      <div id="tpl-selected-cat-subtext" style="font-size: 0.75rem; color: var(--text-muted);">Chạm để chọn danh mục (tùy chọn)</div>
+                    </div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 4px;">
+                    <button type="button" class="btn-icon" id="btn-clear-tpl-cat" style="display: none; width: 26px; height: 26px;" onclick="UITransactions.clearTemplateCategory(event)" title="Bỏ chọn danh mục">
+                      <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                    </button>
+                    <i data-lucide="chevron-right" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 5. Bên dưới nữa sẽ tương tự trang ghi chép thu chi -->
+              <div class="tx-section-card tx-details-card">
+                <!-- Tài khoản -->
+                <div class="tx-info-row" id="tpl-account-row" onclick="UITransactions.openTemplateAccountPicker()" style="cursor: pointer;">
+                  <div class="tx-info-icon-bubble" id="tpl-account-icon-bubble" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted);">
+                    <i data-lucide="wallet"></i>
+                  </div>
+                  <div class="tx-info-content" style="min-width: 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                      <div id="tpl-account-label" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">Chưa chọn tài khoản</div>
+                      <button type="button" class="btn-icon" id="btn-clear-tpl-account" style="display: none; width: 22px; height: 22px; flex-shrink: 0;" onclick="UITransactions.clearTemplateAccount(event)" title="Bỏ chọn tài khoản">
+                        <i data-lucide="x" style="width: 13px; height: 13px;"></i>
+                      </button>
+                    </div>
+                    <div id="tpl-account-subtext" style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.2;">Mặc định giữ nguyên tài khoản khi ghi</div>
+                  </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron" id="tpl-account-chevron"></i>
+                </div>
+
+                <!-- Ghi chú mẫu & Nút ? công thức biến -->
+                <div style="padding: 12px 14px 10px 14px; border-top: 1px solid var(--border-color);">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <i data-lucide="file-text" style="width: 15px; height: 15px; color: var(--text-muted);"></i>
+                      <span style="font-weight: 600; font-size: 0.84rem; color: var(--text-secondary);">Ghi chú mẫu (Hỗ trợ biến động)</span>
+                    </div>
+                    <button type="button" class="btn-icon tpl-var-help-btn" id="btn-tpl-var-help" onclick="UITransactions.toggleTemplateVariablesHelp()" title="Xem chú thích & công thức biến" style="width: 26px; height: 26px; border-radius: 50%; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--primary); display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                      <i data-lucide="help-circle" style="width: 15px; height: 15px;"></i>
+                    </button>
+                  </div>
+
+                  <div class="input-clearable-wrapper" style="position: relative;">
+                    <input type="text" id="tpl-page-note-input" class="tx-clean-input form-control" placeholder="Ví dụ: Quỹ gia đình T$MM, Tiền phòng T$MM/$YYYY..." oninput="UITransactions.handleTemplateNoteInput(this.value)" style="font-size: 0.9rem; padding: 10px 32px 10px 12px; width: 100%;">
+                    <button type="button" class="btn-clear-input" id="btn-clear-tpl-note" title="Xóa ghi chú" onclick="UITransactions.clearTemplateNote(event)">
+                      <i data-lucide="x"></i>
+                    </button>
+                  </div>
+
+                  <!-- Live preview banner -->
+                  <div id="tpl-note-preview-wrap" style="display: none; margin-top: 8px; padding: 8px 10px; background: rgba(13, 148, 136, 0.1); border: 1px dashed var(--primary); border-radius: 8px; font-size: 0.8rem; color: var(--text-primary); align-items: center; gap: 6px;">
+                    <span style="color: var(--primary); font-weight: 600; flex-shrink: 0;">👉 Xem trước khi ghi:</span>
+                    <span id="tpl-note-preview-val" style="font-weight: 700; color: var(--primary); word-break: break-all;"></span>
+                  </div>
+
+                  <!-- Formula Guide & Variable List Drawer -->
+                  <div id="tpl-variables-help-panel" class="tpl-variables-help-panel" style="display: none; margin-top: 10px; padding: 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                      <div style="font-weight: 700; font-size: 0.86rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                        <span>✨ Biến tự động</span>
+                        <span style="font-size: 0.72rem; font-weight: 500; color: var(--text-muted);">(Chạm để chèn)</span>
+                      </div>
+                      <button type="button" class="btn-icon" style="width: 22px; height: 22px;" onclick="UITransactions.toggleTemplateVariablesHelp(false)">
+                        <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                      </button>
+                    </div>
+                    <div style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
+                      Khi bạn dùng mẫu này để ghi chép, các biến sẽ được tự động thay thế bằng thời gian thực tế tại thời điểm ghi.
+                    </div>
+                    <div id="tpl-variables-table-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto;">
+                      <!-- Populated via JS -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Nút hành động cuối trang -->
+              <div class="tx-bottom-action-row" style="padding: 10px 0; display: flex; gap: 10px; align-items: center; margin-top: 6px;">
+                <!-- Nút Xóa (khi đang sửa) -->
+                <button type="button" id="tpl-page-delete-btn" onclick="UITransactions.handleDeleteTemplate()" style="display: none; flex: 1; height: 46px; background: rgba(244,63,94,0.12); color: #fb7185; border: 1px solid rgba(244,63,94,0.3); border-radius: var(--radius-md); font-size: 0.95rem; font-weight: 600; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s ease;">
+                  <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
+                  <span>Xóa Mẫu</span>
+                </button>
+                <!-- Nút Lưu -->
+                <button type="submit" class="btn-primary tx-submit-bottom-btn" style="flex: 2; height: 46px;">
+                  <i data-lucide="check" style="width: 18px; height: 18px;"></i>
+                  <span>Lưu Mẫu</span>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </section>
+
       <!-- View: Chọn Người (Dedicated Sub-Page) -->
       <section id="view-borrow-select" class="page-view tx-page-view">
         <div class="tx-page-card-wrapper">
@@ -4861,61 +5028,6 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
             </button>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== TEMPLATE EDITOR MODAL (TẠO / SỬA MẪU) ==================== (TẠO / SỬA MẪU) ==================== -->
-  <div id="modal-template-editor" class="modal-overlay">
-    <div class="modal-backdrop" onclick="UITransactions.closeTemplateEditor()"></div>
-    <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 class="modal-title" id="template-editor-title">Tạo mẫu ghi chép</h3>
-          <button type="button" class="btn-icon" onclick="UITransactions.closeTemplateEditor()">
-            <i data-lucide="x"></i>
-          </button>
-        </div>
-        <form id="template-editor-form" onsubmit="UITransactions.handleSaveTemplate(event)">
-          <input type="hidden" id="tpl-id-input">
-          <div class="modal-body" style="padding: 14px; display: flex; flex-direction: column; gap: 12px;">
-            <div class="form-group">
-              <label class="form-label">Tên mẫu ghi chép <span style="color:red;">*</span></label>
-              <input type="text" id="tpl-title-input" class="form-control" placeholder="Ví dụ: Ăn sáng chay, Ăn tiệm..." required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Loại giao dịch</label>
-              <div class="form-row" style="display: flex; gap: 16px;">
-                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                  <input type="radio" name="tpl-type" id="tpl-type-expense" value="expense" checked onchange="UITransactions.onTemplateTypeChanged()">
-                  <span>Chi tiền (Mẫu chi)</span>
-                </label>
-                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                  <input type="radio" name="tpl-type" id="tpl-type-income" value="income" onchange="UITransactions.onTemplateTypeChanged()">
-                  <span>Thu tiền (Mẫu thu)</span>
-                </label>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Hạng mục / Danh mục <span style="color:red;">*</span></label>
-              <select id="tpl-category-select" class="form-control" required>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Số tiền mặc định (₫) (nhập 0 nếu muốn gõ mỗi lần)</label>
-              <input type="number" id="tpl-amount-input" class="form-control" placeholder="0" min="0" step="1000">
-            </div>
-          </div>
-          <div class="modal-footer" style="display: flex; justify-content: space-between; padding: 12px 14px;">
-            <button type="button" id="btn-delete-template" class="btn btn-danger" style="display: none;" onclick="UITransactions.handleDeleteTemplate()">
-              <i data-lucide="trash-2" style="width: 15px; height: 15px;"></i> Xóa
-            </button>
-            <div style="display: flex; gap: 8px; margin-left: auto;">
-              <button type="button" class="btn btn-secondary" onclick="UITransactions.closeTemplateEditor()">Hủy</button>
-              <button type="submit" class="btn btn-primary">Lưu mẫu</button>
-            </div>
-          </div>
-        </form>
       </div>
     </div>
   </div>

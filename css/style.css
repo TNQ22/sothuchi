@@ -13259,3 +13259,102 @@ body.light .ptr-circle-badge,
 .sync-popover-dot.local {
   background: #64748b;
 }
+
+/* ==================== TEMPLATE EDITOR PAGE ==================== */
+.tpl-editor-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.tpl-editor-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 12px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tpl-editor-tab[data-type="expense"].active {
+  background: rgba(244, 63, 94, 0.12);
+  color: #f43f5e;
+  border-color: rgba(244, 63, 94, 0.4);
+}
+
+.tpl-editor-tab[data-type="expense"] i {
+  color: #f43f5e;
+}
+
+.tpl-editor-tab[data-type="income"].active {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.tpl-editor-tab[data-type="income"] i {
+  color: #10b981;
+}
+
+/* Template Variables Formula Help Panel */
+.tpl-variables-help-panel {
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  animation: fadeIn 0.18s ease;
+}
+
+.tpl-var-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.tpl-var-row:hover,
+.tpl-var-row:active {
+  background: rgba(13, 148, 136, 0.12);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.tpl-var-badge {
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  font-size: 0.78rem;
+  background: rgba(13, 148, 136, 0.18);
+  color: var(--primary);
+  padding: 3px 7px;
+  border-radius: 5px;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.tpl-var-desc {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  line-height: 1.25;
+}
+
+.tpl-var-val {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  flex-shrink: 0;
+  margin-left: 8px;
+}
