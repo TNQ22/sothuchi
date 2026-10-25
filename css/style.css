@@ -13367,3 +13367,91 @@ body.light .ptr-circle-badge,
   flex-shrink: 0;
   margin-left: 8px;
 }
+
+
+/* ==================== TEMPLATE MANAGER TABS (CĂNG ĐỀU, ĐỎ - XANH) ==================== */
+.tpl-manager-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: var(--bg-surface);
+  padding: 4px;
+  border-radius: var(--radius-md, 12px);
+  border: 1px solid var(--border-color);
+}
+
+.tpl-manager-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: calc(var(--radius-md, 12px) - 2px);
+  font-size: 0.95rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tpl-manager-tab:hover {
+  color: var(--text-primary);
+}
+
+.tpl-manager-tab[data-type="expense"] i,
+.tpl-manager-tab[data-type="expense"] svg {
+  color: #f43f5e;
+  width: 18px;
+  height: 18px;
+}
+
+.tpl-manager-tab[data-type="income"] i,
+.tpl-manager-tab[data-type="income"] svg {
+  color: #10b981;
+  width: 18px;
+  height: 18px;
+}
+
+.tpl-manager-tab[data-type="expense"].active {
+  background: rgba(244, 63, 94, 0.14);
+  color: #f43f5e;
+  border-color: rgba(244, 63, 94, 0.35);
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.12);
+}
+
+.tpl-manager-tab[data-type="income"].active {
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.12);
+}
+
+/* ==================== BORDERED INPUT CHO GHI CHÚ VÀ TÊN MẪU ==================== */
+.tpl-bordered-input {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 10px);
+  padding: 10px 34px 10px 12px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.tpl-bordered-input::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+.tpl-bordered-input:focus {
+  border-color: var(--primary);
+  background: var(--bg-card);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+}
+

@@ -1887,18 +1887,25 @@ const UITransactions = {
     }
   },
 
-  openTemplateCategoryPicker() {
+  async openTemplateCategoryPicker() {
     this._categoryPickerMode = 'template';
     const type = this.currentTemplateEditorType || 'expense';
     this.currentCatTab = type;
     if (window.app) {
       window.app.switchView('category-picker');
     }
+    const debtTabBtn = document.querySelector('.cat-tab-btn[data-tab="debt"]');
+    if (debtTabBtn) debtTabBtn.style.display = 'none';
     this.switchCategoryTab(type);
+    await this.renderCategoryPickerTabs();
+    if (window.lucide) lucide.createIcons();
   },
 
   setTemplateCategory(cat) {
     if (!cat) return;
+    if (cat.type && (cat.type === 'expense' || cat.type === 'income') && cat.type !== this.currentTemplateEditorType) {
+      this.switchTemplateEditorType(cat.type);
+    }
     this.templateEditorCategory = cat;
     const catIdInput = document.getElementById('tpl-page-category-id');
     const nameEl = document.getElementById('tpl-selected-cat-name');
@@ -1944,12 +1951,18 @@ const UITransactions = {
     const type = this.currentTemplateEditorType || 'expense';
     const title = type === 'income' ? 'Chọn Tài Khoản Nhận' : 'Chọn Nguồn Tiền';
     if (window.UIAccounts) {
-      window.UIAccounts.openPickerBottomSheet({
-        title,
-        currentAccountId: curVal,
+      window.UIAccounts.openSourceAccountPicker({
+        title: title,
+        allowNone: true,
+        noneLabel: 'Chưa chọn tài khoản (Mặc định)',
+        noneDesc: 'Giữ nguyên tài khoản hiện tại khi áp dụng mẫu',
+        selectedId: curVal,
         onSelect: async (accId) => {
-          if (!accId) return;
-          await this.setTemplateAccount(accId);
+          if (!accId) {
+            this.clearTemplateAccount();
+          } else {
+            await this.setTemplateAccount(accId);
+          }
         }
       });
     }
@@ -1968,8 +1981,14 @@ const UITransactions = {
     if (label) label.textContent = acc.name;
     if (subtext) subtext.textContent = 'Số dư: ' + new Intl.NumberFormat('vi-VN').format(acc.balance || 0) + '₫';
     if (iconBubble) {
-      iconBubble.style.background = acc.color ? acc.color + '22' : 'rgba(99, 102, 241, 0.15)';
-      iconBubble.style.color = acc.color || 'var(--primary)';
+      if (window.UIAccounts && typeof window.UIAccounts.renderLogoBadge === 'function') {
+        iconBubble.style.background = 'transparent';
+        iconBubble.innerHTML = window.UIAccounts.renderLogoBadge(acc, 36);
+      } else {
+        iconBubble.style.background = acc.color ? acc.color + '22' : 'rgba(99, 102, 241, 0.15)';
+        iconBubble.style.color = acc.color || 'var(--primary)';
+        iconBubble.innerHTML = '<i data-lucide="wallet"></i>';
+      }
     }
     if (clearBtn) clearBtn.style.display = 'inline-flex';
     if (window.lucide) lucide.createIcons();
