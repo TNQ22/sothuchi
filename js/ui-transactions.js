@@ -1347,6 +1347,11 @@ const UITransactions = {
       if (type) {
         list = list.filter(t => t.type === type);
       }
+      list.sort((a, b) => {
+        const orderA = a.order !== undefined ? a.order : a.id;
+        const orderB = b.order !== undefined ? b.order : b.id;
+        return orderA - orderB;
+      });
       return list;
     } catch (err) {
       console.warn('Error loading templates:', err);
@@ -1554,60 +1559,82 @@ const UITransactions = {
     if (window.lucide) lucide.createIcons();
   },
 
-  async openTemplateManagerModal() {
-    const modal = document.getElementById('modal-template-manager');
-    if (!modal) return;
-    await this.renderTemplateManagerList();
-    modal.classList.add('open');
-    if (window.lucide) lucide.createIcons();
+  async openTemplateManagerPage() {
+    this.closeKeypad(true);
+    if (window.app) {
+      window.app.switchView('template-manager');
+    }
+    this.currentTemplateManagerTab = this.currentTemplateTab || 'expense';
+    await this.switchTemplateManagerTab(this.currentTemplateManagerTab);
   },
 
-  closeTemplateManagerModal() {
-    const modal = document.getElementById('modal-template-manager');
-    if (modal) modal.classList.remove('open');
+  async switchTemplateManagerTab(tab) {
+    this.currentTemplateManagerTab = tab;
+    const tabExp = document.getElementById('tpl-mgr-tab-expense');
+    const tabInc = document.getElementById('tpl-mgr-tab-income');
+    if (tabExp) tabExp.classList.toggle('active', tab === 'expense');
+    if (tabInc) tabInc.classList.toggle('active', tab === 'income');
+    await this.renderTemplateManagerPage();
   },
 
-  async renderTemplateManagerList() {
+  async renderTemplateManagerPage() {
     const container = document.getElementById('template-manager-list');
     if (!container) return;
-    const templates = await this.getTemplates();
+    const type = this.currentTemplateManagerTab || 'expense';
+    const templates = await this.getTemplates(type);
 
     if (templates.length === 0) {
-      container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;">Chưa có mẫu ghi chép nào</div>`;
+      container.innerHTML = `
+        <div style="text-align: center; color: var(--text-muted); padding: 50px 20px;">
+          <i data-lucide="inbox" style="width: 40px; height: 40px; margin: 0 auto 10px auto; opacity: 0.45; display: block;"></i>
+          <div style="font-weight: 600; font-size: 0.95rem;">Chưa có mẫu ${type === 'income' ? 'thu' : 'chi'} nào</div>
+          <div style="font-size: 0.8rem; margin-top: 6px; color: var(--text-muted);">Bấm nút (+) ở góc phải bên dưới để thêm mẫu mới</div>
+        </div>`;
+      if (window.lucide) lucide.createIcons();
       return;
     }
 
     let html = '';
-    for (const t of templates) {
+    for (let i = 0; i < templates.length; i++) {
+      const t = templates[i];
       const cat = t.categoryId ? await db.categories.get(Number(t.categoryId)) : null;
       const catName = cat ? cat.name : 'Chưa gán danh mục';
-      const typeBadge = t.type === 'income' 
-        ? '<span style="color:#10b981;font-size:0.72rem;background:rgba(16,185,129,0.1);padding:2px 6px;border-radius:4px;">Thu</span>' 
-        : '<span style="color:#f43f5e;font-size:0.72rem;background:rgba(244,63,94,0.1);padding:2px 6px;border-radius:4px;">Chi</span>';
-      const amtStr = t.amount > 0 ? `<span style="font-weight:600;font-size:0.78rem;">${new Intl.NumberFormat('vi-VN').format(t.amount)}₫</span>` : '<span style="color:var(--text-muted);font-size:0.75rem;">Nhập mỗi lần</span>';
+      const amtStr = t.amount > 0 ? `<span style="font-weight:600;font-size:0.8rem;color:var(--text-primary);">${new Intl.NumberFormat('vi-VN').format(t.amount)}₫</span>` : '<span style="color:var(--text-muted);font-size:0.75rem;">Nhập mỗi lần</span>';
+      const isFirst = i === 0;
+      const isLast = i === templates.length - 1;
 
       html += `
-        <div class="template-manager-row">
+        <div class="template-manager-row" data-id="${t.id}">
+          <!-- Nút điều chỉnh thứ tự nhanh (Sắp xếp) -->
+          <div class="template-reorder-btns">
+            <button type="button" class="template-reorder-btn" onclick="UITransactions.moveTemplate(${t.id}, 'up')" ${isFirst ? 'disabled' : ''} title="Di chuyển lên">
+              <i data-lucide="chevron-up" style="width: 14px; height: 14px;"></i>
+            </button>
+            <button type="button" class="template-reorder-btn" onclick="UITransactions.moveTemplate(${t.id}, 'down')" ${isLast ? 'disabled' : ''} title="Di chuyển xuống">
+              <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+            </button>
+          </div>
+
           <div class="template-manager-info">
-            <div style="width:36px;height:36px;border-radius:10px;background:${t.color ? t.color + '22' : 'rgba(13, 148, 136, 0.15)'};color:${t.color || 'var(--primary)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <i data-lucide="${t.icon || 'tag'}" style="width:18px;height:18px;"></i>
+            <div style="width:38px;height:38px;border-radius:10px;background:${t.color ? t.color + '22' : 'rgba(13, 148, 136, 0.15)'};color:${t.color || 'var(--primary)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i data-lucide="${t.icon || 'tag'}" style="width:19px;height:19px;"></i>
             </div>
-            <div style="min-width:0;">
-              <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-weight:600;font-size:0.86rem;color:var(--text-primary);">${t.title}</span>
-                ${typeBadge}
+            <div style="min-width:0;flex:1;">
+              <div style="font-weight:600;font-size:0.9rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                ${t.title}
               </div>
-              <div style="font-size:0.74rem;color:var(--text-muted);margin-top:2px;">
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">
                 ${catName} • ${amtStr}
               </div>
             </div>
           </div>
+
           <div class="template-manager-actions">
-            <button type="button" class="btn-icon" style="width:30px;height:30px;border-radius:6px;" onclick="UITransactions.openTemplateEditor(${t.id})" title="Chỉnh sửa">
-              <i data-lucide="edit" style="width:15px;height:15px;color:var(--primary);"></i>
+            <button type="button" class="btn-icon" style="width:32px;height:32px;border-radius:8px;" onclick="UITransactions.openTemplateEditor(${t.id})" title="Chỉnh sửa">
+              <i data-lucide="edit-3" style="width:16px;height:16px;color:var(--primary);"></i>
             </button>
-            <button type="button" class="btn-icon" style="width:30px;height:30px;border-radius:6px;" onclick="UITransactions.handleDeleteTemplate(${t.id})" title="Xóa">
-              <i data-lucide="trash-2" style="width:15px;height:15px;color:var(--expense);"></i>
+            <button type="button" class="btn-icon" style="width:32px;height:32px;border-radius:8px;" onclick="UITransactions.handleDeleteTemplate(${t.id})" title="Xóa">
+              <i data-lucide="trash-2" style="width:16px;height:16px;color:var(--expense);"></i>
             </button>
           </div>
         </div>
@@ -1615,6 +1642,31 @@ const UITransactions = {
     }
     container.innerHTML = html;
     if (window.lucide) lucide.createIcons();
+  },
+
+  async moveTemplate(id, direction) {
+    const type = this.currentTemplateManagerTab || 'expense';
+    const list = await this.getTemplates(type);
+    const index = list.findIndex(t => t.id === id);
+    if (index === -1) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= list.length) return;
+
+    const currentItem = list[index];
+    const targetItem = list[targetIndex];
+
+    const currentOrder = currentItem.order !== undefined ? currentItem.order : index;
+    const targetOrder = targetItem.order !== undefined ? targetItem.order : targetIndex;
+
+    const newCurrentOrder = targetOrder;
+    const newTargetOrder = currentOrder === targetOrder ? (direction === 'up' ? targetOrder + 1 : targetOrder - 1) : currentOrder;
+
+    const now = new Date().toISOString();
+    await db.recurring.update(currentItem.id, { order: newCurrentOrder, updatedAt: now });
+    await db.recurring.update(targetItem.id, { order: newTargetOrder, updatedAt: now });
+
+    await this.renderTemplateManagerPage();
+    await this.renderKeypadTemplates();
   },
 
   async openTemplateEditor(id = null) {
@@ -1723,7 +1775,7 @@ const UITransactions = {
     }
 
     this.closeTemplateEditor();
-    await this.renderTemplateManagerList();
+    await this.renderTemplateManagerPage();
     await this.renderKeypadTemplates();
   },
 
@@ -1736,7 +1788,7 @@ const UITransactions = {
     await db.recurring.update(targetId, { isDeleted: 1, updatedAt: new Date().toISOString() });
     showToast('Đã xóa mẫu ghi chép', 'success');
     this.closeTemplateEditor();
-    await this.renderTemplateManagerList();
+    await this.renderTemplateManagerPage();
     await this.renderKeypadTemplates();
   },
 

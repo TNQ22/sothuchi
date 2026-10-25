@@ -937,7 +937,19 @@ class App {
       }
     }
 
-    // Sub-pages (category-picker, borrow-select) → back to new-transaction
+    // Sub-pages (category-picker, borrow-select, template-manager) → back to new-transaction
+    if (this.currentView === 'template-manager') {
+      this.switchView('new-transaction', true);
+      // Khi vuốt về thì về lại ngay menu Ghi chép mẫu đang mở đó lại nha
+      setTimeout(() => {
+        if (window.UITransactions) {
+          window.UITransactions.openKeypad('amount');
+          window.UITransactions.toggleKeypadTemplates(true);
+        }
+      }, 120);
+      return;
+    }
+
     if (this.currentView === 'category-picker' || this.currentView === 'borrow-select') {
       this.switchView('new-transaction', true);
       return;
@@ -1042,6 +1054,7 @@ class App {
     const backEligibleViews = [
       'transactions',
       'category-picker',
+      'template-manager',
       'borrow-select',
       'account-form',
       'account-provider',

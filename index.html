@@ -3596,6 +3596,46 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         </div>
       </section>
 
+      <!-- View: Quản Lý Mẫu Ghi Chép (Dedicated Full-Screen Sub-Page with Swipe-Back) -->
+      <section id="view-template-manager" class="page-view tx-page-view">
+        <div class="tx-page-card-wrapper" style="position: relative; min-height: 100vh;">
+          <div class="tx-page-header">
+            <div class="tx-header-left">
+              <button type="button" class="btn-icon tx-header-btn" onclick="window.app.goBack()" title="Trở lại">
+                <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+            <div class="tx-header-center">
+              <span style="font-weight: 700; font-size: 1.05rem; color: var(--text-primary);">Mẫu Ghi Chép</span>
+            </div>
+            <div class="tx-header-right">
+              <div style="width: 36px; height: 36px;"></div>
+            </div>
+          </div>
+
+          <!-- Tabs lọc loại mẫu: Mẫu Chi | Mẫu Thu -->
+          <div class="cat-picker-tabs" style="margin: 10px 14px 4px 14px;">
+            <button type="button" class="cat-tab-btn active" id="tpl-mgr-tab-expense" onclick="UITransactions.switchTemplateManagerTab('expense')">
+              <i data-lucide="arrow-down-circle"></i> Mẫu Chi
+            </button>
+            <button type="button" class="cat-tab-btn" id="tpl-mgr-tab-income" onclick="UITransactions.switchTemplateManagerTab('income')">
+              <i data-lucide="arrow-up-circle"></i> Mẫu Thu
+            </button>
+          </div>
+
+          <div class="tx-page-body" style="padding: 12px 14px 100px 14px; display: flex; flex-direction: column; gap: 8px;">
+            <div id="template-manager-list" class="template-manager-list" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Nút tròn nổi (+) góc phải bên dưới để thêm mẫu mới -->
+          <button type="button" class="template-fab-btn" onclick="UITransactions.openTemplateEditor()" title="Thêm mẫu ghi chép">
+            <i data-lucide="plus" style="width: 26px; height: 26px;"></i>
+          </button>
+        </div>
+      </section>
+
       <!-- View: Chọn Người (Dedicated Sub-Page) -->
       <section id="view-borrow-select" class="page-view tx-page-view">
         <div class="tx-page-card-wrapper">
@@ -4748,21 +4788,21 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
       </div>
 
       <div class="keypad-popup-header">
-        <div class="keypad-header-left">
-          <button type="button" id="btn-keypad-templates" class="keypad-mode-pill" onclick="UITransactions.toggleKeypadTemplates()" title="Ghi chép mẫu">
-            <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i>
-            <span>Ghi chép mẫu</span>
-          </button>
+        <div class="keypad-live-display">
+          <span id="keypad-live-val">0</span>
+          <span class="keypad-live-cur">₫</span>
         </div>
-        <div class="keypad-header-right">
-          <div class="keypad-live-display">
-            <span id="keypad-live-val">0</span>
-            <span class="keypad-live-cur">₫</span>
-          </div>
-          <button type="button" class="btn-icon keypad-header-close-btn" onclick="UITransactions.closeKeypad()" title="Ẩn bàn phím">
-            <i data-lucide="chevron-down" style="width: 20px; height: 20px;"></i>
-          </button>
-        </div>
+        <button type="button" class="btn-icon keypad-header-close-btn" onclick="UITransactions.closeKeypad()" title="Ẩn bàn phím">
+          <i data-lucide="chevron-down" style="width: 20px; height: 20px;"></i>
+        </button>
+      </div>
+
+      <!-- Thanh chọn chế độ Ghi chép mẫu (nằm dưới ô hiển thị tiền) -->
+      <div class="keypad-mode-bar">
+        <button type="button" id="btn-keypad-templates" class="keypad-mode-pill" onclick="UITransactions.toggleKeypadTemplates()" title="Ghi chép mẫu">
+          <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i>
+          <span>Ghi chép mẫu</span>
+        </button>
       </div>
 
       <!-- 5x4 Keypad Grid (Calculator Mode matching IMG_0015) -->
@@ -4809,49 +4849,23 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           <!-- Rendered via JS -->
         </div>
         <div class="keypad-templates-bottom">
-          <button type="button" class="btn-icon keypad-template-pencil-btn" onclick="UITransactions.openTemplateManagerModal()" title="Chỉnh sửa & Quản lý mẫu">
+          <button type="button" class="btn-icon keypad-template-pencil-btn" onclick="UITransactions.openTemplateManagerPage()" title="Chỉnh sửa & Quản lý mẫu">
             <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i>
           </button>
           <div class="keypad-template-tabs">
-            <button type="button" class="keypad-template-tab" id="tab-template-income" onclick="UITransactions.switchTemplateTab('income')">
-              Mẫu thu
-            </button>
             <button type="button" class="keypad-template-tab active" id="tab-template-expense" onclick="UITransactions.switchTemplateTab('expense')">
               Mẫu chi
             </button>
+            <button type="button" class="keypad-template-tab" id="tab-template-income" onclick="UITransactions.switchTemplateTab('income')">
+              Mẫu thu
+            </button>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ==================== TEMPLATE MANAGER MODAL (QUẢN LÝ MẪU GHI CHÉP) ==================== -->
-  <div id="modal-template-manager" class="modal-overlay">
-    <div class="modal-backdrop" onclick="UITransactions.closeTemplateManagerModal()"></div>
-    <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
-            <i data-lucide="edit-3" style="width: 20px; height: 20px; color: var(--primary);"></i>
-            <span>Mẫu ghi chép</span>
-          </h3>
-          <button type="button" class="btn-icon" onclick="UITransactions.closeTemplateManagerModal()" title="Đóng">
-            <i data-lucide="x"></i>
-          </button>
-        </div>
-        <div class="modal-body" style="padding: 14px;">
-          <div id="template-manager-list" class="template-manager-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto;">
-          </div>
-          <button type="button" class="btn btn-outline" style="width: 100%; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="UITransactions.openTemplateEditor()">
-            <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
-            <span>Thêm mẫu ghi chép mới</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== TEMPLATE EDITOR MODAL (TẠO / SỬA MẪU) ==================== -->
+  <!-- ==================== TEMPLATE EDITOR MODAL (TẠO / SỬA MẪU) ==================== (TẠO / SỬA MẪU) ==================== -->
   <div id="modal-template-editor" class="modal-overlay">
     <div class="modal-backdrop" onclick="UITransactions.closeTemplateEditor()"></div>
     <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
