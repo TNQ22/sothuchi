@@ -2304,6 +2304,29 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
     display: flex !important;
   }
 
+  /* Mẫu ghi chép: khớp chuẩn trên thanh menu dưới, không cuộn tràn ngầm và không sinh thanh cuộn khi danh sách ít */
+  body.view-template-manager #view-template-manager,
+  body.view-template-editor #view-template-editor,
+  body:has(#view-template-manager.active) #view-template-manager,
+  body:has(#view-template-editor.active) #view-template-editor {
+    bottom: calc(65px + max(16px, env(safe-area-inset-bottom, 0px))) !important;
+    height: auto !important;
+    max-height: calc(100dvh - 65px - max(16px, env(safe-area-inset-bottom, 0px))) !important;
+    padding-bottom: 0 !important;
+  }
+
+  body.view-template-manager #view-template-manager .tx-page-card-wrapper,
+  body.view-template-editor #view-template-editor .tx-page-card-wrapper,
+  body:has(#view-template-manager.active) #view-template-manager .tx-page-card-wrapper,
+  body:has(#view-template-editor.active) #view-template-editor .tx-page-card-wrapper {
+    min-height: auto !important;
+  }
+
+  body.view-template-manager #view-template-manager .tx-page-body,
+  body:has(#view-template-manager.active) #view-template-manager .tx-page-body {
+    padding-bottom: 80px !important;
+  }
+
   body.view-budget-form .tx-page-view,
   body.view-budget-category-form .tx-page-view,
   body:has(#view-budget-form.active) .tx-page-view,
@@ -3760,7 +3783,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
 .template-fab-btn {
   position: fixed;
   right: 20px;
-  bottom: calc(var(--bottom-nav-height, 64px) + 16px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(65px + max(16px, env(safe-area-inset-bottom, 0px)) + 18px);
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -12026,13 +12049,6 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   flex-shrink: 0 !important;
 }
 
-.share-quick-login-box {
-  background: rgba(15, 23, 42, 0.6) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 10px !important;
-  padding: 12px !important;
-  margin-top: 10px !important;
-}
 
 .share-active-user-banner {
   background: rgba(30, 41, 59, 0.6) !important;
