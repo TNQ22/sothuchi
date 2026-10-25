@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v3.0.21';
+const CACHE_NAME = 'sothuchi-pwa-v3.0.22';
 
 const PRECACHE_ASSETS = [
   './',
@@ -47,7 +47,7 @@ const PRECACHE_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Đang nạp tài nguyên ngoại tuyến phiên bản mới (v3.0.21)...');
+      console.log('[SW] Đang nạp tài nguyên ngoại tuyến phiên bản mới (v3.0.22)...');
       return Promise.allSettled(
         PRECACHE_ASSETS.map((asset) => {
           return fetch(asset, { cache: 'no-cache' }).then((res) => {
