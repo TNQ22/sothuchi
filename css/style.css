@@ -8714,7 +8714,7 @@ html, body {
 
 @media (max-width: 768px) {
   #view-budgets.page-view {
-    padding: 12px 7px 20px 7px !important;
+    padding: 10px 7px 4px 7px !important;
   }
 }
 
@@ -10666,7 +10666,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
    ========================================================================== */
 
 #view-settings.page-view {
-  padding: 12px 7px 28px 7px !important;
+  padding: 10px 7px 8px 7px !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
 }
@@ -10674,14 +10674,14 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 .settings-container {
   max-width: 720px;
   margin: 0 auto;
-  padding: 2px 2px 32px 2px !important;
+  padding: 2px 2px 4px 2px !important;
   width: 100%;
   box-sizing: border-box;
 }
 
 /* Settings Group */
 .settings-group {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .settings-group-label {
@@ -10888,7 +10888,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 /* Minimal Hub Footer - Version with GitHub link only */
 .settings-hub-footer {
   text-align: center;
-  padding: 24px 8px 16px;
+  padding: 14px 8px 6px;
   color: var(--text-muted);
 }
 
@@ -10916,6 +10916,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 /* Sub-page Detail View */
 .settings-detail-view {
   animation: settingsFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  padding-bottom: 24px;
 }
 
 @keyframes settingsFadeIn {
@@ -12956,10 +12957,10 @@ body.light .ptr-circle-badge,
 /* Viền bao sát màn hình trên di động */
 @media (max-width: 768px) {
   #view-settings.page-view {
-    padding: 12px 7px 28px 7px !important;
+    padding: 10px 7px 8px 7px !important;
   }
   .settings-container {
-    padding: 0 4px 28px 4px !important;
+    padding: 0 4px 4px 4px !important;
   }
   .settings-card-clean {
     padding: 14px 12px !important;
