@@ -10,8 +10,8 @@ LABEL description="So Thu Chi - Offline-First Personal Finance & Dedicated Sync 
 
 WORKDIR /app
 
-# Cài đặt shadow và su-exec để tự động phân quyền volume theo PUID/PGID của máy chủ host
-RUN apk add --no-cache su-exec shadow
+# Cài đặt shadow, su-exec và tzdata để tự động phân quyền volume và hỗ trợ biến môi trường múi giờ TZ
+RUN apk add --no-cache su-exec shadow tzdata
 
 # Sao chép package.json
 COPY package*.json ./
@@ -36,7 +36,8 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     DATA_DIR=/app/data \
     PUID=1000 \
-    PGID=1000
+    PGID=1000 \
+    TZ=Asia/Ho_Chi_Minh
 
 # Khối dữ liệu lưu trữ bền vững (Docker Volume)
 VOLUME ["/app/data"]

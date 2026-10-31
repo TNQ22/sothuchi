@@ -3,6 +3,17 @@
  * Quản lý giao dịch, danh mục nhanh 4 hàng, bàn phím số popup, chi tiết nâng cao & liên kết vay nợ
  */
 
+/**
+ * Trả về ngày hiện tại theo múi giờ của thiết bị (YYYY-MM-DD).
+ * Không dùng toISOString() vì nó luôn trả về UTC, gây lệch ngày với UTC+7.
+ */
+function getLocalDateStr(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 const UITransactions = {
   userChangedAccount: false,
   currentFilterType: 'all',
@@ -3619,7 +3630,7 @@ const UITransactions = {
   },
 
   openDateTimePicker() {
-    const curDate = document.getElementById('tx-date-input')?.value || new Date().toISOString().split('T')[0];
+    const curDate = document.getElementById('tx-date-input')?.value || getLocalDateStr();
     const curTime = document.getElementById('tx-time-input')?.value || '12:00';
 
     const cal = window.UICalendar || (typeof UICalendar !== 'undefined' ? UICalendar : null);
@@ -4076,7 +4087,7 @@ const UITransactions = {
     if (amountVal) amountVal.textContent = '0';
 
     const now = new Date();
-    const dateStr = now.toISOString().split('T')[0];
+    const dateStr = getLocalDateStr(now);
     const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
     document.getElementById('tx-date-input').value = dateStr;
     document.getElementById('tx-time-input').value = timeStr;
@@ -4197,7 +4208,7 @@ const UITransactions = {
         const isUntouched = (!curAmount || curAmount === '0') && (!curNote || curNote.trim() === '');
         if (isUntouched) {
           const now = new Date();
-          const dateStr = now.toISOString().split('T')[0];
+          const dateStr = getLocalDateStr(now);
           const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
           document.getElementById('tx-date-input').value = dateStr;
           document.getElementById('tx-time-input').value = timeStr;

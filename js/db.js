@@ -3,6 +3,17 @@
  * Offline-First Storage with Change-Tracking for Google Drive Sync
  */
 
+/**
+ * Trả về ngày hiện tại theo múi giờ của thiết bị (YYYY-MM-DD).
+ * Không dùng toISOString() vì nó luôn trả về UTC, gây lệch ngày với UTC+7.
+ */
+function getLocalDateStr(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 const db = new Dexie('SoThuChiDB');
 
 // Define Schema Version 1
@@ -440,7 +451,7 @@ async function initDatabase() {
                 fee: 0,
                 accountId: acc.id,
                 toAccountId: null,
-                date: l.startDate || new Date().toISOString().split('T')[0],
+                date: l.startDate || getLocalDateStr(),
                 time: '09:00',
                 note: `Giải ngân sổ vay: ${l.name}`,
                 excludeFromReport: l.excludeFromReport ? 1 : 0,
@@ -513,7 +524,7 @@ async function addTransaction(data) {
     accountId: Number(data.accountId),
     toAccountId: data.toAccountId ? Number(data.toAccountId) : null,
     categoryId: data.categoryId ? Number(data.categoryId) : null,
-    date: data.date || new Date().toISOString().split('T')[0],
+    date: data.date || getLocalDateStr(),
     time: data.time || currentTime,
     isDeleted: 0,
     updatedAt: now
@@ -756,7 +767,7 @@ async function recordDebtPayment(debtId, paymentAmount, accountId, note = '') {
 
     const paymentRecord = {
       amount: pAmount,
-      date: new Date().toISOString().split('T')[0],
+      date: getLocalDateStr(),
       accountId: accId,
       note: note,
       createdAt: now
@@ -805,7 +816,7 @@ async function addSaving(data) {
     initialBalance: amount,
     balance: amount,
     currency: data.currency || 'VND',
-    depositDate: data.depositDate || new Date().toISOString().split('T')[0],
+    depositDate: data.depositDate || getLocalDateStr(),
     termMonths: Number(data.termMonths || 0), // 0: không kỳ hạn
     dueDate: data.dueDate || '',
     interestRate: Number(data.interestRate || 0), // %/năm
@@ -862,7 +873,7 @@ async function settleSaving(id, settleData) {
 
     await db.savings.update(savingId, {
       status: 'settled',
-      settledDate: settleData.settledDate || new Date().toISOString().split('T')[0],
+      settledDate: settleData.settledDate || getLocalDateStr(),
       settledAmount: settleAmount,
       updatedAt: now
     });
@@ -901,7 +912,7 @@ async function addAccumulation(data) {
     targetAmount: targetAmount,
     currentAmount: currentAmount,
     currency: data.currency || 'VND',
-    startDate: data.startDate || new Date().toISOString().split('T')[0],
+    startDate: data.startDate || getLocalDateStr(),
     targetDate: data.targetDate || '',
     durationMonths: Number(data.durationMonths || 0),
     hasRecurring: data.hasRecurring ? 1 : 0,
@@ -1005,7 +1016,7 @@ async function addAsset(data) {
     subType: data.subType || '',
     name: data.name.trim(),
     isGift: data.isGift ? 1 : 0,
-    buyDate: data.buyDate || new Date().toISOString().split('T')[0],
+    buyDate: data.buyDate || getLocalDateStr(),
     quantity: quantity,
     unit: data.unit || 'Chiếc',
     currency: data.currency || 'VND',
@@ -1079,7 +1090,7 @@ async function liquidateAsset(id, liquidateData) {
 
     await db.assets.update(assetId, {
       status: 'liquidated',
-      liquidatedDate: liquidateData.liquidatedDate || new Date().toISOString().split('T')[0],
+      liquidatedDate: liquidateData.liquidatedDate || getLocalDateStr(),
       liquidatedPrice: salePrice,
       updatedAt: now
     });
@@ -1403,14 +1414,18 @@ async function deleteLoan(id) {
 // Calculation Utilities
 async function getNetWorth() {
   const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
-  const totalAccountBalance = accounts.filter(a => !a.isArchived).reduce((sum, a) => sum + (a.balance || 0), 0);
+  const totalAccountBalance = accounts
+    .filter(a => !a.isArchived && (!a._isSharedItem || a.includeInReport))
+    .reduce((sum, a) => sum + (a.balance || 0), 0);
 
   // Sổ tiết kiệm đang gửi
   let totalSavings = 0;
   try {
     if (db.savings) {
       const savingsList = await db.savings.where('isDeleted').equals(0).toArray();
-      totalSavings = savingsList.filter(s => s.status !== 'settled').reduce((sum, s) => sum + (s.balance || 0), 0);
+      totalSavings = savingsList
+        .filter(s => s.status !== 'settled' && (!s._isSharedItem || s.includeInReport))
+        .reduce((sum, s) => sum + (s.balance || 0), 0);
     }
   } catch (e) {
     console.warn('Savings read error:', e);
@@ -1421,7 +1436,9 @@ async function getNetWorth() {
   try {
     if (db.accumulations) {
       const accList = await db.accumulations.where('isDeleted').equals(0).toArray();
-      totalAccumulations = accList.reduce((sum, a) => sum + (a.currentAmount || 0), 0);
+      totalAccumulations = accList
+        .filter(a => (!a._isSharedItem || a.includeInReport))
+        .reduce((sum, a) => sum + (a.currentAmount || 0), 0);
     }
   } catch (e) {
     console.warn('Accumulations read error:', e);
@@ -1433,7 +1450,7 @@ async function getNetWorth() {
     if (db.assets) {
       const assetList = await db.assets.where('isDeleted').equals(0).toArray();
       totalAssets = assetList
-        .filter(a => a.status !== 'liquidated' && a.includeInNetWorth !== 0)
+        .filter(a => a.status !== 'liquidated' && a.includeInNetWorth !== 0 && (!a._isSharedItem || a.includeInReport))
         .reduce((sum, a) => sum + (a.totalCurrentValue !== undefined ? a.totalCurrentValue : ((a.currentPrice || 0) * (a.quantity || 1))), 0);
     }
   } catch (e) {
@@ -1445,7 +1462,9 @@ async function getNetWorth() {
   try {
     if (db.loans) {
       const loanList = await db.loans.where('isDeleted').equals(0).toArray();
-      totalLoans = loanList.filter(l => l.status !== 'settled').reduce((sum, l) => sum + (l.remainingAmount !== undefined ? l.remainingAmount : (l.loanAmount || 0)), 0);
+      totalLoans = loanList
+        .filter(l => l.status !== 'settled' && (!l._isSharedItem || l.includeInReport))
+        .reduce((sum, l) => sum + (l.remainingAmount !== undefined ? l.remainingAmount : (l.loanAmount || 0)), 0);
     }
   } catch (e) {
     console.warn('Loans read error:', e);

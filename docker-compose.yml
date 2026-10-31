@@ -10,6 +10,10 @@ services:
       - PORT=8081
       - HOST=0.0.0.0
       - DATA_DIR=/app/data
+      # Múi giờ container (quan trọng cho log server & xử lý ngày tháng phía server)
+      # Người dùng ở Việt Nam: Asia/Ho_Chi_Minh | Thái Lan: Asia/Bangkok | Singapore: Asia/Singapore
+      # Danh sách đầy đủ: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+      - TZ=${TZ:-Asia/Ho_Chi_Minh}
       # User ID & Group ID của máy chủ host (mặc định 1000, giúp tự động khớp quyền thư mục volume)
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}

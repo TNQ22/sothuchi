@@ -43,8 +43,15 @@ const UIAnalytics = {
       .and(t => t.isDeleted === 0)
       .toArray();
 
-    // Loại trừ giao dịch của các tài khoản được đánh dấu "Không tính vào báo cáo"
-    const excludedAccounts = await db.accounts.filter(a => !!a.excludeFromReport).toArray();
+    // Loại trừ giao dịch của các tài khoản:
+    // - Tài khoản cá nhân được đánh dấu "Không tính vào báo cáo" (excludeFromReport)
+    // - Sổ được chia sẻ (_isSharedItem) tắt theo mặc định, chỉ tính vào khi bật "Thêm vào báo cáo" (includeInReport)
+    const excludedAccounts = await db.accounts.filter(a => {
+      if (a._isSharedItem) {
+        return !a.includeInReport;
+      }
+      return !!a.excludeFromReport;
+    }).toArray();
     const excludedAccountIds = new Set(excludedAccounts.map(a => a.id));
 
     const txs = excludedAccountIds.size > 0

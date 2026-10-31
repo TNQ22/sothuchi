@@ -2230,6 +2230,7 @@ class ServerSyncService {
             ...item,
             isDeleted: 0,
             isArchived: item.isArchived ? 1 : 0,
+            includeInReport: localAcc && localAcc.includeInReport !== undefined ? localAcc.includeInReport : 0,
             _isSharedItem: true,
             _sharedRole: role,
             _shareId: shareId,
@@ -2288,6 +2289,7 @@ class ServerSyncService {
           const savData = {
             ...item,
             isDeleted: 0,
+            includeInReport: localSav && localSav.includeInReport !== undefined ? localSav.includeInReport : 0,
             _isSharedItem: true,
             _sharedRole: role,
             _shareId: shareId,
@@ -2306,6 +2308,7 @@ class ServerSyncService {
           const accData = {
             ...item,
             isDeleted: 0,
+            includeInReport: localAcc && localAcc.includeInReport !== undefined ? localAcc.includeInReport : 0,
             _isSharedItem: true,
             _sharedRole: role,
             _shareId: shareId,
@@ -2324,6 +2327,7 @@ class ServerSyncService {
           const loanData = {
             ...item,
             isDeleted: 0,
+            includeInReport: localLoan && localLoan.includeInReport !== undefined ? localLoan.includeInReport : 0,
             _isSharedItem: true,
             _sharedRole: role,
             _shareId: shareId,
@@ -2342,6 +2346,7 @@ class ServerSyncService {
           const assetData = {
             ...item,
             isDeleted: 0,
+            includeInReport: localAsset && localAsset.includeInReport !== undefined ? localAsset.includeInReport : 0,
             _isSharedItem: true,
             _sharedRole: role,
             _shareId: shareId,
