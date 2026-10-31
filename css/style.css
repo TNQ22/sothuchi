@@ -8876,6 +8876,37 @@ html, body {
   flex-shrink: 0;
 }
 
+.account-report-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 5px;
+  border-radius: var(--radius-full);
+  line-height: 1;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.account-report-badge.included {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.account-report-badge.excluded {
+  background: rgba(100, 116, 139, 0.15);
+  color: #64748b;
+  border: 1px solid rgba(100, 116, 139, 0.28);
+}
+
+[data-theme="dark"] .account-report-badge.excluded,
+.dark-theme .account-report-badge.excluded,
+body.dark .account-report-badge.excluded {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
 .account-badge.budget {
   display: inline-flex;
   align-items: center;
@@ -11765,6 +11796,19 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   border: 1.5px solid var(--bg-card);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
   pointer-events: none;
+}
+
+.mini-share-indicator.owner {
+  background: #10b981 !important;
+}
+
+.mini-share-indicator.shared {
+  background: #3b82f6 !important;
+}
+
+.mini-share-indicator svg {
+  width: 8px !important;
+  height: 8px !important;
 }
 
 /* Category header inside Shared Group */

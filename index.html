@@ -5311,7 +5311,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         </button>
 
         <!-- Nút Thêm vào báo cáo (Người nhận - shared item) -->
-        <button type="button" class="action-sheet-item" id="action-sheet-include-report-btn" style="display: none;" onclick="UIAccounts.toggleSharedItemReport('account', UIAccounts.currentActionAccountId)">
+        <div class="action-sheet-item" id="action-sheet-include-report-btn" style="display: none; cursor: pointer;" onclick="UIAccounts.toggleSharedItemReport('account', UIAccounts.currentActionAccountId, event)">
           <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
             <i data-lucide="bar-chart-2" style="width: 18px; height: 18px;"></i>
           </div>
@@ -5319,8 +5319,12 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
             <span class="action-sheet-item-title">Thêm vào báo cáo</span>
             <span class="action-sheet-item-desc" id="action-sheet-include-report-desc">Không tính vào tổng báo cáo</span>
           </div>
-          <span id="action-sheet-include-report-badge" class="action-sheet-budget-badge">Tắt</span>
-        </button>
+          <label class="app-switch" style="flex-shrink: 0; pointer-events: none; margin: 0;">
+            <input type="checkbox" id="action-sheet-include-report-switch">
+            <span class="app-switch-slider"></span>
+          </label>
+          <span id="action-sheet-include-report-badge" style="display: none;"></span>
+        </div>
 
         <!-- Nút Rời khỏi mục chia sẻ (Người nhận) -->
         <button type="button" class="action-sheet-item text-danger" id="action-sheet-leave-shared-btn" style="display: none;" onclick="UIAccounts.leaveSharedItem('account', UIAccounts.currentActionAccountId)">

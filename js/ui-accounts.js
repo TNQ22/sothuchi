@@ -101,6 +101,29 @@ const UIAccounts = {
     `;
   },
 
+  getMiniShareIndicatorHtml(a) {
+    if (!a) return '';
+    const isSharedItem = !!a._isSharedItem;
+    const isSharedByMe = a.isShared === 1 || a.isShared === true;
+    if (isSharedItem) {
+      return '<div class="mini-share-indicator shared" title="Được chia sẻ"><i data-lucide="share-2"></i></div>';
+    }
+    if (isSharedByMe) {
+      return '<div class="mini-share-indicator owner" title="Đang chia sẻ"><i data-lucide="share-2"></i></div>';
+    }
+    return '';
+  },
+
+  renderReportBadge(a) {
+    if (!a) return '';
+    const isIncluded = a._isSharedItem ? !!a.includeInReport : !a.excludeFromReport;
+    if (isIncluded) {
+      return `<span class="account-report-badge included" title="Đang tính vào báo cáo"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg></span>`;
+    } else {
+      return `<span class="account-report-badge excluded" title="Không tính vào báo cáo"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line><line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" stroke-width="2.5"></line></svg></span>`;
+    }
+  },
+
   init() {
     if (this._initialized) return;
     this._initialized = true;
@@ -488,14 +511,18 @@ const UIAccounts = {
     const uniShareBtn = document.getElementById('action-sheet-universal-share-btn');
     const archiveBtn = document.getElementById('action-sheet-archive-btn');
     const includeReportBtn = document.getElementById('action-sheet-include-report-btn');
+    const includeReportSwitch = document.getElementById('action-sheet-include-report-switch');
     const includeReportBadge = document.getElementById('action-sheet-include-report-badge');
     const includeReportDesc = document.getElementById('action-sheet-include-report-desc');
     if (leaveBtn) leaveBtn.style.display = isReceivedShare ? 'flex' : 'none';
     if (uniShareBtn) uniShareBtn.style.display = isReceivedShare ? 'none' : 'flex';
     if (archiveBtn) archiveBtn.style.display = isReceivedShare ? 'none' : 'flex';
     if (includeReportBtn) {
-      includeReportBtn.style.display = isReceivedShare ? 'flex' : 'none';
-      const included = !!acc.includeInReport;
+      includeReportBtn.style.display = 'flex';
+      const included = isReceivedShare ? !!acc.includeInReport : !acc.excludeFromReport;
+      if (includeReportSwitch) {
+        includeReportSwitch.checked = included;
+      }
       if (includeReportBadge) {
         includeReportBadge.textContent = included ? 'Bật' : 'Tắt';
         includeReportBadge.className = 'action-sheet-budget-badge' + (included ? ' active' : '');
@@ -539,7 +566,11 @@ const UIAccounts = {
     if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
-  async toggleSharedItemReport(type, id) {
+  async toggleSharedItemReport(type, id, e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!id) return;
     const numId = Number(id);
     let item = null;
@@ -564,13 +595,51 @@ const UIAccounts = {
 
     if (!item || !table) return;
 
-    const next = item.includeInReport ? 0 : 1;
-    await table.update(numId, { includeInReport: next, updatedAt: Date.now() });
-    this.closeActionSheet();
-    this.closeItemActionSheet();
+    let nextIncluded;
+    let updateData = { updatedAt: Date.now() };
+
+    if (type === 'account') {
+      if (item._isSharedItem) {
+        nextIncluded = item.includeInReport ? 0 : 1;
+        updateData.includeInReport = nextIncluded;
+      } else {
+        const isCurrentlyIncluded = !item.excludeFromReport;
+        nextIncluded = isCurrentlyIncluded ? 0 : 1;
+        updateData.excludeFromReport = nextIncluded ? 0 : 1;
+      }
+    } else {
+      if (item._isSharedItem) {
+        nextIncluded = item.includeInReport ? 0 : 1;
+        updateData.includeInReport = nextIncluded;
+      } else {
+        const isCurrentlyIncluded = !item.excludeFromReport;
+        nextIncluded = isCurrentlyIncluded ? 0 : 1;
+        updateData.excludeFromReport = nextIncluded ? 0 : 1;
+      }
+    }
+
+    await table.update(numId, updateData);
+
+    if (type === 'account') {
+      const sw = document.getElementById('action-sheet-include-report-switch');
+      if (sw) sw.checked = !!nextIncluded;
+      const desc = document.getElementById('action-sheet-include-report-desc');
+      if (desc) desc.textContent = nextIncluded ? 'Đang tính vào tổng báo cáo' : 'Không tính vào tổng báo cáo';
+      const badge = document.getElementById('action-sheet-include-report-badge');
+      if (badge) {
+        badge.textContent = nextIncluded ? 'Bật' : 'Tắt';
+        badge.className = 'action-sheet-budget-badge' + (nextIncluded ? ' active' : '');
+      }
+    } else {
+      const sw = document.getElementById(`item-action-sheet-report-switch-${type}-${numId}`);
+      if (sw) sw.checked = !!nextIncluded;
+      const desc = document.getElementById(`item-action-sheet-report-desc-${type}-${numId}`);
+      if (desc) desc.textContent = nextIncluded ? 'Đang tính vào tổng báo cáo' : 'Không tính vào tổng báo cáo';
+    }
+
     await window.app.refreshAll();
-    const label = next ? 'Đã bật' : 'Đã tắt';
-    showToast(`${label} "Thêm vào báo cáo" cho "${item.name}"`, 'success');
+    const label = nextIncluded ? 'Đã bật' : 'Đã tắt';
+    showToast(`${label} "Thêm vào báo cáo" cho "${item.name || 'mục'}"`, 'success');
     if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
@@ -3838,16 +3907,19 @@ const UIAccounts = {
         if (l._isSharedItem) {
           const lIncluded = !!l.includeInReport;
           btns += `
-            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.toggleSharedItemReport('loan', ${l.id})">
+            <div class="action-sheet-item" style="cursor: pointer;" onclick="UIAccounts.toggleSharedItemReport('loan', ${l.id}, event)">
               <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
                 <i data-lucide="bar-chart-2" style="width: 20px; height: 20px;"></i>
               </div>
               <div class="action-sheet-item-text">
                 <span class="action-sheet-item-title">Thêm vào báo cáo</span>
-                <span class="action-sheet-item-desc">${lIncluded ? 'Đang tính vào tổng báo cáo' : 'Không tính vào tổng báo cáo'}</span>
+                <span class="action-sheet-item-desc" id="item-action-sheet-report-desc-loan-${l.id}">${lIncluded ? 'Đang tính vào tổng báo cáo' : 'Không tính vào tổng báo cáo'}</span>
               </div>
-              <span class="action-sheet-budget-badge${lIncluded ? ' active' : ''}">${lIncluded ? 'Bật' : 'Tắt'}</span>
-            </button>
+              <label class="app-switch" style="flex-shrink: 0; pointer-events: none; margin: 0;">
+                <input type="checkbox" id="item-action-sheet-report-switch-loan-${l.id}" ${lIncluded ? 'checked' : ''}>
+                <span class="app-switch-slider"></span>
+              </label>
+            </div>
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('loan', ${l.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -3941,16 +4013,19 @@ const UIAccounts = {
         if (s._isSharedItem) {
           const sIncluded = !!s.includeInReport;
           btns += `
-            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.toggleSharedItemReport('savings', ${s.id})">
+            <div class="action-sheet-item" style="cursor: pointer;" onclick="UIAccounts.toggleSharedItemReport('savings', ${s.id}, event)">
               <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
                 <i data-lucide="bar-chart-2" style="width: 20px; height: 20px;"></i>
               </div>
               <div class="action-sheet-item-text">
                 <span class="action-sheet-item-title">Thêm vào báo cáo</span>
-                <span class="action-sheet-item-desc">${sIncluded ? 'Đang tính vào tổng báo cáo' : 'Không tính vào tổng báo cáo'}</span>
+                <span class="action-sheet-item-desc" id="item-action-sheet-report-desc-savings-${s.id}">${sIncluded ? 'Đang tính vào tổng báo cáo' : 'Không tính vào tổng báo cáo'}</span>
               </div>
-              <span class="action-sheet-budget-badge${sIncluded ? ' active' : ''}">${sIncluded ? 'Bật' : 'Tắt'}</span>
-            </button>
+              <label class="app-switch" style="flex-shrink: 0; pointer-events: none; margin: 0;">
+                <input type="checkbox" id="item-action-sheet-report-switch-savings-${s.id}" ${sIncluded ? 'checked' : ''}>
+                <span class="app-switch-slider"></span>
+              </label>
+            </div>
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('savings', ${s.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -4045,16 +4120,19 @@ const UIAccounts = {
         if (acc._isSharedItem) {
           const accIncluded = !!acc.includeInReport;
           btns += `
-            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.toggleSharedItemReport('accumulation', ${acc.id})">
+            <div class="action-sheet-item" style="cursor: pointer;" onclick="UIAccounts.toggleSharedItemReport('accumulation', ${acc.id}, event)">
               <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
                 <i data-lucide="bar-chart-2" style="width: 20px; height: 20px;"></i>
               </div>
               <div class="action-sheet-item-text">
                 <span class="action-sheet-item-title">Thêm vào báo cáo</span>
-                <span class="action-sheet-item-desc">${accIncluded ? 'Đang tính vào tổng báo cáo' : 'Không tính vào tổng báo cáo'}</span>
+                <span class="action-sheet-item-desc" id="item-action-sheet-report-desc-accumulation-${acc.id}">${accIncluded ? 'Đang tính vào tổng báo cáo' : 'Không tính vào tổng báo cáo'}</span>
               </div>
-              <span class="action-sheet-budget-badge${accIncluded ? ' active' : ''}">${accIncluded ? 'Bật' : 'Tắt'}</span>
-            </button>
+              <label class="app-switch" style="flex-shrink: 0; pointer-events: none; margin: 0;">
+                <input type="checkbox" id="item-action-sheet-report-switch-accumulation-${acc.id}" ${accIncluded ? 'checked' : ''}>
+                <span class="app-switch-slider"></span>
+              </label>
+            </div>
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('accumulation', ${acc.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -4141,16 +4219,19 @@ const UIAccounts = {
         if (asset._isSharedItem) {
           const aIncluded = !!asset.includeInReport;
           btns += `
-            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.toggleSharedItemReport('asset', ${asset.id})">
+            <div class="action-sheet-item" style="cursor: pointer;" onclick="UIAccounts.toggleSharedItemReport('asset', ${asset.id}, event)">
               <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
                 <i data-lucide="bar-chart-2" style="width: 20px; height: 20px;"></i>
               </div>
               <div class="action-sheet-item-text">
                 <span class="action-sheet-item-title">Thêm vào báo cáo</span>
-                <span class="action-sheet-item-desc">${aIncluded ? 'Đang tính vào tổng báo cáo' : 'Không tính vào tổng báo cáo'}</span>
+                <span class="action-sheet-item-desc" id="item-action-sheet-report-desc-asset-${asset.id}">${aIncluded ? 'Đang tính vào tổng báo cáo' : 'Không tính vào tổng báo cáo'}</span>
               </div>
-              <span class="action-sheet-budget-badge${aIncluded ? ' active' : ''}">${aIncluded ? 'Bật' : 'Tắt'}</span>
-            </button>
+              <label class="app-switch" style="flex-shrink: 0; pointer-events: none; margin: 0;">
+                <input type="checkbox" id="item-action-sheet-report-switch-asset-${asset.id}" ${aIncluded ? 'checked' : ''}>
+                <span class="app-switch-slider"></span>
+              </label>
+            </div>
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('asset', ${asset.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -4858,29 +4939,30 @@ const UIAccounts = {
       saving: { icon: 'piggy-bank', color: '#0ea5e9', label: 'Sổ tiết kiệm' }
     };
     const info = iconMap[a.type] || { icon: a.icon || 'wallet', color: a.color || '#4f46e5', label: 'Tài khoản' };
-    const isShared = !!a._isSharedItem;
+    const isSharedItem = !!a._isSharedItem;
+    const isSharedByMe = a.isShared === 1 || a.isShared === true;
+    const miniShareHtml = this.getMiniShareIndicatorHtml(a);
 
     return `
-      <div class="account-list-item ${isShared ? 'shared-item-card' : ''}" data-id="${a.id}" style="width: 100%; box-sizing: border-box; margin-bottom: 8px;">
-        ${isShared ? this.renderSharedItemBanner(a) : ''}
+      <div class="account-list-item ${isSharedItem ? 'shared-item-card' : ''}" data-id="${a.id}" style="width: 100%; box-sizing: border-box; margin-bottom: 8px;">
+        ${isSharedItem ? this.renderSharedItemBanner(a) : ''}
         
         <div class="account-item-inner-row" style="display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0;">
           <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản" style="flex: 1 1 0%; min-width: 0; display: flex; align-items: center; gap: 10px; cursor: pointer;">
-            <div class="account-icon-bubble ${isShared ? 'with-share-badge' : ''}" style="background: transparent; flex-shrink: 0;">
+            <div class="account-icon-bubble ${(isSharedItem || isSharedByMe) ? 'with-share-badge' : ''}" style="background: transparent; flex-shrink: 0;">
               ${this.renderLogoBadge(a, 36)}
-              ${isShared ? '<div class="mini-share-indicator" title="Được chia sẻ"><i data-lucide="share-2"></i></div>' : ''}
+              ${miniShareHtml}
             </div>
             <div class="account-info" style="flex: 1 1 0%; min-width: 0; overflow: hidden;">
               <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
                 <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; flex: 1 1 0%; min-width: 0; max-width: 100%; font-weight: 700;">${escapeHTML(a.name)}</span>
-                ${a._isSharedItem ? (a.includeInReport ? '<span class="account-badge" style="background: rgba(16, 185, 129, 0.12); color: #10b981;" title="Đang tính vào báo cáo"><i data-lucide="bar-chart-2" style="width:11px;height:11px;"></i> Báo cáo</span>' : '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn báo cáo</span>') : (a.excludeFromReport ? '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn</span>' : '')}
               </div>
               <div class="account-sub-row" style="display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 <span class="account-type-label">${info.label}</span>
                 ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                 ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
                 ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
-                ${(a.isShared === 1 || a.isShared === true || a._isSharedItem) ? '<span class="account-share-badge" title="Đang chia sẻ với thành viên"><i data-lucide="share-2" style="width:12px;height:12px;"></i></span>' : ''}
+                ${this.renderReportBadge(a)}
               </div>
             </div>
             <div class="account-balance-wrapper" style="flex-shrink: 0; text-align: right;">
@@ -5787,6 +5869,9 @@ const UIAccounts = {
       activeAccounts.forEach((a, index) => {
         const info = iconMap[a.type] || { icon: a.icon || 'wallet', color: a.color || '#4f46e5', label: 'Tài khoản' };
         const iconName = a.icon || info.icon;
+        const isSharedItem = !!a._isSharedItem;
+        const isSharedByMe = a.isShared === 1 || a.isShared === true;
+        const miniShareHtml = this.getMiniShareIndicatorHtml(a);
 
         html += `
           <div class="account-list-item ${a._isSharedItem ? 'shared-item-card' : ''}" draggable="true" data-id="${a.id}" data-index="${index}">
@@ -5798,21 +5883,20 @@ const UIAccounts = {
               </div>
               
               <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản" style="flex: 1 1 0%; min-width: 0; display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                <div class="account-icon-bubble ${a._isSharedItem ? 'with-share-badge' : ''}" style="background: transparent; flex-shrink: 0;">
+                <div class="account-icon-bubble ${(isSharedItem || isSharedByMe) ? 'with-share-badge' : ''}" style="background: transparent; flex-shrink: 0;">
                   ${this.renderLogoBadge(a, 36)}
-                  ${a._isSharedItem ? '<div class="mini-share-indicator" title="Được chia sẻ"><i data-lucide="share-2"></i></div>' : ''}
+                  ${miniShareHtml}
                 </div>
                 <div class="account-info" style="flex: 1 1 0%; min-width: 0; overflow: hidden;">
                   <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
                     <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; flex: 1 1 0%; min-width: 0; max-width: 100%; font-weight: 700;">${escapeHTML(a.name)}</span>
-                    ${a._isSharedItem ? (a.includeInReport ? '<span class="account-badge" style="background: rgba(16, 185, 129, 0.12); color: #10b981;" title="Đang tính vào báo cáo"><i data-lucide="bar-chart-2" style="width:11px;height:11px;"></i> Báo cáo</span>' : '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn báo cáo</span>') : (a.excludeFromReport ? '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn báo cáo</span>' : '')}
                   </div>
                   <div class="account-sub-row" style="display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     <span class="account-type-label">${info.label}</span>
                     ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                     ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
                     ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
-                    ${(a.isShared === 1 || a.isShared === true || a._isSharedItem) ? '<span class="account-share-badge" title="Đang chia sẻ với thành viên"><i data-lucide="share-2" style="width:12px;height:12px;"></i></span>' : ''}
+                    ${this.renderReportBadge(a)}
                   </div>
                 </div>
                 <div class="account-balance-wrapper" style="flex-shrink: 0; text-align: right;">
@@ -5853,17 +5937,20 @@ const UIAccounts = {
         archivedAccounts.forEach((a) => {
           const info = iconMap[a.type] || { icon: a.icon || 'wallet', color: a.color || '#4f46e5', label: 'Tài khoản' };
           const iconName = a.icon || info.icon;
+          const isSharedItem = !!a._isSharedItem;
+          const isSharedByMe = a.isShared === 1 || a.isShared === true;
+          const miniShareHtml = this.getMiniShareIndicatorHtml(a);
 
           archHtml += `
             <div class="account-list-item archived" data-id="${a.id}">
               <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản">
-                <div class="account-icon-bubble" style="background: transparent; opacity: 0.65;">
+                <div class="account-icon-bubble ${(isSharedItem || isSharedByMe) ? 'with-share-badge' : ''}" style="background: transparent; opacity: 0.65;">
                   ${this.renderLogoBadge(a, 36)}
+                  ${miniShareHtml}
                 </div>
                 <div class="account-info">
                   <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                     <span class="account-name" title="${escapeHTML(a.name)}" style="color: var(--text-secondary);">${escapeHTML(a.name)}</span>
-                    ${a.excludeFromReport ? '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn báo cáo</span>' : ''}
                   </div>
                   <div class="account-sub-row">
                     <span class="account-type-label">${info.label}</span>
@@ -5871,7 +5958,7 @@ const UIAccounts = {
                     ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
                     <span class="account-archived-badge" title="Đã ngừng sử dụng">Ngừng sử dụng</span>
                     ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
-                  ${(a.isShared === 1 || a.isShared === true || a._isSharedItem) ? '<span class="account-share-badge" title="Đang chia sẻ với thành viên"><i data-lucide="share-2" style="width:12px;height:12px;"></i></span>' : ''}
+                    ${this.renderReportBadge(a)}
                   </div>
                 </div>
                 <div class="account-balance-wrapper">
