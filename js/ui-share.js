@@ -70,6 +70,13 @@ const UniversalShareModal = {
     await this.loadServices();
     await this.loadShareData();
     this.loadServerUsersForShare();
+
+    // Tự động cập nhật bản chiếu mới nhất lên máy chủ
+    if (window.serverSyncService && window.serverSyncService.isConnected) {
+      window.serverSyncService.projectAndPushItem(type, this.currentId).catch(err => {
+        console.warn('[ShareModal] Cập nhật bản chiếu tự động:', err?.message || err);
+      });
+    }
   },
 
   close() {

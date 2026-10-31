@@ -1989,13 +1989,13 @@ class ServerSyncService {
   async shareItemWithEmail(itemType, itemId, itemName, email, role = 'viewer', password = null) {
     if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
 
+    // Chỉ dùng shareKey nếu người dùng đặt mật khẩu riêng HOẶC Sổ đang bật mã hóa E2EE
     let shareKey = password ? password.trim() : null;
-    if (!shareKey) {
-      shareKey = (await this.getItemShareKey(`${itemType}_${itemId}`)) ||
-        (Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join(''));
+    if (!shareKey && this.encryptionPassword) {
+      shareKey = (await this.getItemShareKey(`${itemType}_${itemId}`)) || this.encryptionPassword;
     }
 
-    // Tự động bóc tách và mã hóa bản chiếu trước khi mời email
+    // Tự động bóc tách bản chiếu (chỉ mã hóa nếu có shareKey) trước khi mời email
     await this.projectAndPushItem(itemType, itemId, shareKey);
 
     const res = await fetch(`${this.serverUrl}/api/shares/item/email`, {
@@ -2011,7 +2011,7 @@ class ServerSyncService {
       throw new Error(err.error || 'Cấp quyền chia sẻ thất bại.');
     }
     const result = await res.json();
-    if (result.share && result.share.id) {
+    if (result.share && result.share.id && shareKey) {
       await this.saveItemShareKey(result.share.id, shareKey);
       result.share.shareKey = shareKey;
     }
@@ -2042,10 +2042,13 @@ class ServerSyncService {
   async createItemShareLink(itemType, itemId, itemName, role = 'viewer', customKey = null) {
     if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
 
-    // Tự động sinh khóa ngẫu nhiên 256-bit (16 bytes hex)
-    const shareKey = customKey ? customKey.trim() : (Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join(''));
+    // Chỉ dùng shareKey nếu người dùng đặt mật khẩu riêng HOẶC Sổ đang bật mã hóa E2EE
+    let shareKey = customKey ? customKey.trim() : null;
+    if (!shareKey && this.encryptionPassword) {
+      shareKey = (await this.getItemShareKey(`${itemType}_${itemId}`)) || this.encryptionPassword;
+    }
 
-    // Tự động bóc tách và mã hóa bản chiếu gửi lên server
+    // Tự động bóc tách bản chiếu gửi lên server
     await this.projectAndPushItem(itemType, itemId, shareKey);
 
     const res = await fetch(`${this.serverUrl}/api/shares/item/link`, {
@@ -2054,14 +2057,14 @@ class ServerSyncService {
         Authorization: `Bearer ${this.token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ itemType, itemId, itemName, role, vaultId: this.activeVaultId })
+      body: JSON.stringify({ itemType, itemId, itemName, role, shareKey, vaultId: this.activeVaultId })
     });
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Tạo liên kết chia sẻ thất bại.');
     }
     const result = await res.json();
-    if (result.link && result.link.token) {
+    if (result.link && result.link.token && shareKey) {
       await this.saveItemShareKey(result.link.token, shareKey);
       result.link.shareKey = shareKey;
     }
@@ -2212,6 +2215,9 @@ class ServerSyncService {
               continue;
             }
           }
+        } else if (shareItem.projectionData && !shareItem.isEncrypted) {
+          item = shareItem.projectionData.item || shareItem.item;
+          transactions = shareItem.projectionData.transactions || shareItem.transactions;
         }
 
         if (!item) continue;
@@ -2221,6 +2227,8 @@ class ServerSyncService {
           let localAcc = (await db.accounts.toArray()).find(a => a._shareId === shareId || (a._remoteId === itemId && a._remoteVaultId === vaultId));
           const accData = {
             ...item,
+            isDeleted: 0,
+            isArchived: item.isArchived ? 1 : 0,
             _isSharedItem: true,
             _sharedRole: role,
             _shareId: shareId,
@@ -2248,6 +2256,7 @@ class ServerSyncService {
               const txData = {
                 ...tx,
                 accountId: localAccId,
+                isDeleted: 0,
                 _isSharedItem: true,
                 _shareId: shareId,
                 _remoteTxId: txRemoteId
@@ -2264,6 +2273,7 @@ class ServerSyncService {
           let localSav = (await db.savings.toArray()).find(s => s._shareId === shareId);
           const savData = {
             ...item,
+            isDeleted: 0,
             _isSharedItem: true,
             _sharedRole: role,
             _shareId: shareId,
@@ -2281,6 +2291,7 @@ class ServerSyncService {
           let localAcc = (await db.accumulations.toArray()).find(a => a._shareId === shareId);
           const accData = {
             ...item,
+            isDeleted: 0,
             _isSharedItem: true,
             _sharedRole: role,
             _shareId: shareId,
@@ -2298,6 +2309,7 @@ class ServerSyncService {
           let localLoan = (await db.loans.toArray()).find(l => l._shareId === shareId);
           const loanData = {
             ...item,
+            isDeleted: 0,
             _isSharedItem: true,
             _sharedRole: role,
             _shareId: shareId,
@@ -2315,6 +2327,7 @@ class ServerSyncService {
           let localAsset = (await db.assets.toArray()).find(a => a._shareId === shareId);
           const assetData = {
             ...item,
+            isDeleted: 0,
             _isSharedItem: true,
             _sharedRole: role,
             _shareId: shareId,

@@ -236,6 +236,9 @@ class DatabaseManager {
       try {
         this.sqliteDb.prepare('ALTER TABLE item_shares ADD COLUMN share_key TEXT').run();
       } catch (_) {}
+      try {
+        this.sqliteDb.prepare('ALTER TABLE item_share_links ADD COLUMN share_key TEXT').run();
+      } catch (_) {}
 
       this.isSqlite = true;
       console.log(`[Storage] Đã khởi tạo SQLite Database tại: ${dbPath}`);
@@ -886,23 +889,23 @@ class DatabaseManager {
     return true;
   }
 
-  createItemShareLink(vaultId, itemType, itemId, itemName, role, createdBy) {
+  createItemShareLink(vaultId, itemType, itemId, itemName, role, createdBy, shareKey = null) {
     const id = generateId('ilnk_');
     const token = crypto.randomBytes(16).toString('hex');
     const now = new Date().toISOString();
 
     if (this.isSqlite) {
       const stmt = this.sqliteDb.prepare(`
-        INSERT INTO item_share_links (id, token, vault_id, item_type, item_id, item_name, role, created_by, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO item_share_links (id, token, vault_id, item_type, item_id, item_name, role, created_by, created_at, share_key)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      stmt.run(id, token, vaultId, itemType, String(itemId), itemName || '', role, createdBy, now);
+      stmt.run(id, token, vaultId, itemType, String(itemId), itemName || '', role, createdBy, now, shareKey);
     } else {
       this.jsonStore.item_share_links = this.jsonStore.item_share_links || [];
-      this.jsonStore.item_share_links.push({ id, token, vault_id: vaultId, item_type: itemType, item_id: String(itemId), item_name: itemName || '', role, created_by: createdBy, created_at: now });
+      this.jsonStore.item_share_links.push({ id, token, vault_id: vaultId, item_type: itemType, item_id: String(itemId), item_name: itemName || '', role, created_by: createdBy, created_at: now, share_key: shareKey });
       this.saveJsonStore();
     }
-    return { id, token, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, role, created_at: now };
+    return { id, token, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, role, created_at: now, share_key: shareKey };
   }
 
   revokeItemShareLink(linkId) {
@@ -937,10 +940,13 @@ class DatabaseManager {
     const cleanEmail = email.trim().toLowerCase();
     if (this.isSqlite) {
       const stmt = this.sqliteDb.prepare(`
-        SELECT s.*, v.name as vault_name, u.name as owner_name, u.email as owner_email
+        SELECT s.*, v.name as vault_name,
+               COALESCE(u.name, u_creator.name, '') as owner_name,
+               COALESCE(u.email, u_creator.email, '') as owner_email
         FROM item_shares s
         LEFT JOIN vaults v ON v.id = s.vault_id
         LEFT JOIN users u ON u.id = v.owner_id
+        LEFT JOIN users u_creator ON u_creator.id = s.created_by
         WHERE LOWER(TRIM(s.user_email)) = ?
       `);
       return stmt.all(cleanEmail);
@@ -949,7 +955,7 @@ class DatabaseManager {
         .filter(s => s.user_email && s.user_email.trim().toLowerCase() === cleanEmail)
         .map(s => {
           const v = (this.jsonStore.vaults || []).find(x => x.id === s.vault_id);
-          const u = v ? (this.jsonStore.users || []).find(x => x.id === v.owner_id) : null;
+          const u = v ? (this.jsonStore.users || []).find(x => x.id === v.owner_id) : (this.jsonStore.users || []).find(x => x.id === s.created_by);
           return { ...s, vault_name: v?.name || '', owner_name: u?.name || '', owner_email: u?.email || '' };
         });
     }
@@ -1012,58 +1018,69 @@ class DatabaseManager {
   }
 
   getReceivedItemData(vaultId, itemType, itemId) {
-    // 1. Ưu tiên Bản Chiếu Độc Lập (Client-Side Projection - hỗ trợ mã hóa E2EE)
     const proj = this.getItemProjection(vaultId, itemType, itemId);
-    if (proj && proj.data) {
-      if (proj.data.encrypted) {
-        return {
-          isProjection: true,
-          isEncrypted: true,
-          projectionData: proj.data
-        };
-      }
+    const vault = this.getVaultData(vaultId);
+    const vaultIsEncrypted = vault && vault.data && typeof vault.data === 'string' && vault.data.startsWith('vault_enc_');
+
+    // 1. Nếu có Bản Chiếu không mã hóa, ưu tiên dùng ngay
+    if (proj && proj.data && !proj.data.encrypted) {
       return {
         isProjection: true,
         isEncrypted: false,
+        projectionData: proj.data,
         item: proj.data.item,
         transactions: Array.isArray(proj.data.transactions) ? proj.data.transactions : [],
         categories: Array.isArray(proj.data.categories) ? proj.data.categories : []
       };
     }
 
-    // 2. Fallback bóc tách từ vault.data (nếu sổ không bật mã hóa E2EE)
-    const vault = this.getVaultData(vaultId);
-    if (!vault || !vault.data) return null;
-    const data = vault.data;
+    // 2. Nếu sổ gốc của chủ sở hữu không mã hóa E2EE, lấy trực tiếp từ dữ liệu sổ
+    if (vault && vault.data && !vaultIsEncrypted) {
+      const data = vault.data;
+      let targetItem = null;
+      let transactions = [];
 
-    let targetItem = null;
-    let transactions = [];
+      if (itemType === 'account') {
+        const accs = Array.isArray(data.accounts) ? data.accounts : [];
+        targetItem = accs.find(a => String(a.id) === String(itemId)) || null;
 
-    if (itemType === 'account') {
-      const accs = Array.isArray(data.accounts) ? data.accounts : [];
-      targetItem = accs.find(a => String(a.id) === String(itemId)) || null;
+        const txs = Array.isArray(data.transactions) ? data.transactions : [];
+        transactions = txs.filter(t => String(t.accountId) === String(itemId) || String(t.toAccountId) === String(itemId));
+      } else if (itemType === 'savings' || itemType === 'saving') {
+        const savings = Array.isArray(data.savings) ? data.savings : [];
+        targetItem = savings.find(s => String(s.id) === String(itemId)) || null;
+      } else if (itemType === 'accumulation' || itemType === 'accumulations') {
+        const accs = Array.isArray(data.accumulations) ? data.accumulations : [];
+        targetItem = accs.find(a => String(a.id) === String(itemId)) || null;
+      } else if (itemType === 'loan' || itemType === 'loans') {
+        const loans = Array.isArray(data.loans) ? data.loans : [];
+        targetItem = loans.find(l => String(l.id) === String(itemId)) || null;
+      } else if (itemType === 'asset' || itemType === 'assets') {
+        const assets = Array.isArray(data.assets) ? data.assets : [];
+        targetItem = assets.find(a => String(a.id) === String(itemId)) || null;
+      }
 
-      const txs = Array.isArray(data.transactions) ? data.transactions : [];
-      transactions = txs.filter(t => String(t.accountId) === String(itemId) || String(t.toAccountId) === String(itemId));
-    } else if (itemType === 'savings' || itemType === 'saving') {
-      const savings = Array.isArray(data.savings) ? data.savings : [];
-      targetItem = savings.find(s => String(s.id) === String(itemId)) || null;
-    } else if (itemType === 'accumulation' || itemType === 'accumulations') {
-      const accs = Array.isArray(data.accumulations) ? data.accumulations : [];
-      targetItem = accs.find(a => String(a.id) === String(itemId)) || null;
-    } else if (itemType === 'loan' || itemType === 'loans') {
-      const loans = Array.isArray(data.loans) ? data.loans : [];
-      targetItem = loans.find(l => String(l.id) === String(itemId)) || null;
-    } else if (itemType === 'asset' || itemType === 'assets') {
-      const assets = Array.isArray(data.assets) ? data.assets : [];
-      targetItem = assets.find(a => String(a.id) === String(itemId)) || null;
+      if (targetItem) {
+        return {
+          isProjection: false,
+          isEncrypted: false,
+          item: targetItem,
+          transactions,
+          categories: Array.isArray(data.categories) ? data.categories : []
+        };
+      }
     }
 
-    return {
-      item: targetItem,
-      transactions,
-      categories: Array.isArray(data.categories) ? data.categories : []
-    };
+    // 3. Nếu là Bản Chiếu mã hóa E2EE
+    if (proj && proj.data && proj.data.encrypted) {
+      return {
+        isProjection: true,
+        isEncrypted: true,
+        projectionData: proj.data
+      };
+    }
+
+    return null;
   }
 
   saveSharedItemTransactions(shareId, email, incomingTxs, incomingProjection = null) {
@@ -2990,7 +3007,7 @@ async function handleApiRequest(req, res, pathname, url) {
   if (req.method === 'POST' && pathname === '/api/shares/item/link') {
     try {
       const body = await parseJsonBody(req);
-      const { itemType, itemId, itemName, role, vaultId: bodyVaultId } = body;
+      const { itemType, itemId, itemName, role, shareKey, vaultId: bodyVaultId } = body;
       if (!itemType || !itemId) {
         return sendJson(res, 400, { error: 'Thiếu itemType hoặc itemId' });
       }
@@ -3000,7 +3017,7 @@ async function handleApiRequest(req, res, pathname, url) {
       if (!vaultId) return sendJson(res, 404, { error: 'Không tìm thấy sổ của bạn' });
 
       const linkRole = role === 'editor' ? 'editor' : 'viewer';
-      const link = dbManager.createItemShareLink(vaultId, itemType, itemId, itemName, linkRole, currentUser.id);
+      const link = dbManager.createItemShareLink(vaultId, itemType, itemId, itemName, linkRole, currentUser.id, shareKey);
 
       return sendJson(res, 200, { success: true, link });
     } catch (err) {
@@ -3026,8 +3043,8 @@ async function handleApiRequest(req, res, pathname, url) {
       const link = dbManager.getShareLinkByToken(token);
       if (!link) return sendJson(res, 404, { error: 'Liên kết không tồn tại hoặc đã hết hạn' });
 
-      // Tự động thêm quyền cho email của currentUser
-      const share = dbManager.addItemShare(link.vault_id, link.item_type, link.item_id, link.item_name, currentUser.email, link.role, link.created_by);
+      // Tự động thêm quyền cho email của currentUser kèm share_key từ link
+      const share = dbManager.addItemShare(link.vault_id, link.item_type, link.item_id, link.item_name, currentUser.email, link.role, link.created_by, link.share_key || null);
 
       const itemData = dbManager.getReceivedItemData(link.vault_id, link.item_type, link.item_id);
 
@@ -3039,6 +3056,7 @@ async function handleApiRequest(req, res, pathname, url) {
         itemId: link.item_id,
         itemName: link.item_name,
         role: link.role,
+        shareKey: link.share_key || null,
         ownerName: link.owner_name,
         ownerEmail: link.owner_email,
         ...itemData

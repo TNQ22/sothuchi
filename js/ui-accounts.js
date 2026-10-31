@@ -4955,15 +4955,39 @@ const UIAccounts = {
     if (!container) return;
 
     if (totalCount === 0) {
-      container.innerHTML = `
-        <div class="accounts-empty-card" style="padding: 24px 16px; text-align: center;">
-          <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(59, 130, 246, 0.12); color: #3b82f6; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
-            <i data-lucide="share-2" style="width: 22px; height: 22px;"></i>
+      const sService = window.serverSyncService;
+      const isLoggedIn = !!(sService && sService.token && sService.userProfile);
+
+      if (!isLoggedIn) {
+        container.innerHTML = `
+          <div class=\"accounts-empty-card\" style=\"padding: 24px 16px; text-align: center;\">
+            <div style=\"width: 44px; height: 44px; border-radius: 50%; background: rgba(239, 68, 68, 0.12); color: #ef4444; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;\">
+              <i data-lucide=\"cloud-off\" style=\"width: 22px; height: 22px;\"></i>
+            </div>
+            <p class=\"empty-text\" style=\"font-weight: 600; color: var(--text-primary); margin-bottom: 4px;\">Chưa đăng nhập Máy Chủ Riêng</p>
+            <p style=\"font-size: 0.8rem; color: var(--text-muted); margin: 0 0 12px 0;\">Sau khi xoá cache trình duyệt, phiên đăng nhập đã được xóa. Bạn cần đăng nhập tài khoản Google vào Máy Chủ Riêng để tải về các tài khoản được chia sẻ.</p>
+            <button class=\"btn btn-primary btn-sm\" onclick=\"if(window.app) window.app.switchView('settings')\" style=\"display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; margin: 0 auto; padding: 6px 14px; border-radius: 8px;\">
+              <i data-lucide=\"settings\" style=\"width: 15px; height: 15px;\"></i> Mở Cài Đặt & Đăng Nhập
+            </button>
           </div>
-          <p class="empty-text" style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Chưa có mục nào được chia sẻ với bạn</p>
-          <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Khi người thân hoặc đối tác chia sẻ tài khoản, sổ tiết kiệm, tích luỹ hoặc tài sản qua Email Google hoặc Liên kết, các mục sẽ hiển thị tại đây.</p>
-        </div>
-      `;
+        `;
+      } else {
+        const userEmail = sService.userProfile.email || '';
+        container.innerHTML = `
+          <div class=\"accounts-empty-card\" style=\"padding: 24px 16px; text-align: center;\">
+            <div style=\"width: 44px; height: 44px; border-radius: 50%; background: rgba(59, 130, 246, 0.12); color: #3b82f6; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;\">
+              <i data-lucide=\"share-2\" style=\"width: 22px; height: 22px;\"></i>
+            </div>
+            <p class=\"empty-text\" style=\"font-weight: 600; color: var(--text-primary); margin-bottom: 4px;\">Chưa có mục nào được chia sẻ với bạn</p>
+            <p style=\"font-size: 0.8rem; color: var(--text-muted); margin: 0 0 4px 0;\">Đang đăng nhập email: <strong style=\"color: var(--text-primary);\">${typeof escapeHTML === 'function' ? escapeHTML(userEmail) : userEmail}</strong></p>
+            <p style=\"font-size: 0.76rem; color: var(--text-secondary); margin: 0 0 12px 0;\">Hãy đảm bảo người chia sẻ đã nhập đúng email này hoặc gửi liên kết chia sẻ cho bạn.</p>
+            <button class=\"btn btn-outline btn-sm\" onclick=\"UIAccounts.manualSyncSharedItems(this)\" style=\"display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; margin: 0 auto; padding: 5px 12px; border-radius: 8px;\">
+              <i data-lucide=\"refresh-cw\" style=\"width: 14px; height: 14px;\"></i> Kiểm tra & Đồng bộ ngay
+            </button>
+          </div>
+        `;
+      }
+
       if (totalValEl) totalValEl.textContent = '0đ';
       if (window.lucide) lucide.createIcons();
       return;
@@ -5024,13 +5048,38 @@ const UIAccounts = {
     if (window.lucide) lucide.createIcons();
   },
 
+  async manualSyncSharedItems(btn) {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader" class="spin" style="width: 14px; height: 14px;"></i> Đang kiểm tra...`;
+      if (window.lucide) lucide.createIcons();
+    }
+    try {
+      if (window.serverSyncService) {
+        const changed = await window.serverSyncService.syncReceivedSharedItems();
+        await this.render();
+        if (typeof showToast === 'function') {
+          showToast(changed ? 'Đã tải thành công các mục chia sẻ mới!' : 'Đã kiểm tra xong: Hiện chưa có mục chia sẻ mới nào.', 'info');
+        }
+      }
+    } catch (err) {
+      if (typeof showToast === 'function') showToast('Lỗi đồng bộ: ' + err.message, 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Kiểm tra & Đồng bộ ngay`;
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+  },
+
   /* ==================== RENDER NET WORTH & 4 SECTIONS ==================== */
   async renderNetWorthHeader() {
-    let accounts = await db.accounts.where('isDeleted').equals(0).toArray();
-    let savings = db.savings ? await db.savings.where('isDeleted').equals(0).toArray() : [];
-    let accumulations = db.accumulations ? await db.accumulations.where('isDeleted').equals(0).toArray() : [];
-    let loans = db.loans ? await db.loans.where('isDeleted').equals(0).toArray() : [];
-    let assets = db.assets ? await db.assets.where('isDeleted').equals(0).toArray() : [];
+    let accounts = (await db.accounts.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0);
+    let savings = db.savings ? (await db.savings.toArray()).filter(s => !s.isDeleted || s.isDeleted === 0) : [];
+    let accumulations = db.accumulations ? (await db.accumulations.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0) : [];
+    let loans = db.loans ? (await db.loans.toArray()).filter(l => !l.isDeleted || l.isDeleted === 0) : [];
+    let assets = db.assets ? (await db.assets.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0) : [];
 
     if (this.currentFilterTab === 'personal') {
       accounts = accounts.filter(a => !a._isSharedItem);
@@ -5477,20 +5526,20 @@ const UIAccounts = {
       await deduplicateAccounts();
     }
 
-    let accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    let accounts = (await db.accounts.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0);
     const totalBal = accounts.reduce((sum, a) => sum + Math.abs(a.balance || 0), 0);
     const txCount = await db.transactions.count();
     if (totalBal === 0 && txCount > 0 && typeof recalculateAccountBalances === 'function') {
       await recalculateAccountBalances();
-      accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+      accounts = (await db.accounts.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0);
     }
     accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
 
     // Retrieve shared items across all categories for total badge count
-    const allSavings = db.savings ? await db.savings.where('isDeleted').equals(0).toArray() : [];
-    const allAccums = db.accumulations ? await db.accumulations.where('isDeleted').equals(0).toArray() : [];
-    const allLoans = db.loans ? await db.loans.where('isDeleted').equals(0).toArray() : [];
-    const allAssets = db.assets ? await db.assets.where('isDeleted').equals(0).toArray() : [];
+    const allSavings = db.savings ? (await db.savings.toArray()).filter(s => !s.isDeleted || s.isDeleted === 0) : [];
+    const allAccums = db.accumulations ? (await db.accumulations.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0) : [];
+    const allLoans = db.loans ? (await db.loans.toArray()).filter(l => !l.isDeleted || l.isDeleted === 0) : [];
+    const allAssets = db.assets ? (await db.assets.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0) : [];
 
     const sharedAccounts = accounts.filter(a => !!a._isSharedItem && !a.isArchived);
     const sharedSavings = allSavings.filter(s => !!s._isSharedItem && s.status === 'active');
