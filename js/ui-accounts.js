@@ -438,20 +438,31 @@ const UIAccounts = {
     }
 
     const nameEl = document.getElementById('action-sheet-acc-name');
-    if (nameEl) nameEl.textContent = acc.name;
+    if (nameEl) {
+      const shareBadge = acc._isSharedItem 
+        ? ' <span style="font-size: 0.72rem; color: #3b82f6; font-weight: 600; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle;"><i data-lucide="share-2" style="width: 10px; height: 10px; display: inline-block; vertical-align: -1px;"></i> Được chia sẻ</span>'
+        : (acc.isShared ? ' <span style="font-size: 0.72rem; color: #10b981; font-weight: 600; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle;"><i data-lucide="share-2" style="width: 10px; height: 10px; display: inline-block; vertical-align: -1px;"></i> Đang chia sẻ</span>' : '');
+      nameEl.innerHTML = escapeHTML(acc.name) + shareBadge;
+    }
 
     const balEl = document.getElementById('action-sheet-acc-balance');
     if (balEl) {
       const curSym = acc.currency === 'USD' ? '$' : (acc.currency === 'EUR' ? '€' : (acc.currency === 'JPY' ? '¥' : 'đ'));
       const balStr = new Intl.NumberFormat('vi-VN').format(acc.balance);
       const excludeText = acc.excludeFromReport ? ' • (Không tính vào báo cáo)' : '';
-      balEl.textContent = `${info.label} • Số dư: ${balStr}${curSym}${excludeText}`;
+      const sharedFromText = (acc._isSharedItem && acc._sharedFrom) ? ` • Từ: ${acc._sharedFrom}` : '';
+      const descText = acc.description ? ` • ${acc.description}` : '';
+      balEl.textContent = `${info.label} • Số dư: ${balStr}${curSym}${sharedFromText}${descText}${excludeText}`;
     }
 
     // Update Budget setting display
     const hasBudget = acc.includeInBudget !== undefined ? (acc.includeInBudget === 1 || acc.includeInBudget === true) : (!acc.excludeFromReport);
+    const budgetSwitch = document.getElementById('action-sheet-budget-switch');
     const budgetBadge = document.getElementById('action-sheet-budget-badge');
     const budgetDesc = document.getElementById('action-sheet-budget-desc');
+    if (budgetSwitch) {
+      budgetSwitch.checked = !!hasBudget;
+    }
     if (budgetBadge) {
       budgetBadge.textContent = hasBudget ? 'Đang bật' : 'Đang tắt';
       budgetBadge.className = 'action-sheet-budget-badge ' + (hasBudget ? 'active' : 'inactive');
@@ -498,7 +509,11 @@ const UIAccounts = {
     if (window.lucide) lucide.createIcons();
   },
 
-  async toggleAccountBudgetAction() {
+  async toggleAccountBudgetAction(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const accId = this.currentActionAccountId;
     if (!accId) return;
     const acc = await db.accounts.get(Number(accId));
@@ -506,9 +521,21 @@ const UIAccounts = {
     const currentBudget = acc.includeInBudget !== undefined ? (acc.includeInBudget === 1 || acc.includeInBudget === true) : (!acc.excludeFromReport);
     const nextBudget = currentBudget ? 0 : 1;
     await db.accounts.update(Number(accId), { includeInBudget: nextBudget, updatedAt: Date.now() });
-    this.closeActionSheet();
+
+    const budgetSwitch = document.getElementById('action-sheet-budget-switch');
+    if (budgetSwitch) budgetSwitch.checked = !!nextBudget;
+    const budgetBadge = document.getElementById('action-sheet-budget-badge');
+    if (budgetBadge) {
+      budgetBadge.textContent = nextBudget ? 'Đang bật' : 'Đang tắt';
+      budgetBadge.className = 'action-sheet-budget-badge ' + (nextBudget ? 'active' : 'inactive');
+    }
+    const budgetDesc = document.getElementById('action-sheet-budget-desc');
+    if (budgetDesc) {
+      budgetDesc.textContent = nextBudget ? 'Đang tính chi tiêu vào ngân sách tháng' : 'Không tính chi tiêu vào ngân sách tháng';
+    }
+
     await window.app.refreshAll();
-    showToast((nextBudget ? 'Đã bật' : 'Đã tắt') + ' tính vào ngân sách cho ví "' + acc.name + '"', 'success');
+    showToast((nextBudget ? 'Đã bật' : 'Đã tắt') + ' áp dụng ngân sách cho ví "' + acc.name + '"', 'success');
     if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
@@ -1859,16 +1886,56 @@ const UIAccounts = {
       const balanceColor = acc.balance >= 0 ? '#10b981' : '#ef4444';
       const typeText = acc.type === 'bank' ? (acc.bankCode || 'Tài khoản ngân hàng') : (acc.type === 'ewallet' ? 'Ví điện tử' : (acc.type === 'credit' ? 'Thẻ tín dụng' : 'Tiền mặt'));
 
+      const isSharedItem = !!acc._isSharedItem;
+      const isSharedByMe = !isSharedItem && (acc.isShared === 1 || acc.isShared === true);
+
+      let shareBadge = '';
+      if (isSharedItem) {
+        shareBadge = `
+          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #3b82f6; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 0;">
+            <i data-lucide="share-2" style="width: 10px; height: 10px;"></i> Được chia sẻ
+          </span>
+        `;
+      } else if (isSharedByMe) {
+        shareBadge = `
+          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 0;">
+            <i data-lucide="share-2" style="width: 10px; height: 10px;"></i> Đang chia sẻ
+          </span>
+        `;
+      }
+
+      const subParts = [escapeHTML(typeText)];
+      if (isSharedItem) {
+        const owner = acc._sharedFrom || 'Thành viên';
+        subParts.push(`<span style="color: #3b82f6; font-weight: 600;"><i data-lucide="user" style="width: 11px; height: 11px; vertical-align: -1px; display: inline-block;"></i> Từ: ${escapeHTML(owner)}</span>`);
+      }
+      if (acc.description && acc.description.trim()) {
+        subParts.push(`<span style="color: var(--text-secondary); font-style: italic;">${escapeHTML(acc.description.trim())}</span>`);
+      }
+      subParts.push(`<span style="font-weight: 600; color: ${balanceColor};">Dư: ${balanceStr}</span>`);
+
+      const miniShareIndicator = isSharedItem
+        ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 8px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 8px; height: 8px;"></i></div>`
+        : (isSharedByMe ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 8px;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 8px; height: 8px;"></i></div>` : '');
+
       html += `
         <div class="source-acc-item ${isSelected ? 'active' : ''}" onclick="UIAccounts.selectSourceAccount('${acc.id}')">
-          <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
-            ${this.renderLogoBadge(acc, 40)}
-            <div style="min-width: 0;">
-              <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(acc.name)}</div>
-              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">${escapeHTML(typeText)} • <span style="font-weight: 600; color: ${balanceColor};">Dư: ${balanceStr}</span></div>
+          <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
+            <div style="position: relative; flex-shrink: 0;">
+              ${this.renderLogoBadge(acc, 40)}
+              ${miniShareIndicator}
+            </div>
+            <div style="min-width: 0; flex: 1;">
+              <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px; overflow: hidden;">
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${escapeHTML(acc.name)}</span>
+                ${shareBadge}
+              </div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${subParts.join(' • ')}
+              </div>
             </div>
           </div>
-          ${isSelected ? '<i data-lucide="check" style="width: 20px; height: 20px; color: var(--primary); flex-shrink: 0;"></i>' : ''}
+          ${isSelected ? '<i data-lucide="check" style="width: 20px; height: 20px; color: var(--primary); flex-shrink: 0; margin-left: 8px;"></i>' : ''}
         </div>
       `;
     });

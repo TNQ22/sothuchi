@@ -5272,7 +5272,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
         </button>
 
-                <button type="button" class="action-sheet-item" onclick="UIAccounts.toggleAccountBudgetAction()">
+                <div class="action-sheet-item" id="action-sheet-budget-row" onclick="UIAccounts.toggleAccountBudgetAction(event)" style="cursor: pointer;">
           <div class="action-sheet-item-icon" style="background: rgba(13, 148, 136, 0.12); color: var(--primary);">
             <i data-lucide="target" style="width: 18px; height: 18px;"></i>
           </div>
@@ -5280,8 +5280,12 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
             <span class="action-sheet-item-title">Áp dụng ngân sách</span>
             <span class="action-sheet-item-desc" id="action-sheet-budget-desc">Đang tính vào ngân sách tháng</span>
           </div>
-          <span id="action-sheet-budget-badge" class="action-sheet-budget-badge active">Bật</span>
-        </button>
+          <label class="app-switch" style="flex-shrink: 0; pointer-events: none; margin: 0;">
+            <input type="checkbox" id="action-sheet-budget-switch">
+            <span class="app-switch-slider"></span>
+          </label>
+          <span id="action-sheet-budget-badge" style="display: none;"></span>
+        </div>
 
         <!-- Nút Chia sẻ Độc lập (Chủ sở hữu) -->
         <button type="button" class="action-sheet-item" id="action-sheet-universal-share-btn" onclick="UIAccounts.closeActionSheet(); UniversalShareModal.open('account', UIAccounts.currentActionAccountId)">
