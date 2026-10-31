@@ -4704,33 +4704,35 @@ const UIAccounts = {
       <div class="account-list-item ${isShared ? 'shared-item-card' : ''}" data-id="${a.id}" style="width: 100%; box-sizing: border-box; margin-bottom: 8px;">
         ${isShared ? this.renderSharedItemBanner(a) : ''}
         
-        <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản">
-          <div class="account-icon-bubble ${isShared ? 'with-share-badge' : ''}" style="background: transparent;">
-            ${this.renderLogoBadge(a, 36)}
-            ${isShared ? '<div class="mini-share-indicator" title="Được chia sẻ"><i data-lucide="share-2"></i></div>' : ''}
-          </div>
-          <div class="account-info">
-            <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
-              <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; flex: 1 1 0%; min-width: 0; max-width: 100%; font-weight: 700;">${escapeHTML(a.name)}</span>
-              ${a.excludeFromReport ? '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn</span>' : ''}
+        <div class="account-item-inner-row" style="display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0;">
+          <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản" style="flex: 1 1 0%; min-width: 0; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <div class="account-icon-bubble ${isShared ? 'with-share-badge' : ''}" style="background: transparent; flex-shrink: 0;">
+              ${this.renderLogoBadge(a, 36)}
+              ${isShared ? '<div class="mini-share-indicator" title="Được chia sẻ"><i data-lucide="share-2"></i></div>' : ''}
             </div>
-            <div class="account-sub-row">
-              <span class="account-type-label">${info.label}</span>
-              ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
-              ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
-              ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
-              ${(a.isShared === 1 || a.isShared === true || a._isSharedItem) ? '<span class="account-share-badge" title="Đang chia sẻ với thành viên"><i data-lucide="share-2" style="width:12px;height:12px;"></i></span>' : ''}
+            <div class="account-info" style="flex: 1 1 0%; min-width: 0; overflow: hidden;">
+              <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
+                <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; flex: 1 1 0%; min-width: 0; max-width: 100%; font-weight: 700;">${escapeHTML(a.name)}</span>
+                ${a.excludeFromReport ? '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn</span>' : ''}
+              </div>
+              <div class="account-sub-row" style="display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <span class="account-type-label">${info.label}</span>
+                ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
+                ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
+                ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
+                ${(a.isShared === 1 || a.isShared === true || a._isSharedItem) ? '<span class="account-share-badge" title="Đang chia sẻ với thành viên"><i data-lucide="share-2" style="width:12px;height:12px;"></i></span>' : ''}
+              </div>
+            </div>
+            <div class="account-balance-wrapper" style="flex-shrink: 0; text-align: right;">
+              <span class="account-balance stat-amount ${a.balance < 0 ? 'expense-text' : ''}">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
             </div>
           </div>
-          <div class="account-balance-wrapper">
-            <span class="account-balance stat-amount ${a.balance < 0 ? 'expense-text' : ''}">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
-          </div>
-        </div>
 
-        <div class="account-menu-wrapper" onclick="event.stopPropagation();">
-          <button type="button" class="account-menu-btn" onclick="UIAccounts.openAccountActions(${a.id})" title="Tùy chọn tài khoản" aria-label="Tùy chọn tài khoản">
-            <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
-          </button>
+          <div class="account-menu-wrapper" onclick="event.stopPropagation();" style="flex-shrink: 0;">
+            <button type="button" class="account-menu-btn" onclick="UIAccounts.openAccountActions(${a.id})" title="Tùy chọn tài khoản" aria-label="Tùy chọn tài khoản">
+              <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -5622,37 +5624,40 @@ const UIAccounts = {
         html += `
           <div class="account-list-item ${a._isSharedItem ? 'shared-item-card' : ''}" draggable="true" data-id="${a.id}" data-index="${index}">
             ${a._isSharedItem ? this.renderSharedItemBanner(a) : ''}
-            <div class="account-drag-handle" title="Kéo để sắp xếp vị trí">
-              <i data-lucide="grip-vertical" style="width: 16px; height: 16px;"></i>
-            </div>
             
-            <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản">
-              <div class="account-icon-bubble ${a._isSharedItem ? 'with-share-badge' : ''}" style="background: transparent;">
-                ${this.renderLogoBadge(a, 36)}
-                ${a._isSharedItem ? '<div class="mini-share-indicator" title="Được chia sẻ"><i data-lucide="share-2"></i></div>' : ''}
+            <div class="account-item-inner-row" style="display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0;">
+              <div class="account-drag-handle" title="Kéo để sắp xếp vị trí">
+                <i data-lucide="grip-vertical" style="width: 16px; height: 16px;"></i>
               </div>
-              <div class="account-info">
-                <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
-                  <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; flex: 1 1 0%; min-width: 0; max-width: 100%; font-weight: 700;">${escapeHTML(a.name)}</span>
-                  ${a.excludeFromReport ? '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn báo cáo</span>' : ''}
+              
+              <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản" style="flex: 1 1 0%; min-width: 0; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <div class="account-icon-bubble ${a._isSharedItem ? 'with-share-badge' : ''}" style="background: transparent; flex-shrink: 0;">
+                  ${this.renderLogoBadge(a, 36)}
+                  ${a._isSharedItem ? '<div class="mini-share-indicator" title="Được chia sẻ"><i data-lucide="share-2"></i></div>' : ''}
                 </div>
-                <div class="account-sub-row">
-                  <span class="account-type-label">${info.label}</span>
-                  ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
-                  ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
-                  ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
-                  ${(a.isShared === 1 || a.isShared === true || a._isSharedItem) ? '<span class="account-share-badge" title="Đang chia sẻ với thành viên"><i data-lucide="share-2" style="width:12px;height:12px;"></i></span>' : ''}
+                <div class="account-info" style="flex: 1 1 0%; min-width: 0; overflow: hidden;">
+                  <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
+                    <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; flex: 1 1 0%; min-width: 0; max-width: 100%; font-weight: 700;">${escapeHTML(a.name)}</span>
+                    ${a.excludeFromReport ? '<span class="account-badge exclude" title="Không tính vào báo cáo"><i data-lucide="eye-off" style="width:11px;height:11px;"></i> Ẩn báo cáo</span>' : ''}
+                  </div>
+                  <div class="account-sub-row" style="display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <span class="account-type-label">${info.label}</span>
+                    ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
+                    ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
+                    ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
+                    ${(a.isShared === 1 || a.isShared === true || a._isSharedItem) ? '<span class="account-share-badge" title="Đang chia sẻ với thành viên"><i data-lucide="share-2" style="width:12px;height:12px;"></i></span>' : ''}
+                  </div>
+                </div>
+                <div class="account-balance-wrapper" style="flex-shrink: 0; text-align: right;">
+                  <span class="account-balance stat-amount ${a.balance < 0 ? 'expense-text' : ''}">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
                 </div>
               </div>
-              <div class="account-balance-wrapper">
-                <span class="account-balance stat-amount ${a.balance < 0 ? 'expense-text' : ''}">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
-              </div>
-            </div>
 
-            <div class="account-menu-wrapper" onclick="event.stopPropagation();">
-              <button type="button" class="account-menu-btn" onclick="UIAccounts.openAccountActions(${a.id})" title="Tùy chọn tài khoản" aria-label="Tùy chọn tài khoản">
-                <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
-              </button>
+              <div class="account-menu-wrapper" onclick="event.stopPropagation();" style="flex-shrink: 0;">
+                <button type="button" class="account-menu-btn" onclick="UIAccounts.openAccountActions(${a.id})" title="Tùy chọn tài khoản" aria-label="Tùy chọn tài khoản">
+                  <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
+                </button>
+              </div>
             </div>
           </div>
         `;

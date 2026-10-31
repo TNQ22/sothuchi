@@ -1873,6 +1873,7 @@ class ServerSyncService {
       if (targetItem) {
         transactions = (await db.transactions.toArray()).filter(t => {
           if (t._isSharedItem) return false;
+          if (t.isDeleted && t.isDeleted !== 0) return false;
           return Number(t.accountId) === Number(itemId) || Number(t.toAccountId) === Number(itemId);
         });
       }
@@ -2223,8 +2224,8 @@ class ServerSyncService {
         if (!item) continue;
 
         if (itemType === 'account') {
-          // Tìm tài khoản cục bộ tương ứng theo _shareId hoặc _remoteId
-          let localAcc = (await db.accounts.toArray()).find(a => a._shareId === shareId || (a._remoteId === itemId && a._remoteVaultId === vaultId));
+          // Chỉ tìm tài khoản chia sẻ tương ứng theo _shareId hoặc _remoteId (không bao giờ đè tài khoản cá nhân)
+          let localAcc = (await db.accounts.toArray()).find(a => a._isSharedItem && (a._shareId === shareId || (a._remoteId === itemId && a._remoteVaultId === vaultId)));
           const accData = {
             ...item,
             isDeleted: 0,
@@ -2250,9 +2251,21 @@ class ServerSyncService {
 
           // Cập nhật giao dịch cho tài khoản này
           if (Array.isArray(transactions)) {
+            const incomingRemoteTxIds = new Set(transactions.map(t => String(t.id)));
+
+            // Xóa các giao dịch cục bộ của mục chia sẻ này nếu trên server đã bị xóa
+            const existingSharedTxs = (await db.transactions.toArray()).filter(t => t._shareId === shareId);
+            for (const oldTx of existingSharedTxs) {
+              if (oldTx._remoteTxId && !incomingRemoteTxIds.has(String(oldTx._remoteTxId))) {
+                hasChanges = true;
+                await db.transactions.delete(oldTx.id);
+              }
+            }
+
+            // Thêm hoặc cập nhật các giao dịch từ server
             for (const tx of transactions) {
               const txRemoteId = tx.id;
-              const localTx = (await db.transactions.toArray()).find(t => t._remoteTxId === txRemoteId && t._shareId === shareId);
+              const localTx = existingSharedTxs.find(t => String(t._remoteTxId) === String(txRemoteId));
               const txData = {
                 ...tx,
                 accountId: localAccId,
@@ -2265,6 +2278,7 @@ class ServerSyncService {
                 await db.transactions.update(localTx.id, { ...txData, id: localTx.id });
               } else {
                 delete txData.id;
+                hasChanges = true;
                 await db.transactions.add(txData);
               }
             }

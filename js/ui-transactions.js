@@ -148,7 +148,7 @@ const UITransactions = {
     if (!menu) return;
 
     try {
-      const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+      const accounts = (await db.accounts.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0);
       accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
       const active = accounts.filter(a => !a.isArchived);
 
@@ -182,7 +182,7 @@ const UITransactions = {
             <div class="tx-header-acc-option-left">
               ${logoBadge}
               <div class="tx-header-acc-option-info">
-                <span class="tx-header-acc-option-name">${escapeHTML(acc.name)}</span>
+                <span class="tx-header-acc-option-name">${escapeHTML(acc.name)}${acc._isSharedItem ? ' <span style="font-size: 0.68rem; color: #3b82f6; font-weight: 600;">(Được chia sẻ)</span>' : ''}</span>
                 <span class="tx-header-acc-option-balance" style="color: ${balColor};">Số dư: ${balFormatted}</span>
               </div>
             </div>
@@ -3259,7 +3259,7 @@ const UITransactions = {
     const toDropdownList = document.getElementById('tx-to-account-dropdown-list');
     if (!fromSelect) return;
 
-    const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    const accounts = (await db.accounts.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0);
     accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
 
     const iconMap = {
@@ -3286,7 +3286,7 @@ const UITransactions = {
 
     // Populate hidden native select for form reading
     const options = accounts.map(a =>
-      `<option value="${a.id}">${a.name}</option>`
+      `<option value="${a.id}">${a.name}${a._isSharedItem ? ' (Được chia sẻ)' : ''}</option>`
     ).join('');
     fromSelect.innerHTML = options;
     if (toSelect) toSelect.innerHTML = options;
@@ -3309,10 +3309,10 @@ const UITransactions = {
                style="${isSelected ? 'background:rgba(255,255,255,0.08);' : ''}">
             ${badgeHtml}
             <div style="flex:1; min-width:0;">
-              <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">${a.name}</div>
+              <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">${escapeHTML(a.name)}${a._isSharedItem ? ' <span style="font-size:0.68rem; color:#3b82f6; font-weight:600;">(Được chia sẻ)</span>' : ''}</div>
               <div style="font-size:0.78rem; color:var(--text-muted);">${bal}đ</div>
             </div>
-            ${isSelected ? '<i data-lucide="check" style="width:16px;height:16px;color:var(--primary);"></i>' : ''}
+            ${isSelected ? '<i data-lucide="check" style="width:16px;height:16px;color:var(--primary);flex-shrink:0;"></i>' : ''}
           </div>`;
       }).join('');
     }
@@ -3332,10 +3332,10 @@ const UITransactions = {
                style="${isSelected ? 'background:rgba(255,255,255,0.08);' : ''}">
             ${badgeHtml}
             <div style="flex:1; min-width:0;">
-              <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">${a.name}</div>
+              <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">${escapeHTML(a.name)}${a._isSharedItem ? ' <span style="font-size:0.68rem; color:#3b82f6; font-weight:600;">(Được chia sẻ)</span>' : ''}</div>
               <div style="font-size:0.78rem; color:var(--text-muted);">${bal}đ</div>
             </div>
-            ${isSelected ? '<i data-lucide="check" style="width:16px;height:16px;color:var(--primary);"></i>' : ''}
+            ${isSelected ? '<i data-lucide="check" style="width:16px;height:16px;color:var(--primary);flex-shrink:0;"></i>' : ''}
           </div>`;
       }).join('');
     }

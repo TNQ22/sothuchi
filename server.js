@@ -1045,7 +1045,7 @@ class DatabaseManager {
         targetItem = accs.find(a => String(a.id) === String(itemId)) || null;
 
         const txs = Array.isArray(data.transactions) ? data.transactions : [];
-        transactions = txs.filter(t => String(t.accountId) === String(itemId) || String(t.toAccountId) === String(itemId));
+        transactions = txs.filter(t => (!t.isDeleted || t.isDeleted === 0) && (String(t.accountId) === String(itemId) || String(t.toAccountId) === String(itemId)));
       } else if (itemType === 'savings' || itemType === 'saving') {
         const savings = Array.isArray(data.savings) ? data.savings : [];
         targetItem = savings.find(s => String(s.id) === String(itemId)) || null;

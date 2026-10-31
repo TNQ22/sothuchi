@@ -71,11 +71,25 @@ const DEFAULT_ACCOUNTS = [
 ];
 
 // Tự động kiểm tra và gộp tài khoản bị trùng lặp tên & loại (khắc phục nhân đôi trên PWA/Sync)
+// TUYỆT ĐỐI KHÔNG GỘP TÀI KHOẢN ĐƯỢC CHIA SẺ (_isSharedItem) VỚI TÀI KHOẢN CÁ NHÂN!
 async function deduplicateAccounts() {
   try {
-    const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    const allAccounts = await db.accounts.toArray();
+
+    // 1. Phục hồi tài khoản cá nhân nếu từng bị gộp nhầm với tài khoản chia sẻ
+    const sharedAccounts = allAccounts.filter(a => a._isSharedItem && !a.isDeleted);
+    const deletedPersonal = allAccounts.filter(a => a.isDeleted === 1 && !a._isSharedItem);
+    for (const del of deletedPersonal) {
+      if (sharedAccounts.some(s => s.name.trim().toLowerCase() === del.name.trim().toLowerCase())) {
+        await db.accounts.update(del.id, { isDeleted: 0, updatedAt: Date.now() });
+        console.log(`[Deduplicate] Đã phục hồi tài khoản cá nhân bị ghi đè: ${del.name} (ID ${del.id})`);
+      }
+    }
+
+    // 2. Chỉ lọc và gộp các tài khoản CÁ NHÂN nội bộ (không phải tài khoản chia sẻ)
+    const personalAccounts = (await db.accounts.toArray()).filter(a => (!a.isDeleted || a.isDeleted === 0) && !a._isSharedItem);
     const seen = new Map();
-    for (const acc of accounts) {
+    for (const acc of personalAccounts) {
       const key = `${acc.name.trim().toLowerCase()}_${acc.type}`;
       if (!seen.has(key)) {
         seen.set(key, acc);

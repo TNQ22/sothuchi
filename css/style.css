@@ -11641,7 +11641,26 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 }
 
 /* THẺ TÀI KHOẢN/SỔ ĐƯỢC CHIA SẺ - LÀM NỔI BẬT ĐẶC BIỆT KHI HIỂN THỊ CHUNG & RIÊNG */
-.account-list-item.shared-item-card,
+.account-list-item.shared-item-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  border: 1.5px solid #3b82f6 !important;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, var(--bg-card) 100%) !important;
+  box-shadow: 0 3px 12px rgba(59, 130, 246, 0.16) !important;
+  position: relative;
+  overflow: visible;
+}
+
+.account-list-item.shared-item-card .account-item-inner-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+  min-width: 0;
+}
+
 .group-item-card.shared-item-card {
   border: 1.5px solid #3b82f6 !important;
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, var(--bg-card) 100%) !important;
