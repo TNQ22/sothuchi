@@ -92,95 +92,17 @@ class PullToRefresh {
   }
 
   ensureIosHapticElement() {
-    // Tạo một native iOS switch ẩn để trigger Taptic Engine
-    // Cần pointer-events: auto và visible đủ để iOS nhận real touch
-    if (!document.getElementById('ios-ptr-haptic-wrap')) {
-      const wrap = document.createElement('div');
-      wrap.id = 'ios-ptr-haptic-wrap';
-      // Đặt ngoài màn hình nhưng vẫn trong DOM và có kích thước thực
-      wrap.style.cssText = [
-        'position:fixed',
-        'top:-120px',
-        'left:50%',
-        'transform:translateX(-50%)',
-        'width:60px',
-        'height:30px',
-        'opacity:0.001',
-        'z-index:2147483647',
-        'pointer-events:auto',
-        'overflow:visible',
-        'border:none',
-        'background:transparent',
-      ].join(';');
-
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.id = 'ios-ptr-haptic-input';
-      // "switch" attribute kích hoạt iOS Taptic Engine khi toggle
-      input.setAttribute('switch', '');
-      input.style.cssText = 'width:60px;height:30px;margin:0;cursor:pointer;';
-      wrap.appendChild(input);
-      document.body.appendChild(wrap);
-    }
+    // Phần tử ẩn hoàn toàn, chỉ dùng Web Audio — không cần DOM element cho iOS nữa
   }
 
   triggerHaptic() {
     // 1. Android / Standard Vibration API
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      try { navigator.vibrate(18); } catch (_) {}
+      try { navigator.vibrate(22); } catch (_) {}
     }
 
-    // 2. iOS Taptic Engine — chỉ hoạt động qua real TouchEvent, KHÔNG phải .click() synthetic
-    // Kỹ thuật: di chuyển switch vào vùng màn hình thực, dispatch TouchEvent thật, rồi ẩn lại
-    try {
-      const wrap = document.getElementById('ios-ptr-haptic-wrap');
-      const input = document.getElementById('ios-ptr-haptic-input');
-      if (wrap && input) {
-        // Đưa phần tử vào vùng có thể chạm (gần giữa màn hình)
-        wrap.style.top = '45%';
-        wrap.style.opacity = '0.002'; // vẫn "có mặt" theo iOS
-
-        const rect = wrap.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-
-        // Tạo real TouchEvent — iOS Safari nhận đây là user gesture thật
-        const makeTouchEvent = (type) => {
-          const touch = new Touch({
-            identifier: Date.now(),
-            target: input,
-            clientX: cx,
-            clientY: cy,
-            radiusX: 10,
-            radiusY: 10,
-            rotationAngle: 0,
-            force: 0.5,
-          });
-          return new TouchEvent(type, {
-            bubbles: true,
-            cancelable: true,
-            touches: type === 'touchend' ? [] : [touch],
-            targetTouches: type === 'touchend' ? [] : [touch],
-            changedTouches: [touch],
-          });
-        };
-
-        input.dispatchEvent(makeTouchEvent('touchstart'));
-        // Delay nhỏ để iOS nhận biết "nhấn & thả" — khoảng 40ms là đủ
-        setTimeout(() => {
-          try {
-            input.dispatchEvent(makeTouchEvent('touchend'));
-          } catch (_) {}
-          // Ẩn lại sau khi trigger
-          setTimeout(() => {
-            try { wrap.style.top = '-120px'; } catch (_) {}
-          }, 80);
-        }, 40);
-      }
-    } catch (_) {}
-
-    // 3. Web Audio micro-haptic kick (dự phòng / Android fallback)
-    // Xung siêu trầm 60Hz kích rung cuộn loa, tạo cảm giác xúc giác nhẹ
+    // 2. Web Audio micro-haptic kick
+    // Xung siêu trầm 60Hz kích rung cuộn loa, tạo cảm giác xúc giác nhẹ qua loa
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (AudioCtx) {
@@ -190,14 +112,14 @@ class PullToRefresh {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(60, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(28, ctx.currentTime + 0.04);
-        gain.gain.setValueAtTime(0.35, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+        osc.frequency.setValueAtTime(65, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(32, ctx.currentTime + 0.035);
+        gain.gain.setValueAtTime(0.4, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.035);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start();
-        osc.stop(ctx.currentTime + 0.045);
+        osc.stop(ctx.currentTime + 0.04);
       }
     } catch (_) {}
   }
