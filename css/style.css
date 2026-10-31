@@ -11673,10 +11673,6 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 
 /* THẺ TÀI KHOẢN/SỔ ĐƯỢC CHIA SẺ - LÀM NỔI BẬT ĐẶC BIỆT KHI HIỂN THỊ CHUNG & RIÊNG */
 .account-list-item.shared-item-card {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: stretch !important;
-  gap: 8px !important;
   border: 1.5px solid #3b82f6 !important;
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, var(--bg-card) 100%) !important;
   box-shadow: 0 3px 12px rgba(59, 130, 246, 0.16) !important;
@@ -11707,73 +11703,50 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   box-shadow: 0 4px 16px rgba(37, 99, 235, 0.25) !important;
 }
 
-/* Dải Ribbon/Banner hiển thị thông tin chia sẻ trên từng thẻ */
-.shared-item-highlight-ribbon {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  margin-bottom: 6px;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  background: rgba(59, 130, 246, 0.12);
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  box-sizing: border-box;
-}
-
-.shared-from-pill {
+/* Badge icon quyền chỉnh sửa/chỉ xem nằm dưới tên ví/sổ */
+.account-role-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 0.73rem;
-  color: #2563eb;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-[data-theme="dark"] .shared-from-pill {
-  color: #93c5fd;
-}
-
-.shared-from-pill strong {
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.shared-role-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 7px;
-  border-radius: 4px;
-  font-size: 0.69rem;
-  font-weight: 700;
-  white-space: nowrap;
+  justify-content: center;
+  padding: 2px 5px;
+  border-radius: var(--radius-full);
+  line-height: 1;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.shared-role-pill.viewer {
-  background: rgba(59, 130, 246, 0.18);
-  color: #2563eb;
-}
-
-[data-theme="dark"] .shared-role-pill.viewer {
-  background: rgba(96, 165, 250, 0.22);
-  color: #60a5fa;
-}
-
-.shared-role-pill.editor {
-  background: rgba(16, 185, 129, 0.18);
+.account-role-badge.editor {
+  background: rgba(16, 185, 129, 0.12);
   color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
-[data-theme="dark"] .shared-role-pill.editor {
-  background: rgba(52, 211, 153, 0.22);
+.account-role-badge.viewer {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+[data-theme="dark"] .account-role-badge.viewer,
+.dark-theme .account-role-badge.viewer,
+body.dark .account-role-badge.viewer {
+  background: rgba(96, 165, 250, 0.18);
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+[data-theme="dark"] .account-role-badge.editor,
+.dark-theme .account-role-badge.editor,
+body.dark .account-role-badge.editor {
+  background: rgba(52, 211, 153, 0.18);
   color: #34d399;
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+/* Dải Ribbon/Banner hiển thị thông tin chia sẻ trên từng thẻ (legacy / ẩn) */
+.shared-item-highlight-ribbon {
+  display: none;
 }
 
 /* Mini indicator icon on account avatar */
