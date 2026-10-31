@@ -6686,11 +6686,13 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           <!-- Nếu đã kết nối server: Giao diện tabs -->
           <div id="share-server-main-controls">
             <div class="share-tabs-nav">
-              <button type="button" class="share-tab-btn active" id="tab-share-email-btn" onclick="UniversalShareModal.switchTab('email')">
-                <i data-lucide="mail" style="width: 15px; height: 15px;"></i> Chia sẻ qua Email Google
+              <button type="button" class="share-tab-btn active" id="tab-share-email-btn" onclick="UniversalShareModal.switchTab('email')" title="Chia sẻ qua Email">
+                <i data-lucide="mail" style="width: 15px; height: 15px;"></i>
+                <span class="share-tab-text">Chia sẻ qua Email</span>
               </button>
-              <button type="button" class="share-tab-btn" id="tab-share-link-btn" onclick="UniversalShareModal.switchTab('link')">
-                <i data-lucide="link" style="width: 15px; height: 15px;"></i> Chia sẻ bằng Liên kết (Link)
+              <button type="button" class="share-tab-btn" id="tab-share-link-btn" onclick="UniversalShareModal.switchTab('link')" title="Chia sẻ qua Link">
+                <i data-lucide="link" style="width: 15px; height: 15px;"></i>
+                <span class="share-tab-text">Chia sẻ qua Link</span>
               </button>
             </div>
 
@@ -6699,7 +6701,10 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               <div class="share-form-box">
                 <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">Thêm thành viên theo Email Google</label>
                 <div class="share-form-row">
-                  <input type="email" id="share-email-input" class="form-control" placeholder="example@gmail.com" style="flex: 1; min-width: 180px; font-size: 0.85rem;">
+                  <div class="server-share-email-wrapper" id="universal-share-email-wrapper" style="flex: 1; min-width: 180px;">
+                    <input type="email" id="share-email-input" class="form-control" placeholder="Email Google hoặc chọn từ máy chủ..." autocomplete="off" style="width: 100%; box-sizing: border-box; font-size: 0.85rem;">
+                    <div id="universal-share-user-dropdown" class="server-share-user-dropdown" style="display: none;"></div>
+                  </div>
                   <select id="share-email-role" class="share-role-select">
                     <option value="viewer">Chỉ xem (Viewer)</option>
                     <option value="editor">Chỉnh sửa (Editor)</option>

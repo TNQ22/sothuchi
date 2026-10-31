@@ -12095,10 +12095,14 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   margin: 16px 0 14px 0 !important;
   box-sizing: border-box !important;
   width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
 }
 
 .share-tab-btn {
-  flex: 1 !important;
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  max-width: 50% !important;
   appearance: none !important;
   -webkit-appearance: none !important;
   background: transparent !important;
@@ -12107,16 +12111,33 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   color: #94a3b8 !important;
   font-size: 0.8rem !important;
   font-weight: 600 !important;
-  padding: 8px 12px !important;
+  padding: 8px 6px !important;
   border-radius: 9px !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 6px !important;
+  gap: 5px !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
   white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
   font-family: inherit !important;
+  box-sizing: border-box !important;
+}
+
+.share-tab-btn i,
+.share-tab-btn svg {
+  flex-shrink: 0 !important;
+}
+
+.share-tab-btn span,
+.share-tab-btn .share-tab-text {
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  min-width: 0 !important;
+  display: inline-block !important;
 }
 
 .share-tab-btn:hover {
@@ -12154,9 +12175,25 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   flex-wrap: wrap !important;
 }
 
+.share-form-row .server-share-email-wrapper {
+  position: relative !important;
+  z-index: 20 !important;
+}
+
 @media (min-width: 480px) {
   .share-form-row {
     flex-wrap: nowrap !important;
+  }
+}
+
+@media (max-width: 479px) {
+  .share-form-row .server-share-email-wrapper {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+  }
+  .share-form-row .share-role-select {
+    flex: 1 !important;
+    min-width: 0 !important;
   }
 }
 

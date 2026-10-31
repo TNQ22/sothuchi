@@ -18,6 +18,7 @@ const UniversalShareModal = {
   services: [],
   shares: [],
   links: [],
+  serverUsersCache: [],
   isLoading: false,
 
   async open(type, id) {
@@ -54,6 +55,10 @@ const UniversalShareModal = {
     if (!modal) return;
 
     this.closeServiceDropdown();
+    this.hideShareUserDropdown();
+    const emailInput = document.getElementById('share-email-input');
+    if (emailInput) emailInput.value = '';
+
     this.renderHeader();
     this.renderServices();
     this.switchTab('email');
@@ -64,10 +69,12 @@ const UniversalShareModal = {
     // 3. Tải danh sách dịch vụ và dữ liệu chia sẻ
     await this.loadServices();
     await this.loadShareData();
+    this.loadServerUsersForShare();
   },
 
   close() {
     this.closeServiceDropdown();
+    this.hideShareUserDropdown();
     const modal = document.getElementById('modal-universal-share');
     if (modal) modal.classList.remove('open');
   },
@@ -145,8 +152,12 @@ const UniversalShareModal = {
     }
     this.currentService = serviceId;
     this.closeServiceDropdown();
+    this.hideShareUserDropdown();
     this.renderServices();
     this.loadShareData();
+    if (serviceId === 'server') {
+      this.loadServerUsersForShare();
+    }
   },
 
   renderServices() {
@@ -247,6 +258,7 @@ const UniversalShareModal = {
 
   switchTab(tab) {
     this.currentTab = tab;
+    this.hideShareUserDropdown();
     const tabEmailBtn = document.getElementById('tab-share-email-btn');
     const tabLinkBtn = document.getElementById('tab-share-link-btn');
     const tabEmailContent = document.getElementById('tab-share-email-content');
@@ -578,6 +590,7 @@ const UniversalShareModal = {
       );
 
       if (input) input.value = '';
+      this.hideShareUserDropdown();
       if (typeof showToast === 'function') showToast(`Đã chia sẻ thành công với ${email}`, 'success');
       await this.loadShareData();
     } catch (err) {
@@ -673,6 +686,110 @@ const UniversalShareModal = {
         icon: 'share-2'
       });
     }
+  },
+
+  // Tải danh sách người dùng trên server để gợi ý autocomplete
+  async loadServerUsersForShare() {
+    const sService = window.serverSyncService;
+    if (!sService || !sService.serverUrl || !sService.token) return;
+    if (window.UISettings && Array.isArray(window.UISettings.serverUsersCache) && window.UISettings.serverUsersCache.length > 0) {
+      this.serverUsersCache = window.UISettings.serverUsersCache;
+    }
+    try {
+      const users = await sService.fetchServerUsers();
+      if (Array.isArray(users)) {
+        this.serverUsersCache = users;
+        if (window.UISettings) {
+          window.UISettings.serverUsersCache = users;
+        }
+      }
+    } catch (e) {
+      console.warn('[UniversalShareModal] loadServerUsersForShare error:', e);
+    }
+  },
+
+  renderShareUserDropdown(filterText = '') {
+    const dropdown = document.getElementById('universal-share-user-dropdown');
+    if (!dropdown) return;
+
+    // Nếu chưa có cache mà đang kết nối server, fetch ngay
+    if ((!this.serverUsersCache || this.serverUsersCache.length === 0) && window.serverSyncService?.serverUrl && window.serverSyncService?.token) {
+      this.loadServerUsersForShare().then(() => {
+        if (this.serverUsersCache && this.serverUsersCache.length > 0) {
+          this.renderShareUserDropdown(filterText);
+        }
+      });
+    }
+
+    const sService = window.serverSyncService;
+    const currentEmail = (sService?.userProfile?.email || '').toLowerCase();
+    const query = (filterText || '').trim().toLowerCase();
+
+    // Lọc người dùng: loại trừ bản thân người dùng hiện tại
+    let users = (this.serverUsersCache || []).filter(u => {
+      const uEmail = (u.email || '').toLowerCase();
+      if (uEmail === currentEmail) return false;
+      if (!query) return true;
+      const uName = (u.name || '').toLowerCase();
+      return uEmail.includes(query) || uName.includes(query);
+    });
+
+    if (users.length === 0) {
+      if (!query) {
+        dropdown.style.display = 'none';
+        return;
+      }
+      dropdown.innerHTML = `
+        <div class="server-share-user-empty">
+          <span>Không tìm thấy tài khoản phù hợp trên máy chủ. Bạn có thể tiếp tục nhập đầy đủ email.</span>
+        </div>
+      `;
+      dropdown.style.display = 'block';
+      return;
+    }
+
+    const esc = typeof escapeHTML === 'function' ? escapeHTML : (s => s || '');
+
+    dropdown.innerHTML = `
+      <div class="server-share-user-dropdown-header">
+        <span>TÀI KHOẢN TRÊN MÁY CHỦ (${users.length})</span>
+        <span style="font-size: 0.64rem; font-weight: normal; opacity: 0.7;">CHỌN ĐỂ ĐIỀN NHANH</span>
+      </div>
+      ${users.map(u => {
+        const uEmail = esc(u.email || '');
+        const uName = esc(u.name || u.email || 'Người dùng');
+        const firstLetter = (u.name || u.email || 'U').charAt(0).toUpperCase();
+        const avatarHtml = u.picture 
+          ? `<img src="${esc(u.picture)}" class="server-share-user-avatar" alt="${uName}">`
+          : `<div class="server-share-user-avatar-fallback">${esc(firstLetter)}</div>`;
+
+        return `
+          <div class="server-share-user-item" data-email="${uEmail}">
+            ${avatarHtml}
+            <div class="server-share-user-info">
+              <div class="server-share-user-name">${uName}</div>
+              <div class="server-share-user-email">${uEmail}</div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    `;
+
+    dropdown.style.display = 'block';
+  },
+
+  hideShareUserDropdown() {
+    const dropdown = document.getElementById('universal-share-user-dropdown');
+    if (dropdown) dropdown.style.display = 'none';
+  },
+
+  selectShareUser(email) {
+    const emailInput = document.getElementById('share-email-input');
+    if (emailInput) {
+      emailInput.value = email;
+      emailInput.focus();
+    }
+    this.hideShareUserDropdown();
   }
 };
 
@@ -858,3 +975,48 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }, { passive: true });
 });
+
+// Email Auto-complete & User Dropdown cho UniversalShareModal
+const initUniversalShareEmailDropdown = () => {
+  const shareEmailInput = document.getElementById('share-email-input');
+  const shareUserDropdown = document.getElementById('universal-share-user-dropdown');
+
+  if (shareEmailInput) {
+    shareEmailInput.addEventListener('focus', () => {
+      if (window.UniversalShareModal) UniversalShareModal.renderShareUserDropdown(shareEmailInput.value);
+    });
+    shareEmailInput.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (window.UniversalShareModal) UniversalShareModal.renderShareUserDropdown(shareEmailInput.value);
+    });
+    shareEmailInput.addEventListener('input', () => {
+      if (window.UniversalShareModal) UniversalShareModal.renderShareUserDropdown(shareEmailInput.value);
+    });
+  }
+
+  if (shareUserDropdown) {
+    shareUserDropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const item = e.target.closest('.server-share-user-item');
+      if (!item) return;
+      const email = item.getAttribute('data-email');
+      if (email && window.UniversalShareModal) {
+        UniversalShareModal.selectShareUser(email);
+      }
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    const wrapper = e.target.closest('#universal-share-email-wrapper');
+    if (!wrapper) {
+      if (window.UniversalShareModal) UniversalShareModal.hideShareUserDropdown();
+    }
+  });
+};
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initUniversalShareEmailDropdown);
+} else {
+  initUniversalShareEmailDropdown();
+}
+
