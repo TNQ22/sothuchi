@@ -1934,11 +1934,11 @@ const UIAccounts = {
       const iconColor = options.noneIcon ? 'var(--primary)' : 'var(--text-muted)';
       html += `
         <div class="source-acc-item ${isSelected ? 'active' : ''}" onclick="UIAccounts.selectSourceAccount('')">
-          <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
             <div style="width: 40px; height: 40px; border-radius: 10px; background: ${iconBg}; color: ${iconColor}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
               <i data-lucide="${iconName}" style="width: 20px; height: 20px;"></i>
             </div>
-            <div style="min-width: 0;">
+            <div style="min-width: 0; flex: 1;">
               <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(noneLabel)}</div>
               <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">${escapeHTML(noneDesc)}</div>
             </div>
@@ -1951,7 +1951,8 @@ const UIAccounts = {
     // Các tài khoản ví ngân hàng kèm logo thực tế
     active.forEach(acc => {
       const isSelected = String(acc.id) === selectedId;
-      const balanceStr = new Intl.NumberFormat('vi-VN').format(acc.balance) + 'đ';
+      const curSym = acc.currency === 'USD' ? '$' : (acc.currency === 'EUR' ? '€' : (acc.currency === 'JPY' ? '¥' : 'đ'));
+      const balanceStr = new Intl.NumberFormat('vi-VN').format(acc.balance) + curSym;
       const balanceColor = acc.balance >= 0 ? '#10b981' : '#ef4444';
       const typeText = acc.type === 'bank' ? (acc.bankCode || 'Tài khoản ngân hàng') : (acc.type === 'ewallet' ? 'Ví điện tử' : (acc.type === 'credit' ? 'Thẻ tín dụng' : 'Tiền mặt'));
 
@@ -1973,15 +1974,14 @@ const UIAccounts = {
         `;
       }
 
-      const subParts = [escapeHTML(typeText)];
-      if (isSharedItem) {
-        const owner = acc._sharedFrom || 'Thành viên';
-        subParts.push(`<span style="color: #3b82f6; font-weight: 600;"><i data-lucide="user" style="width: 11px; height: 11px; vertical-align: -1px; display: inline-block;"></i> Từ: ${escapeHTML(owner)}</span>`);
+      const subParts = [];
+      subParts.push(`<span style="font-weight: 600; color: ${balanceColor};">Số dư: ${balanceStr}</span>`);
+      if (typeText) {
+        subParts.push(escapeHTML(typeText));
       }
       if (acc.description && acc.description.trim()) {
         subParts.push(`<span style="color: var(--text-secondary); font-style: italic;">${escapeHTML(acc.description.trim())}</span>`);
       }
-      subParts.push(`<span style="font-weight: 600; color: ${balanceColor};">Dư: ${balanceStr}</span>`);
 
       const miniShareIndicator = isSharedItem
         ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 8px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 8px; height: 8px;"></i></div>`
@@ -4587,9 +4587,11 @@ const UIAccounts = {
                   ${this.renderLogoBadge(prov || l.bankCode || { icon: 'badge-percent', color: '#ef4444' }, 38)}
                 </div>
                 <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
-                  <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; font-weight: 700;" title="${escapeHTML(l.name)}">${escapeHTML(l.name)}</div>
-                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                    <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(l.name)}">${escapeHTML(l.name)}</div>
                     ${this.renderSharedRoleBadge(l)}
+                  </div>
+                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     <span class="rate-badge" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">${l.interestRate || 0}%/năm</span>
                     <span class="term-badge">${l.termMonths ? l.termMonths + ' tháng' : ''}</span>
                     <span style="font-size: 0.72rem; color: var(--text-muted);">${dueDayText}</span>
@@ -4880,7 +4882,7 @@ const UIAccounts = {
     const roleClass = isEditor ? 'editor' : 'viewer';
     const owner = item._sharedFrom || 'Thành viên';
     const infoText = `Quyền: ${roleText} • Được chia sẻ bởi: ${owner}`;
-    return `<span class="account-role-badge ${roleClass}" title="${escapeHTML(infoText)}" data-role-info="${escapeHTML(infoText)}" onclick="event.stopPropagation(); if (window.showToast) window.showToast(this.getAttribute('data-role-info'), 'info');"><i data-lucide="${roleIcon}" style="width: 11px; height: 11px;"></i></span>`;
+    return `<span class="account-role-badge ${roleClass}" title="${escapeHTML(infoText)}" data-role-info="${escapeHTML(infoText)}" onclick="event.stopPropagation(); if (window.showToast) window.showToast(this.getAttribute('data-role-info'), 'info');"><i data-lucide="${roleIcon}" style="width: 12px; height: 12px;"></i></span>`;
   },
 
   async leaveSharedItem(type, id) {
@@ -4946,11 +4948,11 @@ const UIAccounts = {
             </div>
             <div class="account-info" style="flex: 1 1 0%; min-width: 0; overflow: hidden;">
               <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
-                <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; flex: 1 1 0%; min-width: 0; max-width: 100%; font-weight: 700;">${escapeHTML(a.name)}</span>
+                <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;">${escapeHTML(a.name)}</span>
+                ${this.renderSharedRoleBadge(a)}
               </div>
               <div class="account-sub-row" style="display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 <span class="account-type-label">${info.label}</span>
-                ${this.renderSharedRoleBadge(a)}
                 ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                 ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
                 ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
@@ -4986,9 +4988,11 @@ const UIAccounts = {
               ${this.renderLogoBadge(prov || s.bankCode || { icon: 'piggy-bank', color: '#0ea5e9' }, 38)}
             </div>
             <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
-              <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; font-weight: 700;" title="${escapeHTML(s.name)}">${escapeHTML(s.name)}</div>
-              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(s.name)}">${escapeHTML(s.name)}</div>
                 ${this.renderSharedRoleBadge(s)}
+              </div>
+              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 <span class="rate-badge">${s.interestRate || 0}%/năm</span>
                 <span class="term-badge">${s.termMonths ? s.termMonths + ' tháng' : 'Không kỳ hạn'}</span>
                 ${s.excludeFromReport ? '<span class="account-badge exclude"><i data-lucide="eye-off" style="width:10px;height:10px;"></i> Ẩn</span>' : ''}
@@ -5029,9 +5033,11 @@ const UIAccounts = {
               <i data-lucide="target" style="width: 20px; height: 20px;"></i>
             </div>
             <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
-              <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; font-weight: 700;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
-              <div class="group-card-sub">
+              <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
                 ${this.renderSharedRoleBadge(item)}
+              </div>
+              <div class="group-card-sub">
                 <span>${targetDateStr}</span>
                 ${item.hasRecurring ? '<span class="term-badge"><i data-lucide="repeat" style="width:10px;height:10px;"></i> Định kỳ</span>' : ''}
               </div>
@@ -5081,9 +5087,11 @@ const UIAccounts = {
               ${this.renderLogoBadge(prov || l.bankCode || { icon: 'badge-percent', color: '#ef4444' }, 38)}
             </div>
             <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
-              <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; font-weight: 700;" title="${escapeHTML(l.name)}">${escapeHTML(l.name)}</div>
-              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(l.name)}">${escapeHTML(l.name)}</div>
                 ${this.renderSharedRoleBadge(l)}
+              </div>
+              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 <span class="rate-badge" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">${l.interestRate || 0}%/năm</span>
                 <span class="term-badge">${l.termMonths ? l.termMonths + ' tháng' : 'Vay linh hoạt'}</span>
                 ${dueDayText ? `<span style="color: var(--text-muted); font-size: 0.72rem;">• ${dueDayText}</span>` : ''}
@@ -5145,9 +5153,11 @@ const UIAccounts = {
               <i data-lucide="${meta.icon}" style="width: 20px; height: 20px;"></i>
             </div>
             <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
-              <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; min-width: 0; font-weight: 700;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
-              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
                 ${this.renderSharedRoleBadge(item)}
+              </div>
+              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0;">
                 <span class="term-badge" style="flex-shrink: 0;">${meta.label}</span>
                 <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${qty} ${escapeHTML(item.unit || '')}</span>
                 ${item.location ? `<span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">• ${escapeHTML(item.location)}</span>` : ''}
@@ -5469,9 +5479,11 @@ const UIAccounts = {
                   ${this.renderLogoBadge(prov || s.bankCode || { icon: 'piggy-bank', color: '#0ea5e9' }, 38)}
                 </div>
                 <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
-                  <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; font-weight: 700;" title="${escapeHTML(s.name)}">${escapeHTML(s.name)}</div>
-                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                    <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(s.name)}">${escapeHTML(s.name)}</div>
                     ${this.renderSharedRoleBadge(s)}
+                  </div>
+                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     <span class="rate-badge">${s.interestRate || 0}%/năm</span>
                     <span class="term-badge">${s.termMonths ? s.termMonths + ' tháng' : 'Không kỳ hạn'}</span>
                     ${s.excludeFromReport ? '<span class="account-badge exclude"><i data-lucide="eye-off" style="width:10px;height:10px;"></i> Ẩn báo cáo</span>' : ''}
@@ -5577,9 +5589,11 @@ const UIAccounts = {
                   <i data-lucide="target" style="width: 20px; height: 20px;"></i>
                 </div>
                 <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
-                  <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; font-weight: 700;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
-                  <div class="group-card-sub">
+                  <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                    <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
                     ${this.renderSharedRoleBadge(item)}
+                  </div>
+                  <div class="group-card-sub">
                     <span>${targetDateStr}</span>
                     ${item.hasRecurring ? '<span class="term-badge"><i data-lucide="repeat" style="width:10px;height:10px;"></i> Định kỳ</span>' : ''}
                   </div>
@@ -5685,9 +5699,11 @@ const UIAccounts = {
                   <i data-lucide="${meta.icon}" style="width: 20px; height: 20px;"></i>
                 </div>
                 <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
-                  <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; max-width: 100%; min-width: 0; font-weight: 700;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
-                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0;">
+                  <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                    <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
                     ${this.renderSharedRoleBadge(item)}
+                  </div>
+                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0;">
                     <span class="term-badge" style="flex-shrink: 0;">${meta.label}</span>
                     <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${qty} ${escapeHTML(item.unit || '')}</span>
                     ${item.location ? `<span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">• ${escapeHTML(item.location)}</span>` : ''}
@@ -5870,11 +5886,11 @@ const UIAccounts = {
                 </div>
                 <div class="account-info" style="flex: 1 1 0%; min-width: 0; overflow: hidden;">
                   <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
-                    <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; flex: 1 1 0%; min-width: 0; max-width: 100%; font-weight: 700;">${escapeHTML(a.name)}</span>
+                    <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;">${escapeHTML(a.name)}</span>
+                    ${this.renderSharedRoleBadge(a)}
                   </div>
                   <div class="account-sub-row" style="display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     <span class="account-type-label">${info.label}</span>
-                    ${this.renderSharedRoleBadge(a)}
                     ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                     ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
                     ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
@@ -5931,12 +5947,12 @@ const UIAccounts = {
                   ${miniShareHtml}
                 </div>
                 <div class="account-info">
-                  <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                    <span class="account-name" title="${escapeHTML(a.name)}" style="color: var(--text-secondary);">${escapeHTML(a.name)}</span>
+                  <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
+                    <span class="account-name" title="${escapeHTML(a.name)}" style="color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${escapeHTML(a.name)}</span>
+                    ${this.renderSharedRoleBadge(a)}
                   </div>
                   <div class="account-sub-row">
                     <span class="account-type-label">${info.label}</span>
-                    ${this.renderSharedRoleBadge(a)}
                     ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                     ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
                     <span class="account-archived-badge" title="Đã ngừng sử dụng">Ngừng sử dụng</span>
