@@ -275,7 +275,7 @@ class ServerSyncService {
   }
 
   // Đăng nhập máy chủ bằng tài khoản Google
-  async loginWithGoogle() {
+  async loginWithGoogle(options = {}) {
     if (!this.serverUrl) {
       throw new Error('Vui lòng nhập địa chỉ Máy Chủ Riêng trước khi đăng nhập.');
     }
@@ -310,34 +310,56 @@ class ServerSyncService {
 
     // 2. Mở popup đăng nhập Google ĐỘC LẬP cho Máy Chủ Riêng
     // CHÚ Ý: Chỉ xin quyền userinfo (email/profile/openid), TUYỆT ĐỐI KHÔNG chạm vào GoogleDriveService để tránh tự động kích hoạt Google Drive
+    const promptVal = options.forceSelect ? 'select_account' : (options.prompt !== undefined ? options.prompt : (this.userProfile?.email ? '' : 'select_account'));
+
     accessToken = await new Promise((resolve, reject) => {
       let settled = false;
+      const startTime = Date.now();
       const timer = setTimeout(() => {
         if (!settled) {
           settled = true;
-          reject(new Error('Hết thời gian chờ đăng nhập Google'));
+          reject(new Error('Hết thời gian chờ đăng nhập Google (120 giây). Vui lòng thử lại.'));
         }
-      }, 60000);
+      }, 120000);
 
       try {
         const tokenClient = google.accounts.oauth2.initTokenClient({
           client_id: clientId,
           scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
-          prompt: 'select_account',
+          prompt: promptVal,
           callback: (resp) => {
             if (settled) return;
             settled = true;
             clearTimeout(timer);
             if (resp.error) {
               if (resp.error === 'popup_closed_by_user') {
-                return reject(new Error('popup_closed_by_user'));
+                const errObj = new Error('popup_closed_by_user');
+                errObj.duration = Date.now() - startTime;
+                errObj.possible2FA = errObj.duration > 3500;
+                return reject(errObj);
               }
               return reject(new Error(resp.error_description || resp.error));
             }
             resolve(resp.access_token);
+          },
+          error_callback: (err) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            const duration = Date.now() - startTime;
+            if (err && err.type === 'popup_closed') {
+              const errObj = new Error('popup_closed_by_user');
+              errObj.duration = duration;
+              errObj.possible2FA = duration > 3500;
+              return reject(errObj);
+            }
+            if (err && err.type === 'popup_failed_to_open') {
+              return reject(new Error('popup_blocked'));
+            }
+            return reject(new Error(err?.message || 'Cửa sổ xác thực Google bị gián đoạn'));
           }
         });
-        tokenClient.requestAccessToken({ prompt: 'select_account' });
+        tokenClient.requestAccessToken(promptVal ? { prompt: promptVal } : {});
       } catch (e) {
         clearTimeout(timer);
         reject(e);

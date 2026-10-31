@@ -261,12 +261,13 @@ class GoogleDriveSync {
     if (this.workerUrl && this.clientSecret && window.google?.accounts?.oauth2?.initCodeClient && (options.forceCode || options.interactive)) {
       return new Promise((resolve, reject) => {
         let settled = false;
+        const startTime = Date.now();
         const timer = setTimeout(() => {
           if (!settled) {
             settled = true;
-            reject(new Error('Hết thời gian chờ cấp quyền Google'));
+            reject(new Error('Hết thời gian chờ cấp quyền Google (120 giây)'));
           }
-        }, 60000);
+        }, 120000);
 
         try {
           const codeClient = google.accounts.oauth2.initCodeClient({
@@ -313,6 +314,22 @@ class GoogleDriveSync {
               } catch (exErr) {
                 reject(exErr);
               }
+            },
+            error_callback: (err) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timer);
+              const duration = Date.now() - startTime;
+              if (err && err.type === 'popup_closed') {
+                const errObj = new Error('Đã đóng cửa sổ đăng nhập');
+                errObj.duration = duration;
+                errObj.possible2FA = duration > 3500;
+                return reject(errObj);
+              }
+              if (err && err.type === 'popup_failed_to_open') {
+                return reject(new Error('popup_blocked'));
+              }
+              return reject(new Error(err?.message || 'Cửa sổ xác thực Google bị đóng'));
             }
           });
           codeClient.requestCode();
@@ -328,13 +345,14 @@ class GoogleDriveSync {
 
     return new Promise((resolve, reject) => {
       let settled = false;
-      const timeoutMs = isInteractive ? 60000 : 3500;
+      const startTime = Date.now();
+      const timeoutMs = isInteractive ? 120000 : 3500;
 
       const timer = setTimeout(() => {
         if (!settled) {
           settled = true;
           if (isInteractive) {
-            reject(new Error('Hết thời gian chờ đăng nhập Google'));
+            reject(new Error('Hết thời gian chờ đăng nhập Google (120 giây)'));
           } else {
             reject(new Error('Phiên đăng nhập đã hết hạn. Hãy bấm vào Avatar để kết nối lại.'));
           }
@@ -357,7 +375,10 @@ class GoogleDriveSync {
 
             if (resp.error) {
               if (resp.error === 'popup_closed_by_user') {
-                reject(new Error('Đã đóng cửa sổ đăng nhập'));
+                const errObj = new Error('Đã đóng cửa sổ đăng nhập');
+                errObj.duration = Date.now() - startTime;
+                errObj.possible2FA = errObj.duration > 3500;
+                reject(errObj);
               } else if (resp.error === 'access_denied') {
                 reject(new Error('Quyền truy cập bị từ chối'));
               } else {
@@ -401,6 +422,22 @@ class GoogleDriveSync {
 
             this.setupTokenRefreshTimer();
             resolve(this.accessToken);
+          },
+          error_callback: (err) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            const duration = Date.now() - startTime;
+            if (err && err.type === 'popup_closed') {
+              const errObj = new Error('Đã đóng cửa sổ đăng nhập');
+              errObj.duration = duration;
+              errObj.possible2FA = duration > 3500;
+              return reject(errObj);
+            }
+            if (err && err.type === 'popup_failed_to_open') {
+              return reject(new Error('popup_blocked'));
+            }
+            return reject(new Error(err?.message || 'Cửa sổ xác thực Google bị đóng'));
           }
         };
 

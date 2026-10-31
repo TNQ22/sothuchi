@@ -2153,7 +2153,8 @@ function sendJson(res, statusCode, data) {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': CORS_ORIGIN,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Cross-Origin-Opener-Policy': 'same-origin-allow-popups'
   });
   res.end(jsonStr);
 }
@@ -2261,7 +2262,8 @@ async function handleApiRequest(req, res, pathname, url) {
       'Access-Control-Allow-Origin': CORS_ORIGIN,
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-      'Access-Control-Max-Age': '86400'
+      'Access-Control-Max-Age': '86400',
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups'
     });
     return res.end();
   }
@@ -3109,7 +3111,8 @@ function serveStaticFile(req, res, reqPath) {
     // Caching headers
     const headers = {
       'Content-Type': contentType,
-      'Access-Control-Allow-Origin': CORS_ORIGIN
+      'Access-Control-Allow-Origin': CORS_ORIGIN,
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups'
     };
 
     // PWA & Service Worker: Ngăn chặn triệt để trình duyệt & webview PWA lưu cache tĩnh cũ

@@ -1430,10 +1430,12 @@ const UISettings = {
           showToast(`Đăng nhập máy chủ thành công! Xin chào ${result.user.name}`, 'success');
           if (window.app && window.app.refreshAll) await window.app.refreshAll();
         } catch (err) {
-          if (err.message && (err.message.includes('popup_closed') || err.message.includes('Đã đóng') || err.message.includes('hủy'))) {
+          if (err.possible2FA || (err.duration > 3500 && (err.message?.includes('popup_closed') || err.message?.includes('Đã đóng')))) {
+            showToast('Đã xác thực Google xong! Vui lòng bấm Đăng nhập lại 1 lần nữa để hoàn tất kết nối.', 'info', 6000);
+          } else if (err.message && (err.message.includes('popup_closed') || err.message.includes('Đã đóng') || err.message.includes('hủy'))) {
             showToast('Đã hủy đăng nhập Google', 'info');
           } else if (err.message && err.message.includes('popup_blocked')) {
-            showToast('Safari đã chặn cửa sổ đăng nhập. Vui lòng vào Cài đặt iPhone > Safari > Tắt "Chặn cửa sổ bật lên" rồi thử lại.', 'warning', 6500);
+            showToast('Trình duyệt đã chặn cửa sổ đăng nhập. Vui lòng tắt "Chặn cửa sổ bật lên" trong cài đặt trình duyệt rồi thử lại.', 'warning', 6500);
           } else {
             showToast('Đăng nhập máy chủ thất bại: ' + err.message, 'error', 5500);
           }
@@ -1483,11 +1485,13 @@ const UISettings = {
         if (!sService) return;
         try {
           showToast('Đang mở màn hình xác thực Google để đổi tài khoản...', 'info');
-          const result = await sService.loginWithGoogle();
+          const result = await sService.loginWithGoogle({ forceSelect: true });
           showToast(`Đã đổi sang tài khoản: ${result.user.name || result.user.email}`, 'success');
           if (window.app && window.app.refreshAll) await window.app.refreshAll();
         } catch (err) {
-          if (err.message && (err.message.includes('popup_closed') || err.message.includes('Đã đóng') || err.message.includes('hủy'))) {
+          if (err.possible2FA || (err.duration > 3500 && (err.message?.includes('popup_closed') || err.message?.includes('Đã đóng')))) {
+            showToast('Đã xác thực Google xong! Vui lòng bấm lại 1 lần để hoàn tất đổi tài khoản.', 'info', 6000);
+          } else if (err.message && (err.message.includes('popup_closed') || err.message.includes('Đã đóng') || err.message.includes('hủy'))) {
             showToast('Đã hủy đổi tài khoản', 'info');
           } else {
             showToast('Đổi tài khoản thất bại: ' + err.message, 'error');
@@ -2157,8 +2161,12 @@ const UISettings = {
           window.SyncCoordinator.setStatus('synced', window.googleDriveService.getTargetLabel());
         }
       } catch (err) {
-        if (err.message && (err.message.includes('Đã đóng cửa sổ') || err.message.includes('popup_closed_by_user'))) {
+        if (err.possible2FA || (err.duration > 3500 && (err.message?.includes('Đã đóng') || err.message?.includes('popup_closed')))) {
+          showToast('Đã xác thực Google xong! Vui lòng bấm Kết nối lại 1 lần nữa để hoàn tất.', 'info', 6000);
+        } else if (err.message && (err.message.includes('Đã đóng cửa sổ') || err.message.includes('popup_closed_by_user') || err.message.includes('popup_closed'))) {
           showToast('Đã hủy đăng nhập', 'info');
+        } else if (err.message && err.message.includes('popup_blocked')) {
+          showToast('Trình duyệt đã chặn cửa sổ đăng nhập. Vui lòng cho phép popup rồi thử lại.', 'warning', 6500);
         } else {
           showToast('Đăng nhập thất bại: ' + err.message, 'error');
         }

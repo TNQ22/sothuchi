@@ -308,12 +308,13 @@
       try {
         const accessToken = await new Promise((resolve, reject) => {
           let settled = false;
+          const startTime = Date.now();
           const timer = setTimeout(() => {
             if (!settled) {
               settled = true;
-              reject(new Error('Hết thời gian chờ phản hồi từ Google.'));
+              reject(new Error('Hết thời gian chờ phản hồi từ Google (120 giây). Vui lòng thử lại.'));
             }
-          }, 90000);
+          }, 120000);
 
           try {
             const tokenClient = google.accounts.oauth2.initTokenClient({
@@ -326,11 +327,30 @@
                 clearTimeout(timer);
                 if (resp.error) {
                   if (resp.error === 'popup_closed_by_user') {
-                    return reject(new Error('Cửa sổ đăng nhập Google đã bị đóng.'));
+                    const errObj = new Error('Cửa sổ đăng nhập Google đã bị đóng.');
+                    errObj.duration = Date.now() - startTime;
+                    errObj.possible2FA = errObj.duration > 3500;
+                    return reject(errObj);
                   }
                   return reject(new Error(resp.error_description || resp.error));
                 }
                 resolve(resp.access_token);
+              },
+              error_callback: (err) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                const duration = Date.now() - startTime;
+                if (err && err.type === 'popup_closed') {
+                  const errObj = new Error('Cửa sổ đăng nhập Google đã bị đóng.');
+                  errObj.duration = duration;
+                  errObj.possible2FA = duration > 3500;
+                  return reject(errObj);
+                }
+                if (err && err.type === 'popup_failed_to_open') {
+                  return reject(new Error('Trình duyệt đã chặn cửa sổ bật lên (popup) của Google.'));
+                }
+                return reject(new Error(err?.message || 'Cửa sổ xác thực Google bị gián đoạn'));
               }
             });
             tokenClient.requestAccessToken();
@@ -370,7 +390,11 @@
           this.showLoginError(`Tài khoản "${authData.user?.email}" không nằm trong danh sách ADMIN_EMAIL của máy chủ.`);
         }
       } catch (err) {
-        this.showLoginError(err.message || 'Lỗi đăng nhập Google');
+        if (err.possible2FA || (err.duration > 3500 && err.message?.includes('đã bị đóng'))) {
+          this.showLoginError('Nếu bạn vừa hoàn tất xác thực danh tính trên Google, vui lòng bấm "Đăng nhập Quản Trị Bằng Google" lại 1 lần nữa để hoàn thành.');
+        } else {
+          this.showLoginError(err.message || 'Lỗi đăng nhập Google');
+        }
       } finally {
         if (btn) btn.disabled = false;
         if (btnText) btnText.textContent = 'Đăng Nhập Quản Trị Bằng Google';

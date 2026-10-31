@@ -438,7 +438,11 @@ const UniversalShareModal = {
       this.renderServices();
       await this.loadShareData();
     } catch (e) {
-      if (typeof showToast === 'function') showToast(e.message, 'warning');
+      if (e.possible2FA || (e.duration > 3500 && (e.message?.includes('popup_closed') || e.message?.includes('Đã đóng')))) {
+        if (typeof showToast === 'function') showToast('Đã xác thực Google xong! Vui lòng bấm Đăng nhập lại 1 lần để hoàn tất.', 'info', 6000);
+      } else if (typeof showToast === 'function') {
+        showToast(e.message, 'warning');
+      }
     }
   },
 
