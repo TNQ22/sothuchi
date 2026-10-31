@@ -4826,9 +4826,7 @@ const UIAccounts = {
     }
 
     if (tab === 'shared' && window.serverSyncService && window.serverSyncService.isConnected) {
-      window.serverSyncService.syncReceivedSharedItems().then(hasChanges => {
-        if (hasChanges) this.render();
-      }).catch(() => {});
+      window.serverSyncService.syncReceivedSharedItems().catch(() => {});
     }
 
     this.render();
@@ -5754,15 +5752,6 @@ const UIAccounts = {
     /* ==================== RENDER DANH SÁCH TÀI KHOẢN ==================== */
   async render() {
     this.updateSharedViewModeUI();
-
-    if (!this._isSyncingShared && window.serverSyncService && window.serverSyncService.isConnected) {
-      this._isSyncingShared = true;
-      window.serverSyncService.syncReceivedSharedItems().then(hasChanges => {
-        if (hasChanges) this.render();
-      }).catch(() => {}).finally(() => {
-        this._isSyncingShared = false;
-      });
-    }
 
     const container = document.getElementById('accounts-list-container');
     if (!container) return;

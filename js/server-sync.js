@@ -1668,10 +1668,12 @@ class ServerSyncService {
 
       const data = await res.json();
       if (data && data.version !== undefined) {
-        if (this.lastVaultVersion !== null && data.version > this.lastVaultVersion) {
-          console.log(`[ServerSync] Phát hiện dữ liệu mới trên máy chủ (v${data.version} > v${this.lastVaultVersion}), tự động cập nhật...`);
+        const remoteVer = Number(data.version);
+        const localVer = this.lastVaultVersion !== null && this.lastVaultVersion !== undefined ? Number(this.lastVaultVersion) : null;
+        if (localVer !== null && !isNaN(localVer) && !isNaN(remoteVer) && remoteVer > localVer) {
+          console.log(`[ServerSync] Phát hiện dữ liệu mới trên máy chủ (v${remoteVer} > v${localVer}), tự động cập nhật...`);
           await this.sync();
-        } else if (this.lastVaultVersion === null) {
+        } else if (this.lastVaultVersion === null || this.lastVaultVersion === undefined) {
           this.lastVaultVersion = data.version;
           this.lastVaultUpdatedAt = data.updated_at;
           await db.settings.put({ key: 'syncServerLastVaultVersion', value: this.lastVaultVersion });
@@ -2154,6 +2156,7 @@ class ServerSyncService {
         const localSavings = await db.savings.toArray();
         for (const s of localSavings) {
           if (s._isSharedItem && s._shareId && !activeReceivedShareIds.has(s._shareId)) {
+            hasChanges = true;
             await db.savings.delete(s.id);
           }
         }
@@ -2163,6 +2166,7 @@ class ServerSyncService {
         const localAccums = await db.accumulations.toArray();
         for (const a of localAccums) {
           if (a._isSharedItem && a._shareId && !activeReceivedShareIds.has(a._shareId)) {
+            hasChanges = true;
             await db.accumulations.delete(a.id);
           }
         }
@@ -2172,6 +2176,7 @@ class ServerSyncService {
         const localLoans = await db.loans.toArray();
         for (const l of localLoans) {
           if (l._isSharedItem && l._shareId && !activeReceivedShareIds.has(l._shareId)) {
+            hasChanges = true;
             await db.loans.delete(l.id);
           }
         }
@@ -2181,6 +2186,7 @@ class ServerSyncService {
         const localAssets = await db.assets.toArray();
         for (const ast of localAssets) {
           if (ast._isSharedItem && ast._shareId && !activeReceivedShareIds.has(ast._shareId)) {
+            hasChanges = true;
             await db.assets.delete(ast.id);
           }
         }
@@ -2242,8 +2248,20 @@ class ServerSyncService {
           let localAccId;
           if (localAcc) {
             localAccId = localAcc.id;
-            hasChanges = true;
-            await db.accounts.update(localAccId, { ...accData, id: localAccId });
+            const isDiff = localAcc.name !== accData.name ||
+                           Number(localAcc.balance || 0) !== Number(accData.balance || 0) ||
+                           localAcc.type !== accData.type ||
+                           localAcc.icon !== accData.icon ||
+                           localAcc.color !== accData.color ||
+                           localAcc.currency !== accData.currency ||
+                           localAcc.description !== accData.description ||
+                           Boolean(localAcc.isArchived) !== Boolean(accData.isArchived) ||
+                           localAcc._sharedRole !== accData._sharedRole ||
+                           localAcc._sharedFrom !== accData._sharedFrom;
+            if (isDiff) {
+              hasChanges = true;
+              await db.accounts.update(localAccId, { ...accData, id: localAccId });
+            }
           } else {
             delete accData.id;
             hasChanges = true;
@@ -2276,7 +2294,15 @@ class ServerSyncService {
                 _remoteTxId: txRemoteId
               };
               if (localTx) {
-                await db.transactions.update(localTx.id, { ...txData, id: localTx.id });
+                const isTxDiff = Number(localTx.amount || 0) !== Number(txData.amount || 0) ||
+                                 localTx.type !== txData.type ||
+                                 localTx.category !== txData.category ||
+                                 localTx.date !== txData.date ||
+                                 localTx.note !== txData.note;
+                if (isTxDiff) {
+                  hasChanges = true;
+                  await db.transactions.update(localTx.id, { ...txData, id: localTx.id });
+                }
               } else {
                 delete txData.id;
                 hasChanges = true;
@@ -2298,9 +2324,18 @@ class ServerSyncService {
             _sharedFrom: ownerName || ownerEmail
           };
           if (localSav) {
-            await db.savings.update(localSav.id, { ...savData, id: localSav.id });
+            const isDiff = localSav.name !== savData.name ||
+                           Number(localSav.balance || localSav.depositAmount || 0) !== Number(savData.balance || savData.depositAmount || 0) ||
+                           localSav.status !== savData.status ||
+                           localSav.interestRate !== savData.interestRate ||
+                           localSav._sharedRole !== savData._sharedRole;
+            if (isDiff) {
+              hasChanges = true;
+              await db.savings.update(localSav.id, { ...savData, id: localSav.id });
+            }
           } else {
             delete savData.id;
+            hasChanges = true;
             await db.savings.add(savData);
           }
         } else if (itemType === 'accumulation' && db.accumulations) {
@@ -2317,9 +2352,17 @@ class ServerSyncService {
             _sharedFrom: ownerName || ownerEmail
           };
           if (localAcc) {
-            await db.accumulations.update(localAcc.id, { ...accData, id: localAcc.id });
+            const isDiff = localAcc.name !== accData.name ||
+                           Number(localAcc.currentAmount || 0) !== Number(accData.currentAmount || 0) ||
+                           Number(localAcc.targetAmount || 0) !== Number(accData.targetAmount || 0) ||
+                           localAcc._sharedRole !== accData._sharedRole;
+            if (isDiff) {
+              hasChanges = true;
+              await db.accumulations.update(localAcc.id, { ...accData, id: localAcc.id });
+            }
           } else {
             delete accData.id;
+            hasChanges = true;
             await db.accumulations.add(accData);
           }
         } else if (itemType === 'loan' && db.loans) {
@@ -2336,9 +2379,17 @@ class ServerSyncService {
             _sharedFrom: ownerName || ownerEmail
           };
           if (localLoan) {
-            await db.loans.update(localLoan.id, { ...loanData, id: localLoan.id });
+            const isDiff = localLoan.borrowerName !== loanData.borrowerName ||
+                           Number(localLoan.remainingAmount !== undefined ? localLoan.remainingAmount : (localLoan.loanAmount || 0)) !== Number(loanData.remainingAmount !== undefined ? loanData.remainingAmount : (loanData.loanAmount || 0)) ||
+                           localLoan.status !== loanData.status ||
+                           localLoan._sharedRole !== loanData._sharedRole;
+            if (isDiff) {
+              hasChanges = true;
+              await db.loans.update(localLoan.id, { ...loanData, id: localLoan.id });
+            }
           } else {
             delete loanData.id;
+            hasChanges = true;
             await db.loans.add(loanData);
           }
         } else if (itemType === 'asset' && db.assets) {
@@ -2355,9 +2406,18 @@ class ServerSyncService {
             _sharedFrom: ownerName || ownerEmail
           };
           if (localAsset) {
-            await db.assets.update(localAsset.id, { ...assetData, id: localAsset.id });
+            const isDiff = localAsset.name !== assetData.name ||
+                           Number(localAsset.quantity || 0) !== Number(assetData.quantity || 0) ||
+                           Number(localAsset.currentPrice || 0) !== Number(assetData.currentPrice || 0) ||
+                           localAsset.status !== assetData.status ||
+                           localAsset._sharedRole !== assetData._sharedRole;
+            if (isDiff) {
+              hasChanges = true;
+              await db.assets.update(localAsset.id, { ...assetData, id: localAsset.id });
+            }
           } else {
             delete assetData.id;
+            hasChanges = true;
             await db.assets.add(assetData);
           }
         }
