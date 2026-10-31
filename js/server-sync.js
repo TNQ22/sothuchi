@@ -1991,7 +1991,7 @@ class ServerSyncService {
         Authorization: `Bearer ${this.token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ itemType, itemId, itemName, email, role })
+      body: JSON.stringify({ itemType, itemId, itemName, email, role, shareKey })
     });
     if (!res.ok) {
       const err = await res.json();
@@ -2002,6 +2002,14 @@ class ServerSyncService {
       await this.saveItemShareKey(result.share.id, shareKey);
       result.share.shareKey = shareKey;
     }
+    try {
+      const owned = (await db.settings.get('syncOwnedSharedProjections')) || { key: 'syncOwnedSharedProjections', value: [] };
+      const arr = Array.isArray(owned.value) ? owned.value : [];
+      if (!arr.some(x => x.itemType === itemType && String(x.itemId) === String(itemId))) {
+        arr.push({ itemType, itemId: String(itemId), shareKey });
+        await db.settings.put({ key: 'syncOwnedSharedProjections', value: arr });
+      }
+    } catch (_) {}
     return result;
   }
 
@@ -2170,7 +2178,12 @@ class ServerSyncService {
 
         // Xử lý bản chiếu mã hóa E2EE (Zero-Knowledge Item Projection)
         if (shareItem.isProjection && shareItem.isEncrypted && shareItem.projectionData) {
-          const shareKey = (await this.getItemShareKey(shareId)) || (await this.getItemShareKey(itemId)) || (await this.getItemShareKey(`${itemType}_${itemId}`));
+          if (shareItem.shareKey) {
+            await this.saveItemShareKey(shareId, shareItem.shareKey);
+            await this.saveItemShareKey(itemId, shareItem.shareKey);
+            await this.saveItemShareKey(`${itemType}_${itemId}`, shareItem.shareKey);
+          }
+          const shareKey = shareItem.shareKey || (await this.getItemShareKey(shareId)) || (await this.getItemShareKey(itemId)) || (await this.getItemShareKey(`${itemType}_${itemId}`));
           if (!shareKey) {
             console.warn('[ServerSync] Chưa có khóa giải mã cho mục chia sẻ:', shareItem.itemName);
             continue;

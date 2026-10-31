@@ -353,6 +353,20 @@ const UniversalShareModal = {
 
         this.renderEmailShares();
         this.renderShareLinks();
+
+        const totalShares = (this.shares.length || 0) + (this.links.length || 0);
+        await this.updateItemSharedState(totalShares > 0 ? 1 : 0);
+
+        try {
+          const shareKey = await window.serverSyncService.getItemShareKey(`${this.currentType}_${this.currentId}`);
+          if (shareKey && this.shares.length > 0) {
+            for (const s of this.shares) {
+              if (!s.share_key && s.user_email) {
+                window.serverSyncService.shareItemWithEmail(this.currentType, this.currentId, this.currentItem.name, s.user_email, s.role, shareKey).catch(() => {});
+              }
+            }
+          }
+        } catch (_) {}
       } catch (err) {
         console.warn('Lỗi tải dữ liệu chia sẻ:', err);
         if (emailListEl) emailListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
@@ -568,6 +582,29 @@ const UniversalShareModal = {
     if (window.lucide) lucide.createIcons();
   },
 
+  async updateItemSharedState(isShared) {
+    const val = isShared ? 1 : 0;
+    if (this.currentItem) this.currentItem.isShared = val;
+    try {
+      if (this.currentType === 'account') {
+        await db.accounts.update(this.currentId, { isShared: val, updatedAt: Date.now() });
+      } else if (this.currentType === 'savings' && db.savings) {
+        await db.savings.update(this.currentId, { isShared: val, updatedAt: Date.now() });
+      } else if (this.currentType === 'accumulation' && db.accumulations) {
+        await db.accumulations.update(this.currentId, { isShared: val, updatedAt: Date.now() });
+      } else if (this.currentType === 'loan' && db.loans) {
+        await db.loans.update(this.currentId, { isShared: val, updatedAt: Date.now() });
+      } else if (this.currentType === 'asset' && db.assets) {
+        await db.assets.update(this.currentId, { isShared: val, updatedAt: Date.now() });
+      }
+      if (window.app && typeof window.app.refreshAll === 'function') {
+        await window.app.refreshAll();
+      }
+    } catch (e) {
+      console.warn('[UniversalShareModal] updateItemSharedState error:', e);
+    }
+  },
+
   async handleAddEmailShare() {
     const input = document.getElementById('share-email-input');
     const roleSelect = document.getElementById('share-email-role');
@@ -591,6 +628,7 @@ const UniversalShareModal = {
 
       if (input) input.value = '';
       this.hideShareUserDropdown();
+      await this.updateItemSharedState(1);
       if (typeof showToast === 'function') showToast(`Đã chia sẻ thành công với ${email}`, 'success');
       await this.loadShareData();
     } catch (err) {
@@ -613,6 +651,9 @@ const UniversalShareModal = {
       await window.serverSyncService.revokeItemEmailShare(shareId);
       if (typeof showToast === 'function') showToast('Đã thu hồi quyền thành công.', 'success');
       await this.loadShareData();
+      if ((this.shares.length || 0) + (this.links.length || 0) === 0) {
+        await this.updateItemSharedState(0);
+      }
     } catch (err) {
       if (typeof showToast === 'function') showToast(err.message, 'error');
     }
@@ -632,6 +673,7 @@ const UniversalShareModal = {
       );
 
       if (typeof showToast === 'function') showToast('Tạo liên kết chia sẻ thành công!', 'success');
+      await this.updateItemSharedState(1);
       await this.loadShareData();
     } catch (err) {
       if (typeof showToast === 'function') showToast(err.message, 'error');
@@ -653,6 +695,9 @@ const UniversalShareModal = {
       await window.serverSyncService.revokeItemShareLink(linkId);
       if (typeof showToast === 'function') showToast('Đã thu hồi liên kết thành công.', 'success');
       await this.loadShareData();
+      if ((this.shares.length || 0) + (this.links.length || 0) === 0) {
+        await this.updateItemSharedState(0);
+      }
     } catch (err) {
       if (typeof showToast === 'function') showToast(err.message, 'error');
     }

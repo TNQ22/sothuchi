@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SỔ THU CHI - DEDICATED SYNC & MULTI-USER SERVER
  * Máy chủ riêng đồng bộ & Chia sẻ qua Tài khoản Google
  * - 100% Zero external dependencies (Dùng chuẩn thư viện Node.js built-in)
@@ -232,6 +232,10 @@ class DatabaseManager {
         );
         CREATE UNIQUE INDEX IF NOT EXISTS idx_projections_unique ON shared_item_projections(vault_id, item_type, item_id);
       `);
+
+      try {
+        this.sqliteDb.prepare('ALTER TABLE item_shares ADD COLUMN share_key TEXT').run();
+      } catch (_) {}
 
       this.isSqlite = true;
       console.log(`[Storage] Đã khởi tạo SQLite Database tại: ${dbPath}`);
@@ -827,7 +831,7 @@ class DatabaseManager {
     }
   }
 
-  addItemShare(vaultId, itemType, itemId, itemName, email, role, createdBy) {
+  addItemShare(vaultId, itemType, itemId, itemName, email, role, createdBy, shareKey = null) {
     const id = generateId('ishr_');
     const now = new Date().toISOString();
     const cleanEmail = email.trim().toLowerCase();
@@ -841,29 +845,30 @@ class DatabaseManager {
       if (existing) {
         const updateStmt = this.sqliteDb.prepare(`
           UPDATE item_shares
-          SET role = ?, updated_at = ?
+          SET role = ?, updated_at = ?, share_key = COALESCE(?, share_key)
           WHERE id = ?
         `);
-        updateStmt.run(role, now, existing.id);
-        return { id: existing.id, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, user_email: cleanEmail, role, updated_at: now };
+        updateStmt.run(role, now, shareKey, existing.id);
+        return { id: existing.id, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, user_email: cleanEmail, role, updated_at: now, share_key: shareKey };
       }
 
       const insertStmt = this.sqliteDb.prepare(`
-        INSERT INTO item_shares (id, vault_id, item_type, item_id, item_name, user_email, role, created_by, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO item_shares (id, vault_id, item_type, item_id, item_name, user_email, role, created_by, created_at, updated_at, share_key)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      insertStmt.run(id, vaultId, itemType, String(itemId), itemName || '', cleanEmail, role, createdBy, now, now);
-      return { id, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, user_email: cleanEmail, role, created_by: createdBy, created_at: now, updated_at: now };
+      insertStmt.run(id, vaultId, itemType, String(itemId), itemName || '', cleanEmail, role, createdBy, now, now, shareKey);
+      return { id, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, user_email: cleanEmail, role, created_by: createdBy, created_at: now, updated_at: now, share_key: shareKey };
     } else {
       this.jsonStore.item_shares = this.jsonStore.item_shares || [];
       const idx = this.jsonStore.item_shares.findIndex(s => s.vault_id === vaultId && s.item_type === itemType && String(s.item_id) === String(itemId) && s.user_email.toLowerCase() === cleanEmail);
       if (idx >= 0) {
         this.jsonStore.item_shares[idx].role = role;
         this.jsonStore.item_shares[idx].updated_at = now;
+        if (shareKey) this.jsonStore.item_shares[idx].share_key = shareKey;
         this.saveJsonStore();
         return this.jsonStore.item_shares[idx];
       }
-      const record = { id, vault_id: vaultId, item_type: itemType, item_id: String(itemId), item_name: itemName || '', user_email: cleanEmail, role, created_by: createdBy, created_at: now, updated_at: now };
+      const record = { id, vault_id: vaultId, item_type: itemType, item_id: String(itemId), item_name: itemName || '', user_email: cleanEmail, role, created_by: createdBy, created_at: now, updated_at: now, share_key: shareKey };
       this.jsonStore.item_shares.push(record);
       this.saveJsonStore();
       return record;
@@ -2946,7 +2951,7 @@ async function handleApiRequest(req, res, pathname, url) {
   if (req.method === 'POST' && pathname === '/api/shares/item/email') {
     try {
       const body = await parseJsonBody(req);
-      const { itemType, itemId, itemName, email, role } = body;
+      const { itemType, itemId, itemName, email, role, shareKey } = body;
       if (!itemType || !itemId || !email) {
         return sendJson(res, 400, { error: 'Thiếu thông tin itemType, itemId hoặc email' });
       }
@@ -2956,7 +2961,7 @@ async function handleApiRequest(req, res, pathname, url) {
       const vaultId = userVaults[0].id;
 
       const shareRole = role === 'editor' ? 'editor' : 'viewer';
-      const result = dbManager.addItemShare(vaultId, itemType, itemId, itemName, email, shareRole, currentUser.id);
+      const result = dbManager.addItemShare(vaultId, itemType, itemId, itemName, email, shareRole, currentUser.id, shareKey);
 
       return sendJson(res, 200, { success: true, share: result });
     } catch (err) {
@@ -3041,7 +3046,7 @@ async function handleApiRequest(req, res, pathname, url) {
 
     for (const s of shares) {
       const data = dbManager.getReceivedItemData(s.vault_id, s.item_type, s.item_id);
-      if (data && data.item) {
+      if (data && (data.item || (data.isProjection && data.projectionData))) {
         results.push({
           shareId: s.id,
           vaultId: s.vault_id,
@@ -3052,6 +3057,7 @@ async function handleApiRequest(req, res, pathname, url) {
           itemId: s.item_id,
           itemName: s.item_name,
           role: s.role,
+          shareKey: s.share_key || null,
           ...data
         });
       }

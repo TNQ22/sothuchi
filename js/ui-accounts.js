@@ -4705,6 +4705,7 @@ const UIAccounts = {
               ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
               ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
               ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
+              ${(a.isShared === 1 || a.isShared === true || a._isSharedItem) ? '<span class="account-share-badge" title="Đang chia sẻ với thành viên"><i data-lucide="share-2" style="width:12px;height:12px;"></i></span>' : ''}
             </div>
           </div>
           <div class="account-balance-wrapper">
@@ -5568,7 +5569,7 @@ const UIAccounts = {
                   ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                   ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
                   ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
-                  ${(a.isShared === 1 || a.isShared === true) ? '<span class="account-share-badge" title="Đang chia sẻ với thành viên"><i data-lucide="share-2" style="width:12px;height:12px;"></i></span>' : ''}
+                  ${(a.isShared === 1 || a.isShared === true || a._isSharedItem) ? '<span class="account-share-badge" title="Đang chia sẻ với thành viên"><i data-lucide="share-2" style="width:12px;height:12px;"></i></span>' : ''}
                 </div>
               </div>
               <div class="account-balance-wrapper">
@@ -5626,7 +5627,7 @@ const UIAccounts = {
                     ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
                     <span class="account-archived-badge" title="Đã ngừng sử dụng">Ngừng sử dụng</span>
                     ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
-                  ${(a.isShared === 1 || a.isShared === true) ? '<span class="account-share-badge" title="Đang chia sẻ với thành viên"><i data-lucide="share-2" style="width:12px;height:12px;"></i></span>' : ''}
+                  ${(a.isShared === 1 || a.isShared === true || a._isSharedItem) ? '<span class="account-share-badge" title="Đang chia sẻ với thành viên"><i data-lucide="share-2" style="width:12px;height:12px;"></i></span>' : ''}
                   </div>
                 </div>
                 <div class="account-balance-wrapper">
