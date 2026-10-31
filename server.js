@@ -939,14 +939,14 @@ class DatabaseManager {
       const stmt = this.sqliteDb.prepare(`
         SELECT s.*, v.name as vault_name, u.name as owner_name, u.email as owner_email
         FROM item_shares s
-        JOIN vaults v ON v.id = s.vault_id
-        JOIN users u ON u.id = v.owner_id
-        WHERE LOWER(s.user_email) = ?
+        LEFT JOIN vaults v ON v.id = s.vault_id
+        LEFT JOIN users u ON u.id = v.owner_id
+        WHERE LOWER(TRIM(s.user_email)) = ?
       `);
       return stmt.all(cleanEmail);
     } else {
       return (this.jsonStore.item_shares || [])
-        .filter(s => s.user_email.toLowerCase() === cleanEmail)
+        .filter(s => s.user_email && s.user_email.trim().toLowerCase() === cleanEmail)
         .map(s => {
           const v = (this.jsonStore.vaults || []).find(x => x.id === s.vault_id);
           const u = v ? (this.jsonStore.users || []).find(x => x.id === v.owner_id) : null;
@@ -987,10 +987,18 @@ class DatabaseManager {
   getItemProjection(vaultId, itemType, itemId) {
     let raw;
     if (this.isSqlite) {
-      raw = this.sqliteDb.prepare('SELECT * FROM shared_item_projections WHERE vault_id = ? AND item_type = ? AND item_id = ?').get(vaultId, itemType, String(itemId));
+      if (vaultId) {
+        raw = this.sqliteDb.prepare('SELECT * FROM shared_item_projections WHERE vault_id = ? AND item_type = ? AND item_id = ?').get(vaultId, itemType, String(itemId));
+      }
+      if (!raw) {
+        raw = this.sqliteDb.prepare('SELECT * FROM shared_item_projections WHERE item_type = ? AND item_id = ? ORDER BY updated_at DESC LIMIT 1').get(itemType, String(itemId));
+      }
     } else {
       const key = `${vaultId}_${itemType}_${itemId}`;
       raw = (this.jsonStore.shared_item_projections || {})[key];
+      if (!raw) {
+        raw = Object.values(this.jsonStore.shared_item_projections || {}).find(p => p.item_type === itemType && String(p.item_id) === String(itemId));
+      }
     }
     if (!raw) return null;
     try {
@@ -2935,12 +2943,13 @@ async function handleApiRequest(req, res, pathname, url) {
   if (req.method === 'GET' && pathname === '/api/shares/item') {
     const itemType = searchParams.get('itemType');
     const itemId = searchParams.get('itemId');
+    const vaultIdParam = searchParams.get('vaultId');
     if (!itemType || !itemId) return sendJson(res, 400, { error: 'Thiếu itemType hoặc itemId' });
 
     // Lấy vault của người dùng hiện tại
     const userVaults = dbManager.getUserVaults(currentUser.id, currentUser.email);
-    if (userVaults.length === 0) return sendJson(res, 404, { error: 'Không tìm thấy sổ' });
-    const vaultId = userVaults[0].id;
+    const vaultId = vaultIdParam || (userVaults.length > 0 ? userVaults[0].id : null);
+    if (!vaultId) return sendJson(res, 404, { error: 'Không tìm thấy sổ' });
 
     const shares = dbManager.getItemShares(vaultId, itemType, itemId);
     const links = dbManager.getItemShareLinks(vaultId, itemType, itemId);
@@ -2951,14 +2960,14 @@ async function handleApiRequest(req, res, pathname, url) {
   if (req.method === 'POST' && pathname === '/api/shares/item/email') {
     try {
       const body = await parseJsonBody(req);
-      const { itemType, itemId, itemName, email, role, shareKey } = body;
+      const { itemType, itemId, itemName, email, role, shareKey, vaultId: bodyVaultId } = body;
       if (!itemType || !itemId || !email) {
         return sendJson(res, 400, { error: 'Thiếu thông tin itemType, itemId hoặc email' });
       }
 
       const userVaults = dbManager.getUserVaults(currentUser.id, currentUser.email);
-      if (userVaults.length === 0) return sendJson(res, 404, { error: 'Không tìm thấy sổ của bạn' });
-      const vaultId = userVaults[0].id;
+      const vaultId = bodyVaultId || (userVaults.length > 0 ? userVaults[0].id : null);
+      if (!vaultId) return sendJson(res, 404, { error: 'Không tìm thấy sổ của bạn' });
 
       const shareRole = role === 'editor' ? 'editor' : 'viewer';
       const result = dbManager.addItemShare(vaultId, itemType, itemId, itemName, email, shareRole, currentUser.id, shareKey);
@@ -2981,14 +2990,14 @@ async function handleApiRequest(req, res, pathname, url) {
   if (req.method === 'POST' && pathname === '/api/shares/item/link') {
     try {
       const body = await parseJsonBody(req);
-      const { itemType, itemId, itemName, role } = body;
+      const { itemType, itemId, itemName, role, vaultId: bodyVaultId } = body;
       if (!itemType || !itemId) {
         return sendJson(res, 400, { error: 'Thiếu itemType hoặc itemId' });
       }
 
       const userVaults = dbManager.getUserVaults(currentUser.id, currentUser.email);
-      if (userVaults.length === 0) return sendJson(res, 404, { error: 'Không tìm thấy sổ của bạn' });
-      const vaultId = userVaults[0].id;
+      const vaultId = bodyVaultId || (userVaults.length > 0 ? userVaults[0].id : null);
+      if (!vaultId) return sendJson(res, 404, { error: 'Không tìm thấy sổ của bạn' });
 
       const linkRole = role === 'editor' ? 'editor' : 'viewer';
       const link = dbManager.createItemShareLink(vaultId, itemType, itemId, itemName, linkRole, currentUser.id);

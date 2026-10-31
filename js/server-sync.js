@@ -179,6 +179,7 @@ class ServerSyncService {
         this.checkConnection().then(async (isOk) => {
           if (isOk && this.token) {
             await this.refreshSession();
+            await this.syncReceivedSharedItems();
           }
         }).catch(() => {});
       }
@@ -395,6 +396,8 @@ class ServerSyncService {
     window.dispatchEvent(new CustomEvent('server-auth-changed', {
       detail: { user: this.userProfile, vaults: this.vaults, activeVaultId: this.activeVaultId }
     }));
+
+    this.syncReceivedSharedItems().catch(() => {});
 
     if (this.activeVaultId) {
       this.handlePostLoginSync(this.userProfile).catch(err => {
@@ -1630,17 +1633,26 @@ class ServerSyncService {
     setInterval(async () => {
       if (document.hidden) return;
       await this.checkRemoteVersionAndSync();
+      if (this.serverUrl && this.token) {
+        this.syncReceivedSharedItems().catch(() => {});
+      }
     }, 10000);
 
     // 2. Kiểm tra ngay lập tức khi người dùng chuyển qua lại giữa các tab hoặc app
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible') {
         await this.checkRemoteVersionAndSync();
+        if (this.serverUrl && this.token) {
+          this.syncReceivedSharedItems().catch(() => {});
+        }
       }
     });
 
     window.addEventListener('focus', async () => {
       await this.checkRemoteVersionAndSync();
+      if (this.serverUrl && this.token) {
+        this.syncReceivedSharedItems().catch(() => {});
+      }
     });
   }
 
@@ -1963,7 +1975,8 @@ class ServerSyncService {
 
   async getItemShares(itemType, itemId) {
     if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
-    const res = await fetch(`${this.serverUrl}/api/shares/item?itemType=${encodeURIComponent(itemType)}&itemId=${encodeURIComponent(itemId)}`, {
+    const vParam = this.activeVaultId ? `&vaultId=${encodeURIComponent(this.activeVaultId)}` : '';
+    const res = await fetch(`${this.serverUrl}/api/shares/item?itemType=${encodeURIComponent(itemType)}&itemId=${encodeURIComponent(itemId)}${vParam}`, {
       headers: { Authorization: `Bearer ${this.token}` }
     });
     if (!res.ok) {
@@ -1991,7 +2004,7 @@ class ServerSyncService {
         Authorization: `Bearer ${this.token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ itemType, itemId, itemName, email, role, shareKey })
+      body: JSON.stringify({ itemType, itemId, itemName, email, role, shareKey, vaultId: this.activeVaultId })
     });
     if (!res.ok) {
       const err = await res.json();
@@ -2041,7 +2054,7 @@ class ServerSyncService {
         Authorization: `Bearer ${this.token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ itemType, itemId, itemName, role })
+      body: JSON.stringify({ itemType, itemId, itemName, role, vaultId: this.activeVaultId })
     });
     if (!res.ok) {
       const err = await res.json();
@@ -2316,6 +2329,15 @@ class ServerSyncService {
             await db.assets.add(assetData);
           }
         }
+      }
+      if (hasChanges) {
+        if (typeof window.recalculateAccountBalances === 'function') {
+          await window.recalculateAccountBalances();
+        }
+        if (window.app && typeof window.app.refreshAll === 'function') {
+          await window.app.refreshAll();
+        }
+        window.dispatchEvent(new CustomEvent('shared-items-updated', { detail: { count: items.length } }));
       }
       return hasChanges;
     } catch (err) {

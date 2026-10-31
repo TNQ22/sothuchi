@@ -110,6 +110,14 @@ const UIAccounts = {
   bindEvents() {
     if (this._eventsBound) return;
     this._eventsBound = true;
+
+    window.addEventListener('shared-items-updated', () => {
+      this.render();
+    });
+    window.addEventListener('server-auth-changed', () => {
+      this.render();
+    });
+
     const accForm = document.getElementById('account-form');
     if (accForm) {
       accForm.addEventListener('submit', async (e) => {
@@ -4576,6 +4584,12 @@ const UIAccounts = {
       modeWrap.style.display = 'inline-flex';
     }
 
+    if (tab === 'shared' && window.serverSyncService && window.serverSyncService.isConnected) {
+      window.serverSyncService.syncReceivedSharedItems().then(hasChanges => {
+        if (hasChanges) this.render();
+      }).catch(() => {});
+    }
+
     this.render();
   },
 
@@ -5446,6 +5460,15 @@ const UIAccounts = {
     /* ==================== RENDER DANH SÁCH TÀI KHOẢN ==================== */
   async render() {
     this.updateSharedViewModeUI();
+
+    if (!this._isSyncingShared && window.serverSyncService && window.serverSyncService.isConnected) {
+      this._isSyncingShared = true;
+      window.serverSyncService.syncReceivedSharedItems().then(hasChanges => {
+        if (hasChanges) this.render();
+      }).catch(() => {}).finally(() => {
+        this._isSyncingShared = false;
+      });
+    }
 
     const container = document.getElementById('accounts-list-container');
     if (!container) return;
