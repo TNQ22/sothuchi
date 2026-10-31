@@ -1359,6 +1359,25 @@ const UITransactions = {
           const all = await db.recurring.toArray();
           list = all.filter(t => t.frequency === 'template' || t.isTemplate === 1);
         }
+      } else {
+        // Tự động nâng cấp các mẫu mặc định cũ cho khớp với thiết kế mới (IMG_0074)
+        try {
+          if (!localStorage.getItem('sothuchi_tpl_migrated_v2')) {
+            const legacyItems = await db.recurring.toArray();
+            for (const item of legacyItems) {
+              if (item.frequency === 'template' || item.isTemplate === 1) {
+                if (item.title === 'Ăn sáng chay' || item.title === 'Khoáng lạt Thạch Bích') {
+                  await db.recurring.delete(item.id);
+                } else if (item.title === 'Ăn tiệm' && item.amount === 45000) {
+                  await db.recurring.update(item.id, { amount: 20000, color: '#f43f5e' });
+                }
+              }
+            }
+            localStorage.setItem('sothuchi_tpl_migrated_v2', '1');
+            const refreshed = await db.recurring.toArray();
+            list = refreshed.filter(t => t.frequency === 'template' || t.isTemplate === 1);
+          }
+        } catch (_) {}
       }
       list = (list || []).filter(t => !t.isDeleted);
       if (type) {
@@ -1390,39 +1409,16 @@ const UITransactions = {
       const now = new Date().toISOString();
       const defaults = [
         {
-          title: 'Ăn sáng chay',
-          type: 'expense',
-          amount: 25000,
-          categoryId: catAnUong?.id || 1,
-          icon: 'utensils',
-          color: '#0d9488',
-          frequency: 'template',
-          isTemplate: 1,
-          isDeleted: 0,
-          updatedAt: now
-        },
-        {
           title: 'Ăn tiệm',
           type: 'expense',
-          amount: 45000,
+          amount: 20000,
           categoryId: catAnUong?.id || 1,
           icon: 'utensils',
-          color: '#0f766e',
+          color: catAnUong?.color || '#f43f5e',
           frequency: 'template',
           isTemplate: 1,
           isDeleted: 0,
-          updatedAt: now
-        },
-        {
-          title: 'Khoáng lạt Thạch Bích',
-          type: 'expense',
-          amount: 15000,
-          categoryId: catAnUong?.id || 1,
-          icon: 'coffee',
-          color: '#14b8a6',
-          frequency: 'template',
-          isTemplate: 1,
-          isDeleted: 0,
+          order: 0,
           updatedAt: now
         },
         {
@@ -1431,10 +1427,11 @@ const UITransactions = {
           amount: 50000,
           categoryId: catXang?.id || 3,
           icon: 'car',
-          color: '#f59e0b',
+          color: catXang?.color || '#f59e0b',
           frequency: 'template',
           isTemplate: 1,
           isDeleted: 0,
+          order: 1,
           updatedAt: now
         },
         {
@@ -1443,10 +1440,11 @@ const UITransactions = {
           amount: 100000,
           categoryId: catCho?.id || 2,
           icon: 'shopping-cart',
-          color: '#ec4899',
+          color: catCho?.color || '#ec4899',
           frequency: 'template',
           isTemplate: 1,
           isDeleted: 0,
+          order: 2,
           updatedAt: now
         },
         {
@@ -1455,10 +1453,11 @@ const UITransactions = {
           amount: 0,
           categoryId: catLuong?.id || 13,
           icon: 'banknote',
-          color: '#10b981',
+          color: catLuong?.color || '#10b981',
           frequency: 'template',
           isTemplate: 1,
           isDeleted: 0,
+          order: 0,
           updatedAt: now
         },
         {
@@ -1467,10 +1466,11 @@ const UITransactions = {
           amount: 0,
           categoryId: catThuong?.id || 14,
           icon: 'award',
-          color: '#059669',
+          color: catThuong?.color || '#059669',
           frequency: 'template',
           isTemplate: 1,
           isDeleted: 0,
+          order: 1,
           updatedAt: now
         }
       ];
@@ -1631,7 +1631,9 @@ const UITransactions = {
       const t = templates[i];
       const cat = t.categoryId ? await db.categories.get(Number(t.categoryId)) : null;
       const catName = cat ? cat.name : 'Chưa gán danh mục';
-      const amtStr = t.amount > 0 ? `<span style="font-weight:600;font-size:0.8rem;color:var(--text-primary);">${new Intl.NumberFormat('vi-VN').format(t.amount)}₫</span>` : '<span style="color:var(--text-muted);font-size:0.75rem;">Nhập mỗi lần</span>';
+      const itemColor = cat?.color || t.color || 'var(--primary)';
+      const itemIcon = cat?.icon || t.icon || 'tag';
+      const amtStr = t.amount > 0 ? `<span style="font-weight:600;font-size:0.8rem;color:var(--text-primary);">${new Intl.NumberFormat('vi-VN').format(t.amount)}đ</span>` : '<span style="color:var(--text-muted);font-size:0.75rem;">Nhập mỗi lần</span>';
       const isFirst = i === 0;
       const isLast = i === templates.length - 1;
 
@@ -1643,15 +1645,15 @@ const UITransactions = {
           </div>
 
           <div class="template-manager-info" onclick="UITransactions.openTemplateEditor(${t.id})" style="cursor: pointer;">
-            <div style="width:38px;height:38px;border-radius:10px;background:${t.color ? t.color + '22' : 'rgba(13, 148, 136, 0.15)'};color:${t.color || 'var(--primary)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <i data-lucide="${t.icon || 'tag'}" style="width:19px;height:19px;"></i>
+            <div style="width:38px;height:38px;border-radius:10px;background:${itemColor ? itemColor + '22' : 'rgba(13, 148, 136, 0.15)'};color:${itemColor};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i data-lucide="${itemIcon}" style="width:19px;height:19px;"></i>
             </div>
             <div style="min-width:0;flex:1;">
               <div style="font-weight:600;font-size:0.9rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                ${t.title}
+                ${escapeHTML(t.title)}
               </div>
               <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">
-                ${catName} • ${amtStr}
+                ${escapeHTML(catName)} • ${amtStr}
               </div>
               ${t.note ? `<div style="font-size:0.74rem;color:var(--primary);margin-top:3px;display:flex;align-items:center;gap:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i data-lucide="file-text" style="width:12px;height:12px;flex-shrink:0;"></i> <span>${escapeHTML(t.note)}</span> <span style="color:var(--text-muted);font-size:0.7rem;">(→ ${escapeHTML(this.resolveTemplateVariables(t.note))})</span></div>` : ''}
             </div>
@@ -2297,7 +2299,25 @@ const UITransactions = {
     const targetId = id || Number(document.getElementById('tpl-page-id-input')?.value);
     if (!targetId) return;
 
-    if (!confirm('Bạn có chắc chắn muốn xóa mẫu ghi chép này?')) return;
+    let targetTitle = '';
+    try {
+      const t = await db.recurring.get(targetId);
+      if (t && t.title) targetTitle = t.title;
+    } catch (_) {}
+
+    const confirmMsg = targetTitle 
+      ? `Bạn có chắc chắn muốn xóa mẫu ghi chép <strong>"${escapeHTML(targetTitle)}"</strong> này không?`
+      : 'Bạn có chắc chắn muốn xóa mẫu ghi chép này không?';
+
+    const ok = await showConfirm({
+      title: 'Xóa Mẫu Ghi Chép',
+      message: confirmMsg,
+      confirmText: 'Xóa',
+      cancelText: 'Hủy',
+      danger: true,
+      icon: 'trash-2'
+    });
+    if (!ok) return;
 
     await db.recurring.update(targetId, { isDeleted: 1, updatedAt: new Date().toISOString() });
     showToast('Đã xóa mẫu ghi chép', 'success');

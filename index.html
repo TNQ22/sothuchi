@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi" data-theme="dark">
 <head>
   <meta charset="UTF-8">
@@ -13,21 +13,21 @@
   <meta name="author" content="Sổ Thu Chi App">
   
   <!-- PWA & Mobile Capabilities -->
-  <link rel="manifest" href="./manifest.json?v=3.0.23">
+  <link rel="manifest" href="./manifest.json?v=3.0.24">
   <meta name="theme-color" content="#0a0f1d">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Sổ Thu Chi">
   
   <!-- App Icons -->
-  <link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg?v=3.0.23">
-  <link rel="icon" media="(prefers-color-scheme: light)" type="image/png" sizes="192x192" href="./assets/icons/pwa-icon-light-192.png?v=3.0.23">
-  <link rel="icon" media="(prefers-color-scheme: dark)" type="image/png" sizes="192x192" href="./assets/icons/pwa-icon-dark-192.png?v=3.0.23">
-  <link rel="apple-touch-icon" href="./assets/icons/icon-192.png?v=3.0.23">
+  <link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg?v=3.0.24">
+  <link rel="icon" media="(prefers-color-scheme: light)" type="image/png" sizes="192x192" href="./assets/icons/pwa-icon-light-192.png?v=3.0.24">
+  <link rel="icon" media="(prefers-color-scheme: dark)" type="image/png" sizes="192x192" href="./assets/icons/pwa-icon-dark-192.png?v=3.0.24">
+  <link rel="apple-touch-icon" href="./assets/icons/icon-192.png?v=3.0.24">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=3.0.23">
-  <link rel="stylesheet" href="./css/admin-panel.css?v=3.0.23">
+  <link rel="stylesheet" href="./css/style.css?v=3.0.24">
+  <link rel="stylesheet" href="./css/admin-panel.css?v=3.0.24">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1156,7 +1156,7 @@
     <!-- Desktop Sidebar -->
     <aside class="app-sidebar">
       <div class="brand-section">
-        <img src="./assets/icons/icon.svg?v=3.0.23" alt="Logo Sổ Thu Chi" class="brand-logo">
+        <img src="./assets/icons/icon.svg?v=3.0.24" alt="Logo Sổ Thu Chi" class="brand-logo">
         <div class="brand-info">
           <h1>Sổ Thu Chi</h1>
           <span class="brand-badge">Offline-First</span>
@@ -1226,7 +1226,7 @@
           </button>
           <button type="button" id="header-brand-logo-btn" class="header-brand-logo-btn" title="Trạng thái sao lưu & đồng bộ" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
             <div class="header-brand-logo-wrap">
-              <img src="./assets/icons/icon.svg?v=3.0.23" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="header-brand-logo">
+              <img src="./assets/icons/icon.svg?v=3.0.24" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="header-brand-logo">
               <span class="sync-status-dot" id="header-sync-dot"></span>
             </div>
             <span id="header-vault-pill" class="header-vault-subtext" style="display: none;">
@@ -3150,7 +3150,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               </button>
               <button type="button" id="tx-brand-logo-btn" class="header-brand-logo-btn" title="Trạng thái sao lưu & đồng bộ" onclick="window.SyncCoordinator && window.SyncCoordinator.togglePopover(event, this)">
                 <div class="header-brand-logo-wrap">
-                  <img src="./assets/icons/icon.svg?v=3.0.23" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="tx-brand-logo">
+                  <img src="./assets/icons/icon.svg?v=3.0.24" alt="Logo Sổ Thu Chi" class="header-brand-logo is-app-logo" id="tx-brand-logo">
                   <span class="sync-status-dot" id="tx-sync-dot"></span>
                 </div>
                 <span id="tx-vault-pill" class="header-vault-subtext" style="display: none;">
@@ -6987,32 +6987,32 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./vendor/chart.umd.min.js"></script>
 
   <!-- App Core Modules -->
-  <script src="./js/config.js?v=3.0.23"></script>
-  <script src="./js/custom-dialog.js?v=3.0.23"></script>
-  <script src="./js/crypto.js?v=3.0.23"></script>
-  <script src="./js/db.js?v=3.0.23"></script>
-  <script src="./js/google-drive.js?v=3.0.23"></script>
-  <script src="./js/dropbox.js?v=3.0.23"></script>
-  <script src="./js/server-sync.js?v=3.0.23"></script>
-  <script src="./js/csv-export.js?v=3.0.23"></script>
-  <script src="./js/backup.js?v=3.0.23"></script>
-  <script src="./js/sync-coordinator.js?v=3.0.23"></script>
+  <script src="./js/config.js?v=3.0.24"></script>
+  <script src="./js/custom-dialog.js?v=3.0.24"></script>
+  <script src="./js/crypto.js?v=3.0.24"></script>
+  <script src="./js/db.js?v=3.0.24"></script>
+  <script src="./js/google-drive.js?v=3.0.24"></script>
+  <script src="./js/dropbox.js?v=3.0.24"></script>
+  <script src="./js/server-sync.js?v=3.0.24"></script>
+  <script src="./js/csv-export.js?v=3.0.24"></script>
+  <script src="./js/backup.js?v=3.0.24"></script>
+  <script src="./js/sync-coordinator.js?v=3.0.24"></script>
 
   <!-- UI Views Modules -->
-  <script src="./js/ui-calendar.js?v=3.0.23"></script>
-  <script src="./js/ui-transactions.js?v=3.0.23"></script>
-  <script src="./js/ui-debts.js?v=3.0.23"></script>
-  <script src="./js/ui-accounts.js?v=3.0.23"></script>
-  <script src="./js/ui-share.js?v=3.0.23"></script>
-  <script src="./js/ui-budgets.js?v=3.0.23"></script>
-  <script src="./js/ui-analytics.js?v=3.0.23"></script>
-  <script src="./js/ui-settings.js?v=3.0.23"></script>
-  <script src="./js/server-auth-modals.js?v=3.0.23"></script>
+  <script src="./js/ui-calendar.js?v=3.0.24"></script>
+  <script src="./js/ui-transactions.js?v=3.0.24"></script>
+  <script src="./js/ui-debts.js?v=3.0.24"></script>
+  <script src="./js/ui-accounts.js?v=3.0.24"></script>
+  <script src="./js/ui-share.js?v=3.0.24"></script>
+  <script src="./js/ui-budgets.js?v=3.0.24"></script>
+  <script src="./js/ui-analytics.js?v=3.0.24"></script>
+  <script src="./js/ui-settings.js?v=3.0.24"></script>
+  <script src="./js/server-auth-modals.js?v=3.0.24"></script>
 
   <!-- Main Entry Coordinator -->
-  <script src="./js/ui-admin.js?v=3.0.23"></script>
-  <script src="./js/pull-to-refresh.js?v=3.0.23"></script>
-  <script src="./js/app.js?v=3.0.23"></script>
+  <script src="./js/ui-admin.js?v=3.0.24"></script>
+  <script src="./js/pull-to-refresh.js?v=3.0.24"></script>
+  <script src="./js/app.js?v=3.0.24"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
   <script>
