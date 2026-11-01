@@ -628,6 +628,18 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   transform: translateY(0);
 }
 
+.tx-bottom-action-row #tx-delete-btn,
+.tx-bottom-action-row .tx-submit-bottom-btn {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  width: 0 !important;
+  height: 46px !important;
+  padding: 0 12px !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  box-sizing: border-box !important;
+}
+
 .btn-secondary {
   display: inline-flex;
   align-items: center;
@@ -2075,6 +2087,18 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
     align-items: center !important;
     background: var(--bg-base) !important;
     border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  }
+
+  #view-new-transaction .tx-bottom-action-row #tx-delete-btn,
+  #view-new-transaction .tx-bottom-action-row .tx-submit-bottom-btn {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    width: 0 !important;
+    height: 46px !important;
+    padding: 0 12px !important;
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    box-sizing: border-box !important;
   }
 
   .tx-page-header {
@@ -5952,11 +5976,31 @@ body.dark .switch .slider {
 
 
 /* ==================== SOURCE ACCOUNT PICKER (NGUỒN TIỀN CÓ LOGO) ==================== */
+#modal-source-account-picker {
+  padding: 8px 4px max(8px, env(safe-area-inset-bottom, 0px)) !important;
+}
+
+#modal-source-account-picker .modal-dialog {
+  width: 100% !important;
+  max-width: 520px !important;
+  margin: 0 auto !important;
+  border-radius: 18px !important;
+}
+
+#modal-source-account-picker .modal-header {
+  padding: 14px 12px !important;
+}
+
+#source-account-picker-list {
+  padding: 10px 6px 18px 6px !important;
+  gap: 6px !important;
+}
+
 .source-acc-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: 10px 10px !important;
   border-radius: var(--radius-md);
   background: var(--bg-surface);
   border: 1.5px solid var(--border-color);

@@ -1926,18 +1926,13 @@ const UIAccounts = {
       const iconColor = options.noneIcon ? 'var(--primary)' : 'var(--text-muted)';
       html += `
         <div class="source-acc-item ${isSelected ? 'active' : ''}" onclick="UIAccounts.selectSourceAccount('')">
-          <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
+          <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
             <div style="width: 40px; height: 40px; border-radius: 10px; background: ${iconBg}; color: ${iconColor}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
               <i data-lucide="${iconName}" style="width: 20px; height: 20px;"></i>
             </div>
             <div style="min-width: 0; flex: 1;">
-              <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(noneLabel)}</div>
-              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">${escapeHTML(noneDesc)}</div>
-            </div>
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 12px;">
-            <div style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              ${isSelected ? '<i data-lucide="check" style="width: 20px; height: 20px; color: var(--primary); flex-shrink: 0;"></i>' : ''}
+              <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">${escapeHTML(noneLabel)}</div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: clip;">${escapeHTML(noneDesc)}</div>
             </div>
           </div>
         </div>
@@ -1947,7 +1942,7 @@ const UIAccounts = {
     // Các tài khoản ví ngân hàng kèm logo thực tế
     active.forEach(acc => {
       const isSelected = String(acc.id) === selectedId;
-      const curSym = acc.currency === 'USD' ? '$' : (acc.currency === 'EUR' ? '€' : (acc.currency === 'JPY' ? '¥' : 'đ'));
+      const curSym = acc.currency === 'USD' ? '$' : (acc.currency === 'EUR' ? '€' : (acc.currency === 'JPY' ? '¥' : '₫'));
       const balanceStr = new Intl.NumberFormat('vi-VN').format(acc.balance) + curSym;
       const balanceColor = acc.balance >= 0 ? '#10b981' : '#ef4444';
       const typeText = acc.type === 'bank' ? (acc.bankCode || 'Tài khoản ngân hàng') : (acc.type === 'ewallet' ? 'Ví điện tử' : (acc.type === 'credit' ? 'Thẻ tín dụng' : 'Tiền mặt'));
@@ -1958,14 +1953,14 @@ const UIAccounts = {
       let shareBadge = '';
       if (isSharedItem) {
         shareBadge = `
-          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #3b82f6; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 0;">
-            <i data-lucide="share-2" style="width: 10px; height: 10px;"></i> Được chia sẻ
+          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #3b82f6; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: clip;">
+            <i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0;"></i> <span style="white-space: nowrap; overflow: hidden; text-overflow: clip;">Được chia sẻ</span>
           </span>
         `;
       } else if (isSharedByMe) {
         shareBadge = `
-          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 0;">
-            <i data-lucide="share-2" style="width: 10px; height: 10px;"></i> Đang chia sẻ
+          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: clip;">
+            <i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0;"></i> <span style="white-space: nowrap; overflow: hidden; text-overflow: clip;">Đang chia sẻ</span>
           </span>
         `;
       }
@@ -1984,28 +1979,23 @@ const UIAccounts = {
 
       html += `
         <div class="source-acc-item ${isSelected ? 'active' : ''}" onclick="UIAccounts.selectSourceAccount('${acc.id}')">
-          <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
+          <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
             <div style="position: relative; flex-shrink: 0;">
               ${this.renderLogoBadge(acc, 40)}
               ${miniShareIndicator}
             </div>
             <div style="min-width: 0; flex: 1;">
-              <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px; overflow: hidden;">
-                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${escapeHTML(acc.name)}</span>
+              <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px; overflow: hidden; min-width: 0;">
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: clip; flex-shrink: 1; min-width: fit-content; max-width: ${shareBadge ? 'calc(100% - 24px)' : '100%'};">${escapeHTML(acc.name)}</span>
                 ${shareBadge}
               </div>
-              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: clip;">
                 ${subParts.join(' • ')}
               </div>
             </div>
           </div>
-          <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 12px;">
-            <div class="account-balance-wrapper" style="text-align: right; flex-shrink: 0;">
-              <span class="account-balance stat-amount" style="color: ${balanceColor}; font-weight: 700; font-size: 0.95rem; font-variant-numeric: tabular-nums; white-space: nowrap;">${balanceStr}</span>
-            </div>
-            <div style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              ${isSelected ? '<i data-lucide="check" style="width: 20px; height: 20px; color: var(--primary); flex-shrink: 0;"></i>' : ''}
-            </div>
+          <div class="account-balance-wrapper" style="text-align: right; flex-shrink: 0; margin-left: 8px;">
+            <span class="account-balance stat-amount" style="color: ${balanceColor}; font-weight: 700; font-size: 0.95rem; font-variant-numeric: tabular-nums; white-space: nowrap;">${balanceStr}</span>
           </div>
         </div>
       `;

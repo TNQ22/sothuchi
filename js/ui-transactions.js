@@ -199,7 +199,6 @@ const UITransactions = {
           : (isSharedByMe ? ` <span style="font-size: 0.68rem; color: #10b981; font-weight: 600; background: rgba(16, 185, 129, 0.12); padding: 1px 5px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px;"><i data-lucide="share-2" style="width: 8px; height: 8px;"></i> Đang chia sẻ</span>` : '');
 
         const subNotes = [];
-        if (isSharedItem && acc._sharedFrom) subNotes.push(`Từ: ${escapeHTML(acc._sharedFrom)}`);
         if (acc.description && acc.description.trim()) subNotes.push(escapeHTML(acc.description.trim()));
         const subNoteStr = subNotes.length > 0 ? ` • ${subNotes.join(' • ')}` : '';
 
@@ -2144,7 +2143,6 @@ const UITransactions = {
     }
     if (subtext) {
       const subNotes = [];
-      if (isSharedItem && acc._sharedFrom) subNotes.push(`Từ: ${escapeHTML(acc._sharedFrom)}`);
       if (acc.description && acc.description.trim()) subNotes.push(escapeHTML(acc.description.trim()));
       const subNoteStr = subNotes.length > 0 ? ` • ${subNotes.join(' • ')}` : '';
       subtext.textContent = 'Số dư: ' + new Intl.NumberFormat('vi-VN').format(acc.balance || 0) + '₫' + subNoteStr;
@@ -3368,7 +3366,6 @@ const UITransactions = {
           : (isSharedByMe ? ` <span style="font-size:0.68rem; color:#10b981; font-weight:600; background:rgba(16,185,129,0.12); padding:1px 5px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;"><i data-lucide="share-2" style="width:8px;height:8px;"></i> Đang chia sẻ</span>` : '');
 
         const subNotes = [];
-        if (isSharedItem && a._sharedFrom) subNotes.push(`Từ: ${escapeHTML(a._sharedFrom)}`);
         if (a.description && a.description.trim()) subNotes.push(escapeHTML(a.description.trim()));
         const subNoteStr = subNotes.length > 0 ? ` • ${subNotes.join(' • ')}` : '';
 
@@ -3407,7 +3404,6 @@ const UITransactions = {
           : (isSharedByMe ? ` <span style="font-size:0.68rem; color:#10b981; font-weight:600; background:rgba(16,185,129,0.12); padding:1px 5px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;"><i data-lucide="share-2" style="width:8px;height:8px;"></i> Đang chia sẻ</span>` : '');
 
         const subNotes = [];
-        if (isSharedItem && a._sharedFrom) subNotes.push(`Từ: ${escapeHTML(a._sharedFrom)}`);
         if (a.description && a.description.trim()) subNotes.push(escapeHTML(a.description.trim()));
         const subNoteStr = subNotes.length > 0 ? ` • ${subNotes.join(' • ')}` : '';
 
@@ -3812,15 +3808,12 @@ const UITransactions = {
       }
 
       if (label) {
-        label.innerHTML = `<div style="display: flex; align-items: center; gap: 6px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${escapeHTML(acc.name)}</span>${shareBadge}</div>`;
+        label.innerHTML = `<div style="display: flex; align-items: center; gap: 6px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0;">${escapeHTML(acc.name)}</span>${shareBadge}</div>`;
       }
 
       if (balanceEl) {
         const balFormatted = new Intl.NumberFormat('vi-VN').format(acc.balance);
         const subNotes = [];
-        if (isSharedItem && acc._sharedFrom) {
-          subNotes.push(`Từ: ${escapeHTML(acc._sharedFrom)}`);
-        }
         if (acc.description && acc.description.trim()) {
           subNotes.push(escapeHTML(acc.description.trim()));
         }
@@ -3887,15 +3880,12 @@ const UITransactions = {
       }
 
       if (label) {
-        label.innerHTML = `<div style="display: flex; align-items: center; gap: 6px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${escapeHTML(acc.name)}</span>${shareBadge}</div>`;
+        label.innerHTML = `<div style="display: flex; align-items: center; gap: 6px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0;">${escapeHTML(acc.name)}</span>${shareBadge}</div>`;
       }
 
       if (balanceEl) {
         const balFormatted = new Intl.NumberFormat('vi-VN').format(acc.balance);
         const subNotes = [];
-        if (isSharedItem && acc._sharedFrom) {
-          subNotes.push(`Từ: ${escapeHTML(acc._sharedFrom)}`);
-        }
         if (acc.description && acc.description.trim()) {
           subNotes.push(escapeHTML(acc.description.trim()));
         }
@@ -3955,7 +3945,7 @@ const UITransactions = {
         deleteBtn.dataset.txId = txId;
         deleteBtn.style.display = 'flex';
       }
-      if (submitLabel) submitLabel.textContent = 'Lưu Sửa';
+      if (submitLabel) submitLabel.textContent = 'Lưu';
       if (headerTitle) headerTitle.textContent = 'Chỉnh Sửa Ghi Chép';
     } else {
       // Chế độ Thêm mới: trang độc lập/cố định - ẩn nút trở về trên header (chỉ hiện khi mở từ menu 3 chấm tài khoản)
