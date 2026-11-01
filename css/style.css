@@ -2664,7 +2664,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   width: 36px;
   height: 36px;
   flex-shrink: 0 !important;
-  display: inline-flex !important;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
 }

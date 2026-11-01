@@ -3937,12 +3937,17 @@ const UITransactions = {
     const submitLabel = document.getElementById('tx-submit-label');
     const headerTitle = document.getElementById('header-page-title');
     const backBtn = document.getElementById('tx-header-back-btn');
+    const historyBtn = document.getElementById('tx-header-history-btn');
 
     const canBack = isEditing || (window.app && window.app.openedFromAccountMenu && !!window.app.previousView);
 
     if (isEditing) {
       // Chế độ Sửa: hiện nút trở về trên header
       if (backBtn) backBtn.style.display = 'inline-flex';
+      // Ẩn nút lịch sử trên thanh trên cùng khi sửa ghi chú
+      if (historyBtn) {
+        historyBtn.style.setProperty('display', 'none', 'important');
+      }
       // Hiện nút Xóa (cân đối 50-50 với nút Lưu Sửa)
       if (deleteBtn) {
         deleteBtn.dataset.txId = txId;
@@ -3953,6 +3958,11 @@ const UITransactions = {
     } else {
       // Chế độ Thêm mới: trang độc lập/cố định - ẩn nút trở về trên header (chỉ hiện khi mở từ menu 3 chấm tài khoản)
       if (backBtn) backBtn.style.display = canBack ? 'inline-flex' : 'none';
+      // Hiện lại nút lịch sử trên thanh trên cùng khi thêm mới
+      if (historyBtn) {
+        historyBtn.style.removeProperty('display');
+        historyBtn.style.display = '';
+      }
       // Ẩn nút Xóa (nút Lưu Lại chiếm toàn bộ hàng)
       if (deleteBtn) {
         deleteBtn.dataset.txId = '';
