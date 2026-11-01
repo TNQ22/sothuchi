@@ -12,7 +12,6 @@ const UIAccounts = {
   currentProviderTab: 'all',
   currentProviderQuery: '',
   currentFilterTab: 'all',
-  sharedViewMode: localStorage.getItem('sothuchi_shared_view_mode') || 'grouped',
 
   /* Danh mục Ngân hàng & Ví điện tử phổ biến tại Việt Nam */
   PROVIDERS: [
@@ -136,6 +135,10 @@ const UIAccounts = {
         db.accounts.filter(a => !a._isSharedItem && a.excludeFromReport === 1).modify({ excludeFromReport: 0 }).catch(() => {});
       }
     }
+
+    try {
+      localStorage.removeItem('sothuchi_shared_view_mode');
+    } catch (_) {}
 
     this.bindEvents();
   },
@@ -1011,8 +1014,7 @@ const UIAccounts = {
     const subtitleEl = document.getElementById('statement-modal-subtitle');
     if (titleEl) titleEl.textContent = `Sao Kê: ${acc.name}`;
     if (subtitleEl) {
-      const typeLabels = { cash: 'Tiền mặt', bank: 'Ngân hàng', ewallet: 'Ví điện tử', credit: 'Thẻ tín dụng', saving: 'Sổ tiết kiệm' };
-      subtitleEl.textContent = `Loại: ${typeLabels[acc.type] || 'Tài khoản'} • Số dư hiện tại: ${new Intl.NumberFormat('vi-VN').format(acc.balance)}đ`;
+      subtitleEl.textContent = `Số dư hiện tại: ${new Intl.NumberFormat('vi-VN').format(acc.balance)}đ`;
     }
 
     await this.renderStatementHistory(this.activeStatementAccountId);
@@ -1954,16 +1956,15 @@ const UIAccounts = {
       const curSym = acc.currency === 'USD' ? '$' : (acc.currency === 'EUR' ? '€' : (acc.currency === 'JPY' ? '¥' : '₫'));
       const balanceStr = new Intl.NumberFormat('vi-VN').format(acc.balance) + curSym;
       const balanceColor = acc.balance >= 0 ? '#10b981' : '#ef4444';
-      const typeText = acc.type === 'bank' ? (acc.bankCode || 'Tài khoản ngân hàng') : (acc.type === 'ewallet' ? 'Ví điện tử' : (acc.type === 'credit' ? 'Thẻ tín dụng' : 'Tiền mặt'));
-
       const isSharedItem = !!acc._isSharedItem;
       const isSharedByMe = !isSharedItem && (acc.isShared === 1 || acc.isShared === true);
 
       let shareBadge = '';
       if (isSharedItem) {
+        const owner = acc._sharedFrom || 'Thành viên';
         shareBadge = `
-          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #3b82f6; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: clip;">
-            <i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0;"></i> <span style="white-space: nowrap; overflow: hidden; text-overflow: clip;">Được chia sẻ</span>
+          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #3b82f6; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: clip;" title="Từ: ${escapeHTML(owner)}">
+            <i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0;"></i> <span style="white-space: nowrap; overflow: hidden; text-overflow: clip;">Từ: ${escapeHTML(owner)}</span>
           </span>
         `;
       } else if (isSharedByMe) {
@@ -1975,9 +1976,6 @@ const UIAccounts = {
       }
 
       const subParts = [];
-      if (typeText) {
-        subParts.push(escapeHTML(typeText));
-      }
       if (acc.description && acc.description.trim()) {
         subParts.push(`<span style="color: var(--text-secondary); font-style: italic;">${escapeHTML(acc.description.trim())}</span>`);
       }
@@ -4560,7 +4558,7 @@ const UIAccounts = {
     const allLoans = await db.loans.where('isDeleted').equals(0).toArray();
     let activeLoans = allLoans.filter(l => l.status !== 'settled');
     let settledLoans = allLoans.filter(l => l.status === 'settled');
-    if (this.currentFilterTab === 'personal' || (this.currentFilterTab === 'all' && this.sharedViewMode === 'grouped')) {
+    if (this.currentFilterTab === 'personal') {
       activeLoans = activeLoans.filter(l => !l._isSharedItem);
       settledLoans = settledLoans.filter(l => !l._isSharedItem);
     }
@@ -4815,7 +4813,7 @@ const UIAccounts = {
   },
 
 
-  /* ==================== BỘ LỌC TÀI KHOẢN & CHẾ ĐỘ HIỂN THỊ CHIA SẺ ==================== */
+  /* ==================== BỘ LỌC TÀI KHOẢN ==================== */
   setFilterTab(tab) {
     this.currentFilterTab = tab;
     const tabBtns = document.querySelectorAll('.accounts-seg-tab');
@@ -4823,52 +4821,11 @@ const UIAccounts = {
       btn.classList.toggle('active', btn.dataset.filter === tab);
     });
 
-    const modeWrap = document.querySelector('.accounts-display-mode-wrap');
-    if (modeWrap) {
-      modeWrap.style.display = 'inline-flex';
-    }
-
     if (tab === 'shared' && window.serverSyncService && window.serverSyncService.isConnected) {
       window.serverSyncService.syncReceivedSharedItems().catch(() => {});
     }
 
     this.render();
-  },
-
-  toggleSharedViewMode() {
-    this.sharedViewMode = this.sharedViewMode === 'grouped' ? 'unified' : 'grouped';
-    localStorage.setItem('sothuchi_shared_view_mode', this.sharedViewMode);
-    this.updateSharedViewModeUI();
-    if (this.currentFilterTab !== 'all') {
-      this.currentFilterTab = 'all';
-      const tabBtns = document.querySelectorAll('.accounts-seg-tab');
-      tabBtns.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.filter === 'all');
-      });
-    }
-    this.render();
-  },
-
-  updateSharedViewModeUI() {
-    const btn = document.getElementById('btn-toggle-shared-view-mode');
-    const label = document.getElementById('label-shared-view-mode');
-    const icon = document.getElementById('icon-shared-view-mode');
-    if (!btn) return;
-
-    if (this.sharedViewMode === 'grouped') {
-      if (label) label.textContent = 'Tách trường riêng';
-      if (icon) icon.setAttribute('data-lucide', 'split');
-      btn.title = 'Đang ở chế độ: Tách trường riêng. Bấm để chuyển sang Hiển thị chung.';
-      btn.classList.add('mode-grouped');
-      btn.classList.remove('mode-unified');
-    } else {
-      if (label) label.textContent = 'Hiển thị chung (Nổi bật)';
-      if (icon) icon.setAttribute('data-lucide', 'layers');
-      btn.title = 'Đang ở chế độ: Hiển thị chung. Bấm để chuyển sang Tách trường riêng.';
-      btn.classList.add('mode-unified');
-      btn.classList.remove('mode-grouped');
-    }
-    if (window.lucide) lucide.createIcons();
   },
 
   renderSharedItemBanner(item) {
@@ -4953,9 +4910,8 @@ const UIAccounts = {
                 ${this.renderSharedRoleBadge(a)}
               </div>
               <div class="account-sub-row" style="display: flex; align-items: center; gap: 4px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: clip;">
-                <span class="account-type-label">${info.label}</span>
                 ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
-                ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
+                ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">${(a.currency && a.currency !== 'VND') ? '• ' : ''}${escapeHTML(a.description)}</span>` : ''}
                 ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
                 ${this.renderReportBadge(a)}
               </div>
@@ -5453,7 +5409,7 @@ const UIAccounts = {
     const allSavings = await db.savings.where('isDeleted').equals(0).toArray();
     let activeSavings = allSavings.filter(s => s.status === 'active');
     let settledSavings = allSavings.filter(s => s.status === 'settled');
-    if (this.currentFilterTab === 'personal' || (this.currentFilterTab === 'all' && this.sharedViewMode === 'grouped')) {
+    if (this.currentFilterTab === 'personal') {
       activeSavings = activeSavings.filter(s => !s._isSharedItem);
       settledSavings = settledSavings.filter(s => !s._isSharedItem);
     }
@@ -5564,7 +5520,7 @@ const UIAccounts = {
     if (!container) return;
 
     let list = await db.accumulations.where('isDeleted').equals(0).toArray();
-    if (this.currentFilterTab === 'personal' || (this.currentFilterTab === 'all' && this.sharedViewMode === 'grouped')) {
+    if (this.currentFilterTab === 'personal') {
       list = list.filter(a => !a._isSharedItem);
     }
     if (badgeCount) badgeCount.textContent = list.length;
@@ -5638,7 +5594,7 @@ const UIAccounts = {
     if (!container) return;
 
     let list = await db.assets.where('isDeleted').equals(0).toArray();
-    if (this.currentFilterTab === 'personal' || (this.currentFilterTab === 'all' && this.sharedViewMode === 'grouped')) {
+    if (this.currentFilterTab === 'personal') {
       list = list.filter(a => !a._isSharedItem);
     }
     if (badgeAst) badgeAst.textContent = list.length;
@@ -5768,8 +5724,6 @@ const UIAccounts = {
 
     /* ==================== RENDER DANH SÁCH TÀI KHOẢN ==================== */
   async render() {
-    this.updateSharedViewModeUI();
-
     const container = document.getElementById('accounts-list-container');
     if (!container) return;
 
@@ -5822,30 +5776,24 @@ const UIAccounts = {
       if (secAssets) secAssets.style.display = 'none';
       await this.renderSharedDedicatedSection(sharedAccounts, sharedSavings, sharedAccums, sharedLoans, sharedAssets);
     } else {
+      if (secShared) secShared.style.display = 'none';
       if (secExpense) secExpense.style.display = 'block';
       if (secSavings) secSavings.style.display = 'block';
       if (secAccums) secAccums.style.display = 'block';
       if (secLoans) secLoans.style.display = 'block';
       if (secAssets) secAssets.style.display = 'block';
-
-      if (this.currentFilterTab === 'all' && this.sharedViewMode === 'grouped' && totalSharedCount > 0) {
-        if (secShared) secShared.style.display = 'block';
-        await this.renderSharedDedicatedSection(sharedAccounts, sharedSavings, sharedAccums, sharedLoans, sharedAssets);
-      } else {
-        if (secShared) secShared.style.display = 'none';
-      }
     }
 
     // Determine which expense accounts to show in Section 1
     let activeAccounts = accounts.filter(a => !a.isArchived);
-    if (this.currentFilterTab === 'personal' || (this.currentFilterTab === 'all' && this.sharedViewMode === 'grouped')) {
+    if (this.currentFilterTab === 'personal') {
       activeAccounts = activeAccounts.filter(a => !a._isSharedItem);
     }
     const badgeExpenseCount = document.getElementById('badge-expense-acc-count');
     if (badgeExpenseCount) badgeExpenseCount.textContent = activeAccounts.length;
 
     let archivedAccounts = accounts.filter(a => !!a.isArchived);
-    if (this.currentFilterTab === 'personal' || (this.currentFilterTab === 'all' && this.sharedViewMode === 'grouped')) {
+    if (this.currentFilterTab === 'personal') {
       archivedAccounts = archivedAccounts.filter(a => !a._isSharedItem);
     }
 
@@ -5891,9 +5839,8 @@ const UIAccounts = {
                     ${this.renderSharedRoleBadge(a)}
                   </div>
                   <div class="account-sub-row" style="display: flex; align-items: center; gap: 4px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: clip;">
-                    <span class="account-type-label">${info.label}</span>
                     ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
-                    ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
+                    ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">${(a.currency && a.currency !== 'VND') ? '• ' : ''}${escapeHTML(a.description)}</span>` : ''}
                     ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
                     ${this.renderReportBadge(a)}
                   </div>
@@ -5954,9 +5901,8 @@ const UIAccounts = {
                       ${this.renderSharedRoleBadge(a)}
                     </div>
                     <div class="account-sub-row" style="display: flex; align-items: center; gap: 4px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: clip;">
-                      <span class="account-type-label">${info.label}</span>
                       ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
-                      ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
+                      ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">${(a.currency && a.currency !== 'VND') ? '• ' : ''}${escapeHTML(a.description)}</span>` : ''}
                       <span class="account-archived-badge" title="Đã ngừng sử dụng">Ngừng sử dụng</span>
                       ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
                       ${this.renderReportBadge(a)}

@@ -551,52 +551,6 @@
   line-height: 1.2 !important;
 }
 
-.accounts-display-mode-wrap {
-  display: inline-flex !important;
-  align-items: center !important;
-  flex-shrink: 0 !important;
-}
-
-.btn-toggle-view-mode {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  background: var(--bg-surface, rgba(255, 255, 255, 0.05)) !important;
-  border: 1px solid var(--border-color) !important;
-  outline: none !important;
-  color: var(--text-secondary) !important;
-  font-size: 0.78rem !important;
-  font-weight: 600 !important;
-  padding: 7px 13px !important;
-  border-radius: 9999px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease !important;
-  white-space: nowrap !important;
-  flex-shrink: 0 !important;
-  line-height: 1.2 !important;
-  font-family: inherit !important;
-  user-select: none !important;
-}
-
-.btn-toggle-view-mode:hover {
-  background: var(--bg-hover, rgba(255, 255, 255, 0.08)) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border-color) !important;
-}
-
-.btn-toggle-view-mode.mode-grouped {
-  color: #38bdf8 !important;
-  background: rgba(56, 189, 248, 0.12) !important;
-  border-color: rgba(56, 189, 248, 0.35) !important;
-}
-
-.btn-toggle-view-mode.mode-unified {
-  color: #a78bfa !important;
-  background: rgba(167, 139, 250, 0.12) !important;
-  border-color: rgba(167, 139, 250, 0.35) !important;
-}
 
 /* UNIVERSAL SHARE SERVICES & CARDS - DARK THEME */
 .share-item-preview-card {
@@ -1546,17 +1500,11 @@
             <i data-lucide="user" style="width: 14px; height: 14px;"></i>
             <span>Cá nhân</span>
           </button>
-          <button type="button" class="accounts-seg-tab" data-filter="shared" onclick="UIAccounts.setFilterTab('shared')" title="Trường riêng: Tài khoản & sổ được người khác chia sẻ cho bạn">
+          <button type="button" class="accounts-seg-tab" data-filter="shared" onclick="UIAccounts.setFilterTab('shared')" title="Tài khoản & sổ được người khác chia sẻ cho bạn">
             <i data-lucide="share-2" style="width: 14px; height: 14px;"></i>
             <span>Được chia sẻ</span>
             <span id="badge-total-shared-count" class="seg-count-badge" style="display: none;">0</span>
           </button>
-          <div class="accounts-display-mode-wrap">
-            <button type="button" id="btn-toggle-shared-view-mode" class="btn-toggle-view-mode" onclick="UIAccounts.toggleSharedViewMode()" title="Chuyển đổi giữa Tách khu vực riêng và Hiển thị chung">
-              <i data-lucide="split" id="icon-shared-view-mode" style="width: 14px; height: 14px;"></i>
-              <span id="label-shared-view-mode">Tách trường riêng</span>
-            </button>
-          </div>
         </div>
 
         <!-- Section Trường Riêng: TÀI KHOẢN & SỔ ĐƯỢC CHIA SẺ VỚI BẠN -->
@@ -3896,8 +3844,8 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </div>
                 </div>
 
-                <!-- Hàng 2: Loại tài khoản -->
-                <div class="tx-info-row">
+                <!-- Hàng 2: Loại tài khoản (Ẩn vì dư thừa, tự động nhận diện từ logo/nhà cung cấp) -->
+                <div class="tx-info-row" id="acc-type-row" style="display: none;">
                   <div class="tx-info-icon-bubble" id="acc-form-type-icon" style="background: rgba(79, 70, 229, 0.15); color: #4f46e5;">
                     <i data-lucide="landmark"></i>
                   </div>
@@ -5786,7 +5734,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           </div>
           <div class="action-sheet-item-text">
             <span class="action-sheet-item-title">Tạo tài khoản chi tiêu</span>
-            <span class="action-sheet-item-desc">Quản lý chi tiêu hằng ngày (Tiền mặt, thẻ ATM, ví...)</span>
+            <span class="action-sheet-item-desc">Quản lý chi tiêu hằng ngày</span>
           </div>
           <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
         </button>
@@ -7131,13 +7079,13 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
           // 4. Xóa sạch token admin cũ, token sync server cũ và cache tạm trong localStorage
           var preserveTheme = localStorage.getItem('sothuchi_theme');
-          var preserveViewMode = localStorage.getItem('sothuchi_shared_view_mode');
 
           localStorage.removeItem('stc_admin_token');
           localStorage.removeItem('syncServerToken');
           localStorage.removeItem('stc_default_cat_cache');
           localStorage.removeItem('stc_last_account_cache');
           localStorage.removeItem('stc_tx_draft');
+          localStorage.removeItem('sothuchi_shared_view_mode');
 
           // Quét và xóa các key tạm thời / token rác khác
           try {
@@ -7152,7 +7100,6 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           } catch (_) {}
 
           if (preserveTheme) localStorage.setItem('sothuchi_theme', preserveTheme);
-          if (preserveViewMode) localStorage.setItem('sothuchi_shared_view_mode', preserveViewMode);
 
           // 5. Xóa sạch sessionStorage & Cookies trên domain
           sessionStorage.clear();
