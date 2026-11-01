@@ -171,9 +171,9 @@ const UITransactions = {
             <div class="tx-header-acc-option-icon" style="background: rgba(13, 148, 136, 0.15); color: var(--primary);">
               <i data-lucide="wallet" style="width: 16px; height: 16px;"></i>
             </div>
-            <div class="tx-header-acc-option-info">
-              <span class="tx-header-acc-option-name">Tất cả tài khoản</span>
-              <span class="tx-header-acc-option-balance">Xem toàn bộ giao dịch</span>
+            <div class="tx-header-acc-option-info" style="align-items: flex-start; text-align: left;">
+              <span class="tx-header-acc-option-name" style="text-align: left;">Tất cả tài khoản</span>
+              <span class="tx-header-acc-option-balance" style="text-align: left;">Xem toàn bộ giao dịch</span>
             </div>
           </div>
           ${isAllSelected ? '<i data-lucide="check" style="width: 16px; height: 16px; color: var(--primary); flex-shrink: 0;"></i>' : ''}
@@ -187,8 +187,8 @@ const UITransactions = {
         const isSharedItem = !!acc._isSharedItem;
         const isSharedByMe = !isSharedItem && (acc.isShared === 1 || acc.isShared === true);
         const miniShareIndicator = isSharedItem
-          ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>`
-          : (isSharedByMe ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>` : '');
+          ? `<div class="mini-share-indicator shared" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>`
+          : (isSharedByMe ? `<div class="mini-share-indicator owner" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>` : '');
 
         const logoBadge = (window.UIAccounts && typeof window.UIAccounts.renderLogoBadge === 'function')
           ? `<div style="position: relative; display: inline-flex;">${window.UIAccounts.renderLogoBadge(acc, 28)}${miniShareIndicator}</div>`
@@ -206,9 +206,9 @@ const UITransactions = {
           <div class="tx-header-acc-option ${isSelected ? 'active' : ''}" onclick="UITransactions.selectHeaderAccount(${acc.id})">
             <div class="tx-header-acc-option-left">
               ${logoBadge}
-              <div class="tx-header-acc-option-info">
-                <span class="tx-header-acc-option-name" style="display: flex; align-items: center; gap: 4px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(acc.name)}</span>${shareTag}</span>
-                <span class="tx-header-acc-option-balance" style="color: ${balColor};">Số dư: ${balFormatted}${subNoteStr}</span>
+              <div class="tx-header-acc-option-info" style="align-items: flex-start; text-align: left;">
+                <span class="tx-header-acc-option-name" style="display: flex; align-items: center; gap: 4px; overflow: hidden; text-align: left;"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(acc.name)}</span>${shareTag}</span>
+                <span class="tx-header-acc-option-balance" style="color: ${balColor}; text-align: left;">Số dư: ${balFormatted}${subNoteStr}</span>
               </div>
             </div>
             ${isSelected ? '<i data-lucide="check" style="width: 16px; height: 16px; color: var(--primary); flex-shrink: 0;"></i>' : ''}
@@ -240,10 +240,16 @@ const UITransactions = {
       const acc = await db.accounts.get(Number(this.filterAccountId));
       if (acc) {
         nameEl.textContent = acc.name;
+        const isSharedItem = !!acc._isSharedItem;
+        const isSharedByMe = !isSharedItem && (acc.isShared === 1 || acc.isShared === true);
+        const miniShareIndicator = isSharedItem
+          ? `<div class="mini-share-indicator shared" style="position: absolute; bottom: -2px; right: -2px; width: 11px; height: 11px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.3); z-index: 2;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 6.5px; height: 6.5px;"></i></div>`
+          : (isSharedByMe ? `<div class="mini-share-indicator owner" style="position: absolute; bottom: -2px; right: -2px; width: 11px; height: 11px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.3); z-index: 2;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 6.5px; height: 6.5px;"></i></div>` : '');
+
         if (iconEl && window.UIAccounts && typeof window.UIAccounts.renderLogoBadge === 'function') {
-          iconEl.innerHTML = window.UIAccounts.renderLogoBadge(acc, 20);
+          iconEl.innerHTML = `<div style="position: relative; display: inline-flex; align-items: center; justify-content: center;">${window.UIAccounts.renderLogoBadge(acc, 20)}${miniShareIndicator}</div>`;
         } else if (iconEl) {
-          iconEl.innerHTML = '<i data-lucide="wallet" style="width: 15px; height: 15px;"></i>';
+          iconEl.innerHTML = `<div style="position: relative; display: inline-flex; align-items: center; justify-content: center;"><i data-lucide="wallet" style="width: 15px; height: 15px;"></i>${miniShareIndicator}</div>`;
         }
       } else {
         this.filterAccountId = null;
