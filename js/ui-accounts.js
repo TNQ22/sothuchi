@@ -4932,18 +4932,18 @@ const UIAccounts = {
 
     return `
       <div class="account-list-item ${isSharedItem ? 'shared-item-card' : ''}" data-id="${a.id}" style="width: 100%; box-sizing: border-box; margin-bottom: 8px;">
-        <div class="account-item-inner-row" style="display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0;">
-          <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản" style="flex: 1 1 0%; min-width: 0; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+        <div class="account-item-inner-row" style="display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0;">
+          <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản" style="flex: 1 1 0%; min-width: 0; display: flex; align-items: center; gap: 8px; cursor: pointer;">
             <div class="account-icon-bubble ${(isSharedItem || isSharedByMe) ? 'with-share-badge' : ''}" style="background: transparent; flex-shrink: 0;">
               ${this.renderLogoBadge(a, 36)}
               ${miniShareHtml}
             </div>
             <div class="account-info" style="flex: 1 1 0%; min-width: 0; overflow: hidden;">
-              <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
-                <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;">${escapeHTML(a.name)}</span>
+              <div class="account-name-row" style="display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
+                <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: clip; font-weight: 700; min-width: 0; flex-shrink: 1;">${escapeHTML(a.name)}</span>
                 ${this.renderSharedRoleBadge(a)}
               </div>
-              <div class="account-sub-row" style="display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <div class="account-sub-row" style="display: flex; align-items: center; gap: 4px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: clip;">
                 <span class="account-type-label">${info.label}</span>
                 ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                 ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
@@ -4951,14 +4951,14 @@ const UIAccounts = {
                 ${this.renderReportBadge(a)}
               </div>
             </div>
-            <div class="account-balance-wrapper" style="flex-shrink: 0; text-align: right;">
-              <span class="account-balance stat-amount ${a.balance < 0 ? 'expense-text' : ''}">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
+            <div class="account-balance-wrapper" style="flex-shrink: 0; text-align: right; margin-left: 4px;">
+              <span class="account-balance stat-amount ${a.balance < 0 ? 'expense-text' : ''}" style="white-space: nowrap; font-variant-numeric: tabular-nums;">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
             </div>
           </div>
 
           <div class="account-menu-wrapper" onclick="event.stopPropagation();" style="flex-shrink: 0;">
             <button type="button" class="account-menu-btn" onclick="UIAccounts.openAccountActions(${a.id})" title="Tùy chọn tài khoản" aria-label="Tùy chọn tài khoản">
-              <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
+              <i data-lucide="more-vertical" style="width: 16px; height: 16px;"></i>
             </button>
           </div>
         </div>
@@ -5866,22 +5866,22 @@ const UIAccounts = {
 
         html += `
           <div class="account-list-item ${a._isSharedItem ? 'shared-item-card' : ''}" draggable="true" data-id="${a.id}" data-index="${index}">
-            <div class="account-item-inner-row" style="display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0;">
-              <div class="account-drag-handle" title="Kéo để sắp xếp vị trí">
-                <i data-lucide="grip-vertical" style="width: 16px; height: 16px;"></i>
+            <div class="account-item-inner-row" style="display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0;">
+              <div class="account-drag-handle" title="Kéo để sắp xếp vị trí" style="padding: 2px 0;">
+                <i data-lucide="grip-vertical" style="width: 15px; height: 15px;"></i>
               </div>
               
-              <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản" style="flex: 1 1 0%; min-width: 0; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+              <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản" style="flex: 1 1 0%; min-width: 0; display: flex; align-items: center; gap: 8px; cursor: pointer;">
                 <div class="account-icon-bubble ${(isSharedItem || isSharedByMe) ? 'with-share-badge' : ''}" style="background: transparent; flex-shrink: 0;">
                   ${this.renderLogoBadge(a, 36)}
                   ${miniShareHtml}
                 </div>
                 <div class="account-info" style="flex: 1 1 0%; min-width: 0; overflow: hidden;">
-                  <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
-                    <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;">${escapeHTML(a.name)}</span>
+                  <div class="account-name-row" style="display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
+                    <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: clip; font-weight: 700; min-width: 0; flex-shrink: 1;">${escapeHTML(a.name)}</span>
                     ${this.renderSharedRoleBadge(a)}
                   </div>
-                  <div class="account-sub-row" style="display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  <div class="account-sub-row" style="display: flex; align-items: center; gap: 4px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: clip;">
                     <span class="account-type-label">${info.label}</span>
                     ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                     ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
@@ -5889,14 +5889,14 @@ const UIAccounts = {
                     ${this.renderReportBadge(a)}
                   </div>
                 </div>
-                <div class="account-balance-wrapper" style="flex-shrink: 0; text-align: right;">
-                  <span class="account-balance stat-amount ${a.balance < 0 ? 'expense-text' : ''}">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
+                <div class="account-balance-wrapper" style="flex-shrink: 0; text-align: right; margin-left: 4px;">
+                  <span class="account-balance stat-amount ${a.balance < 0 ? 'expense-text' : ''}" style="white-space: nowrap; font-variant-numeric: tabular-nums;">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
                 </div>
               </div>
 
               <div class="account-menu-wrapper" onclick="event.stopPropagation();" style="flex-shrink: 0;">
                 <button type="button" class="account-menu-btn" onclick="UIAccounts.openAccountActions(${a.id})" title="Tùy chọn tài khoản" aria-label="Tùy chọn tài khoản">
-                  <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
+                  <i data-lucide="more-vertical" style="width: 16px; height: 16px;"></i>
                 </button>
               </div>
             </div>
@@ -5933,34 +5933,36 @@ const UIAccounts = {
 
           archHtml += `
             <div class="account-list-item archived" data-id="${a.id}">
-              <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản">
-                <div class="account-icon-bubble ${(isSharedItem || isSharedByMe) ? 'with-share-badge' : ''}" style="background: transparent; opacity: 0.65;">
-                  ${this.renderLogoBadge(a, 36)}
-                  ${miniShareHtml}
-                </div>
-                <div class="account-info">
-                  <div class="account-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
-                    <span class="account-name" title="${escapeHTML(a.name)}" style="color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${escapeHTML(a.name)}</span>
-                    ${this.renderSharedRoleBadge(a)}
+              <div class="account-item-inner-row" style="display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0;">
+                <div class="account-item-main" onclick="UIAccounts.viewAccountHistory(${a.id})" title="Bấm để xem lịch sử thu chi của tài khoản" style="flex: 1 1 0%; min-width: 0; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <div class="account-icon-bubble ${(isSharedItem || isSharedByMe) ? 'with-share-badge' : ''}" style="background: transparent; opacity: 0.65; flex-shrink: 0;">
+                    ${this.renderLogoBadge(a, 36)}
+                    ${miniShareHtml}
                   </div>
-                  <div class="account-sub-row">
-                    <span class="account-type-label">${info.label}</span>
-                    ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
-                    ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
-                    <span class="account-archived-badge" title="Đã ngừng sử dụng">Ngừng sử dụng</span>
-                    ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
-                    ${this.renderReportBadge(a)}
+                  <div class="account-info" style="flex: 1 1 0%; min-width: 0; overflow: hidden;">
+                    <div class="account-name-row" style="display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
+                      <span class="account-name" title="${escapeHTML(a.name)}" style="color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: clip; font-weight: 700; min-width: 0; flex-shrink: 1;">${escapeHTML(a.name)}</span>
+                      ${this.renderSharedRoleBadge(a)}
+                    </div>
+                    <div class="account-sub-row" style="display: flex; align-items: center; gap: 4px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: clip;">
+                      <span class="account-type-label">${info.label}</span>
+                      ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
+                      ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">• ${escapeHTML(a.description)}</span>` : ''}
+                      <span class="account-archived-badge" title="Đã ngừng sử dụng">Ngừng sử dụng</span>
+                      ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
+                      ${this.renderReportBadge(a)}
+                    </div>
+                  </div>
+                  <div class="account-balance-wrapper" style="flex-shrink: 0; text-align: right; margin-left: 4px;">
+                    <span class="account-balance stat-amount" style="color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums;">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
                   </div>
                 </div>
-                <div class="account-balance-wrapper">
-                  <span class="account-balance stat-amount" style="color: var(--text-muted);">${new Intl.NumberFormat('vi-VN').format(a.balance)}${a.currency === 'USD' ? '$' : (a.currency === 'EUR' ? '€' : (a.currency === 'JPY' ? '¥' : 'đ'))}</span>
-                </div>
-              </div>
 
-              <div class="account-menu-wrapper" onclick="event.stopPropagation();">
-                <button type="button" class="account-menu-btn" onclick="UIAccounts.openAccountActions(${a.id})" title="Tùy chọn tài khoản" aria-label="Tùy chọn tài khoản">
-                  <i data-lucide="more-vertical" style="width: 17px; height: 17px;"></i>
-                </button>
+                <div class="account-menu-wrapper" onclick="event.stopPropagation();" style="flex-shrink: 0;">
+                  <button type="button" class="account-menu-btn" onclick="UIAccounts.openAccountActions(${a.id})" title="Tùy chọn tài khoản" aria-label="Tùy chọn tài khoản">
+                    <i data-lucide="more-vertical" style="width: 16px; height: 16px;"></i>
+                  </button>
+                </div>
               </div>
             </div>
           `;

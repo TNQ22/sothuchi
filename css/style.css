@@ -852,7 +852,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   flex-direction: column;
   gap: 10px;
   width: 100%;
-  max-width: 800px;
+  max-width: 100%;
   box-sizing: border-box;
   margin-bottom: 24px;
 }
@@ -863,8 +863,8 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 10px 12px;
-  gap: 8px;
+  padding: 10px 10px;
+  gap: 6px;
   transition: border-color 0.15s, background-color 0.15s, transform 0.15s;
   user-select: none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
@@ -1006,8 +1006,8 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
 }
 
 .account-menu-btn {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   background: transparent;
@@ -2412,8 +2412,8 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   }
 
   .account-list-item {
-    padding: 8px 8px;
-    gap: 6px;
+    padding: 8px 6px;
+    gap: 5px;
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
@@ -5418,7 +5418,7 @@ body.dark .switch .slider {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 18px 20px;
+  padding: 16px 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -6346,15 +6346,19 @@ body.dark .switch .slider {
 @media (max-width: 768px) {
   /* Bóp lề ngoài sát gần mép màn hình hơn */
   #view-accounts.page-view {
-    padding: 12px 7px 20px 7px !important;
+    padding: 12px 5px 20px 5px !important;
   }
 
-  /* Khung bao ngoài của từng nhóm tài sản */
+  /* Khung bao ngoài của từng nhóm tài sản - mở rộng tối đa ra 2 bên */
   .accounts-group-container {
-    padding: 12px 12px !important; /* Bóp nhỏ lề 2 bên sát viền */
+    padding: 12px 6px !important; /* Bóp nhỏ lề 2 bên sát viền */
     margin-top: 14px !important;
     border-radius: 14px !important;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  .accounts-group-header {
+    padding: 0 4px 10px 4px !important;
   }
 
   .accounts-group-icon {
@@ -6403,6 +6407,16 @@ body.dark .switch .slider {
   .accounts-group-container .group-item-card {
     padding: 9px 8px !important;
     border-radius: 8px !important;
+  }
+
+  .accounts-group-container .account-list-item {
+    padding: 8px 6px !important;
+    border-radius: 8px !important;
+  }
+
+  .account-menu-btn {
+    width: 26px !important;
+    height: 26px !important;
   }
 
   .group-card-icon-wrap {
@@ -11728,7 +11742,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   display: flex;
   align-items: center;
   width: 100%;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
