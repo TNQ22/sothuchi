@@ -1963,14 +1963,14 @@ const UIAccounts = {
       if (isSharedItem) {
         const owner = acc._sharedFrom || 'Thành viên';
         shareBadge = `
-          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #3b82f6; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: clip;" title="Từ: ${escapeHTML(owner)}">
+          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #3b82f6; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: clip;" title="Từ: ${escapeHTML(owner)}">
             <i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0;"></i> <span style="white-space: nowrap; overflow: hidden; text-overflow: clip;">Từ: ${escapeHTML(owner)}</span>
           </span>
         `;
       } else if (isSharedByMe) {
         shareBadge = `
-          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: clip;">
-            <i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0;"></i> <span style="white-space: nowrap; overflow: hidden; text-overflow: clip;">Đang chia sẻ</span>
+          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 0; white-space: nowrap; overflow: hidden;" title="Đang chia sẻ">
+            <i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0;"></i> <span>Đang chia sẻ</span>
           </span>
         `;
       }
@@ -1984,6 +1984,8 @@ const UIAccounts = {
         ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 8px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 8px; height: 8px;"></i></div>`
         : (isSharedByMe ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 8px;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 8px; height: 8px;"></i></div>` : '');
 
+      const hasSubRow = !!shareBadge || subParts.length > 0;
+
       html += `
         <div class="source-acc-item ${isSelected ? 'active' : ''}" onclick="UIAccounts.selectSourceAccount('${acc.id}')">
           <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
@@ -1992,13 +1994,13 @@ const UIAccounts = {
               ${miniShareIndicator}
             </div>
             <div style="min-width: 0; flex: 1;">
-              <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px; overflow: hidden; min-width: 0;">
-                <span style="white-space: nowrap; overflow: hidden; text-overflow: clip; flex-shrink: 1; min-width: fit-content; max-width: ${shareBadge ? 'calc(100% - 24px)' : '100%'};">${escapeHTML(acc.name)}</span>
-                ${shareBadge}
-              </div>
-              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: clip;">
-                ${subParts.join(' • ')}
-              </div>
+              <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">${escapeHTML(acc.name)}</div>
+              ${hasSubRow ? `
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0;">
+                  ${shareBadge}
+                  ${subParts.length > 0 ? `<span style="overflow: hidden; text-overflow: clip; white-space: nowrap;">${subParts.join(' • ')}</span>` : ''}
+                </div>
+              ` : ''}
             </div>
           </div>
           <div class="account-balance-wrapper" style="text-align: right; flex-shrink: 0; margin-left: 8px;">
