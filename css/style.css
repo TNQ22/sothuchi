@@ -1301,7 +1301,21 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   gap: 6px;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
+  min-width: 0;
+}
+
+.tx-share-author-note {
+  color: #3b82f6;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  display: inline-block;
+  vertical-align: bottom;
+  max-width: 140px;
+  flex-shrink: 1;
   min-width: 0;
 }
 

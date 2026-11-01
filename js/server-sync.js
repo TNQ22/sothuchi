@@ -2486,6 +2486,10 @@ class ServerSyncService {
 
       if (localTxs.length === 0) return true;
 
+      const uProfile = this.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;
+      const uName = (uProfile?.name && uProfile.name.trim()) || (uProfile?.email && uProfile.email.trim()) || '';
+      const uEmail = uProfile?.email || '';
+
       const mappedTxs = localTxs.map(t => {
         const copy = { ...t };
         copy.id = copy._remoteTxId || copy.id;
@@ -2496,6 +2500,11 @@ class ServerSyncService {
           copy.toAccountId = remoteItemId;
         }
         copy.isDeleted = copy.isDeleted ? 1 : 0;
+        copy.recordedByOther = 1;
+        if (!copy.createdBy && uName) {
+          copy.createdBy = uName;
+          copy.createdByEmail = uEmail;
+        }
         delete copy._isSharedItem;
         delete copy._shareId;
         delete copy._remoteTxId;
@@ -2562,8 +2571,19 @@ class ServerSyncService {
       }
 
       for (const t of localTxs) {
+        const updates = {};
         if (!t._remoteTxId) {
-          await db.transactions.update(t.id, { _remoteTxId: t.id, _shareId: shareId, _isSharedItem: true });
+          updates._remoteTxId = t.id;
+          updates._shareId = shareId;
+          updates._isSharedItem = true;
+        }
+        if (!t.recordedByOther) updates.recordedByOther = 1;
+        if (!t.createdBy && uName) {
+          updates.createdBy = uName;
+          updates.createdByEmail = uEmail;
+        }
+        if (Object.keys(updates).length > 0) {
+          await db.transactions.update(t.id, updates);
         }
       }
 
@@ -2654,7 +2674,10 @@ class ServerSyncService {
                 id: Number(rtx.id) || (typeof generateUniqueId === 'function' ? generateUniqueId() : Date.now()),
                 accountId: accId,
                 isDeleted: 0,
-                updatedAt: rtx.updatedAt || Date.now()
+                updatedAt: rtx.updatedAt || Date.now(),
+                recordedByOther: 1,
+                createdBy: rtx.createdBy || rtx.updatedBy || 'Thành viên',
+                createdByEmail: rtx.createdByEmail || ''
               };
               delete newTx._isSharedItem;
               delete newTx._shareId;
@@ -2665,20 +2688,24 @@ class ServerSyncService {
             } else {
               const rTime = new Date(rtx.updatedAt || 0).getTime() || 0;
               const lTime = new Date(existing.updatedAt || 0).getTime() || 0;
-              if (rTime > lTime) {
+              if (rTime > lTime || !existing.recordedByOther) {
                 const isDiff = Number(existing.amount || 0) !== Number(rtx.amount || 0) ||
                                existing.type !== rtx.type ||
                                existing.category !== rtx.category ||
                                existing.date !== rtx.date ||
                                existing.note !== rtx.note ||
-                               existing.isDeleted !== (rtx.isDeleted ? 1 : 0);
+                               existing.isDeleted !== (rtx.isDeleted ? 1 : 0) ||
+                               !existing.recordedByOther;
                 if (isDiff) {
                   await db.transactions.update(existing.id, {
                     ...rtx,
                     id: existing.id,
                     accountId: accId,
                     isDeleted: rtx.isDeleted ? 1 : 0,
-                    updatedAt: rtx.updatedAt || Date.now()
+                    updatedAt: rtx.updatedAt || Date.now(),
+                    recordedByOther: 1,
+                    createdBy: rtx.createdBy || existing.createdBy || 'Thành viên',
+                    createdByEmail: rtx.createdByEmail || existing.createdByEmail || ''
                   });
                   hasChanges = true;
                 }

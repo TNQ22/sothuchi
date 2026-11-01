@@ -4461,6 +4461,13 @@ const UITransactions = {
             adjTx._remoteId = acc._remoteId;
             adjTx._remoteTxId = typeof generateUniqueId === 'function' ? generateUniqueId() : Date.now();
             adjTx.id = adjTx._remoteTxId;
+            adjTx.recordedByOther = 1;
+            const uProfile = window.serverSyncService?.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;
+            const uName = (uProfile?.name && uProfile.name.trim()) || (uProfile?.email && uProfile.email.trim()) || '';
+            if (uName) {
+              adjTx.createdBy = uName;
+              adjTx.createdByEmail = uProfile?.email || '';
+            }
           }
           await db.transactions.add(adjTx);
         }
@@ -4603,6 +4610,7 @@ const UITransactions = {
     // 5. Normal Expense / Income
     if (id) {
       // Sửa giao dịch: xóa cũ (rollback số dư) rồi thêm mới (cập nhật số dư đúng)
+      const existingTx = await db.transactions.get(Number(id));
       await deleteTransaction(id);
       await addTransaction({
         type,
@@ -4615,7 +4623,12 @@ const UITransactions = {
         note,
         isBorrowed,
         borrowPerson,
-        borrowDueDate
+        borrowDueDate,
+        recordedByOther: existingTx?.recordedByOther,
+        createdBy: existingTx?.createdBy,
+        createdByEmail: existingTx?.createdByEmail,
+        _remoteTxId: existingTx?._remoteTxId,
+        _shareId: existingTx?._shareId
       });
       // Sửa xong thì quay trở về view trước đó
       this.closeModal();
@@ -4660,6 +4673,57 @@ const UITransactions = {
     }
   },
 
+  getTxShareNote(t, acc) {
+    if (!acc) return '';
+    const isSharedAccount = !!(acc._isSharedItem || acc.isShared);
+    if (!isSharedAccount) return '';
+
+    // Kiểm tra xem giao dịch này có phải do người khác (không phải chủ sổ) ghi chép hay không
+    let isOther = false;
+    let author = '';
+
+    if (acc._isSharedItem) {
+      // Sổ được chia sẻ tới máy này (chủ sổ gốc là acc._sharedFrom)
+      // Nếu có cờ recordedByOther hoặc createdBy khác chủ sổ gốc -> người khác chủ sổ ghi chép
+      const ownerStr = (acc._sharedFrom || '').trim().toLowerCase();
+      const creatorStr = (t.createdBy || '').trim().toLowerCase();
+      const creatorEmailStr = (t.createdByEmail || '').trim().toLowerCase();
+
+      if (t.recordedByOther) {
+        isOther = true;
+        author = t.createdBy || t.createdByEmail || '';
+      } else if (creatorStr && ownerStr && !creatorStr.includes(ownerStr) && !ownerStr.includes(creatorStr)) {
+        isOther = true;
+        author = t.createdBy;
+      } else if (creatorEmailStr && ownerStr && !creatorEmailStr.includes(ownerStr) && !ownerStr.includes(creatorEmailStr)) {
+        isOther = true;
+        author = t.createdByEmail;
+      }
+    } else if (acc.isShared) {
+      // Sổ của chủ sở hữu trên máy này, được chia sẻ cho người khác
+      // Giao dịch có cờ recordedByOther hoặc createdBy/createdByEmail -> do thành viên được chia sẻ ghi
+      if (t.recordedByOther || t.createdBy || t.createdByEmail) {
+        isOther = true;
+        author = t.createdBy || t.createdByEmail || '';
+      }
+    }
+
+    if (!isOther) return '';
+
+    let displayText = '';
+    let fullTitle = '';
+    if (author && author.trim()) {
+      const clean = author.trim();
+      displayText = `(Bởi: ${escapeHTML(clean)})`;
+      fullTitle = `Ghi chép bởi: ${escapeHTML(clean)}`;
+    } else {
+      displayText = `(Người khác ghi)`;
+      fullTitle = `Ghi chép bởi người khác (thành viên được chia sẻ)`;
+    }
+
+    return ` <span class="tx-share-author-note" title="${fullTitle}">${displayText}</span>`;
+  },
+
   renderTxCardHtml(t, catMap, accMap) {
     const cat = catMap.get(t.categoryId);
     const fromAcc = accMap.get(t.accountId);
@@ -4690,8 +4754,8 @@ const UITransactions = {
     const timeDisplay = t.time ? `<span style="color: var(--primary); font-weight: 600;">${t.time}</span> • ` : '';
     const feeDisplay = t.fee ? ` • <span style="color: var(--text-muted);">Phí: ${new Intl.NumberFormat('vi-VN').format(t.fee)}đ</span>` : '';
     const catMeta = (hasNote && cat) ? ` • <span style="color: var(--text-muted); font-size: 0.75rem;">${escapeHTML(cat.name)}</span>` : '';
-    const fromShareNote = fromAcc && fromAcc._isSharedItem ? ' <span style="color:#3b82f6;font-size:0.7rem;font-weight:600;">(Chia sẻ)</span>' : '';
-    const toShareNote = toAcc && toAcc._isSharedItem ? ' <span style="color:#3b82f6;font-size:0.7rem;font-weight:600;">(Chia sẻ)</span>' : '';
+    const fromShareNote = this.getTxShareNote(t, fromAcc);
+    const toShareNote = this.getTxShareNote(t, toAcc);
     const accountDisplay = t.type === 'transfer' 
       ? `${timeDisplay}${fromAcc ? escapeHTML(fromAcc.name) : 'Tài khoản'}${fromShareNote} ➔ ${toAcc ? escapeHTML(toAcc.name) : 'Tài khoản'}${toShareNote}${feeDisplay}`
       : `${timeDisplay}${fromAcc ? escapeHTML(fromAcc.name) : 'Tài khoản'}${fromShareNote}${catMeta}${feeDisplay}`;

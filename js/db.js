@@ -533,18 +533,23 @@ async function addTransaction(data) {
   // Tự động nhận diện và gắn metadata nếu giao dịch thuộc tài khoản được chia sẻ (Shared Account)
   try {
     const targetAcc = await db.accounts.get(tx.accountId);
-    if (targetAcc && targetAcc._isSharedItem) {
+    const toAcc = tx.toAccountId ? await db.accounts.get(tx.toAccountId) : null;
+    const sharedAcc = (targetAcc && targetAcc._isSharedItem) ? targetAcc : (toAcc && toAcc._isSharedItem ? toAcc : null);
+    if (sharedAcc) {
       tx._isSharedItem = true;
-      tx._shareId = targetAcc._shareId;
-      tx._remoteId = targetAcc._remoteId;
+      tx._shareId = sharedAcc._shareId;
+      tx._remoteId = sharedAcc._remoteId;
       if (!tx._remoteTxId) tx._remoteTxId = tx.id;
-    } else if (tx.toAccountId) {
-      const toAcc = await db.accounts.get(tx.toAccountId);
-      if (toAcc && toAcc._isSharedItem) {
-        tx._isSharedItem = true;
-        tx._shareId = toAcc._shareId;
-        tx._remoteId = toAcc._remoteId;
-        if (!tx._remoteTxId) tx._remoteTxId = tx.id;
+      if (tx.recordedByOther === undefined) {
+        tx.recordedByOther = 1;
+      }
+      if (!tx.createdBy) {
+        const uProfile = window.serverSyncService?.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;
+        const uName = (uProfile?.name && uProfile.name.trim()) || (uProfile?.email && uProfile.email.trim()) || '';
+        if (uName) {
+          tx.createdBy = uName;
+          tx.createdByEmail = uProfile?.email || '';
+        }
       }
     }
   } catch (_) {}

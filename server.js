@@ -1094,6 +1094,25 @@ class DatabaseManager {
     if (!share) throw new Error('Không tìm thấy thông tin chia sẻ.');
     if (share.role !== 'editor') throw new Error('Bạn không có quyền chỉnh sửa tài khoản này.');
 
+    let editorName = email;
+    try {
+      const editorUser = this.isSqlite ? this.sqliteDb.prepare('SELECT name, email FROM users WHERE email = ?').get(email) : (this.jsonStore.users || []).find(u => u.email === email);
+      if (editorUser && editorUser.name) editorName = editorUser.name;
+    } catch (_) {}
+
+    const tagTx = (t) => {
+      if (!t || t.isDeleted) return;
+      t.recordedByOther = 1;
+      if (!t.createdBy) {
+        t.createdBy = editorName;
+        t.createdByEmail = email;
+      }
+    };
+    if (Array.isArray(incomingTxs)) incomingTxs.forEach(tagTx);
+    if (incomingProjection && !incomingProjection.encrypted && Array.isArray(incomingProjection.transactions)) {
+      incomingProjection.transactions.forEach(tagTx);
+    }
+
     // Nếu Editor gửi kèm bản chiếu đã cập nhật (hỗ trợ cả E2EE)
     if (incomingProjection) {
       this.saveItemProjection(share.vault_id, share.item_type, share.item_id, incomingProjection, email);
