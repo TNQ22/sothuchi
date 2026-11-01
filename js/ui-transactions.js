@@ -4716,9 +4716,34 @@ const UITransactions = {
 
     if (!isOther) return '';
 
+    // Xác định xem người ghi chép có phải là chính người dùng hiện tại đang xem hay không
+    const uProfile = window.serverSyncService?.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;
+    const currentEmail = (uProfile?.email || '').trim().toLowerCase();
+    const currentName = (uProfile?.name || '').trim().toLowerCase();
+
+    let isMe = false;
+    if (currentEmail || currentName) {
+      const creatorEmail = (t.createdByEmail || '').trim().toLowerCase();
+      const creatorName = (t.createdBy || '').trim().toLowerCase();
+      if (creatorEmail && currentEmail && creatorEmail === currentEmail) {
+        isMe = true;
+      } else if (creatorName && currentName && creatorName === currentName) {
+        isMe = true;
+      } else if (creatorName && currentEmail && creatorName === currentEmail) {
+        isMe = true;
+      }
+    }
+    // Fallback: nếu đang trên máy nhận chia sẻ (acc._isSharedItem) và giao dịch do máy này ghi nhận
+    if (!isMe && acc._isSharedItem && t.recordedByOther && (!author || author === 'Thành viên')) {
+      isMe = true;
+    }
+
     let displayText = '';
     let fullTitle = '';
-    if (author && author.trim()) {
+    if (isMe) {
+      displayText = `(Tôi)`;
+      fullTitle = author && author.trim() ? `Ghi chép bởi bạn (${escapeHTML(author.trim())})` : `Ghi chép bởi bạn`;
+    } else if (author && author.trim()) {
       const clean = author.trim();
       displayText = `(${escapeHTML(clean)})`;
       fullTitle = `Ghi chép bởi: ${escapeHTML(clean)}`;
