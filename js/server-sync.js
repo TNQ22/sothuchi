@@ -1629,14 +1629,11 @@ class ServerSyncService {
     if (this._pollingStarted) return;
     this._pollingStarted = true;
 
-    // 1. Kiểm tra định kỳ mỗi 10 giây (khi tab đang active)
+    // 1. Kiểm tra định kỳ mỗi 60 giây (khi tab đang active)
     setInterval(async () => {
       if (document.hidden) return;
       await this.checkRemoteVersionAndSync();
-      if (this.serverUrl && this.token) {
-        this.syncReceivedSharedItems().catch(() => {});
-      }
-    }, 10000);
+    }, 60000);
 
     // 2. Kiểm tra ngay lập tức khi người dùng chuyển qua lại giữa các tab hoặc app
     document.addEventListener('visibilitychange', async () => {

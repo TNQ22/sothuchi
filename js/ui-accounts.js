@@ -6002,17 +6002,4 @@ window.addEventListener('resize', () => {
   }
 });
 
-if (typeof ResizeObserver !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', () => {
-    const row = document.querySelector('.networth-breakdown-row');
-    if (row) {
-      new ResizeObserver(() => {
-        if (window.UIAccounts && typeof window.UIAccounts.adjustMiniPillFontSizes === 'function') {
-          window.UIAccounts.adjustMiniPillFontSizes();
-        }
-      }).observe(row);
-    }
-  });
-}
-
 window.UIAccounts = UIAccounts;
