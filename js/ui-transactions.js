@@ -4443,7 +4443,7 @@ const UITransactions = {
         const adjustType = diff >= 0 ? 'income' : 'expense';
         const absDiff = Math.abs(diff);
         if (absDiff > 0) {
-          await db.transactions.add({
+          const adjTx = {
             type: adjustType,
             amount: absDiff,
             accountId: Number(accountId),
@@ -4454,7 +4454,15 @@ const UITransactions = {
             createdAt: Date.now(),
             updatedAt: Date.now(),
             isDeleted: 0
-          });
+          };
+          if (acc._isSharedItem) {
+            adjTx._isSharedItem = true;
+            adjTx._shareId = acc._shareId;
+            adjTx._remoteId = acc._remoteId;
+            adjTx._remoteTxId = typeof generateUniqueId === 'function' ? generateUniqueId() : Date.now();
+            adjTx.id = adjTx._remoteTxId;
+          }
+          await db.transactions.add(adjTx);
         }
         await db.accounts.update(Number(accountId), {
           balance: evaluatedAmount,

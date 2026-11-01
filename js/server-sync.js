@@ -1450,6 +1450,14 @@ class ServerSyncService {
       const pullChanged = await this.mergeServerDataIntoLocal(serverData);
       if (pullChanged) localDataHasChanged = true;
 
+      // 2.5. Kéo và gộp các giao dịch/ghi chú mới từ các thành viên (Editor) được chia sẻ mục
+      try {
+        const ownedChanged = await this.pullAndMergeOwnedSharedProjections();
+        if (ownedChanged) localDataHasChanged = true;
+      } catch (ownedErr) {
+        console.warn('[ServerSync] Lỗi kéo giao dịch từ mục chia sẻ của chủ:', ownedErr.message);
+      }
+
       // 3. Nếu là Editor hoặc Owner: Chuẩn bị dữ liệu để đẩy (Push) lên Server
       if (!isViewer) {
         const localPayload = await this.buildLocalPayload();
@@ -1592,6 +1600,13 @@ class ServerSyncService {
           if (sharedChanged) localDataHasChanged = true;
         } catch (shareSyncErr) {
           console.warn('[ServerSync] Đồng bộ mục chia sẻ nhận được:', shareSyncErr.message);
+        }
+      } else {
+        try {
+          const sharedChanged = await this.syncReceivedSharedItems();
+          if (sharedChanged) localDataHasChanged = true;
+        } catch (shareSyncErr) {
+          console.warn('[ServerSync] Đồng bộ mục chia sẻ nhận được (viewer):', shareSyncErr.message);
         }
       }
 
@@ -2123,6 +2138,13 @@ class ServerSyncService {
     if (!this.token) return false;
     let hasChanges = false;
 
+    // 0. Đẩy các thay đổi giao dịch từ phía Editor lên server trước khi kéo dữ liệu mới
+    try {
+      await this.pushAllReceivedSharedItems();
+    } catch (pushErr) {
+      console.warn('[ServerSync] Lỗi đẩy giao dịch chia sẻ trước khi pull:', pushErr.message);
+    }
+
     try {
       const res = await fetch(`${this.serverUrl}/api/shares/my-received`, {
         headers: { Authorization: `Bearer ${this.token}` }
@@ -2267,12 +2289,13 @@ class ServerSyncService {
 
           // Cập nhật giao dịch cho tài khoản này
           if (Array.isArray(transactions)) {
-            const incomingRemoteTxIds = new Set(transactions.map(t => String(t.id)));
+            const incomingRemoteTxIds = new Set(transactions.filter(t => !t.isDeleted).map(t => String(t.id)));
 
             // Xóa các giao dịch cục bộ của mục chia sẻ này nếu trên server đã bị xóa
-            const existingSharedTxs = (await db.transactions.toArray()).filter(t => t._shareId === shareId);
+            const existingSharedTxs = (await db.transactions.toArray()).filter(t => t._shareId === shareId || Number(t.accountId) === localAccId);
             for (const oldTx of existingSharedTxs) {
-              if (oldTx._remoteTxId && !incomingRemoteTxIds.has(String(oldTx._remoteTxId))) {
+              const remoteId = oldTx._remoteTxId || oldTx.id;
+              if (remoteId && !incomingRemoteTxIds.has(String(remoteId))) {
                 hasChanges = true;
                 await db.transactions.delete(oldTx.id);
               }
@@ -2280,8 +2303,17 @@ class ServerSyncService {
 
             // Thêm hoặc cập nhật các giao dịch từ server
             for (const tx of transactions) {
+              if (tx.isDeleted) {
+                const localTx = existingSharedTxs.find(t => String(t._remoteTxId || t.id) === String(tx.id));
+                if (localTx) {
+                  hasChanges = true;
+                  await db.transactions.delete(localTx.id);
+                }
+                continue;
+              }
+
               const txRemoteId = tx.id;
-              const localTx = existingSharedTxs.find(t => String(t._remoteTxId) === String(txRemoteId));
+              const localTx = existingSharedTxs.find(t => String(t._remoteTxId || t.id) === String(txRemoteId));
               const txData = {
                 ...tx,
                 accountId: localAccId,
@@ -2435,7 +2467,236 @@ class ServerSyncService {
     }
   }
 
-  async syncSharedTransactions(shareId, transactions) {
+  async pushReceivedSharedItemTransactions(shareId) {
+    if (!this.token || !this.serverUrl) return false;
+
+    try {
+      const localAcc = (await db.accounts.toArray()).find(a => a._isSharedItem && a._shareId === shareId);
+      if (!localAcc) return false;
+      if (localAcc._sharedRole !== 'editor') return false;
+
+      const localAccId = Number(localAcc.id);
+      const remoteItemId = Number(localAcc._remoteId);
+
+      const allTxs = await db.transactions.toArray();
+      const localTxs = allTxs.filter(t => Number(t.accountId) === localAccId || Number(t.toAccountId) === localAccId || t._shareId === shareId);
+
+      if (localTxs.length === 0) return true;
+
+      const mappedTxs = localTxs.map(t => {
+        const copy = { ...t };
+        copy.id = copy._remoteTxId || copy.id;
+        if (Number(copy.accountId) === localAccId) {
+          copy.accountId = remoteItemId;
+        }
+        if (copy.toAccountId && Number(copy.toAccountId) === localAccId) {
+          copy.toAccountId = remoteItemId;
+        }
+        copy.isDeleted = copy.isDeleted ? 1 : 0;
+        delete copy._isSharedItem;
+        delete copy._shareId;
+        delete copy._remoteTxId;
+        delete copy._remoteId;
+        return copy;
+      });
+
+      const shareKey = (await this.getItemShareKey(shareId)) ||
+                       (await this.getItemShareKey(remoteItemId)) ||
+                       (await this.getItemShareKey(`account_${remoteItemId}`));
+
+      const cleanItem = { ...localAcc };
+      delete cleanItem._isSharedItem;
+      delete cleanItem._sharedRole;
+      delete cleanItem._shareId;
+      delete cleanItem._remoteId;
+      delete cleanItem._remoteVaultId;
+      delete cleanItem._sharedFrom;
+      cleanItem.id = remoteItemId;
+
+      const categories = await db.categories.toArray();
+
+      const projectedPayload = {
+        item: cleanItem,
+        transactions: mappedTxs,
+        categories,
+        projectedAt: new Date().toISOString()
+      };
+
+      let projectionToSend = null;
+      if (shareKey && window.CryptoService) {
+        const encStr = await window.CryptoService.encrypt(JSON.stringify(projectedPayload), shareKey);
+        projectionToSend = {
+          encrypted: true,
+          payload: encStr,
+          updatedAt: new Date().toISOString()
+        };
+      } else {
+        projectionToSend = {
+          encrypted: false,
+          ...projectedPayload,
+          updatedAt: new Date().toISOString()
+        };
+      }
+
+      const res = await fetch(`${this.serverUrl}/api/shares/received/sync`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          shareId,
+          transactions: mappedTxs,
+          projection: projectionToSend
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Lỗi đẩy giao dịch chia sẻ');
+      }
+
+      for (const t of localTxs) {
+        if (!t._remoteTxId) {
+          await db.transactions.update(t.id, { _remoteTxId: t.id, _shareId: shareId, _isSharedItem: true });
+        }
+      }
+
+      return true;
+    } catch (err) {
+      console.warn('[ServerSync] pushReceivedSharedItemTransactions error:', err.message);
+      return false;
+    }
+  }
+
+  async pushAllReceivedSharedItems() {
+    if (!this.token || !this.serverUrl) return false;
+    const sharedAccounts = (await db.accounts.toArray()).filter(a => a._isSharedItem && a._sharedRole === 'editor' && a._shareId);
+    let anyPushed = false;
+    for (const acc of sharedAccounts) {
+      const ok = await this.pushReceivedSharedItemTransactions(acc._shareId);
+      if (ok) anyPushed = true;
+    }
+    return anyPushed;
+  }
+
+  async pullAndMergeOwnedSharedProjections() {
+    if (!this.token || !this.serverUrl) return false;
+    let hasChanges = false;
+
+    try {
+      const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
+      const ownedList = (ownedSetting && Array.isArray(ownedSetting.value)) ? [...ownedSetting.value] : [];
+
+      const sharedAccounts = (await db.accounts.toArray()).filter(a => !a._isSharedItem && (a.isShared === 1 || a.isShared === true));
+      for (const sa of sharedAccounts) {
+        if (!ownedList.some(x => x.itemType === 'account' && String(x.itemId) === String(sa.id))) {
+          ownedList.push({ itemType: 'account', itemId: String(sa.id) });
+        }
+      }
+
+      if (ownedList.length === 0) return false;
+
+      for (const share of ownedList) {
+        const { itemType, itemId } = share;
+        const currentKey = share.shareKey || (await this.getItemShareKey(`${itemType}_${itemId}`));
+        const vaultParam = this.activeVaultId ? `&vaultId=${encodeURIComponent(this.activeVaultId)}` : '';
+
+        const res = await fetch(`${this.serverUrl}/api/shares/item/projection?itemType=${encodeURIComponent(itemType)}&itemId=${encodeURIComponent(itemId)}${vaultParam}`, {
+          headers: { Authorization: `Bearer ${this.token}` }
+        });
+        if (!res.ok) continue;
+
+        const resData = await res.json();
+        let proj = resData.projection;
+        if (!proj) continue;
+
+        if (proj.encrypted && proj.payload) {
+          if (!currentKey || !window.CryptoService) continue;
+          try {
+            const decStr = await window.CryptoService.decrypt(proj.payload, currentKey);
+            proj = JSON.parse(decStr);
+          } catch (decErr) {
+            console.warn('[ServerSync] Lỗi giải mã bản chiếu mục chia sẻ của chủ:', decErr.message);
+            continue;
+          }
+        }
+
+        const remoteTxs = Array.isArray(proj.transactions) ? proj.transactions : [];
+        if (itemType === 'account' && remoteTxs.length > 0) {
+          const accId = Number(itemId);
+          const localTxs = (await db.transactions.toArray()).filter(t => !t._isSharedItem && (Number(t.accountId) === accId || Number(t.toAccountId) === accId));
+          const localMap = new Map();
+          for (const lt of localTxs) {
+            localMap.set(String(lt.id), lt);
+          }
+
+          for (const rtx of remoteTxs) {
+            const rIdStr = String(rtx.id);
+            const existing = localMap.get(rIdStr);
+
+            if (rtx.isDeleted) {
+              if (existing && !existing.isDeleted) {
+                await db.transactions.update(existing.id, { isDeleted: 1, updatedAt: rtx.updatedAt || Date.now() });
+                hasChanges = true;
+              }
+              continue;
+            }
+
+            if (!existing) {
+              const newTx = {
+                ...rtx,
+                id: Number(rtx.id) || (typeof generateUniqueId === 'function' ? generateUniqueId() : Date.now()),
+                accountId: accId,
+                isDeleted: 0,
+                updatedAt: rtx.updatedAt || Date.now()
+              };
+              delete newTx._isSharedItem;
+              delete newTx._shareId;
+              delete newTx._remoteTxId;
+              delete newTx._remoteId;
+              await db.transactions.add(newTx);
+              hasChanges = true;
+            } else {
+              const rTime = new Date(rtx.updatedAt || 0).getTime() || 0;
+              const lTime = new Date(existing.updatedAt || 0).getTime() || 0;
+              if (rTime > lTime) {
+                const isDiff = Number(existing.amount || 0) !== Number(rtx.amount || 0) ||
+                               existing.type !== rtx.type ||
+                               existing.category !== rtx.category ||
+                               existing.date !== rtx.date ||
+                               existing.note !== rtx.note ||
+                               existing.isDeleted !== (rtx.isDeleted ? 1 : 0);
+                if (isDiff) {
+                  await db.transactions.update(existing.id, {
+                    ...rtx,
+                    id: existing.id,
+                    accountId: accId,
+                    isDeleted: rtx.isDeleted ? 1 : 0,
+                    updatedAt: rtx.updatedAt || Date.now()
+                  });
+                  hasChanges = true;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (hasChanges) {
+        if (typeof window.recalculateAccountBalances === 'function') {
+          await window.recalculateAccountBalances();
+        }
+      }
+
+      return hasChanges;
+    } catch (err) {
+      console.warn('[ServerSync] Lỗi pullAndMergeOwnedSharedProjections:', err.message);
+      return false;
+    }
+  }
+
+  async syncSharedTransactions(shareId, transactions, projection = null) {
     if (!this.token) throw new Error('Vui lòng kết nối máy chủ riêng.');
     const res = await fetch(`${this.serverUrl}/api/shares/received/sync`, {
       method: 'POST',
@@ -2443,7 +2704,7 @@ class ServerSyncService {
         Authorization: `Bearer ${this.token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ shareId, transactions })
+      body: JSON.stringify({ shareId, transactions, projection })
     });
     if (!res.ok) {
       const err = await res.json();

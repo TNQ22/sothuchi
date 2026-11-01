@@ -1097,6 +1097,18 @@ class DatabaseManager {
     // Nếu Editor gửi kèm bản chiếu đã cập nhật (hỗ trợ cả E2EE)
     if (incomingProjection) {
       this.saveItemProjection(share.vault_id, share.item_type, share.item_id, incomingProjection, email);
+      try {
+        const vault = this.getVaultData(share.vault_id);
+        if (vault && vault.data && typeof vault.data === 'object' && !vault.data.encrypted && Array.isArray(vault.data.transactions)) {
+          const txsToMerge = Array.isArray(incomingTxs) && incomingTxs.length > 0
+            ? incomingTxs
+            : (!incomingProjection.encrypted && Array.isArray(incomingProjection.transactions) ? incomingProjection.transactions : null);
+          if (Array.isArray(txsToMerge)) {
+            vault.data.transactions = mergeTableData(vault.data.transactions, txsToMerge, false, 'transactions');
+            this.saveVaultData(share.vault_id, vault.data, email);
+          }
+        }
+      } catch (_) {}
       return { success: true, isProjection: true };
     }
 
@@ -1104,9 +1116,18 @@ class DatabaseManager {
     const proj = this.getItemProjection(share.vault_id, share.item_type, share.item_id);
     if (proj && proj.data && !proj.data.encrypted) {
       const currentTxs = Array.isArray(proj.data.transactions) ? proj.data.transactions : [];
-      const mergedTxs = mergeTableData(currentTxs, incomingTxs, false);
+      const mergedTxs = mergeTableData(currentTxs, incomingTxs, false, 'transactions');
       proj.data.transactions = mergedTxs;
       this.saveItemProjection(share.vault_id, share.item_type, share.item_id, proj.data, email);
+
+      try {
+        const vault = this.getVaultData(share.vault_id);
+        if (vault && vault.data && typeof vault.data === 'object' && !vault.data.encrypted && Array.isArray(vault.data.transactions)) {
+          vault.data.transactions = mergeTableData(vault.data.transactions, incomingTxs, false, 'transactions');
+          this.saveVaultData(share.vault_id, vault.data, email);
+        }
+      } catch (_) {}
+
       return { success: true, count: mergedTxs.length };
     }
 
@@ -1115,7 +1136,7 @@ class DatabaseManager {
 
     if (Array.isArray(vault.data.transactions)) {
       const currentTxs = vault.data.transactions;
-      const mergedTxs = mergeTableData(currentTxs, incomingTxs, false);
+      const mergedTxs = mergeTableData(currentTxs, incomingTxs, false, 'transactions');
       vault.data.transactions = mergedTxs;
       this.saveVaultData(share.vault_id, vault.data, email);
       return { success: true, count: mergedTxs.length };

@@ -530,6 +530,25 @@ async function addTransaction(data) {
     updatedAt: now
   };
 
+  // Tự động nhận diện và gắn metadata nếu giao dịch thuộc tài khoản được chia sẻ (Shared Account)
+  try {
+    const targetAcc = await db.accounts.get(tx.accountId);
+    if (targetAcc && targetAcc._isSharedItem) {
+      tx._isSharedItem = true;
+      tx._shareId = targetAcc._shareId;
+      tx._remoteId = targetAcc._remoteId;
+      if (!tx._remoteTxId) tx._remoteTxId = tx.id;
+    } else if (tx.toAccountId) {
+      const toAcc = await db.accounts.get(tx.toAccountId);
+      if (toAcc && toAcc._isSharedItem) {
+        tx._isSharedItem = true;
+        tx._shareId = toAcc._shareId;
+        tx._remoteId = toAcc._remoteId;
+        if (!tx._remoteTxId) tx._remoteTxId = tx.id;
+      }
+    }
+  } catch (_) {}
+
   // If user checked "Đi vay để trả khoản này", create linked borrow debt record
   if (data.isBorrowed && data.borrowPerson) {
     await addDebt({

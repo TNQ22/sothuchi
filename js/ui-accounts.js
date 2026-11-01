@@ -5261,10 +5261,13 @@ const UIAccounts = {
     }
     try {
       if (window.serverSyncService) {
+        if (typeof window.serverSyncService.pullAndMergeOwnedSharedProjections === 'function') {
+          await window.serverSyncService.pullAndMergeOwnedSharedProjections();
+        }
         const changed = await window.serverSyncService.syncReceivedSharedItems();
         await this.render();
         if (typeof showToast === 'function') {
-          showToast(changed ? 'Đã tải thành công các mục chia sẻ mới!' : 'Đã kiểm tra xong: Hiện chưa có mục chia sẻ mới nào.', 'info');
+          showToast(changed ? 'Đã tải thành công các mục chia sẻ mới!' : 'Đã kiểm tra xong: Dữ liệu chia sẻ đã mới nhất.', 'info');
         }
       }
     } catch (err) {
