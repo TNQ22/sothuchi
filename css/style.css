@@ -4589,12 +4589,48 @@ body:has(#view-template-manager.active) .template-fab-btn {
 
 /* ==================== ACTION SHEET (BOTTOM SHEET FOR ACCOUNTS) ==================== */
 .action-sheet-dialog {
-  max-width: 440px;
+  width: 100%;
+  max-width: 460px;
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6);
+  margin: 0 auto;
+}
+
+#modal-account-actions.modal-overlay,
+#modal-item-actions.modal-overlay {
+  padding: 6px 4px max(8px, env(safe-area-inset-bottom, 0px)) !important;
+}
+
+@media (max-width: 640px) {
+  #modal-account-actions.modal-overlay,
+  #modal-item-actions.modal-overlay {
+    padding: 6px 4px max(6px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #modal-account-actions .modal-dialog,
+  #modal-item-actions .modal-dialog,
+  .action-sheet-dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 16px !important;
+  }
+  .action-sheet-header {
+    padding: 14px 12px !important;
+    gap: 10px !important;
+  }
+  .action-sheet-body {
+    padding: 8px 6px !important;
+  }
+  .action-sheet-item {
+    padding: 10px 8px !important;
+    gap: 10px !important;
+  }
+  .action-sheet-footer {
+    padding: 10px 10px !important;
+  }
 }
 
 .action-sheet-header {
@@ -4614,6 +4650,8 @@ body:has(#view-template-manager.active) .template-fab-btn {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
+  overflow: visible;
 }
 
 .action-sheet-info {
@@ -4622,13 +4660,56 @@ body:has(#view-template-manager.active) .template-fab-btn {
 }
 
 .action-sheet-title {
-  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.02rem;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 2px 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.action-sheet-acc-name-text {
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: clip;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.action-sheet-share-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: clamp(0.58rem, 1.8vw, 0.7rem);
+  line-height: 1.15;
+  color: #3b82f6;
+  font-weight: 600;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  padding: 1px 5px;
+  border-radius: 4px;
+  vertical-align: middle;
+  min-width: 0;
+  max-width: 55%;
+  flex-shrink: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.action-sheet-share-tag.owner {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.action-sheet-share-tag .share-tag-text {
+  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .action-sheet-subtitle {
@@ -4636,6 +4717,9 @@ body:has(#view-template-manager.active) .template-fab-btn {
   color: var(--text-muted);
   margin: 0;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .action-sheet-body {
@@ -13127,7 +13211,9 @@ body.light .ptr-circle-badge,
   #modal-server-vault-share .modal-dialog,
   #modal-server-vault-history .modal-dialog,
   #modal-budget-settings .modal-dialog,
-  #modal-universal-share .modal-dialog {
+  #modal-universal-share .modal-dialog,
+  #modal-account-actions .modal-dialog,
+  #modal-item-actions .modal-dialog {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -13154,7 +13240,9 @@ body.light .ptr-circle-badge,
   #modal-server-vault-share.modal-overlay,
   #modal-server-vault-history.modal-overlay,
   #modal-budget-settings.modal-overlay,
-  #modal-universal-share.modal-overlay {
+  #modal-universal-share.modal-overlay,
+  #modal-account-actions.modal-overlay,
+  #modal-item-actions.modal-overlay {
     padding: 6px 4px max(8px, env(safe-area-inset-bottom, 0px)) !important;
   }
 }

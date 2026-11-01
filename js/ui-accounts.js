@@ -464,18 +464,28 @@ const UIAccounts = {
     const iconName = acc.icon || info.icon;
 
     // Header info
+    const isSharedItem = !!acc._isSharedItem;
+    const isSharedByMe = acc.isShared === 1 || acc.isShared === true;
+    const miniShareHtml = this.getMiniShareIndicatorHtml(acc);
+
     const iconEl = document.getElementById('action-sheet-acc-icon');
     if (iconEl) {
+      iconEl.className = `action-sheet-icon account-icon-bubble ${(isSharedItem || isSharedByMe) ? 'with-share-badge' : ''}`;
       iconEl.style.background = 'transparent';
-      iconEl.innerHTML = this.renderLogoBadge(acc, 44);
+      iconEl.style.position = 'relative';
+      iconEl.innerHTML = this.renderLogoBadge(acc, 44) + miniShareHtml;
     }
 
     const nameEl = document.getElementById('action-sheet-acc-name');
     if (nameEl) {
-      const shareBadge = acc._isSharedItem 
-        ? ' <span style="font-size: 0.72rem; color: #3b82f6; font-weight: 600; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle;"><i data-lucide="share-2" style="width: 10px; height: 10px; display: inline-block; vertical-align: -1px;"></i> Được chia sẻ</span>'
-        : (acc.isShared ? ' <span style="font-size: 0.72rem; color: #10b981; font-weight: 600; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle;"><i data-lucide="share-2" style="width: 10px; height: 10px; display: inline-block; vertical-align: -1px;"></i> Đang chia sẻ</span>' : '');
-      nameEl.innerHTML = escapeHTML(acc.name) + shareBadge;
+      let shareBadge = '';
+      if (isSharedItem) {
+        const owner = acc._sharedFrom || 'Thành viên';
+        shareBadge = ` <span class="action-sheet-share-tag" title="Từ: ${escapeHTML(owner)}"><i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0; display: inline-block;"></i><span class="share-tag-text">Từ: ${escapeHTML(owner)}</span></span>`;
+      } else if (isSharedByMe) {
+        shareBadge = ` <span class="action-sheet-share-tag owner" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0; display: inline-block;"></i><span class="share-tag-text">Đang chia sẻ</span></span>`;
+      }
+      nameEl.innerHTML = `<span class="action-sheet-acc-name-text" title="${escapeHTML(acc.name)}">${escapeHTML(acc.name)}</span>${shareBadge}`;
     }
 
     const balEl = document.getElementById('action-sheet-acc-balance');
@@ -483,9 +493,8 @@ const UIAccounts = {
       const curSym = acc.currency === 'USD' ? '$' : (acc.currency === 'EUR' ? '€' : (acc.currency === 'JPY' ? '¥' : 'đ'));
       const balStr = new Intl.NumberFormat('vi-VN').format(acc.balance);
       const excludeText = acc.excludeFromReport ? ' • (Không tính vào báo cáo)' : '';
-      const sharedFromText = (acc._isSharedItem && acc._sharedFrom) ? ` • Từ: ${acc._sharedFrom}` : '';
       const descText = acc.description ? ` • ${acc.description}` : '';
-      balEl.textContent = `${info.label} • Số dư: ${balStr}${curSym}${sharedFromText}${descText}${excludeText}`;
+      balEl.textContent = `Số dư: ${balStr}${curSym}${descText}${excludeText}`;
     }
 
     // Update Budget setting display
