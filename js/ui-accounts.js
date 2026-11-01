@@ -115,8 +115,8 @@ const UIAccounts = {
   },
 
   renderReportBadge(a) {
-    if (!a) return '';
-    const isIncluded = a._isSharedItem ? !!a.includeInReport : !a.excludeFromReport;
+    if (!a || !a._isSharedItem) return '';
+    const isIncluded = !!a.includeInReport;
     if (isIncluded) {
       return `<span class="account-report-badge included" title="Đang tính vào báo cáo"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg></span>`;
     } else {
@@ -127,6 +127,16 @@ const UIAccounts = {
   init() {
     if (this._initialized) return;
     this._initialized = true;
+
+    // Dọn dẹp cờ excludeFromReport trên tài khoản gốc nếu vô tình bị đổi khi kiểm tra thử
+    const cleanupTestFlagKey = 'cleanup_acc_exclude_report_test_v1';
+    if (!localStorage.getItem(cleanupTestFlagKey)) {
+      localStorage.setItem(cleanupTestFlagKey, '1');
+      if (typeof db !== 'undefined' && db.accounts) {
+        db.accounts.filter(a => !a._isSharedItem && a.excludeFromReport === 1).modify({ excludeFromReport: 0 }).catch(() => {});
+      }
+    }
+
     this.bindEvents();
   },
 
@@ -518,17 +528,19 @@ const UIAccounts = {
     if (uniShareBtn) uniShareBtn.style.display = isReceivedShare ? 'none' : 'flex';
     if (archiveBtn) archiveBtn.style.display = isReceivedShare ? 'none' : 'flex';
     if (includeReportBtn) {
-      includeReportBtn.style.display = 'flex';
-      const included = isReceivedShare ? !!acc.includeInReport : !acc.excludeFromReport;
-      if (includeReportSwitch) {
-        includeReportSwitch.checked = included;
-      }
-      if (includeReportBadge) {
-        includeReportBadge.textContent = included ? 'Bật' : 'Tắt';
-        includeReportBadge.className = 'action-sheet-budget-badge' + (included ? ' active' : '');
-      }
-      if (includeReportDesc) {
-        includeReportDesc.textContent = included ? 'Đang tính vào tổng báo cáo' : 'Không tính vào tổng báo cáo';
+      includeReportBtn.style.display = isReceivedShare ? 'flex' : 'none';
+      if (isReceivedShare) {
+        const included = !!acc.includeInReport;
+        if (includeReportSwitch) {
+          includeReportSwitch.checked = included;
+        }
+        if (includeReportBadge) {
+          includeReportBadge.textContent = included ? 'Bật' : 'Tắt';
+          includeReportBadge.className = 'action-sheet-budget-badge' + (included ? ' active' : '');
+        }
+        if (includeReportDesc) {
+          includeReportDesc.textContent = included ? 'Đang tính vào tổng báo cáo' : 'Không tính vào tổng báo cáo';
+        }
       }
     }
 
@@ -593,30 +605,10 @@ const UIAccounts = {
       item = await db.assets.get(numId);
     }
 
-    if (!item || !table) return;
+    if (!item || !table || !item._isSharedItem) return;
 
-    let nextIncluded;
-    let updateData = { updatedAt: Date.now() };
-
-    if (type === 'account') {
-      if (item._isSharedItem) {
-        nextIncluded = item.includeInReport ? 0 : 1;
-        updateData.includeInReport = nextIncluded;
-      } else {
-        const isCurrentlyIncluded = !item.excludeFromReport;
-        nextIncluded = isCurrentlyIncluded ? 0 : 1;
-        updateData.excludeFromReport = nextIncluded ? 0 : 1;
-      }
-    } else {
-      if (item._isSharedItem) {
-        nextIncluded = item.includeInReport ? 0 : 1;
-        updateData.includeInReport = nextIncluded;
-      } else {
-        const isCurrentlyIncluded = !item.excludeFromReport;
-        nextIncluded = isCurrentlyIncluded ? 0 : 1;
-        updateData.excludeFromReport = nextIncluded ? 0 : 1;
-      }
-    }
+    const nextIncluded = item.includeInReport ? 0 : 1;
+    const updateData = { includeInReport: nextIncluded, updatedAt: Date.now() };
 
     await table.update(numId, updateData);
 
@@ -1943,7 +1935,11 @@ const UIAccounts = {
               <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">${escapeHTML(noneDesc)}</div>
             </div>
           </div>
-          ${isSelected ? '<i data-lucide="check" style="width: 20px; height: 20px; color: var(--primary); flex-shrink: 0;"></i>' : ''}
+          <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 12px;">
+            <div style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              ${isSelected ? '<i data-lucide="check" style="width: 20px; height: 20px; color: var(--primary); flex-shrink: 0;"></i>' : ''}
+            </div>
+          </div>
         </div>
       `;
     }
@@ -1975,7 +1971,6 @@ const UIAccounts = {
       }
 
       const subParts = [];
-      subParts.push(`<span style="font-weight: 600; color: ${balanceColor};">Số dư: ${balanceStr}</span>`);
       if (typeText) {
         subParts.push(escapeHTML(typeText));
       }
@@ -2004,7 +1999,14 @@ const UIAccounts = {
               </div>
             </div>
           </div>
-          ${isSelected ? '<i data-lucide="check" style="width: 20px; height: 20px; color: var(--primary); flex-shrink: 0; margin-left: 8px;"></i>' : ''}
+          <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 12px;">
+            <div class="account-balance-wrapper" style="text-align: right; flex-shrink: 0;">
+              <span class="account-balance stat-amount" style="color: ${balanceColor}; font-weight: 700; font-size: 0.95rem; font-variant-numeric: tabular-nums; white-space: nowrap;">${balanceStr}</span>
+            </div>
+            <div style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              ${isSelected ? '<i data-lucide="check" style="width: 20px; height: 20px; color: var(--primary); flex-shrink: 0;"></i>' : ''}
+            </div>
+          </div>
         </div>
       `;
     });
