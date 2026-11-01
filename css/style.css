@@ -11766,37 +11766,6 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   color: #ffffff;
 }
 
-.accounts-display-mode-wrap {
-  display: inline-flex;
-  align-items: center;
-}
-
-.btn-toggle-view-mode {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border-color);
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.btn-toggle-view-mode:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.btn-toggle-view-mode.mode-grouped {
-  border-color: rgba(59, 130, 246, 0.3);
-  color: #3b82f6;
-}
 
 /* TRƯỜNG RIÊNG: Nhóm tài khoản & sổ được chia sẻ */
 .shared-highlight-section {
@@ -12014,52 +11983,6 @@ body.dark .account-role-badge.editor {
   line-height: 1.2 !important;
 }
 
-.accounts-display-mode-wrap {
-  display: inline-flex !important;
-  align-items: center !important;
-  flex-shrink: 0 !important;
-}
-
-.btn-toggle-view-mode {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  background: var(--bg-surface, rgba(255, 255, 255, 0.05)) !important;
-  border: 1px solid var(--border-color) !important;
-  outline: none !important;
-  color: var(--text-secondary) !important;
-  font-size: 0.78rem !important;
-  font-weight: 600 !important;
-  padding: 7px 13px !important;
-  border-radius: 9999px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease !important;
-  white-space: nowrap !important;
-  flex-shrink: 0 !important;
-  line-height: 1.2 !important;
-  font-family: inherit !important;
-  user-select: none !important;
-}
-
-.btn-toggle-view-mode:hover {
-  background: var(--bg-hover, rgba(255, 255, 255, 0.08)) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border-color) !important;
-}
-
-.btn-toggle-view-mode.mode-grouped {
-  color: #38bdf8 !important;
-  background: rgba(56, 189, 248, 0.12) !important;
-  border-color: rgba(56, 189, 248, 0.35) !important;
-}
-
-.btn-toggle-view-mode.mode-unified {
-  color: #a78bfa !important;
-  background: rgba(167, 139, 250, 0.12) !important;
-  border-color: rgba(167, 139, 250, 0.35) !important;
-}
 
 /* UNIVERSAL SHARE SERVICES & CARDS - DARK THEME */
 .share-item-preview-card {
