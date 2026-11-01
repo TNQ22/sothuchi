@@ -4714,11 +4714,11 @@ const UITransactions = {
     let fullTitle = '';
     if (author && author.trim()) {
       const clean = author.trim();
-      displayText = `(Bởi: ${escapeHTML(clean)})`;
+      displayText = `(${escapeHTML(clean)})`;
       fullTitle = `Ghi chép bởi: ${escapeHTML(clean)}`;
     } else {
-      displayText = `(Người khác ghi)`;
-      fullTitle = `Ghi chép bởi người khác (thành viên được chia sẻ)`;
+      displayText = `(Thành viên)`;
+      fullTitle = `Ghi chép bởi thành viên được chia sẻ`;
     }
 
     return ` <span class="tx-share-author-note" title="${fullTitle}">${displayText}</span>`;
