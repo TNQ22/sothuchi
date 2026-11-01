@@ -1538,6 +1538,22 @@ function triggerAutoSync() {
 }
 window.triggerAutoSync = triggerAutoSync;
 
+// Kiểm tra tài khoản có áp dụng ngân sách không:
+// - Nếu đã cài đặt rõ (1 hoặc 0 / true hoặc false): tuân theo cài đặt đó
+// - Với tài khoản được chia sẻ từ người khác (_isSharedItem): mặc định TẮT (false)
+// - Với tài khoản cá nhân: mặc định BẬT (trừ khi đánh dấu excludeFromReport)
+function isAccountBudgetEnabled(acc) {
+  if (!acc) return false;
+  if (acc.includeInBudget !== undefined && acc.includeInBudget !== null) {
+    return acc.includeInBudget === 1 || acc.includeInBudget === true;
+  }
+  if (acc._isSharedItem) {
+    return false;
+  }
+  return !acc.excludeFromReport;
+}
+window.isAccountBudgetEnabled = isAccountBudgetEnabled;
+
 // Xoá sạch toàn bộ dữ liệu người dùng trên máy để phục vụ đổi tài khoản hoặc khôi phục trạng thái mới
 async function wipeAndResetLocalDatabase() {
   await db.transactions.clear();

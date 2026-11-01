@@ -136,6 +136,15 @@ const UIAccounts = {
       }
     }
 
+    // Áp dụng ngân sách tắt theo mặc định với tài khoản được share từ người khác
+    const defaultSharedBudgetFlagKey = 'default_shared_acc_budget_off_v1';
+    if (!localStorage.getItem(defaultSharedBudgetFlagKey)) {
+      localStorage.setItem(defaultSharedBudgetFlagKey, '1');
+      if (typeof db !== 'undefined' && db.accounts) {
+        db.accounts.filter(a => !!a._isSharedItem).modify({ includeInBudget: 0 }).catch(() => {});
+      }
+    }
+
     try {
       localStorage.removeItem('sothuchi_shared_view_mode');
     } catch (_) {}
@@ -501,7 +510,9 @@ const UIAccounts = {
     }
 
     // Update Budget setting display
-    const hasBudget = acc.includeInBudget !== undefined ? (acc.includeInBudget === 1 || acc.includeInBudget === true) : (!acc.excludeFromReport);
+    const hasBudget = typeof isAccountBudgetEnabled === 'function'
+      ? isAccountBudgetEnabled(acc)
+      : (acc.includeInBudget !== undefined ? (acc.includeInBudget === 1 || acc.includeInBudget === true) : (acc._isSharedItem ? false : !acc.excludeFromReport));
     const budgetSwitch = document.getElementById('action-sheet-budget-switch');
     const budgetBadge = document.getElementById('action-sheet-budget-badge');
     const budgetDesc = document.getElementById('action-sheet-budget-desc');
@@ -569,7 +580,9 @@ const UIAccounts = {
     if (!accId) return;
     const acc = await db.accounts.get(Number(accId));
     if (!acc) return;
-    const currentBudget = acc.includeInBudget !== undefined ? (acc.includeInBudget === 1 || acc.includeInBudget === true) : (!acc.excludeFromReport);
+    const currentBudget = typeof isAccountBudgetEnabled === 'function'
+      ? isAccountBudgetEnabled(acc)
+      : (acc.includeInBudget !== undefined ? (acc.includeInBudget === 1 || acc.includeInBudget === true) : (acc._isSharedItem ? false : !acc.excludeFromReport));
     const nextBudget = currentBudget ? 0 : 1;
     await db.accounts.update(Number(accId), { includeInBudget: nextBudget, updatedAt: Date.now() });
 
@@ -1487,7 +1500,9 @@ const UIAccounts = {
     if (excludeCheck) excludeCheck.checked = !!acc.excludeFromReport;
 
     const budgetCheck = document.getElementById('acc-apply-budget-check');
-    if (budgetCheck) budgetCheck.checked = acc.includeInBudget !== undefined ? (acc.includeInBudget === 1 || acc.includeInBudget === true) : (!acc.excludeFromReport);
+    if (budgetCheck) budgetCheck.checked = typeof isAccountBudgetEnabled === 'function'
+      ? isAccountBudgetEnabled(acc)
+      : (acc.includeInBudget !== undefined ? (acc.includeInBudget === 1 || acc.includeInBudget === true) : (acc._isSharedItem ? false : !acc.excludeFromReport));
 
     const shareCheck = document.getElementById('acc-is-shared-check');
     if (shareCheck) shareCheck.checked = (acc.isShared === 1 || acc.isShared === true);
@@ -4914,7 +4929,7 @@ const UIAccounts = {
               <div class="account-sub-row" style="display: flex; align-items: center; gap: 4px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: clip;">
                 ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                 ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">${(a.currency && a.currency !== 'VND') ? '• ' : ''}${escapeHTML(a.description)}</span>` : ''}
-                ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
+                ${(typeof isAccountBudgetEnabled === 'function' ? isAccountBudgetEnabled(a) : (a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : (a._isSharedItem ? false : !a.excludeFromReport))) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
                 ${this.renderReportBadge(a)}
               </div>
             </div>
@@ -5846,7 +5861,7 @@ const UIAccounts = {
                   <div class="account-sub-row" style="display: flex; align-items: center; gap: 4px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: clip;">
                     ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                     ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">${(a.currency && a.currency !== 'VND') ? '• ' : ''}${escapeHTML(a.description)}</span>` : ''}
-                    ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
+                    ${(typeof isAccountBudgetEnabled === 'function' ? isAccountBudgetEnabled(a) : (a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : (a._isSharedItem ? false : !a.excludeFromReport))) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
                     ${this.renderReportBadge(a)}
                   </div>
                 </div>
@@ -5909,7 +5924,7 @@ const UIAccounts = {
                       ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                       ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">${(a.currency && a.currency !== 'VND') ? '• ' : ''}${escapeHTML(a.description)}</span>` : ''}
                       <span class="account-archived-badge" title="Đã ngừng sử dụng">Ngừng sử dụng</span>
-                      ${(a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : !a.excludeFromReport) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
+                      ${(typeof isAccountBudgetEnabled === 'function' ? isAccountBudgetEnabled(a) : (a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : (a._isSharedItem ? false : !a.excludeFromReport))) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
                       ${this.renderReportBadge(a)}
                     </div>
                   </div>

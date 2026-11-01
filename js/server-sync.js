@@ -1907,6 +1907,8 @@ class ServerSyncService {
     const cleanItem = { ...targetItem };
     delete cleanItem._isSharedItem;
     delete cleanItem._shareId;
+    delete cleanItem.includeInReport;
+    delete cleanItem.includeInBudget;
 
     const projectedPayload = {
       item: cleanItem,
@@ -2256,6 +2258,7 @@ class ServerSyncService {
             isDeleted: 0,
             isArchived: item.isArchived ? 1 : 0,
             includeInReport: localAcc && localAcc.includeInReport !== undefined ? localAcc.includeInReport : 0,
+            includeInBudget: localAcc && localAcc.includeInBudget !== undefined ? localAcc.includeInBudget : 0,
             _isSharedItem: true,
             _sharedRole: role,
             _shareId: shareId,
@@ -2511,6 +2514,8 @@ class ServerSyncService {
       delete cleanItem._remoteId;
       delete cleanItem._remoteVaultId;
       delete cleanItem._sharedFrom;
+      delete cleanItem.includeInReport;
+      delete cleanItem.includeInBudget;
       cleanItem.id = remoteItemId;
 
       const categories = await db.categories.toArray();

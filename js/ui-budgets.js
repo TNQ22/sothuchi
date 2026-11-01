@@ -659,9 +659,9 @@ const UIBudgets = {
 
     let allowedAccountIds = new Set();
     allAccounts.forEach(a => {
-      const isBudgetEnabled = a.includeInBudget !== undefined
-        ? (a.includeInBudget === 1 || a.includeInBudget === true)
-        : !a.excludeFromReport;
+      const isBudgetEnabled = typeof isAccountBudgetEnabled === 'function'
+        ? isAccountBudgetEnabled(a)
+        : (a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : (a._isSharedItem ? false : !a.excludeFromReport));
       if (isBudgetEnabled && !a.isArchived) {
         allowedAccountIds.add(a.id);
       }
@@ -2867,9 +2867,9 @@ const UIBudgets = {
       const allAccounts = await db.accounts.where('isDeleted').equals(0).toArray();
       let allowedAccountIds = new Set();
       allAccounts.forEach(a => {
-        const isBudgetEnabled = a.includeInBudget !== undefined
-          ? (a.includeInBudget === 1 || a.includeInBudget === true)
-          : !a.excludeFromReport;
+        const isBudgetEnabled = typeof isAccountBudgetEnabled === 'function'
+          ? isAccountBudgetEnabled(a)
+          : (a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : (a._isSharedItem ? false : !a.excludeFromReport));
         if (isBudgetEnabled && !a.isArchived) {
           allowedAccountIds.add(a.id);
         }
@@ -3154,9 +3154,9 @@ const UIBudgets = {
       const allowedAccountIds = new Set();
       const allAccounts = await db.accounts.toArray();
       allAccounts.forEach(a => {
-        const isBudgetEnabled = a.includeInBudget !== undefined
-          ? (a.includeInBudget === 1 || a.includeInBudget === true)
-          : !a.excludeFromReport;
+        const isBudgetEnabled = typeof isAccountBudgetEnabled === 'function'
+          ? isAccountBudgetEnabled(a)
+          : (a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : (a._isSharedItem ? false : !a.excludeFromReport));
         if (isBudgetEnabled && !a.isArchived) allowedAccountIds.add(a.id);
       });
 
