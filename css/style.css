@@ -6212,7 +6212,7 @@ body.dark .switch .slider {
   overflow: hidden;
 }
 
-.accounts-group-title-wrap > div:nth-child(2) {
+.accounts-group-title-wrap > div:last-child {
   min-width: 0;
   flex: 1;
   overflow: hidden;
@@ -6641,7 +6641,7 @@ html, body {
   overflow: hidden !important;
 }
 
-.accounts-group-title-wrap > div:nth-child(2) {
+.accounts-group-title-wrap > div:last-child {
   min-width: 0 !important;
   flex: 1 1 0% !important;
   overflow: hidden !important;
