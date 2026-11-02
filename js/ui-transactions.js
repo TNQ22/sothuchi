@@ -2104,6 +2104,7 @@ const UITransactions = {
       window.UIAccounts.openSourceAccountPicker({
         title: title,
         allowNone: true,
+        forbidReadOnly: true,
         noneLabel: 'Chưa chọn tài khoản (Mặc định)',
         noneDesc: 'Giữ nguyên tài khoản hiện tại khi áp dụng mẫu',
         selectedId: curVal,
@@ -2121,6 +2122,11 @@ const UITransactions = {
   async setTemplateAccount(accId) {
     const acc = await db.accounts.get(Number(accId));
     if (!acc) return;
+    if (acc._isSharedItem && acc._sharedRole !== 'editor') {
+      const owner = acc._sharedFrom ? ` (chia sẻ bởi ${acc._sharedFrom})` : '';
+      showToast(`Tài khoản "${acc.name}"${owner} chỉ có quyền xem, không thể chọn vào mẫu giao dịch!`, 'error');
+      return;
+    }
     const input = document.getElementById('tpl-page-account-id');
     const label = document.getElementById('tpl-account-label');
     const subtext = document.getElementById('tpl-account-subtext');
@@ -2131,19 +2137,22 @@ const UITransactions = {
     const isSharedByMe = !isSharedItem && (acc.isShared === 1 || acc.isShared === true);
 
     const miniShareIndicator = isSharedItem
-      ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>`
-      : (isSharedByMe ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>` : '');
+      ? `<div class=\"mini-share-indicator\" style=\"position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;\" title=\"Được chia sẻ\"><i data-lucide=\"share-2\" style=\"width: 7px; height: 7px;\"></i></div>`
+      : (isSharedByMe ? `<div class=\"mini-share-indicator\" style=\"position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;\" title=\"Đang chia sẻ\"><i data-lucide=\"share-2\" style=\"width: 7px; height: 7px;\"></i></div>` : '');
 
     if (input) input.value = acc.id;
     if (label) {
       let shareBadge = '';
       if (isSharedItem) {
         const owner = acc._sharedFrom || 'Thành viên';
-        shareBadge = `<span style="font-size: 0.68rem; color: #3b82f6; font-weight: 600; background: rgba(59, 130, 246, 0.12); padding: 1px 5px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px;" title="Từ: ${escapeHTML(owner)}"><i data-lucide="share-2" style="width: 8px; height: 8px;"></i> Từ: ${escapeHTML(owner)}</span>`;
+        shareBadge = `<span style=\"font-size: 0.68rem; color: #3b82f6; font-weight: 600; background: rgba(59, 130, 246, 0.12); padding: 1px 5px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px;\" title=\"Từ: ${escapeHTML(owner)}\"><i data-lucide=\"share-2\" style=\"width: 8px; height: 8px;\"></i> Từ: ${escapeHTML(owner)}</span>`;
       } else if (isSharedByMe) {
-        shareBadge = `<span style="font-size: 0.68rem; color: #10b981; font-weight: 600; background: rgba(16, 185, 129, 0.12); padding: 1px 5px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px;"><i data-lucide="share-2" style="width: 8px; height: 8px;"></i> Đang chia sẻ</span>`;
+        shareBadge = `<span style=\"font-size: 0.68rem; color: #10b981; font-weight: 600; background: rgba(16, 185, 129, 0.12); padding: 1px 5px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px;\"><i data-lucide=\"share-2\" style=\"width: 8px; height: 8px;\"></i> Đang chia sẻ</span>`;
       }
-      label.innerHTML = `<span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(acc.name)}</span> ${shareBadge}`;
+      const roleBadge = (window.UIAccounts && typeof window.UIAccounts.renderSharedRoleBadge === 'function')
+        ? window.UIAccounts.renderSharedRoleBadge(acc)
+        : '';
+      label.innerHTML = `<span style=\"white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\">${escapeHTML(acc.name)}</span> ${roleBadge} ${shareBadge}`;
       label.style.display = 'flex';
       label.style.alignItems = 'center';
       label.style.gap = '4px';
@@ -3325,15 +3334,27 @@ const UITransactions = {
       saving: { icon: 'piggy-bank', color: '#0ea5e9' }
     };
 
-    // Default to first active non-archived account if none selected
+    // Default to first active writable account if none selected
+    const writableAccounts = accounts.filter(a => !a.isArchived && (!a._isSharedItem || a._sharedRole === 'editor'));
     const nonArchived = accounts.filter(a => !a.isArchived);
-    const isValidSelectedFrom = selectedFromId && accounts.some(a => String(a.id) === String(selectedFromId));
-    const activeFromId = isValidSelectedFrom ? selectedFromId : (nonArchived.length > 0 ? nonArchived[0].id : (accounts.length > 0 ? accounts[0].id : null));
+    const defaultAccountPool = writableAccounts.length > 0 ? writableAccounts : nonArchived;
+
+    const selectedFromAcc = selectedFromId ? accounts.find(a => String(a.id) === String(selectedFromId)) : null;
+    const isSelectedFromValid = selectedFromAcc && (!selectedFromAcc.isArchived || String(selectedFromAcc.id) === String(selectedFromId)) && (!selectedFromAcc._isSharedItem || selectedFromAcc._sharedRole === 'editor');
+    const activeFromId = isSelectedFromValid ? selectedFromId : (defaultAccountPool.length > 0 ? defaultAccountPool[0].id : (accounts.length > 0 ? accounts[0].id : null));
+
     let activeToId = selectedToId;
-    if (!activeToId && accounts.length > 1) {
-      activeToId = (nonArchived.find(a => String(a.id) !== String(activeFromId)) || accounts.find(a => String(a.id) !== String(activeFromId)))?.id || accounts[1].id;
-    } else if (!activeToId && accounts.length === 1) {
-      activeToId = accounts[0].id;
+    const selectedToAcc = selectedToId ? accounts.find(a => String(a.id) === String(selectedToId)) : null;
+    const isSelectedToValid = selectedToAcc && (!selectedToAcc.isArchived || String(selectedToAcc.id) === String(selectedToId)) && (!selectedToAcc._isSharedItem || selectedToAcc._sharedRole === 'editor');
+
+    if (!isSelectedToValid) {
+      if (defaultAccountPool.length > 1) {
+        activeToId = (defaultAccountPool.find(a => String(a.id) !== String(activeFromId)) || defaultAccountPool[1])?.id || null;
+      } else if (defaultAccountPool.length === 1) {
+        activeToId = defaultAccountPool[0].id;
+      } else {
+        activeToId = accounts.length > 0 ? accounts[0].id : null;
+      }
     }
 
     // Filter out archived accounts unless they are already selected
@@ -3341,7 +3362,7 @@ const UITransactions = {
 
     // Populate hidden native select for form reading
     const options = accounts.map(a => {
-      const shareTag = a._isSharedItem ? ` (Được chia sẻ${a._sharedFrom ? ' - ' + a._sharedFrom : ''})` : (a.isShared ? ' (Đang chia sẻ)' : '');
+      const shareTag = a._isSharedItem ? ` (Được chia sẻ${a._sharedFrom ? ' - ' + a._sharedFrom : ''}${a._sharedRole === 'editor' ? ' [Quyền ghi]' : ' [Chỉ xem]'})` : (a.isShared ? ' (Đang chia sẻ)' : '');
       const descTag = a.description ? ` [${a.description}]` : '';
       return `<option value="${a.id}">${escapeHTML(a.name)}${shareTag}${descTag}</option>`;
     }).join('');
@@ -3359,6 +3380,9 @@ const UITransactions = {
         const isSelected = String(activeFromId) === String(a.id);
         const isSharedItem = !!a._isSharedItem;
         const isSharedByMe = !isSharedItem && (a.isShared === 1 || a.isShared === true);
+        const isEditor = isSharedItem ? (a._sharedRole === 'editor') : true;
+        const isReadOnly = isSharedItem && !isEditor;
+
         const miniShareIndicator = isSharedItem
           ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>`
           : (isSharedByMe ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>` : '');
@@ -3372,17 +3396,21 @@ const UITransactions = {
           ? ` <span style="font-size:0.68rem; color:#3b82f6; font-weight:600; background:rgba(59,130,246,0.12); padding:1px 5px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;" title="Từ: ${escapeHTML(a._sharedFrom || 'Thành viên')}"><i data-lucide="share-2" style="width:8px;height:8px;"></i> Từ: ${escapeHTML(a._sharedFrom || 'Thành viên')}</span>`
           : (isSharedByMe ? ` <span style="font-size:0.68rem; color:#10b981; font-weight:600; background:rgba(16,185,129,0.12); padding:1px 5px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;"><i data-lucide="share-2" style="width:8px;height:8px;"></i> Đang chia sẻ</span>` : '');
 
+        const roleBadge = (window.UIAccounts && typeof window.UIAccounts.renderSharedRoleBadge === 'function')
+          ? window.UIAccounts.renderSharedRoleBadge(a)
+          : '';
+
         const subNotes = [];
         if (a.description && a.description.trim()) subNotes.push(escapeHTML(a.description.trim()));
         const subNoteStr = subNotes.length > 0 ? ` • ${subNotes.join(' • ')}` : '';
 
         return `
-          <div class="tx-account-option" data-id="${a.id}" data-name="${a.name}" data-type="${a.type || 'cash'}" onclick="UITransactions.selectAccount(${a.id}, '${a.name}', '${a.type || 'cash'}')"
-               style="${isSelected ? 'background:rgba(255,255,255,0.08);' : ''}">
+          <div class="tx-account-option ${isReadOnly ? 'disabled-readonly' : ''}" data-id="${a.id}" data-name="${a.name}" data-type="${a.type || 'cash'}" onclick="UITransactions.selectAccount(${a.id}, '${a.name}', '${a.type || 'cash'}')"
+               style="${isSelected ? 'background:rgba(255,255,255,0.08);' : ''} ${isReadOnly ? 'opacity:0.55; cursor:not-allowed;' : ''}">
             ${badgeHtml}
             <div style="flex:1; min-width:0;">
-              <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary); display: flex; align-items: center; gap: 4px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(a.name)}</span>${shareTag}</div>
-              <div style="font-size:0.78rem; color:var(--text-muted);">${bal}đ${subNoteStr}</div>
+              <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary); display: flex; align-items: center; gap: 4px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(a.name)}</span>${roleBadge}${shareTag}</div>
+              <div style="font-size:0.78rem; color:var(--text-muted);">${bal}₫${subNoteStr}</div>
             </div>
             ${isSelected ? '<i data-lucide="check" style="width:16px;height:16px;color:var(--primary);flex-shrink:0;"></i>' : ''}
           </div>`;
@@ -3397,6 +3425,9 @@ const UITransactions = {
         const isSelected = String(activeToId) === String(a.id);
         const isSharedItem = !!a._isSharedItem;
         const isSharedByMe = !isSharedItem && (a.isShared === 1 || a.isShared === true);
+        const isEditor = isSharedItem ? (a._sharedRole === 'editor') : true;
+        const isReadOnly = isSharedItem && !isEditor;
+
         const miniShareIndicator = isSharedItem
           ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>`
           : (isSharedByMe ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>` : '');
@@ -3410,17 +3441,21 @@ const UITransactions = {
           ? ` <span style="font-size:0.68rem; color:#3b82f6; font-weight:600; background:rgba(59,130,246,0.12); padding:1px 5px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;" title="Từ: ${escapeHTML(a._sharedFrom || 'Thành viên')}"><i data-lucide="share-2" style="width:8px;height:8px;"></i> Từ: ${escapeHTML(a._sharedFrom || 'Thành viên')}</span>`
           : (isSharedByMe ? ` <span style="font-size:0.68rem; color:#10b981; font-weight:600; background:rgba(16,185,129,0.12); padding:1px 5px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;"><i data-lucide="share-2" style="width:8px;height:8px;"></i> Đang chia sẻ</span>` : '');
 
+        const roleBadge = (window.UIAccounts && typeof window.UIAccounts.renderSharedRoleBadge === 'function')
+          ? window.UIAccounts.renderSharedRoleBadge(a)
+          : '';
+
         const subNotes = [];
         if (a.description && a.description.trim()) subNotes.push(escapeHTML(a.description.trim()));
         const subNoteStr = subNotes.length > 0 ? ` • ${subNotes.join(' • ')}` : '';
 
         return `
-          <div class="tx-account-option" data-id="${a.id}" data-name="${a.name}" data-type="${a.type || 'cash'}" onclick="UITransactions.selectToAccount(${a.id}, '${a.name}', '${a.type || 'cash'}')"
-               style="${isSelected ? 'background:rgba(255,255,255,0.08);' : ''}">
+          <div class="tx-account-option ${isReadOnly ? 'disabled-readonly' : ''}" data-id="${a.id}" data-name="${a.name}" data-type="${a.type || 'cash'}" onclick="UITransactions.selectToAccount(${a.id}, '${a.name}', '${a.type || 'cash'}')"
+               style="${isSelected ? 'background:rgba(255,255,255,0.08);' : ''} ${isReadOnly ? 'opacity:0.55; cursor:not-allowed;' : ''}">
             ${badgeHtml}
             <div style="flex:1; min-width:0;">
-              <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary); display: flex; align-items: center; gap: 4px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(a.name)}</span>${shareTag}</div>
-              <div style="font-size:0.78rem; color:var(--text-muted);">${bal}đ${subNoteStr}</div>
+              <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary); display: flex; align-items: center; gap: 4px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(a.name)}</span>${roleBadge}${shareTag}</div>
+              <div style="font-size:0.78rem; color:var(--text-muted);">${bal}₫${subNoteStr}</div>
             </div>
             ${isSelected ? '<i data-lucide="check" style="width:16px;height:16px;color:var(--primary);flex-shrink:0;"></i>' : ''}
           </div>`;
@@ -3446,6 +3481,7 @@ const UITransactions = {
       window.UIAccounts.openSourceAccountPicker({
         title: title,
         allowNone: false,
+        forbidReadOnly: true,
         selectedId: curVal,
         onSelect: async (accId) => {
           if (!accId) return;
@@ -3465,6 +3501,7 @@ const UITransactions = {
       window.UIAccounts.openSourceAccountPicker({
         title: 'Chuyển Đến Tài Khoản',
         allowNone: false,
+        forbidReadOnly: true,
         selectedId: curVal,
         onSelect: async (accId) => {
           if (!accId) return;
@@ -3496,6 +3533,14 @@ const UITransactions = {
   },
 
   async selectAccount(id, name, type) {
+    if (id) {
+      const acc = await db.accounts.get(Number(id));
+      if (acc && acc._isSharedItem && acc._sharedRole !== 'editor') {
+        const owner = acc._sharedFrom ? ` (chia sẻ bởi ${acc._sharedFrom})` : '';
+        showToast(`Tài khoản "${acc.name}"${owner} chỉ có quyền xem, bạn không thể chọn để ghi chép giao dịch!`, 'error');
+        return;
+      }
+    }
     this.userChangedAccount = true;
     const fromSelect = document.getElementById('tx-account-select');
     if (fromSelect) fromSelect.value = id;
@@ -3506,6 +3551,14 @@ const UITransactions = {
   },
 
   async selectToAccount(id, name, type) {
+    if (id) {
+      const acc = await db.accounts.get(Number(id));
+      if (acc && acc._isSharedItem && acc._sharedRole !== 'editor') {
+        const owner = acc._sharedFrom ? ` (chia sẻ bởi ${acc._sharedFrom})` : '';
+        showToast(`Tài khoản nhận "${acc.name}"${owner} chỉ có quyền xem, bạn không thể chọn để ghi chép giao dịch!`, 'error');
+        return;
+      }
+    }
     const toSelect = document.getElementById('tx-to-account-select');
     if (toSelect) toSelect.value = id;
     this.closeToAccountDropdown();
@@ -3519,6 +3572,22 @@ const UITransactions = {
     const fromSelect = document.getElementById('tx-account-select');
     const toSelect = document.getElementById('tx-to-account-select');
     if (!fromSelect || !toSelect) return;
+
+    if (fromSelect.value) {
+      const fromAcc = await db.accounts.get(Number(fromSelect.value));
+      if (fromAcc && fromAcc._isSharedItem && fromAcc._sharedRole !== 'editor') {
+        showToast(`Tài khoản "${fromAcc.name}" chỉ có quyền xem, không thể dùng để giao dịch!`, 'error');
+        return;
+      }
+    }
+    if (toSelect.value) {
+      const toAcc = await db.accounts.get(Number(toSelect.value));
+      if (toAcc && toAcc._isSharedItem && toAcc._sharedRole !== 'editor') {
+        showToast(`Tài khoản "${toAcc.name}" chỉ có quyền xem, không thể dùng để giao dịch!`, 'error');
+        return;
+      }
+    }
+
     const temp = fromSelect.value;
     fromSelect.value = toSelect.value;
     toSelect.value = temp;
@@ -3783,6 +3852,13 @@ const UITransactions = {
     }
     const acc = await db.accounts.get(accId);
     if (acc) {
+      if (acc._isSharedItem && acc._sharedRole !== 'editor') {
+        const writableAccs = (await db.accounts.toArray()).filter(a => !a.isDeleted && !a.isArchived && (!a._isSharedItem || a._sharedRole === 'editor'));
+        if (writableAccs.length > 0) {
+          fromSelect.value = writableAccs[0].id;
+          return this.updateSelectedAccountDisplay();
+        }
+      }
       const iconMap = {
         cash: { icon: 'wallet', color: '#10b981' },
         bank: { icon: 'landmark', color: '#4f46e5' },
@@ -3815,8 +3891,12 @@ const UITransactions = {
         shareBadge = `<span style="font-size: 0.68rem; color: #10b981; font-weight: 600; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;"><i data-lucide="share-2" style="width: 9px; height: 9px;"></i> Đang chia sẻ</span>`;
       }
 
+      const roleBadge = (window.UIAccounts && typeof window.UIAccounts.renderSharedRoleBadge === 'function')
+        ? window.UIAccounts.renderSharedRoleBadge(acc)
+        : '';
+
       if (label) {
-        label.innerHTML = `<div style="display: flex; align-items: center; gap: 6px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0;">${escapeHTML(acc.name)}</span>${shareBadge}</div>`;
+        label.innerHTML = `<div style="display: flex; align-items: center; gap: 6px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0;">${escapeHTML(acc.name)}</span>${roleBadge}${shareBadge}</div>`;
       }
 
       if (balanceEl) {
@@ -3856,6 +3936,15 @@ const UITransactions = {
     }
     const acc = await db.accounts.get(accId);
     if (acc) {
+      if (acc._isSharedItem && acc._sharedRole !== 'editor') {
+        const fromSelect = document.getElementById('tx-account-select');
+        const fromId = fromSelect ? fromSelect.value : null;
+        const writableAccs = (await db.accounts.toArray()).filter(a => !a.isDeleted && !a.isArchived && String(a.id) !== String(fromId) && (!a._isSharedItem || a._sharedRole === 'editor'));
+        if (writableAccs.length > 0) {
+          toSelect.value = writableAccs[0].id;
+          return this.updateSelectedToAccountDisplay();
+        }
+      }
       const iconMap = {
         cash: { icon: 'wallet', color: '#10b981' },
         bank: { icon: 'landmark', color: '#4f46e5' },
@@ -3888,8 +3977,12 @@ const UITransactions = {
         shareBadge = `<span style="font-size: 0.68rem; color: #10b981; font-weight: 600; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;"><i data-lucide="share-2" style="width: 9px; height: 9px;"></i> Đang chia sẻ</span>`;
       }
 
+      const roleBadge = (window.UIAccounts && typeof window.UIAccounts.renderSharedRoleBadge === 'function')
+        ? window.UIAccounts.renderSharedRoleBadge(acc)
+        : '';
+
       if (label) {
-        label.innerHTML = `<div style="display: flex; align-items: center; gap: 6px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0;">${escapeHTML(acc.name)}</span>${shareBadge}</div>`;
+        label.innerHTML = `<div style="display: flex; align-items: center; gap: 6px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0;">${escapeHTML(acc.name)}</span>${roleBadge}${shareBadge}</div>`;
       }
 
       if (balanceEl) {
@@ -4409,6 +4502,23 @@ const UITransactions = {
 
     const accountId = document.getElementById('tx-account-select').value;
     const toAccountId = document.getElementById('tx-to-account-select')?.value;
+
+    if (accountId) {
+      const fromAcc = await db.accounts.get(Number(accountId));
+      if (fromAcc && fromAcc._isSharedItem && fromAcc._sharedRole !== 'editor') {
+        const owner = fromAcc._sharedFrom ? ` (chia sẻ bởi ${fromAcc._sharedFrom})` : '';
+        showToast(`Tài khoản "${fromAcc.name}"${owner} chỉ có quyền xem, bạn không thể ghi chép giao dịch!`, 'error');
+        return;
+      }
+    }
+    if (type === 'transfer' && toAccountId) {
+      const toAcc = await db.accounts.get(Number(toAccountId));
+      if (toAcc && toAcc._isSharedItem && toAcc._sharedRole !== 'editor') {
+        const owner = toAcc._sharedFrom ? ` (chia sẻ bởi ${toAcc._sharedFrom})` : '';
+        showToast(`Tài khoản nhận "${toAcc.name}"${owner} chỉ có quyền xem, bạn không thể ghi chép giao dịch!`, 'error');
+        return;
+      }
+    }
     const categoryId = document.getElementById('tx-category-id-input')?.value;
     const date = document.getElementById('tx-date-input').value;
     const time = document.getElementById('tx-time-input').value || new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -4983,6 +5093,23 @@ const UITransactions = {
     const tx = await db.transactions.get(Number(txId));
     if (!tx || tx.isDeleted) return;
 
+    if (tx.accountId) {
+      const acc = await db.accounts.get(Number(tx.accountId));
+      if (acc && acc._isSharedItem && acc._sharedRole !== 'editor') {
+        const owner = acc._sharedFrom ? ` (chia sẻ bởi ${acc._sharedFrom})` : '';
+        showToast(`Giao dịch này thuộc tài khoản "${acc.name}"${owner} (chỉ có quyền xem), bạn không thể chỉnh sửa!`, 'warning');
+        return;
+      }
+    }
+    if (tx.toAccountId) {
+      const toAcc = await db.accounts.get(Number(tx.toAccountId));
+      if (toAcc && toAcc._isSharedItem && toAcc._sharedRole !== 'editor') {
+        const owner = toAcc._sharedFrom ? ` (chia sẻ bởi ${toAcc._sharedFrom})` : '';
+        showToast(`Giao dịch này thuộc tài khoản nhận "${toAcc.name}"${owner} (chỉ có quyền xem), bạn không thể chỉnh sửa!`, 'warning');
+        return;
+      }
+    }
+
     // Nếu giao dịch liên kết với Sổ Vay Ngân Hàng: Khóa không cho sửa tại đây để bảo toàn logic
     if (tx.loanId) {
       const loan = await db.loans.get(Number(tx.loanId));
@@ -5088,6 +5215,24 @@ const UITransactions = {
     if (existingTx && (existingTx.loanId || existingTx.loanAction)) {
       showToast('Giao dịch thuộc Sổ Vay Ngân Hàng, không thể xóa tại đây! Vui lòng quản lý trong mục Sổ Vay.', 'warning');
       return;
+    }
+    if (existingTx) {
+      if (existingTx.accountId) {
+        const acc = await db.accounts.get(Number(existingTx.accountId));
+        if (acc && acc._isSharedItem && acc._sharedRole !== 'editor') {
+          const owner = acc._sharedFrom ? ` (chia sẻ bởi ${acc._sharedFrom})` : '';
+          showToast(`Tài khoản "${acc.name}"${owner} chỉ có quyền xem, bạn không thể xóa giao dịch này!`, 'error');
+          return;
+        }
+      }
+      if (existingTx.toAccountId) {
+        const toAcc = await db.accounts.get(Number(existingTx.toAccountId));
+        if (toAcc && toAcc._isSharedItem && toAcc._sharedRole !== 'editor') {
+          const owner = toAcc._sharedFrom ? ` (chia sẻ bởi ${toAcc._sharedFrom})` : '';
+          showToast(`Tài khoản nhận "${toAcc.name}"${owner} chỉ có quyền xem, bạn không thể xóa giao dịch này!`, 'error');
+          return;
+        }
+      }
     }
     const ok = await showConfirm({
       title: 'Xoá Giao Dịch',

@@ -6124,6 +6124,23 @@ body.dark .switch .slider {
   box-shadow: 0 0 0 1px var(--primary);
 }
 
+.source-acc-item.disabled-readonly {
+  opacity: 0.55;
+  cursor: not-allowed !important;
+  border-style: dashed;
+  position: relative;
+}
+
+.source-acc-item.disabled-readonly:hover {
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  background: rgba(239, 68, 68, 0.05) !important;
+}
+
+.source-acc-item.disabled-readonly:active {
+  transform: none;
+}
+
+
 
 /* Modal Backdrop for Full Dimmed Area */
 .modal-backdrop {

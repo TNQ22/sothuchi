@@ -533,7 +533,13 @@ async function addTransaction(data) {
   // Tự động nhận diện và gắn metadata nếu giao dịch thuộc tài khoản được chia sẻ (Shared Account)
   try {
     const targetAcc = await db.accounts.get(tx.accountId);
+    if (targetAcc && targetAcc._isSharedItem && targetAcc._sharedRole !== 'editor') {
+      throw new Error(`Tài khoản "${targetAcc.name}" chỉ có quyền xem, không thể ghi giao dịch!`);
+    }
     const toAcc = tx.toAccountId ? await db.accounts.get(tx.toAccountId) : null;
+    if (toAcc && toAcc._isSharedItem && toAcc._sharedRole !== 'editor') {
+      throw new Error(`Tài khoản nhận "${toAcc.name}" chỉ có quyền xem, không thể ghi giao dịch!`);
+    }
     const sharedAcc = (targetAcc && targetAcc._isSharedItem) ? targetAcc : (toAcc && toAcc._isSharedItem ? toAcc : null);
     if (sharedAcc) {
       tx._isSharedItem = true;
@@ -552,7 +558,11 @@ async function addTransaction(data) {
         }
       }
     }
-  } catch (_) {}
+  } catch (err) {
+    if (err.message && err.message.includes('chỉ có quyền xem')) {
+      throw err;
+    }
+  }
 
   // If user checked "Đi vay để trả khoản này", create linked borrow debt record
   if (data.isBorrowed && data.borrowPerson) {

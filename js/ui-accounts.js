@@ -1917,6 +1917,8 @@ const UIAccounts = {
 
   /* ==================== SOURCE ACCOUNT PICKER (MODAL CHỌN NGUỒN TIỀN KÈM LOGO) ==================== */
   _sourcePickerCallback: null,
+  _sourcePickerOptions: null,
+  _currentPickerAccounts: null,
 
   async openSourceAccountPicker(options = {}) {
     const title = options.title || 'Chọn Nguồn Tiền';
@@ -1924,6 +1926,8 @@ const UIAccounts = {
     const noneLabel = options.noneLabel || 'Không trích tiền (Ngoài ví / Có sẵn)';
     const noneDesc = options.noneDesc || 'Không trừ số dư ví';
     const selectedId = options.selectedId !== undefined ? String(options.selectedId || '') : '';
+    const forbidReadOnly = options.forbidReadOnly !== false; // Mặc định cấm chọn tài khoản chỉ xem khi ghi chép / giao dịch
+    this._sourcePickerOptions = { ...options, forbidReadOnly };
     this._sourcePickerCallback = options.onSelect || null;
 
     const modal = document.getElementById('modal-source-account-picker');
@@ -1940,6 +1944,7 @@ const UIAccounts = {
 
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
     accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
+    this._currentPickerAccounts = accounts;
     const active = accounts.filter(a => !a.isArchived || String(a.id) === selectedId);
 
     let html = '';
@@ -1973,6 +1978,9 @@ const UIAccounts = {
       const balanceColor = acc.balance >= 0 ? '#10b981' : '#ef4444';
       const isSharedItem = !!acc._isSharedItem;
       const isSharedByMe = !isSharedItem && (acc.isShared === 1 || acc.isShared === true);
+      const isEditor = isSharedItem ? (acc._sharedRole === 'editor') : true;
+      const isReadOnly = isSharedItem && !isEditor;
+      const isForbidden = forbidReadOnly && isReadOnly;
 
       let shareBadge = '';
       if (isSharedItem) {
@@ -1984,7 +1992,7 @@ const UIAccounts = {
         `;
       } else if (isSharedByMe) {
         shareBadge = `
-          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 0; white-space: nowrap; overflow: hidden;" title="Đang chia sẻ">
+          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 0; white-space: nowrap;" title="Đang chia sẻ">
             <i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0;"></i> <span>Đang chia sẻ</span>
           </span>
         `;
@@ -2002,14 +2010,17 @@ const UIAccounts = {
       const hasSubRow = !!shareBadge || subParts.length > 0;
 
       html += `
-        <div class="source-acc-item ${isSelected ? 'active' : ''}" onclick="UIAccounts.selectSourceAccount('${acc.id}')">
+        <div class="source-acc-item ${isSelected ? 'active' : ''} ${isForbidden ? 'disabled-readonly' : ''}" onclick="UIAccounts.selectSourceAccount('${acc.id}')" ${isForbidden ? 'data-is-readonly="true"' : ''}>
           <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
             <div style="position: relative; flex-shrink: 0;">
               ${this.renderLogoBadge(acc, 40)}
               ${miniShareIndicator}
             </div>
             <div style="min-width: 0; flex: 1;">
-              <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">${escapeHTML(acc.name)}</div>
+              <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">${escapeHTML(acc.name)}</span>
+                ${this.renderSharedRoleBadge(acc)}
+              </div>
               ${hasSubRow ? `
                 <div style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0;">
                   ${shareBadge}
@@ -2035,6 +2046,16 @@ const UIAccounts = {
   },
 
   selectSourceAccount(accId) {
+    if (this._sourcePickerOptions && this._sourcePickerOptions.forbidReadOnly && accId) {
+      const acc = this._currentPickerAccounts?.find(a => String(a.id) === String(accId));
+      if (acc && acc._isSharedItem && acc._sharedRole !== 'editor') {
+        const owner = acc._sharedFrom ? ` (chia sẻ bởi ${acc._sharedFrom})` : '';
+        if (window.showToast) {
+          window.showToast(`Tài khoản "${acc.name}"${owner} chỉ có quyền xem, bạn không thể chọn để ghi chép giao dịch!`, 'error');
+        }
+        return;
+      }
+    }
     this.closeSourceAccountPicker();
     if (typeof this._sourcePickerCallback === 'function') {
       this._sourcePickerCallback(accId);
