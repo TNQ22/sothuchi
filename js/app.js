@@ -22,8 +22,9 @@ function showToast(message, type = 'info') {
   const existing = container.querySelectorAll('.toast');
   existing.forEach(t => t.remove());
 
-  const isMultiLine = typeof message === 'string' && message.includes('\n');
-  const hasEmojiIcon = typeof message === 'string' && (/^[✅❌⚠️ℹ️]/.test(message.trim()) || isMultiLine);
+  const msgText = typeof message === 'string' ? message : String(message || '');
+  const isMultiLine = msgText.includes('\n');
+  const hasEmojiIcon = /^[\u2705\u274c\u26a0\ufe0f\u2139\ufe0f]/.test(msgText.trim()) || isMultiLine;
 
   const toast = document.createElement('div');
   toast.className = `toast ${type}${isMultiLine ? ' multi-line' : ''}`;
@@ -33,11 +34,11 @@ function showToast(message, type = 'info') {
   if (type === 'warning') iconName = 'alert-circle';
 
   if (hasEmojiIcon) {
-    toast.innerHTML = `<span style="font-size: 0.85rem;">${escapeHTML(message)}</span>`;
+    toast.innerHTML = `<span style="font-size: 0.85rem;">${escapeHTML(msgText)}</span>`;
   } else {
     toast.innerHTML = `
       <i data-lucide="${iconName}"></i>
-      <span>${escapeHTML(message)}</span>
+      <span>${escapeHTML(msgText)}</span>
     `;
   }
   container.appendChild(toast);
@@ -49,7 +50,10 @@ function showToast(message, type = 'info') {
   const dismiss = (direction = 'up') => {
     if (isDismissed) return;
     isDismissed = true;
-    if (timer) clearTimeout(timer);
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
 
     toast.style.transition = 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease';
     if (direction === 'left') {
@@ -66,35 +70,57 @@ function showToast(message, type = 'info') {
     }, 200);
   };
 
-  // 1. Tự động tắt sau 2 giây (hoặc 4 giây nếu nhiều dòng)
-  const duration = isMultiLine ? 4000 : 2000;
-  timer = setTimeout(() => dismiss('up'), duration);
+  // 1. Thời gian hiển thị tương ứng với độ dài câu (tối thiểu 3.2s, tối đa 7s)
+  const duration = Math.min(7000, Math.max(3200, msgText.length * 65));
 
-  // 2. Chạm hoặc click vào là tắt thông báo luôn
-  toast.addEventListener('click', (e) => {
-    e.stopPropagation();
-    dismiss('up');
-  });
+  const startTimer = (ms = duration) => {
+    if (isDismissed) return;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => dismiss('up'), ms);
+  };
 
-  // 3. Hỗ trợ vuốt để tắt (Touch Swipe: vuốt lên, vuốt trái, vuốt phải)
+  const pauseTimer = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  };
+
+  // Bắt đầu đếm thời gian tự ẩn ban đầu
+  startTimer(duration);
+
+  // 2. Chạm giữ để đọc & vuốt để đóng (Touch Gesture Support)
   let startX = 0;
   let startY = 0;
   let isTouching = false;
+  let touchStartTime = 0;
+  let isHolding = false;
+  let hasMoved = false;
 
+  // Khi ngón tay chạm vào thanh thông báo: TẠM DỪNG đếm ngược ngay lập tức
   toast.addEventListener('touchstart', (e) => {
-    if (e.touches.length !== 1) return;
+    if (e.touches.length !== 1 || isDismissed) return;
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
     isTouching = true;
+    hasMoved = false;
+    touchStartTime = Date.now();
+    isHolding = true;
+
+    pauseTimer(); // Không bao giờ tự ẩn khi người dùng đang giữ ngón tay đọc
     toast.style.transition = 'none';
   }, { passive: true });
 
   toast.addEventListener('touchmove', (e) => {
-    if (!isTouching || e.touches.length !== 1) return;
+    if (!isTouching || e.touches.length !== 1 || isDismissed) return;
     const currentX = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
     const deltaX = currentX - startX;
     const deltaY = currentY - startY;
+
+    if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+      hasMoved = true;
+    }
 
     // Hỗ trợ vuốt lên (deltaY < 0) hoặc vuốt sang 2 bên
     if (deltaY < 0 || Math.abs(deltaX) > Math.abs(deltaY)) {
@@ -106,40 +132,71 @@ function showToast(message, type = 'info') {
   }, { passive: true });
 
   toast.addEventListener('touchend', (e) => {
-    if (!isTouching) return;
+    if (!isTouching || isDismissed) return;
     isTouching = false;
+    const touchDuration = Date.now() - touchStartTime;
     const touch = e.changedTouches[0];
     const deltaX = touch ? touch.clientX - startX : 0;
     const deltaY = touch ? touch.clientY - startY : 0;
 
-    // Vuốt lên trên
-    if (deltaY < -15) {
+    // Vuốt lên trên -> Đóng ngay
+    if (deltaY < -18) {
       dismiss('up');
       return;
     }
-    // Vuốt sang trái
+    // Vuốt sang trái -> Đóng ngay
     if (deltaX < -25) {
       dismiss('left');
       return;
     }
-    // Vuốt sang phải
+    // Vuốt sang phải -> Đóng ngay
     if (deltaX > 25) {
       dismiss('right');
       return;
     }
 
-    // Nếu chỉ chạm nhẹ hoặc chưa đủ ngưỡng -> phục hồi vị trí
-    toast.style.transition = 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease';
-    toast.style.transform = 'translate(0, 0)';
-    toast.style.opacity = '1';
+    // Nếu người dùng chạm giữ để đọc (> 250ms hoặc có di chuyển nhẹ):
+    // Phục hồi vị trí và đợi thêm 2.5 giây sau khi buông tay mới ẩn
+    if (touchDuration > 250 || hasMoved) {
+      toast.style.transition = 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease';
+      toast.style.transform = 'translate(0, 0)';
+      toast.style.opacity = '1';
+      setTimeout(() => { isHolding = false; }, 120);
+      startTimer(2500);
+      return;
+    }
+
+    // Nếu chỉ chạm nhanh (quick tap < 250ms) -> Coi như bấm để đóng
+    isHolding = false;
+    dismiss('up');
   }, { passive: true });
 
   toast.addEventListener('touchcancel', () => {
+    if (isDismissed) return;
     isTouching = false;
+    isHolding = false;
     toast.style.transition = 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease';
     toast.style.transform = 'translate(0, 0)';
     toast.style.opacity = '1';
+    startTimer(2000);
   }, { passive: true });
+
+  // Xử lý click (tránh đóng nhầm sau khi chạm giữ đọc trên mobile)
+  toast.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (isHolding) return;
+    dismiss('up');
+  });
+
+  // Hỗ trợ chuột trên máy tính: rê chuột vào để đọc (tạm dừng), rời chuột đếm tiếp
+  toast.addEventListener('mouseenter', () => {
+    pauseTimer();
+  });
+  toast.addEventListener('mouseleave', () => {
+    if (!isTouching && !isDismissed) {
+      startTimer(2000);
+    }
+  });
 }
 
 class App {

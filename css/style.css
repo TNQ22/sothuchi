@@ -1672,39 +1672,40 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   border-color: var(--warning);
 }
 
-/* Toast Notifications (Modern Compact Dynamic Pill) */
+/* Toast Notifications (Modern Compact Dynamic Pill / Floating Banner) */
 #toast-container {
   position: fixed;
   top: max(12px, env(safe-area-inset-top, 12px));
   left: 50%;
   transform: translateX(-50%);
-  z-index: 99999;
+  z-index: 2147483647 !important; /* Luôn nổi cao nhất trên mọi modal, dialog, backdrop, keypad */
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   pointer-events: none;
   width: max-content;
   max-width: calc(100vw - 24px);
+  box-sizing: border-box;
 }
 
 .toast {
   position: relative;
   min-width: 0;
-  max-width: min(420px, calc(100vw - 28px));
-  padding: 7px 14px;
-  border-radius: 9999px;
+  max-width: min(450px, calc(100vw - 24px));
+  padding: 8px 16px;
+  border-radius: 18px;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.12);
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 0.82rem;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 9px;
+  font-size: 0.84rem;
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1.4;
   pointer-events: auto;
   cursor: pointer;
   user-select: none;
@@ -1713,20 +1714,30 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   animation: toastSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform, opacity;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  box-sizing: border-box;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.toast:active {
+  filter: brightness(0.96);
 }
 
 .toast i {
   flex-shrink: 0;
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
 }
 
 .toast span {
   display: inline-block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: calc(100vw - 72px);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  text-align: left;
+  line-height: 1.42;
+  flex: 1;
 }
 
 .toast.success {
@@ -13518,15 +13529,15 @@ body.light .ptr-circle-badge,
 }
 
 .toast.multi-line {
-  border-radius: 14px;
-  padding: 9px 16px;
+  border-radius: 18px;
+  padding: 10px 16px;
   align-items: flex-start;
   gap: 10px;
 }
 .toast.multi-line span {
   white-space: pre-line;
   text-align: left;
-  line-height: 1.5;
+  line-height: 1.45;
   display: block;
 }
 
