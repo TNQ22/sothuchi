@@ -145,6 +145,30 @@ const UIAccounts = {
       }
     }
 
+    // Dọn dẹp cờ isShared bị gán nhầm trên toàn bộ tài khoản cục bộ do mã hóa cũ
+    const cleanupForcedSharedKey = 'cleanup_acc_forced_is_shared_v1';
+    if (!localStorage.getItem(cleanupForcedSharedKey)) {
+      localStorage.setItem(cleanupForcedSharedKey, '1');
+      if (typeof db !== 'undefined' && db.accounts && db.settings) {
+        (async () => {
+          try {
+            const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
+            const activeOwnedIds = new Set(
+              (ownedSetting && Array.isArray(ownedSetting.value))
+                ? ownedSetting.value.filter(x => x.itemType === 'account').map(x => String(x.itemId))
+                : []
+            );
+            const accs = await db.accounts.toArray();
+            for (const a of accs) {
+              if (!a._isSharedItem && a.isShared === 1 && !activeOwnedIds.has(String(a.id))) {
+                await db.accounts.update(a.id, { isShared: 0, updatedAt: Date.now() });
+              }
+            }
+          } catch (_) {}
+        })();
+      }
+    }
+
     try {
       localStorage.removeItem('sothuchi_shared_view_mode');
     } catch (_) {}

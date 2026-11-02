@@ -1210,14 +1210,7 @@ class ServerSyncService {
       throw new Error('Bạn chỉ có quyền xem, không thể ghi đè dữ liệu lên sổ này.');
     }
 
-    // Đánh dấu tất cả tài khoản cục bộ thành isShared = 1 để cùng đồng bộ với Vault
     const allAccs = await db.accounts.toArray();
-    for (const a of allAccs) {
-      if (a.isShared !== 1) {
-        a.isShared = 1;
-        await db.accounts.put(a);
-      }
-    }
 
     const allTxs = await db.transactions.toArray();
 
@@ -1656,6 +1649,7 @@ class ServerSyncService {
         await this.checkRemoteVersionAndSync();
         if (this.serverUrl && this.token) {
           this.syncReceivedSharedItems().catch(() => {});
+          this.pullAndMergeOwnedSharedProjections().catch(() => {});
         }
       }
     });
@@ -1664,6 +1658,7 @@ class ServerSyncService {
       await this.checkRemoteVersionAndSync();
       if (this.serverUrl && this.token) {
         this.syncReceivedSharedItems().catch(() => {});
+        this.pullAndMergeOwnedSharedProjections().catch(() => {});
       }
     });
   }

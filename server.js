@@ -775,6 +775,37 @@ class DatabaseManager {
     };
   }
 
+  touchVaultVersion(vaultId, updatedBy = 'system') {
+    const now = new Date().toISOString();
+    try {
+      if (this.isSqlite) {
+        this.sqliteDb.prepare(`
+          UPDATE vault_data
+          SET version = version + 1, updated_at = ?, updated_by = ?
+          WHERE vault_id = ?
+        `).run(now, updatedBy, vaultId);
+        this.sqliteDb.prepare(`
+          UPDATE vaults
+          SET version = version + 1, updated_at = ?
+          WHERE id = ?
+        `).run(now, vaultId);
+      } else {
+        if (this.jsonStore.vault_data && this.jsonStore.vault_data[vaultId]) {
+          this.jsonStore.vault_data[vaultId].version = (this.jsonStore.vault_data[vaultId].version || 0) + 1;
+          this.jsonStore.vault_data[vaultId].updated_at = now;
+          this.jsonStore.vault_data[vaultId].updated_by = updatedBy;
+        }
+        if (this.jsonStore.vaults && this.jsonStore.vaults[vaultId]) {
+          this.jsonStore.vaults[vaultId].version = (this.jsonStore.vaults[vaultId].version || 0) + 1;
+          this.jsonStore.vaults[vaultId].updated_at = now;
+        }
+        this.saveJsonStore();
+      }
+    } catch (e) {
+      console.warn('[DBManager] touchVaultVersion error:', e.message);
+    }
+  }
+
   getVaultHistoryEntry(vaultId, historyId) {
     if (this.isSqlite) {
       const stmt = this.sqliteDb.prepare(`
@@ -1020,7 +1051,10 @@ class DatabaseManager {
   getReceivedItemData(vaultId, itemType, itemId) {
     const proj = this.getItemProjection(vaultId, itemType, itemId);
     const vault = this.getVaultData(vaultId);
-    const vaultIsEncrypted = vault && vault.data && typeof vault.data === 'string' && vault.data.startsWith('vault_enc_');
+    const vaultIsEncrypted = vault && vault.data && (
+      (typeof vault.data === 'string' && vault.data.startsWith('vault_enc_')) ||
+      (typeof vault.data === 'object' && vault.data.encrypted)
+    );
 
     // 1. Nếu có Bản Chiếu không mã hóa, ưu tiên dùng ngay
     if (proj && proj.data && !proj.data.encrypted) {
@@ -1116,14 +1150,29 @@ class DatabaseManager {
     // Nếu Editor gửi kèm bản chiếu đã cập nhật (hỗ trợ cả E2EE)
     if (incomingProjection) {
       this.saveItemProjection(share.vault_id, share.item_type, share.item_id, incomingProjection, email);
+      this.touchVaultVersion(share.vault_id, email);
       try {
         const vault = this.getVaultData(share.vault_id);
-        if (vault && vault.data && typeof vault.data === 'object' && !vault.data.encrypted && Array.isArray(vault.data.transactions)) {
-          const txsToMerge = Array.isArray(incomingTxs) && incomingTxs.length > 0
-            ? incomingTxs
-            : (!incomingProjection.encrypted && Array.isArray(incomingProjection.transactions) ? incomingProjection.transactions : null);
-          if (Array.isArray(txsToMerge)) {
-            vault.data.transactions = mergeTableData(vault.data.transactions, txsToMerge, false, 'transactions');
+        if (vault && vault.data && typeof vault.data === 'object' && !vault.data.encrypted) {
+          let vaultChanged = false;
+          if (Array.isArray(vault.data.transactions)) {
+            const txsToMerge = Array.isArray(incomingTxs) && incomingTxs.length > 0
+              ? incomingTxs
+              : (!incomingProjection.encrypted && Array.isArray(incomingProjection.transactions) ? incomingProjection.transactions : null);
+            if (Array.isArray(txsToMerge)) {
+              vault.data.transactions = mergeTableData(vault.data.transactions, txsToMerge, false, 'transactions');
+              vaultChanged = true;
+            }
+          }
+          if (share.item_type === 'account' && Array.isArray(vault.data.accounts) && incomingProjection.item && incomingProjection.item.balance !== undefined) {
+            const acc = vault.data.accounts.find(a => String(a.id) === String(share.item_id));
+            if (acc && acc.balance !== incomingProjection.item.balance) {
+              acc.balance = incomingProjection.item.balance;
+              acc.updatedAt = new Date().toISOString();
+              vaultChanged = true;
+            }
+          }
+          if (vaultChanged) {
             this.saveVaultData(share.vault_id, vault.data, email);
           }
         }
@@ -1138,6 +1187,7 @@ class DatabaseManager {
       const mergedTxs = mergeTableData(currentTxs, incomingTxs, false, 'transactions');
       proj.data.transactions = mergedTxs;
       this.saveItemProjection(share.vault_id, share.item_type, share.item_id, proj.data, email);
+      this.touchVaultVersion(share.vault_id, email);
 
       try {
         const vault = this.getVaultData(share.vault_id);
@@ -1158,6 +1208,7 @@ class DatabaseManager {
       const mergedTxs = mergeTableData(currentTxs, incomingTxs, false, 'transactions');
       vault.data.transactions = mergedTxs;
       this.saveVaultData(share.vault_id, vault.data, email);
+      this.touchVaultVersion(share.vault_id, email);
       return { success: true, count: mergedTxs.length };
     }
 

@@ -183,8 +183,12 @@ async function recalculateAccountBalances() {
 
       const hasHistory = (accTxs.length + accDebts.length + accSavings.length + accAccum.length + accAssets.length) > 0;
       
-      // Nếu tài khoản hoàn toàn không có lịch sử biến động nào và đã có số dư khác 0, giữ nguyên
+      // Nếu tài khoản hoàn toàn không có lịch sử biến động nào và đã có số dư khác 0:
+      // Đối với tài khoản được chia sẻ, nếu đã xóa hết giao dịch thì đặt lại về initialBalance
       if (!hasHistory) {
+        if (acc._isSharedItem && acc.balance !== Number(acc.initialBalance || 0)) {
+          await db.accounts.update(acc.id, { balance: Number(acc.initialBalance || 0), updatedAt: Date.now() });
+        }
         continue;
       }
 
@@ -618,14 +622,14 @@ async function deleteTransaction(txId) {
 
     // Rollback account balance
     if (tx.type === 'expense') {
-      const acc = await db.accounts.get(tx.accountId);
+      const acc = await db.accounts.get(Number(tx.accountId));
       if (acc) await db.accounts.update(acc.id, { balance: acc.balance + (tx.amount + fee), updatedAt: now });
     } else if (tx.type === 'income') {
-      const acc = await db.accounts.get(tx.accountId);
+      const acc = await db.accounts.get(Number(tx.accountId));
       if (acc) await db.accounts.update(acc.id, { balance: acc.balance - (tx.amount - fee), updatedAt: now });
     } else if (tx.type === 'transfer' && tx.toAccountId) {
-      const fromAcc = await db.accounts.get(tx.accountId);
-      const toAcc = await db.accounts.get(tx.toAccountId);
+      const fromAcc = await db.accounts.get(Number(tx.accountId));
+      const toAcc = await db.accounts.get(Number(tx.toAccountId));
       if (fromAcc) await db.accounts.update(fromAcc.id, { balance: fromAcc.balance + (tx.amount + fee), updatedAt: now });
       if (toAcc) await db.accounts.update(toAcc.id, { balance: toAcc.balance - tx.amount, updatedAt: now });
     }
