@@ -5283,7 +5283,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
         </button>
 
-        <button type="button" class="action-sheet-item danger" onclick="UIAccounts.handleActionSheetSelect('delete')">
+        <button type="button" class="action-sheet-item danger" id="action-sheet-delete-btn" onclick="UIAccounts.handleActionSheetSelect('delete')">
           <div class="action-sheet-item-icon" style="background: rgba(244, 63, 94, 0.12); color: #f43f5e;">
             <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
           </div>

@@ -567,6 +567,7 @@ const UIAccounts = {
     const leaveBtn = document.getElementById('action-sheet-leave-shared-btn');
     const uniShareBtn = document.getElementById('action-sheet-universal-share-btn');
     const archiveBtn = document.getElementById('action-sheet-archive-btn');
+    const deleteBtn = document.getElementById('action-sheet-delete-btn');
     const includeReportBtn = document.getElementById('action-sheet-include-report-btn');
     const includeReportSwitch = document.getElementById('action-sheet-include-report-switch');
     const includeReportBadge = document.getElementById('action-sheet-include-report-badge');
@@ -574,6 +575,7 @@ const UIAccounts = {
     if (leaveBtn) leaveBtn.style.display = isReceivedShare ? 'flex' : 'none';
     if (uniShareBtn) uniShareBtn.style.display = isReceivedShare ? 'none' : 'flex';
     if (archiveBtn) archiveBtn.style.display = isReceivedShare ? 'none' : 'flex';
+    if (deleteBtn) deleteBtn.style.display = isReceivedShare ? 'none' : 'flex';
     if (includeReportBtn) {
       includeReportBtn.style.display = isReceivedShare ? 'flex' : 'none';
       if (isReceivedShare) {
@@ -1532,7 +1534,7 @@ const UIAccounts = {
     if (shareCheck) shareCheck.checked = (acc.isShared === 1 || acc.isShared === true);
 
     const delBtn = document.getElementById('btn-delete-account');
-    if (delBtn) delBtn.style.display = 'flex';
+    if (delBtn) delBtn.style.display = acc._isSharedItem ? 'none' : 'flex';
 
     const saveBtn = document.getElementById('btn-save-account');
     if (saveBtn) {
