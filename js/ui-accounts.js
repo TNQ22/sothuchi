@@ -2019,7 +2019,7 @@ const UIAccounts = {
             <div style="min-width: 0; flex: 1;">
               <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
                 <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">${escapeHTML(acc.name)}</span>
-                ${this.renderSharedRoleBadge(acc)}
+                ${this.renderSharedRoleBadge(acc, !isForbidden)}
               </div>
               ${hasSubRow ? `
                 <div style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0;">
@@ -4870,7 +4870,7 @@ const UIAccounts = {
     return '';
   },
 
-  renderSharedRoleBadge(item) {
+  renderSharedRoleBadge(item, clickable = true) {
     if (!item || !item._isSharedItem) return '';
     const isEditor = item._sharedRole === 'editor';
     const roleText = isEditor ? 'Chỉnh sửa' : 'Chỉ xem';
@@ -4878,6 +4878,9 @@ const UIAccounts = {
     const roleClass = isEditor ? 'editor' : 'viewer';
     const owner = item._sharedFrom || 'Thành viên';
     const infoText = `Quyền: ${roleText} • Được chia sẻ bởi: ${owner}`;
+    if (!clickable) {
+      return `<span class="account-role-badge ${roleClass}" title="${escapeHTML(infoText)}"><i data-lucide="${roleIcon}" style="width: 12px; height: 12px;"></i></span>`;
+    }
     return `<span class="account-role-badge ${roleClass}" title="${escapeHTML(infoText)}" data-role-info="${escapeHTML(infoText)}" onclick="event.stopPropagation(); if (window.showToast) window.showToast(this.getAttribute('data-role-info'), 'info');"><i data-lucide="${roleIcon}" style="width: 12px; height: 12px;"></i></span>`;
   },
 

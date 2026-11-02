@@ -14,7 +14,7 @@ function escapeHTML(str) {
     .replace(/'/g, '&#039;');
 }
 
-function showToast(message, type = 'info') {
+function showToast(message, type = 'info', customDuration = null) {
   const container = document.getElementById('toast-container');
   if (!container) return;
 
@@ -70,8 +70,9 @@ function showToast(message, type = 'info') {
     }, 200);
   };
 
-  // 1. Thời gian hiển thị tương ứng với độ dài câu (tối thiểu 3.2s, tối đa 7s)
-  const duration = Math.min(7000, Math.max(3200, msgText.length * 65));
+  // 1. Thời gian hiển thị: Nếu có chỉ định customDuration thì dùng, nếu không thì tự tính thông minh theo độ dài câu (tối thiểu 3.2s, tối đa 7s)
+  const calculatedDuration = Math.min(7000, Math.max(3200, msgText.length * 65));
+  const duration = (typeof customDuration === 'number' && customDuration > 0) ? customDuration : calculatedDuration;
 
   const startTimer = (ms = duration) => {
     if (isDismissed) return;

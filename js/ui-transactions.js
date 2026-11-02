@@ -3397,7 +3397,7 @@ const UITransactions = {
           : (isSharedByMe ? ` <span style="font-size:0.68rem; color:#10b981; font-weight:600; background:rgba(16,185,129,0.12); padding:1px 5px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;"><i data-lucide="share-2" style="width:8px;height:8px;"></i> Đang chia sẻ</span>` : '');
 
         const roleBadge = (window.UIAccounts && typeof window.UIAccounts.renderSharedRoleBadge === 'function')
-          ? window.UIAccounts.renderSharedRoleBadge(a)
+          ? window.UIAccounts.renderSharedRoleBadge(a, !isReadOnly)
           : '';
 
         const subNotes = [];
@@ -3442,7 +3442,7 @@ const UITransactions = {
           : (isSharedByMe ? ` <span style="font-size:0.68rem; color:#10b981; font-weight:600; background:rgba(16,185,129,0.12); padding:1px 5px; border-radius:4px; display:inline-flex; align-items:center; gap:2px;"><i data-lucide="share-2" style="width:8px;height:8px;"></i> Đang chia sẻ</span>` : '');
 
         const roleBadge = (window.UIAccounts && typeof window.UIAccounts.renderSharedRoleBadge === 'function')
-          ? window.UIAccounts.renderSharedRoleBadge(a)
+          ? window.UIAccounts.renderSharedRoleBadge(a, !isReadOnly)
           : '';
 
         const subNotes = [];

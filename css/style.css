@@ -1693,16 +1693,16 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   position: relative;
   min-width: 0;
   max-width: min(450px, calc(100vw - 24px));
-  padding: 8px 16px;
+  padding: 9px 16px;
   border-radius: 18px;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.12);
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center; /* Căn giữa icon và toàn bộ khối text theo chiều dọc */
   justify-content: flex-start;
-  gap: 9px;
+  gap: 10px;
   font-size: 0.84rem;
   font-weight: 500;
   line-height: 1.4;
@@ -1723,11 +1723,16 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   filter: brightness(0.96);
 }
 
-.toast i {
+.toast i,
+.toast svg {
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
+  width: 18px;
+  height: 18px;
+  margin-top: 0;
+  align-self: center; /* Luôn căng đều giữa các hàng */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .toast span {
@@ -13531,7 +13536,7 @@ body.light .ptr-circle-badge,
 .toast.multi-line {
   border-radius: 18px;
   padding: 10px 16px;
-  align-items: flex-start;
+  align-items: center; /* Luôn căn giữa icon theo chiều dọc kể cả khi nhiều hàng */
   gap: 10px;
 }
 .toast.multi-line span {
