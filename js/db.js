@@ -183,11 +183,13 @@ async function recalculateAccountBalances() {
 
       const hasHistory = (accTxs.length + accDebts.length + accSavings.length + accAccum.length + accAssets.length) > 0;
       
-      // Nếu tài khoản hoàn toàn không có lịch sử biến động nào và đã có số dư khác 0:
-      // Đối với tài khoản được chia sẻ, nếu đã xóa hết giao dịch thì đặt lại về initialBalance
+      // Nếu tài khoản hoàn toàn không có bất kỳ lịch sử biến động nào (giao dịch, nợ, tiết kiệm, tích lũy, tài sản)
+      // thì số dư thực tế PHẢI là số dư ban đầu (initialBalance) - áp dụng cho CẢ tài khoản cá nhân và tài khoản chia sẻ
       if (!hasHistory) {
-        if (acc._isSharedItem && acc.balance !== Number(acc.initialBalance || 0)) {
-          await db.accounts.update(acc.id, { balance: Number(acc.initialBalance || 0), updatedAt: Date.now() });
+        const expectedBal = Number.isFinite(Number(acc.initialBalance)) ? Number(acc.initialBalance) : 0;
+        if (acc.balance !== expectedBal) {
+          await db.accounts.update(acc.id, { balance: expectedBal, updatedAt: Date.now() });
+          console.log(`[BalanceRecalc] Tài khoản "${acc.name}" không có lịch sử biến động, đặt lại số dư về ban đầu: ${acc.balance} -> ${expectedBal}đ`);
         }
         continue;
       }
@@ -637,6 +639,10 @@ async function deleteTransaction(txId) {
     // Soft delete for sync capability
     await db.transactions.update(tx.id, { isDeleted: 1, updatedAt: now });
   });
+
+  if (typeof recalculateAccountBalances === 'function') {
+    await recalculateAccountBalances();
+  }
 
   triggerAutoSync();
 }

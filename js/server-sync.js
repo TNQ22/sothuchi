@@ -1211,6 +1211,19 @@ class ServerSyncService {
     }
 
     const allAccs = await db.accounts.toArray();
+    // Dọn dẹp cờ isShared giả trước khi mã hóa & ghi đè lên máy chủ
+    const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
+    const validOwnedSet = new Set(
+      (ownedSetting && Array.isArray(ownedSetting.value))
+        ? ownedSetting.value.filter(x => x.itemType === 'account' && (x.shareKey || x.token)).map(x => String(x.itemId))
+        : []
+    );
+    for (const a of allAccs) {
+      if (!a._isSharedItem && a.isShared === 1 && !validOwnedSet.has(String(a.id))) {
+        a.isShared = 0;
+        await db.accounts.update(a.id, { isShared: 0, updatedAt: Date.now() });
+      }
+    }
 
     const allTxs = await db.transactions.toArray();
 
@@ -2600,22 +2613,51 @@ class ServerSyncService {
     return anyPushed;
   }
 
+  async auditOwnedShares() {
+    if (!this.token || !this.serverUrl) return false;
+    let changed = false;
+    try {
+      const personalAccs = (await db.accounts.toArray()).filter(a => !a._isSharedItem && (a.isShared === 1 || a.isShared === true));
+      if (personalAccs.length === 0) return false;
+
+      const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
+      let ownedList = (ownedSetting && Array.isArray(ownedSetting.value)) ? [...ownedSetting.value] : [];
+
+      for (const acc of personalAccs) {
+        try {
+          const res = await this.getItemShares('account', acc.id);
+          const hasShares = (res && res.shares && res.shares.length > 0) || (res && res.links && res.links.length > 0);
+          if (!hasShares) {
+            await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
+            acc.isShared = 0;
+            ownedList = ownedList.filter(x => !(x.itemType === 'account' && String(x.itemId) === String(acc.id)));
+            changed = true;
+            console.log(`[ServerSync] Tự động xóa cờ chia sẻ cho tài khoản không có người nhận: "${acc.name}"`);
+          }
+        } catch (_) {}
+      }
+
+      if (changed) {
+        await db.settings.put({ key: 'syncOwnedSharedProjections', value: ownedList });
+      }
+    } catch (err) {
+      console.warn('[ServerSync] auditOwnedShares error:', err);
+    }
+    return changed;
+  }
+
   async pullAndMergeOwnedSharedProjections() {
     if (!this.token || !this.serverUrl) return false;
     let hasChanges = false;
 
     try {
+      const audited = await this.auditOwnedShares();
+      if (audited) hasChanges = true;
+
       const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
       const ownedList = (ownedSetting && Array.isArray(ownedSetting.value)) ? [...ownedSetting.value] : [];
 
-      const sharedAccounts = (await db.accounts.toArray()).filter(a => !a._isSharedItem && (a.isShared === 1 || a.isShared === true));
-      for (const sa of sharedAccounts) {
-        if (!ownedList.some(x => x.itemType === 'account' && String(x.itemId) === String(sa.id))) {
-          ownedList.push({ itemType: 'account', itemId: String(sa.id) });
-        }
-      }
-
-      if (ownedList.length === 0) return false;
+      if (ownedList.length === 0) return hasChanges;
 
       for (const share of ownedList) {
         const { itemType, itemId } = share;
