@@ -1136,10 +1136,13 @@ class DatabaseManager {
 
     const tagTx = (t) => {
       if (!t || t.isDeleted) return;
-      t.recordedByOther = 1;
-      if (!t.createdBy) {
-        t.createdBy = editorName;
-        t.createdByEmail = email;
+      const isOwnerTx = (t.recordedByOther === 0) || (share.owner_email && t.createdByEmail === share.owner_email);
+      if (!isOwnerTx) {
+        t.recordedByOther = 1;
+        if (!t.createdBy) {
+          t.createdBy = editorName;
+          t.createdByEmail = email;
+        }
       }
     };
     if (Array.isArray(incomingTxs)) incomingTxs.forEach(tagTx);
@@ -1150,6 +1153,23 @@ class DatabaseManager {
     // Nếu Editor gửi kèm bản chiếu đã cập nhật (hỗ trợ cả E2EE)
     if (incomingProjection) {
       const existingProj = this.getItemProjection(share.vault_id, share.item_type, share.item_id);
+      if (!incomingProjection.encrypted && Array.isArray(incomingProjection.transactions)) {
+        let baseTxs = [];
+        if (existingProj && existingProj.data && typeof existingProj.data === 'object' && !existingProj.data.encrypted && Array.isArray(existingProj.data.transactions)) {
+          baseTxs = existingProj.data.transactions;
+        } else {
+          try {
+            const v = this.getVaultData(share.vault_id);
+            if (v && v.data && typeof v.data === 'object' && !v.data.encrypted && Array.isArray(v.data.transactions)) {
+              baseTxs = v.data.transactions.filter(t => String(t.accountId) === String(share.item_id) || String(t.toAccountId) === String(share.item_id));
+            }
+          } catch (_) {}
+        }
+        if (baseTxs.length > 0) {
+          incomingProjection.transactions = mergeTableData(baseTxs, incomingProjection.transactions, false, 'transactions');
+        }
+      }
+
       const existingDataStr = existingProj && existingProj.data ? (typeof existingProj.data === 'string' ? existingProj.data : JSON.stringify(existingProj.data)) : '';
       const incomingDataStr = typeof incomingProjection === 'string' ? incomingProjection : JSON.stringify(incomingProjection);
       let projectionChanged = existingDataStr !== incomingDataStr;

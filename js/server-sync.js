@@ -2406,14 +2406,20 @@ class ServerSyncService {
                 isDeleted: 0,
                 _isSharedItem: true,
                 _shareId: shareId,
-                _remoteTxId: txRemoteId
+                _remoteTxId: txRemoteId,
+                recordedByOther: tx.recordedByOther !== undefined ? tx.recordedByOther : 0,
+                createdBy: tx.createdBy || (tx.recordedByOther ? 'Thành viên' : (ownerName || ownerEmail || 'Chủ ví')),
+                createdByEmail: tx.createdByEmail || (tx.recordedByOther ? '' : (ownerEmail || ''))
               };
               if (localTx) {
                 const isTxDiff = Number(localTx.amount || 0) !== Number(txData.amount || 0) ||
                                  (localTx.type || '') !== (txData.type || '') ||
                                  (localTx.category || '') !== (txData.category || '') ||
                                  (localTx.date || '') !== (txData.date || '') ||
+                                 (localTx.time || '') !== (txData.time || '') ||
                                  (localTx.note || '').trim() !== (txData.note || '').trim() ||
+                                 (localTx.createdBy || '') !== (txData.createdBy || '') ||
+                                 localTx.recordedByOther !== txData.recordedByOther ||
                                  Boolean(localTx.isDeleted) !== Boolean(txData.isDeleted);
                 if (isTxDiff) {
                   hasChanges = true;
@@ -2584,10 +2590,13 @@ class ServerSyncService {
           copy.toAccountId = remoteItemId;
         }
         copy.isDeleted = copy.isDeleted ? 1 : 0;
-        copy.recordedByOther = 1;
-        if (!copy.createdBy && uName) {
-          copy.createdBy = uName;
-          copy.createdByEmail = uEmail;
+        // Chỉ gán recordedByOther và createdBy cho giao dịch do thành viên này tạo (không ghi đè giao dịch của chủ sổ)
+        if (copy.recordedByOther === 1 || !copy.createdBy) {
+          copy.recordedByOther = 1;
+          if (!copy.createdBy && uName) {
+            copy.createdBy = uName;
+            copy.createdByEmail = uEmail;
+          }
         }
         delete copy._isSharedItem;
         delete copy._shareId;
@@ -2674,8 +2683,8 @@ class ServerSyncService {
           updates._shareId = shareId;
           updates._isSharedItem = true;
         }
-        if (!t.recordedByOther) updates.recordedByOther = 1;
-        if (!t.createdBy && uName) {
+        // Chỉ cập nhật nếu là giao dịch do thành viên này tạo (recordedByOther === 1) mà chưa có tên
+        if (t.recordedByOther === 1 && !t.createdBy && uName) {
           updates.createdBy = uName;
           updates.createdByEmail = uEmail;
         }
@@ -2799,13 +2808,22 @@ class ServerSyncService {
             }
 
             if (!existing) {
+              let targetId = Number(rtx.id);
+              if (targetId) {
+                const dup = await db.transactions.get(targetId);
+                if (dup) {
+                  targetId = typeof generateUniqueId === 'function' ? generateUniqueId() : Date.now();
+                }
+              } else {
+                targetId = typeof generateUniqueId === 'function' ? generateUniqueId() : Date.now();
+              }
               const newTx = {
                 ...rtx,
-                id: Number(rtx.id) || (typeof generateUniqueId === 'function' ? generateUniqueId() : Date.now()),
+                id: targetId,
                 accountId: accId,
                 isDeleted: 0,
                 updatedAt: rtx.updatedAt || Date.now(),
-                recordedByOther: 1,
+                recordedByOther: rtx.recordedByOther !== undefined ? rtx.recordedByOther : 1,
                 createdBy: rtx.createdBy || rtx.updatedBy || 'Thành viên',
                 createdByEmail: rtx.createdByEmail || ''
               };
@@ -2822,6 +2840,7 @@ class ServerSyncService {
                              (existing.type || '') !== (rtx.type || '') ||
                              (existing.category || '') !== (rtx.category || '') ||
                              (existing.date || '') !== (rtx.date || '') ||
+                             (existing.time || '') !== (rtx.time || '') ||
                              (existing.note || '').trim() !== (rtx.note || '').trim() ||
                              Boolean(existing.isDeleted) !== Boolean(rtx.isDeleted);
               if (isDiff && (rTime > lTime || !existing.updatedAt)) {
@@ -2831,9 +2850,9 @@ class ServerSyncService {
                   accountId: accId,
                   isDeleted: rtx.isDeleted ? 1 : 0,
                   updatedAt: rtx.updatedAt || Date.now(),
-                  recordedByOther: existing.recordedByOther !== undefined ? existing.recordedByOther : 1,
-                  createdBy: rtx.createdBy || existing.createdBy || 'Thành viên',
-                  createdByEmail: rtx.createdByEmail || existing.createdByEmail || ''
+                  recordedByOther: existing.recordedByOther !== undefined ? existing.recordedByOther : (rtx.recordedByOther !== undefined ? rtx.recordedByOther : 0),
+                  createdBy: existing.createdBy || rtx.createdBy || '',
+                  createdByEmail: existing.createdByEmail || rtx.createdByEmail || ''
                 });
                 hasChanges = true;
               }

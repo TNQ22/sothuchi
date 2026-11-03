@@ -547,6 +547,10 @@ async function addTransaction(data) {
       throw new Error(`Tài khoản nhận "${toAcc.name}" chỉ có quyền xem, không thể ghi giao dịch!`);
     }
     const sharedAcc = (targetAcc && targetAcc._isSharedItem) ? targetAcc : (toAcc && toAcc._isSharedItem ? toAcc : null);
+    const uProfile = window.serverSyncService?.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;
+    const uName = (uProfile?.name && uProfile.name.trim()) || (uProfile?.email && uProfile.email.trim()) || '';
+    const uEmail = (uProfile?.email || '').trim();
+
     if (sharedAcc) {
       tx._isSharedItem = true;
       tx._shareId = sharedAcc._shareId;
@@ -556,12 +560,16 @@ async function addTransaction(data) {
         tx.recordedByOther = 1;
       }
       if (!tx.createdBy) {
-        const uProfile = window.serverSyncService?.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;
-        const uName = (uProfile?.name && uProfile.name.trim()) || (uProfile?.email && uProfile.email.trim()) || '';
-        if (uName) {
-          tx.createdBy = uName;
-          tx.createdByEmail = uProfile?.email || '';
-        }
+        tx.createdBy = uName || 'Thành viên';
+        tx.createdByEmail = uEmail;
+      }
+    } else {
+      if (tx.recordedByOther === undefined) {
+        tx.recordedByOther = 0;
+      }
+      if (!tx.createdBy && (uName || uEmail)) {
+        tx.createdBy = uName;
+        tx.createdByEmail = uEmail;
       }
     }
   } catch (err) {

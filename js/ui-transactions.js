@@ -4638,6 +4638,10 @@ const UITransactions = {
           updatedAt: Date.now(),
           isDeleted: 0
         };
+        const uProfile = window.serverSyncService?.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;
+        const uName = (uProfile?.name && uProfile.name.trim()) || (uProfile?.email && uProfile.email.trim()) || '';
+        const uEmail = (uProfile?.email || '').trim();
+
         if (acc._isSharedItem) {
           adjTx._isSharedItem = true;
           adjTx._shareId = acc._shareId;
@@ -4645,11 +4649,14 @@ const UITransactions = {
           adjTx._remoteTxId = typeof generateUniqueId === 'function' ? generateUniqueId() : Date.now();
           adjTx.id = adjTx._remoteTxId;
           adjTx.recordedByOther = 1;
-          const uProfile = window.serverSyncService?.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;
-          const uName = (uProfile?.name && uProfile.name.trim()) || (uProfile?.email && uProfile.email.trim()) || '';
-          if (uName) {
+          adjTx.createdBy = uName || 'Thành viên';
+          adjTx.createdByEmail = uEmail;
+        } else {
+          adjTx.id = typeof generateUniqueId === 'function' ? generateUniqueId() : Date.now();
+          adjTx.recordedByOther = 0;
+          if (uName || uEmail) {
             adjTx.createdBy = uName;
-            adjTx.createdByEmail = uProfile?.email || '';
+            adjTx.createdByEmail = uEmail;
           }
         }
         await db.transactions.add(adjTx);
@@ -4860,47 +4867,18 @@ const UITransactions = {
     const isSharedAccount = !!(acc._isSharedItem || acc.isShared);
     if (!isSharedAccount) return '';
 
-    // Kiểm tra xem giao dịch này có phải do người khác (không phải chủ sổ) ghi chép hay không
-    let isOther = false;
-    let author = '';
-
-    if (acc._isSharedItem) {
-      // Sổ được chia sẻ tới máy này (chủ sổ gốc là acc._sharedFrom)
-      // Nếu có cờ recordedByOther hoặc createdBy khác chủ sổ gốc -> người khác chủ sổ ghi chép
-      const ownerStr = (acc._sharedFrom || '').trim().toLowerCase();
-      const creatorStr = (t.createdBy || '').trim().toLowerCase();
-      const creatorEmailStr = (t.createdByEmail || '').trim().toLowerCase();
-
-      if (t.recordedByOther) {
-        isOther = true;
-        author = t.createdBy || t.createdByEmail || '';
-      } else if (creatorStr && ownerStr && !creatorStr.includes(ownerStr) && !ownerStr.includes(creatorStr)) {
-        isOther = true;
-        author = t.createdBy;
-      } else if (creatorEmailStr && ownerStr && !creatorEmailStr.includes(ownerStr) && !ownerStr.includes(creatorEmailStr)) {
-        isOther = true;
-        author = t.createdByEmail;
-      }
-    } else if (acc.isShared) {
-      // Sổ của chủ sở hữu trên máy này, được chia sẻ cho người khác
-      // Giao dịch có cờ recordedByOther hoặc createdBy/createdByEmail -> do thành viên được chia sẻ ghi
-      if (t.recordedByOther || t.createdBy || t.createdByEmail) {
-        isOther = true;
-        author = t.createdBy || t.createdByEmail || '';
-      }
-    }
-
-    if (!isOther) return '';
-
-    // Xác định xem người ghi chép có phải là chính người dùng hiện tại đang xem hay không
+    // Kiểm tra xem giao dịch này do ai ghi chép trong tài khoản chia sẻ
     const uProfile = window.serverSyncService?.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;
     const currentEmail = (uProfile?.email || '').trim().toLowerCase();
     const currentName = (uProfile?.name || '').trim().toLowerCase();
 
+    const creatorEmail = (t.createdByEmail || '').trim().toLowerCase();
+    const creatorName = (t.createdBy || '').trim().toLowerCase();
+    const ownerNameOrEmail = (acc._sharedFrom || '').trim();
+
+    // 1. Xác định xem người ghi chép có phải là chính người dùng hiện tại đang xem hay không
     let isMe = false;
     if (currentEmail || currentName) {
-      const creatorEmail = (t.createdByEmail || '').trim().toLowerCase();
-      const creatorName = (t.createdBy || '').trim().toLowerCase();
       if (creatorEmail && currentEmail && creatorEmail === currentEmail) {
         isMe = true;
       } else if (creatorName && currentName && creatorName === currentName) {
@@ -4909,18 +4887,44 @@ const UITransactions = {
         isMe = true;
       }
     }
-    // Fallback: nếu đang trên máy nhận chia sẻ (acc._isSharedItem) và giao dịch do máy này ghi nhận
-    if (!isMe && acc._isSharedItem && t.recordedByOther && (!author || author === 'Thành viên')) {
-      isMe = true;
+
+    // Nếu không khớp email/tên hồ sơ (ví dụ offline hoặc chưa đăng nhập đầy đủ):
+    if (!isMe) {
+      if (acc._isSharedItem) {
+        // Trên máy nhận chia sẻ: nếu giao dịch do máy này ghi nhận (recordedByOther = 1 và KHÔNG phải do chủ sổ ghi)
+        const ownerLower = ownerNameOrEmail.toLowerCase();
+        const isFromOwner = (creatorEmail && ownerLower && (creatorEmail === ownerLower || ownerLower.includes(creatorEmail))) ||
+                            (creatorName && ownerLower && (creatorName === ownerLower || ownerLower.includes(creatorName))) ||
+                            (!t.recordedByOther || t.recordedByOther === 0);
+        if (!isFromOwner && (t.recordedByOther === 1 || !t.createdBy || t.createdBy === 'Thành viên')) {
+          isMe = true;
+        }
+      } else if (acc.isShared) {
+        // Trên máy chủ sở hữu: giao dịch do chủ sổ ghi (không có cờ recordedByOther hoặc recordedByOther === 0)
+        if (!t.recordedByOther || t.recordedByOther === 0) {
+          isMe = true;
+        }
+      }
     }
 
+    if (isMe) {
+      return ` <span class="tx-share-author-note" title="Ghi chép bởi bạn">(Tôi)</span>`;
+    }
+
+    // 2. Không phải là Tôi -> Hiển thị tên/vai trò người đã ghi chép
     let displayText = '';
     let fullTitle = '';
-    if (isMe) {
-      displayText = `(Tôi)`;
-      fullTitle = author && author.trim() ? `Ghi chép bởi bạn (${escapeHTML(author.trim())})` : `Ghi chép bởi bạn`;
-    } else if (author && author.trim()) {
-      const clean = author.trim();
+    if (acc._isSharedItem && (!t.recordedByOther || t.recordedByOther === 0)) {
+      // Máy thành viên nhìn thấy giao dịch của Chủ tài khoản
+      const authorLabel = ownerNameOrEmail || 'Chủ ví';
+      displayText = `(${escapeHTML(authorLabel)})`;
+      fullTitle = `Ghi chép bởi chủ tài khoản: ${escapeHTML(authorLabel)}`;
+    } else if (t.createdBy && t.createdBy.trim()) {
+      const clean = t.createdBy.trim();
+      displayText = `(${escapeHTML(clean)})`;
+      fullTitle = `Ghi chép bởi: ${escapeHTML(clean)}`;
+    } else if (t.createdByEmail && t.createdByEmail.trim()) {
+      const clean = t.createdByEmail.trim();
       displayText = `(${escapeHTML(clean)})`;
       fullTitle = `Ghi chép bởi: ${escapeHTML(clean)}`;
     } else {
@@ -5061,8 +5065,16 @@ const UITransactions = {
       });
     }
 
-    // Sort descending by date
-    txs.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+    // Sort descending by date, then time, then createdAt, then id
+    txs.sort((a, b) => {
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+      if (dateA !== dateB) return dateB.localeCompare(dateA);
+      const timeA = (a.time || '').trim();
+      const timeB = (b.time || '').trim();
+      if (timeA !== timeB) return timeB.localeCompare(timeA);
+      return (b.createdAt || 0) - (a.createdAt || 0) || ((b.id || 0) - (a.id || 0));
+    });
 
     const categories = await db.categories.toArray();
     const accounts = await db.accounts.toArray();
@@ -5084,7 +5096,12 @@ const UITransactions = {
           </div>
         `;
       } else {
-        todayTxs.sort((a, b) => (b.time || '').localeCompare(a.time || '') || b.id - a.id);
+        todayTxs.sort((a, b) => {
+          const timeA = (a.time || '').trim();
+          const timeB = (b.time || '').trim();
+          if (timeA !== timeB) return timeB.localeCompare(timeA);
+          return (b.createdAt || 0) - (a.createdAt || 0) || ((b.id || 0) - (a.id || 0));
+        });
         const dateLabel = this.formatDateLabel(todayStr);
         const dayExpense = todayTxs.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0);
         const dayIncome = todayTxs.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0);
@@ -5138,7 +5155,15 @@ const UITransactions = {
         }
 
         let fullHtml = '';
-        for (const [dateStr, items] of Object.entries(grouped)) {
+        const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+        for (const dateStr of sortedDates) {
+          const items = grouped[dateStr];
+          items.sort((a, b) => {
+            const timeA = (a.time || '').trim();
+            const timeB = (b.time || '').trim();
+            if (timeA !== timeB) return timeB.localeCompare(timeA);
+            return (b.createdAt || 0) - (a.createdAt || 0) || ((b.id || 0) - (a.id || 0));
+          });
           const dateLabel = this.formatDateLabel(dateStr);
           const dayExpense = items.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0);
           const dayIncome = items.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0);
