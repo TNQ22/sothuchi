@@ -169,18 +169,23 @@ const UIAccounts = {
       if (isServerAvailable) {
         const validOwnedList = [];
         for (const acc of personalAccs) {
+          let hasActiveShares = false;
           try {
             const res = await sService.getItemShares('account', acc.id);
             const activeCount = (res?.shares?.length || 0) + (res?.links?.length || 0);
             if (activeCount > 0) {
+              hasActiveShares = true;
               validOwnedList.push({ itemType: 'account', itemId: String(acc.id) });
-            } else {
-              await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
-              acc.isShared = 0;
-              changed = true;
-              console.log(`[UIAccounts] Đã tắt cờ chia sẻ cho tài khoản không có người nhận: "${acc.name}"`);
             }
-          } catch (_) {}
+          } catch (_) {
+            hasActiveShares = false;
+          }
+          if (!hasActiveShares) {
+            await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
+            acc.isShared = 0;
+            changed = true;
+            console.log(`[UIAccounts] Đã tắt cờ chia sẻ cho tài khoản không có người nhận: "${acc.name}"`);
+          }
         }
         if (db.settings) {
           await db.settings.put({ key: 'syncOwnedSharedProjections', value: validOwnedList });
