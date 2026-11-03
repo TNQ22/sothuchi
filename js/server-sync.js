@@ -1877,6 +1877,7 @@ class ServerSyncService {
         }
       }
 
+      const mergedList = Array.from(itemMap.values());
       const sortById = (arr) => [...arr].sort((a, b) => String(a.id).localeCompare(String(b.id)));
       const beforeStr = JSON.stringify(sortById(localItems));
       const afterStr = JSON.stringify(sortById(mergedList));
