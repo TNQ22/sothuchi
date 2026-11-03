@@ -2624,19 +2624,20 @@ class ServerSyncService {
       let ownedList = (ownedSetting && Array.isArray(ownedSetting.value)) ? [...ownedSetting.value] : [];
 
       for (const acc of personalAccs) {
-        let hasShares = false;
         try {
           const res = await this.getItemShares('account', acc.id);
-          hasShares = (res && res.shares && res.shares.length > 0) || (res && res.links && res.links.length > 0);
+          if (res && Array.isArray(res.shares) && Array.isArray(res.links)) {
+            const hasShares = res.shares.length > 0 || res.links.length > 0;
+            if (!hasShares) {
+              await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
+              acc.isShared = 0;
+              ownedList = ownedList.filter(x => !(x.itemType === 'account' && String(x.itemId) === String(acc.id)));
+              changed = true;
+              console.log(`[ServerSync] Tự động xóa cờ chia sẻ cho tài khoản không có người nhận: "${acc.name}"`);
+            }
+          }
         } catch (_) {
-          hasShares = false;
-        }
-        if (!hasShares) {
-          await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
-          acc.isShared = 0;
-          ownedList = ownedList.filter(x => !(x.itemType === 'account' && String(x.itemId) === String(acc.id)));
-          changed = true;
-          console.log(`[ServerSync] Tự động xóa cờ chia sẻ cho tài khoản không có người nhận: "${acc.name}"`);
+          // Lỗi mạng hoặc server không phản hồi -> giữ nguyên trạng thái cục bộ
         }
       }
 

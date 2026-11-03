@@ -145,9 +145,6 @@ const UIAccounts = {
       }
     }
 
-    // Tự động kiểm tra và làm sạch triệt để cờ isShared giả trên tài khoản cá nhân
-    this.cleanAllFalseSharedAccounts(false);
-
     try {
       localStorage.removeItem('sothuchi_shared_view_mode');
     } catch (_) {}
@@ -158,58 +155,51 @@ const UIAccounts = {
   async cleanAllFalseSharedAccounts(autoRender = true) {
     try {
       if (typeof db === 'undefined' || !db.accounts) return;
+      const sService = window.serverSyncService;
+      // Chỉ kiểm tra khi máy chủ riêng đã được kết nối và xác thực phiên hoàn tất
+      const isServerAvailable = Boolean(sService && sService.token && sService.serverUrl);
+      if (!isServerAvailable) return;
+
       const personalAccs = (await db.accounts.toArray()).filter(a => !a.isDeleted && !a._isSharedItem && (a.isShared === 1 || a.isShared === true));
       if (personalAccs.length === 0) return;
 
-      const sService = window.serverSyncService;
-      const isServerAvailable = Boolean(sService && sService.token && sService.serverUrl);
-
       let changed = false;
+      const validOwnedList = [];
 
-      if (isServerAvailable) {
-        const validOwnedList = [];
-        for (const acc of personalAccs) {
-          let hasActiveShares = false;
-          try {
-            const res = await sService.getItemShares('account', acc.id);
-            const activeCount = (res?.shares?.length || 0) + (res?.links?.length || 0);
+      for (const acc of personalAccs) {
+        try {
+          const res = await sService.getItemShares('account', acc.id);
+          if (res && Array.isArray(res.shares) && Array.isArray(res.links)) {
+            const activeCount = res.shares.length + res.links.length;
             if (activeCount > 0) {
-              hasActiveShares = true;
               validOwnedList.push({ itemType: 'account', itemId: String(acc.id) });
+            } else {
+              await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
+              acc.isShared = 0;
+              changed = true;
+              console.log(`[UIAccounts] Đã tắt cờ chia sẻ cho tài khoản không có người nhận: "${acc.name}"`);
             }
-          } catch (_) {
-            hasActiveShares = false;
+          } else {
+            // Không nhận được mảng xác nhận từ server -> giữ nguyên trạng thái
+            validOwnedList.push({ itemType: 'account', itemId: String(acc.id) });
           }
-          if (!hasActiveShares) {
-            await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
-            acc.isShared = 0;
-            changed = true;
-            console.log(`[UIAccounts] Đã tắt cờ chia sẻ cho tài khoản không có người nhận: "${acc.name}"`);
-          }
-        }
-        if (db.settings) {
-          await db.settings.put({ key: 'syncOwnedSharedProjections', value: validOwnedList });
-        }
-      } else {
-        // Nếu không có kết nối Máy Chủ Riêng (chia sẻ độc lập chỉ hoạt động qua Máy Chủ Riêng):
-        // Mọi tài khoản cá nhân đều phải có isShared = 0
-        for (const acc of personalAccs) {
-          await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
-          acc.isShared = 0;
-          changed = true;
-          console.log(`[UIAccounts] Đã tắt cờ chia sẻ cho tài khoản cá nhân: "${acc.name}"`);
-        }
-        if (db.settings) {
-          await db.settings.put({ key: 'syncOwnedSharedProjections', value: [] });
+        } catch (_) {
+          // Lỗi mạng hoặc server không phản hồi -> giữ nguyên trạng thái cục bộ
+          validOwnedList.push({ itemType: 'account', itemId: String(acc.id) });
         }
       }
 
-      if (changed && autoRender) {
-        if (typeof this.render === 'function') {
-          await this.render();
+      if (changed) {
+        if (db.settings) {
+          await db.settings.put({ key: 'syncOwnedSharedProjections', value: validOwnedList });
         }
-        if (window.UITransactions && typeof window.UITransactions.updateHeaderAccountDisplay === 'function') {
-          await window.UITransactions.updateHeaderAccountDisplay();
+        if (autoRender) {
+          if (typeof this.render === 'function') {
+            await this.render();
+          }
+          if (window.UITransactions && typeof window.UITransactions.updateHeaderAccountDisplay === 'function') {
+            await window.UITransactions.updateHeaderAccountDisplay();
+          }
         }
       }
     } catch (err) {
@@ -5842,14 +5832,10 @@ const UIAccounts = {
     if (window.lucide) lucide.createIcons();
   },
 
-    /* ==================== RENDER DANH SÁCH TÀI KHOẢN ==================== */
+  /* ==================== RENDER DANH SÁCH TÀI KHOẢN ==================== */
   async render() {
     const container = document.getElementById('accounts-list-container');
     if (!container) return;
-
-    if (typeof this.cleanAllFalseSharedAccounts === 'function') {
-      await this.cleanAllFalseSharedAccounts(false);
-    }
 
     if (typeof deduplicateAccounts === 'function') {
       await deduplicateAccounts();
