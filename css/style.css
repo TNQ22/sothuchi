@@ -6931,7 +6931,7 @@ html, body {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip; /* Bỏ dấu "..." để tăng diện tích hiển thị, nếu dài thì tự ẩn */
   max-width: 150px;
 }
 
@@ -7449,7 +7449,7 @@ html, body {
   }
 
   .tx-header-center {
-    max-width: calc(100% - 170px) !important;
+    max-width: calc(100% - 150px) !important;
   }
 
   .tx-header-acc-btn {
@@ -7459,7 +7459,8 @@ html, body {
 
   .tx-header-acc-name {
     font-size: 0.85rem;
-    max-width: 105px;
+    max-width: 130px;
+    text-overflow: clip;
   }
 
   .tx-type-filter-bar {
