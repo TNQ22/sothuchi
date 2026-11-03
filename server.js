@@ -2040,7 +2040,7 @@ const dbManager = new DatabaseManager();
 // ==============================================================================
 // 2. DATA MERGE ENGINE (Conflict-Free Last-Write-Wins Multi-Table)
 // ==============================================================================
-function mergeTableData(serverItems = [], clientItems = [], isAccountTable = false, tableName = '') {
+function mergeTableData(serverItems = [], clientItems = [], isAccountTable = false, tableName = '', clientTransactions = []) {
   const map = new Map();
   const generateUniqueNumericId = () => Date.now() * 1000 + Math.floor(Math.random() * 1000);
 
@@ -2075,13 +2075,31 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
           }
         }
 
+        const DEFAULT_ACCOUNT_NAMES = ['tiền mặt', 'ngân hàng', 'ví điện tử', 'momo / zalopay', 'tài khoản ngân hàng'];
+        const isDefAcc = cItem.name && DEFAULT_ACCOUNT_NAMES.includes(cItem.name.trim().toLowerCase());
+        const cIsBlank = (cItem.balance === 0 || cItem.balance === '0') &&
+                         ((cItem.initialBalance || 0) === 0) &&
+                         !cItem.isShared;
+        const cHasTx = Array.isArray(clientTransactions) && clientTransactions.some(t =>
+          !t.isDeleted && (String(t.accountId) === String(cItem.id) || String(t.toAccountId) === String(cItem.id))
+        );
+        const cIsUntouchedDefault = isDefAcc && cIsBlank && !cHasTx;
+
         if (!sItem) {
+          // Nếu server đã có tài khoản mà cItem là tài khoản mặc định chưa từng có giao dịch:
+          // Không thêm vào server (vì tài khoản mặc định này đã bị xoá hoặc không dùng trên server)
+          if (cIsUntouchedDefault && Array.isArray(serverItems) && serverItems.length > 0) {
+            continue;
+          }
           map.set(cItem.id, cItem);
         } else {
+          // Nếu trên server tài khoản này đã bị xoá (sItem.isDeleted = 1) và client là tài khoản mặc định chưa có ghi chép:
+          // Giữ nguyên trạng thái đã xoá trên server, không để client phục hồi lại
+          if (sItem.isDeleted && cIsUntouchedDefault) {
+            continue;
+          }
+
           // Bảo vệ tài khoản có số dư trên server tránh bị tài khoản trắng mới khởi tạo của client ghi đè
-          const cIsBlank = (cItem.balance === 0 || cItem.balance === '0') &&
-                           ((cItem.initialBalance || 0) === 0) &&
-                           !cItem.isShared;
           const sHasData = (sItem.balance !== 0 || (sItem.initialBalance || 0) !== 0);
 
           if (cIsBlank && sHasData && !cItem.isDeleted) {
@@ -2186,7 +2204,7 @@ function mergeFullVaultData(serverVault, clientVault) {
 
   return {
     transactions: mergeTableData(s.transactions, c.transactions, false, 'transactions'),
-    accounts: mergeTableData(s.accounts, c.accounts, true, 'accounts'),
+    accounts: mergeTableData(s.accounts, c.accounts, true, 'accounts', c.transactions),
     categories: mergeTableData(s.categories, c.categories, false, 'categories'),
     debts: mergeTableData(s.debts, c.debts, false, 'debts'),
     budgets: mergeTableData(s.budgets, c.budgets, false, 'budgets'),

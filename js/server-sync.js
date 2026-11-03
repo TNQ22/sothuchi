@@ -1022,7 +1022,9 @@ class ServerSyncService {
     // 1. Kiểm tra dữ liệu trên thiết bị cục bộ
     const localTxCount = await db.transactions.count();
     const localAccs = await db.accounts.toArray();
-    const hasCustomAccs = localAccs.some(a => (a.balance !== 0) || ((a.initialBalance || 0) !== 0) || a.id > 3);
+    const DEFAULT_ACCOUNT_NAMES = ['tiền mặt', 'ngân hàng', 'ví điện tử', 'momo / zalopay', 'tài khoản ngân hàng'];
+    const isDefAcc = (a) => a && a.name && DEFAULT_ACCOUNT_NAMES.includes(a.name.trim().toLowerCase());
+    const hasCustomAccs = localAccs.some(a => (a.balance !== 0) || ((a.initialBalance || 0) !== 0) || !isDefAcc(a));
     const hasLocalData = localTxCount > 0 || hasCustomAccs;
 
     // 2. Kéo thông tin dữ liệu từ Server Vault
@@ -1039,6 +1041,22 @@ class ServerSyncService {
           this.lastVaultVersion = json.vault.version;
           this.lastVaultUpdatedAt = json.vault.updated_at;
         }
+
+        // Xử lý giải mã E2EE nếu dữ liệu server đã mã hóa
+        if (serverVaultData && serverVaultData.encrypted && serverVaultData.payload) {
+          if (!this.encryptionPassword) {
+            this.encryptionPassword = await this.getEncryptionPasswordForVault(this.activeVaultId);
+          }
+          if (this.encryptionPassword && window.CryptoService) {
+            try {
+              const dec = await window.CryptoService.decrypt(serverVaultData.payload, this.encryptionPassword);
+              serverVaultData = JSON.parse(dec);
+            } catch (decErr) {
+              console.warn('[ServerSync] Chưa giải mã được serverVaultData trong handlePostLoginSync:', decErr);
+            }
+          }
+        }
+
         serverTxCount = (serverVaultData.transactions || []).filter(t => !t.isDeleted).length;
       }
     } catch (e) {
@@ -1087,10 +1105,22 @@ class ServerSyncService {
     if (preservePrivate) {
       // Giữ an toàn cho các tài khoản và giao dịch riêng tư cục bộ
       const localAccs = await db.accounts.toArray();
-      const privateAccs = localAccs.filter(a => a.isShared !== 1 && a.isShared !== true);
+      const localTxs = await db.transactions.toArray();
+      const DEFAULT_ACCOUNT_NAMES = ['tiền mặt', 'ngân hàng', 'ví điện tử', 'momo / zalopay', 'tài khoản ngân hàng'];
+      const isDefAcc = (a) => a && a.name && DEFAULT_ACCOUNT_NAMES.includes(a.name.trim().toLowerCase());
+
+      const privateAccs = localAccs.filter(a => {
+        if (a.isShared === 1 || a.isShared === true) return false;
+        // Nếu là tài khoản mặc định và không có số dư/giao dịch, mà remoteData đã có tài khoản: loại bỏ
+        if (newAccs.length > 0 && isDefAcc(a)) {
+          const isBlank = (Number(a.balance) || 0) === 0 && (Number(a.initialBalance) || 0) === 0;
+          const hasTx = localTxs.some(t => !t.isDeleted && (String(t.accountId) === String(a.id) || String(t.toAccountId) === String(a.id)));
+          if (isBlank && !hasTx) return false;
+        }
+        return true;
+      });
       const privateAccIds = new Set(privateAccs.map(a => Number(a.id)));
 
-      const localTxs = await db.transactions.toArray();
       const privateTxs = localTxs.filter(t => {
         const accId = Number(t.accountId);
         const toAccId = t.toAccountId ? Number(t.toAccountId) : null;
@@ -1714,6 +1744,24 @@ class ServerSyncService {
       const itemMap = new Map();
       const generateUniqueNumericId = () => (window.generateUniqueId ? window.generateUniqueId() : (Date.now() * 1000 + Math.floor(Math.random() * 1000)));
 
+      let localTxAccIds = new Set();
+      if (isAccountTable) {
+        const currentTxs = await db.transactions.toArray();
+        for (const t of currentTxs) {
+          if (!t.isDeleted) {
+            if (t.accountId !== undefined && t.accountId !== null) localTxAccIds.add(String(t.accountId));
+            if (t.toAccountId !== undefined && t.toAccountId !== null) localTxAccIds.add(String(t.toAccountId));
+          }
+        }
+      }
+
+      const DEFAULT_ACCOUNT_NAMES = ['tiền mặt', 'ngân hàng', 'ví điện tử', 'momo / zalopay', 'tài khoản ngân hàng'];
+      const isDefAcc = (a) => a && a.name && DEFAULT_ACCOUNT_NAMES.includes(a.name.trim().toLowerCase());
+      const isBlankAcc = (a) => (a.balance === 0 || a.balance === '0') &&
+                                ((a.initialBalance || 0) === 0) &&
+                                !a.isShared;
+      const isUntouchedDefAcc = (a) => isAccountTable && isDefAcc(a) && isBlankAcc(a) && !localTxAccIds.has(String(a.id));
+
       for (const lItem of localItems) {
         if (lItem && lItem.id !== undefined && lItem.id !== null) {
           itemMap.set(lItem.id, lItem);
@@ -1743,10 +1791,15 @@ class ServerSyncService {
           if (!lItem) {
             itemMap.set(rItem.id, rItem);
           } else {
+            // Nếu tài khoản local là tài khoản mặc định chưa phát sinh ghi chép và remote đánh dấu đã xoá:
+            // Cập nhật trạng thái xoá ngay lập tức, không để timestamp local ghi đè
+            if (isUntouchedDefAcc(lItem) && rItem.isDeleted) {
+              itemMap.set(lItem.id, { ...rItem, id: lItem.id, isDeleted: 1 });
+              continue;
+            }
+
             // Bảo vệ tài khoản có số dư trên remote tránh bị tài khoản trắng mới khởi tạo của local ghi đè
-            const lIsBlank = (lItem.balance === 0 || lItem.balance === '0') &&
-                             ((lItem.initialBalance || 0) === 0) &&
-                             !lItem.isShared;
+            const lIsBlank = isBlankAcc(lItem);
             const rHasData = (rItem.balance !== 0 || (rItem.initialBalance || 0) !== 0);
 
             if (lIsBlank && rHasData && !rItem.isDeleted) {
@@ -1802,6 +1855,24 @@ class ServerSyncService {
             // Xung đột ID giữa 2 trình duyệt: Cấp ID mới cho rItem và giữ cả 2!
             const newId = generateUniqueNumericId();
             itemMap.set(newId, { ...rItem, id: newId });
+          }
+        }
+      }
+
+      // Nếu là bảng tài khoản và remote đã có danh sách tài khoản:
+      // Các sổ mặc định ban đầu không phát sinh ghi chép nào và không có trên server (đã bị xoá trước đó trên server) sẽ bị loại bỏ
+      if (isAccountTable && Array.isArray(remoteItems) && remoteItems.length > 0) {
+        for (const [id, item] of itemMap.entries()) {
+          if (isUntouchedDefAcc(item)) {
+            const inRemote = remoteItems.some(r =>
+              r && (
+                String(r.id) === String(item.id) ||
+                (r.name && r.name.trim().toLowerCase() === item.name.trim().toLowerCase() && r.type === item.type)
+              )
+            );
+            if (!inRemote) {
+              itemMap.delete(id);
+            }
           }
         }
       }

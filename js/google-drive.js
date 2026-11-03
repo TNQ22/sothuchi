@@ -1089,8 +1089,13 @@ class GoogleDriveSync {
             // Mới từ remote
             itemMap.set(rItem.id, rItem);
           } else {
-            // Đối với tài khoản: nếu remote có số dư mà local là tài khoản trắng (balance: 0), ưu tiên remote
-            if (table === db.accounts && (rItem.balance !== 0 || rItem.initialBalance !== 0) && (lItem.balance === 0 && (lItem.initialBalance || 0) === 0)) {
+            const DEFAULT_ACCOUNT_NAMES = ['tiền mặt', 'ngân hàng', 'ví điện tử', 'momo / zalopay', 'tài khoản ngân hàng'];
+            const isDef = lItem.name && DEFAULT_ACCOUNT_NAMES.includes(lItem.name.trim().toLowerCase());
+            const isBlank = (lItem.balance === 0 || lItem.balance === '0') && ((lItem.initialBalance || 0) === 0) && !lItem.isShared;
+
+            if (table === db.accounts && isDef && isBlank && rItem.isDeleted) {
+              itemMap.set(lItem.id, { ...rItem, id: lItem.id, isDeleted: 1 });
+            } else if (table === db.accounts && (rItem.balance !== 0 || rItem.initialBalance !== 0) && isBlank) {
               itemMap.set(lItem.id, { ...rItem, id: lItem.id });
             } else {
               // Giải quyết xung đột: lấy bản ghi có updatedAt mới hơn
@@ -1099,6 +1104,31 @@ class GoogleDriveSync {
               if (rTime > lTime) {
                 itemMap.set(lItem.id, { ...rItem, id: lItem.id });
               }
+            }
+          }
+        }
+      }
+
+      // Nếu là bảng tài khoản và remote đã có danh sách tài khoản:
+      // Các sổ mặc định ban đầu không phát sinh ghi chép nào và không có trên remote sẽ bị loại bỏ
+      if (table === db.accounts && remoteItems && Array.isArray(remoteItems) && remoteItems.length > 0) {
+        const DEFAULT_ACCOUNT_NAMES = ['tiền mặt', 'ngân hàng', 'ví điện tử', 'momo / zalopay', 'tài khoản ngân hàng'];
+        const currentTxs = await db.transactions.toArray();
+        const txAccIds = new Set();
+        for (const t of currentTxs) {
+          if (!t.isDeleted) {
+            if (t.accountId) txAccIds.add(String(t.accountId));
+            if (t.toAccountId) txAccIds.add(String(t.toAccountId));
+          }
+        }
+        for (const [id, item] of itemMap.entries()) {
+          const isDef = item.name && DEFAULT_ACCOUNT_NAMES.includes(item.name.trim().toLowerCase());
+          const isBlank = (item.balance === 0 || item.balance === '0') && ((item.initialBalance || 0) === 0) && !item.isShared;
+          const hasTx = txAccIds.has(String(item.id));
+          if (isDef && isBlank && !hasTx) {
+            const inRemote = remoteItems.some(r => r && (String(r.id) === String(item.id) || (r.name && r.name.trim().toLowerCase() === item.name.trim().toLowerCase() && r.type === item.type)));
+            if (!inRemote) {
+              itemMap.delete(id);
             }
           }
         }

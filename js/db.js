@@ -1593,12 +1593,11 @@ async function wipeAndResetLocalDatabase() {
 
   // Reset tài khoản về mặc định ban đầu
   await db.accounts.clear();
-  const now = Date.now();
   await db.accounts.bulkAdd(DEFAULT_ACCOUNTS.map((a, index) => ({
     ...a,
     order: a.order ?? index,
     isDeleted: 0,
-    updatedAt: now
+    updatedAt: 1
   })));
 
   // Xoá các mốc đồng bộ lưu trong settings

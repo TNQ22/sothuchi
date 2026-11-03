@@ -538,7 +538,7 @@ class DropboxSync {
 
     // Tài khoản
     const localAccs = await db.accounts.toArray();
-    const mergedAccs = this.mergeEntities(localAccs, remoteData.accounts || []);
+    const mergedAccs = this.mergeEntities(localAccs, remoteData.accounts || [], true, mergedTxs);
     await db.accounts.clear();
     await db.accounts.bulkPut(mergedAccs);
 
@@ -551,15 +551,50 @@ class DropboxSync {
     return await this.exportLocalData();
   }
 
-  mergeEntities(locals, remotes) {
+  mergeEntities(locals, remotes, isAccounts = false, currentTxs = []) {
     const map = new Map();
     for (const item of locals) map.set(String(item.id), item);
+
+    const DEFAULT_ACCOUNT_NAMES = ['tiền mặt', 'ngân hàng', 'ví điện tử', 'momo / zalopay', 'tài khoản ngân hàng'];
+    let txAccIds = new Set();
+    if (isAccounts && Array.isArray(currentTxs)) {
+      for (const t of currentTxs) {
+        if (!t.isDeleted) {
+          if (t.accountId) txAccIds.add(String(t.accountId));
+          if (t.toAccountId) txAccIds.add(String(t.toAccountId));
+        }
+      }
+    }
+
     for (const remote of remotes) {
-      const key = String(remote.id);
-      const local = map.get(key);
+      let key = String(remote.id);
+      let local = map.get(key);
+
+      if (!local && isAccounts && remote.name) {
+        for (const [lId, lItem] of map.entries()) {
+          if (lItem.name && lItem.name.trim().toLowerCase() === remote.name.trim().toLowerCase() && lItem.type === remote.type) {
+            local = lItem;
+            key = lId;
+            break;
+          }
+        }
+      }
+
       if (!local) {
         map.set(key, remote);
       } else {
+        if (isAccounts) {
+          const isDef = local.name && DEFAULT_ACCOUNT_NAMES.includes(local.name.trim().toLowerCase());
+          const isBlank = (local.balance === 0 || local.balance === '0') && ((local.initialBalance || 0) === 0) && !local.isShared;
+          if (isDef && isBlank && remote.isDeleted) {
+            map.set(key, { ...remote, id: local.id, isDeleted: 1 });
+            continue;
+          }
+          if ((remote.balance !== 0 || remote.initialBalance !== 0) && isBlank) {
+            map.set(key, { ...remote, id: local.id });
+            continue;
+          }
+        }
         const localTime = local.updatedAt || 0;
         const remoteTime = remote.updatedAt || 0;
         if (remoteTime > localTime) {
@@ -567,6 +602,21 @@ class DropboxSync {
         }
       }
     }
+
+    if (isAccounts && Array.isArray(remotes) && remotes.length > 0) {
+      for (const [id, item] of map.entries()) {
+        const isDef = item.name && DEFAULT_ACCOUNT_NAMES.includes(item.name.trim().toLowerCase());
+        const isBlank = (item.balance === 0 || item.balance === '0') && ((item.initialBalance || 0) === 0) && !item.isShared;
+        const hasTx = txAccIds.has(String(item.id));
+        if (isDef && isBlank && !hasTx) {
+          const inRemote = remotes.some(r => r && (String(r.id) === String(item.id) || (r.name && r.name.trim().toLowerCase() === item.name.trim().toLowerCase() && r.type === item.type)));
+          if (!inRemote) {
+            map.delete(id);
+          }
+        }
+      }
+    }
+
     return Array.from(map.values());
   }
 
