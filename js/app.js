@@ -865,9 +865,10 @@ class App {
       const hasBack = viewId === 'transactions' ? true : !!(this.txHistorySource || (this.previousView && this.previousView !== 'transactions'));
       if (txHistoryBackBtn) txHistoryBackBtn.style.display = hasBack ? 'inline-flex' : 'none';
       const brandLogoBtn = document.getElementById('header-brand-logo-btn') || brandLogo;
-      if (brandLogoBtn) brandLogoBtn.style.display = hasBack ? 'none' : 'inline-flex';
-      const headerVaultPill = document.getElementById('header-vault-pill');
-      if (headerVaultPill && hasBack) headerVaultPill.style.display = 'none';
+      if (brandLogoBtn) brandLogoBtn.style.display = 'inline-flex';
+      if (window.SyncCoordinator && typeof window.SyncCoordinator.updateVaultUI === 'function') {
+        window.SyncCoordinator.updateVaultUI();
+      }
 
       if (window.UITransactions) {
         window.UITransactions.updateHeaderAccountDisplay();

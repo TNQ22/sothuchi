@@ -7448,6 +7448,10 @@ html, body {
     padding: 12px 7px 20px 7px !important;
   }
 
+  .tx-header-center {
+    max-width: calc(100% - 170px) !important;
+  }
+
   .tx-header-acc-btn {
     padding: 4px 10px 4px 6px;
     gap: 6px;
@@ -7455,7 +7459,7 @@ html, body {
 
   .tx-header-acc-name {
     font-size: 0.85rem;
-    max-width: 125px;
+    max-width: 105px;
   }
 
   .tx-type-filter-bar {
