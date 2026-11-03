@@ -925,7 +925,7 @@ class App {
       const canBack = !!(txId || (this.openedFromAccountMenu && this.previousView));
       if (backBtn) backBtn.style.display = canBack ? 'inline-flex' : 'none';
       if (historyBtn) {
-        if (txId) {
+        if (canBack) {
           historyBtn.style.setProperty('display', 'none', 'important');
         } else {
           historyBtn.style.removeProperty('display');

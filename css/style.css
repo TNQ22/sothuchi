@@ -1340,6 +1340,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
 .tx-amount.expense { color: var(--expense); }
 .tx-amount.income { color: var(--income); }
 .tx-amount.transfer { color: var(--transfer); }
+.tx-amount.adjust { color: #a855f7; }
 
 /* Vay Nợ (Debts & Loans) Component Styles */
 .debt-tabs {

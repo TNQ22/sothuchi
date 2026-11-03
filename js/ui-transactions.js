@@ -1311,7 +1311,7 @@ const UITransactions = {
   },
 
   evaluateAmountExpression(expr) {
-    if (!expr) return null;
+    if (expr === null || expr === undefined || expr === '') return null;
     let clean = String(expr).toLowerCase().trim();
     clean = clean.replace(/(\d+(\.\d+)?)k/g, '($1 * 1000)');
     clean = clean.replace(/(\d+(\.\d+)?)tr/g, '($1 * 1000000)');
@@ -4057,10 +4057,14 @@ const UITransactions = {
     } else {
       // Chế độ Thêm mới: trang độc lập/cố định - ẩn nút trở về trên header (chỉ hiện khi mở từ menu 3 chấm tài khoản)
       if (backBtn) backBtn.style.display = canBack ? 'inline-flex' : 'none';
-      // Hiện lại nút lịch sử trên thanh trên cùng khi thêm mới
+      // Nếu có nút trở về (canBack) -> ẩn nút lịch sử để không bị chật header/đè tiêu đề
       if (historyBtn) {
-        historyBtn.style.removeProperty('display');
-        historyBtn.style.display = '';
+        if (canBack) {
+          historyBtn.style.setProperty('display', 'none', 'important');
+        } else {
+          historyBtn.style.removeProperty('display');
+          historyBtn.style.display = '';
+        }
       }
       // Ẩn nút Xóa (nút Lưu Lại chiếm toàn bộ hàng)
       if (deleteBtn) {
@@ -4377,6 +4381,8 @@ const UITransactions = {
     // Hiển thị danh mục tức thì từ bộ nhớ RAM (0ms) mà không cần chờ tài khoản nạp
     if (defaultType === 'transfer') {
       await this.selectTransferAction();
+    } else if (defaultType === 'adjust') {
+      this.selectAdjustAction();
     } else {
       const transferGroup = document.getElementById('tx-transfer-target-group');
       if (transferGroup) transferGroup.style.display = 'none';
@@ -4488,19 +4494,36 @@ const UITransactions = {
     const subaction = document.getElementById('tx-debt-subaction-input').value;
     const linkedDebtId = document.getElementById('tx-linked-debt-id-input').value;
 
-    let amountInput = document.getElementById('tx-amount-input').value;
-    if (!amountInput || amountInput === '0') {
+    let amountInput = document.getElementById('tx-amount-input')?.value;
+    if (amountInput === undefined || amountInput === null || amountInput === '') {
       amountInput = document.getElementById('tx-amount-text')?.textContent || '0';
     }
-    const evaluatedAmount = this.evaluateAmountExpression(amountInput) || Number(amountInput.replace(/\./g, ''));
-
-    if (!evaluatedAmount || evaluatedAmount <= 0) {
-      showToast('Vui lòng nhập số tiền hợp lệ', 'error');
-      this.openKeypad();
-      return;
+    let evaluatedAmount = this.evaluateAmountExpression(amountInput);
+    if (evaluatedAmount === null || isNaN(evaluatedAmount)) {
+      const raw = String(amountInput).replace(/\./g, '').trim();
+      evaluatedAmount = (raw === '' || isNaN(Number(raw))) ? null : Number(raw);
     }
 
-    const accountId = document.getElementById('tx-account-select').value;
+    const isAdjust = (type === 'adjust');
+    if (isAdjust) {
+      if (evaluatedAmount === null || isNaN(evaluatedAmount) || evaluatedAmount < 0) {
+        showToast('Vui lòng nhập số tiền hợp lệ', 'error');
+        this.openKeypad();
+        return;
+      }
+    } else {
+      if (!evaluatedAmount || evaluatedAmount <= 0) {
+        showToast('Vui lòng nhập số tiền hợp lệ', 'error');
+        this.openKeypad();
+        return;
+      }
+    }
+
+    const accountId = document.getElementById('tx-account-select')?.value;
+    if (!accountId) {
+      showToast('Vui lòng chọn tài khoản', 'error');
+      return;
+    }
     const toAccountId = document.getElementById('tx-to-account-select')?.value;
 
     if (accountId) {
@@ -4553,40 +4576,41 @@ const UITransactions = {
     try {
       // 0. Adjust Account Balance
     if (type === 'adjust') {
+      if (id) {
+        await deleteTransaction(Number(id));
+      }
       const acc = await db.accounts.get(Number(accountId));
       if (acc) {
         const diff = evaluatedAmount - acc.balance;
         const adjustType = diff >= 0 ? 'income' : 'expense';
         const absDiff = Math.abs(diff);
-        if (absDiff > 0) {
-          const adjTx = {
-            type: adjustType,
-            amount: absDiff,
-            accountId: Number(accountId),
-            date,
-            time,
-            note: note || 'Điều chỉnh số dư tài khoản',
-            fee: 0,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            isDeleted: 0
-          };
-          if (acc._isSharedItem) {
-            adjTx._isSharedItem = true;
-            adjTx._shareId = acc._shareId;
-            adjTx._remoteId = acc._remoteId;
-            adjTx._remoteTxId = typeof generateUniqueId === 'function' ? generateUniqueId() : Date.now();
-            adjTx.id = adjTx._remoteTxId;
-            adjTx.recordedByOther = 1;
-            const uProfile = window.serverSyncService?.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;
-            const uName = (uProfile?.name && uProfile.name.trim()) || (uProfile?.email && uProfile.email.trim()) || '';
-            if (uName) {
-              adjTx.createdBy = uName;
-              adjTx.createdByEmail = uProfile?.email || '';
-            }
+        const adjTx = {
+          type: adjustType,
+          amount: absDiff,
+          accountId: Number(accountId),
+          date,
+          time,
+          note: note || 'Điều chỉnh số dư tài khoản',
+          fee: 0,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          isDeleted: 0
+        };
+        if (acc._isSharedItem) {
+          adjTx._isSharedItem = true;
+          adjTx._shareId = acc._shareId;
+          adjTx._remoteId = acc._remoteId;
+          adjTx._remoteTxId = typeof generateUniqueId === 'function' ? generateUniqueId() : Date.now();
+          adjTx.id = adjTx._remoteTxId;
+          adjTx.recordedByOther = 1;
+          const uProfile = window.serverSyncService?.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;
+          const uName = (uProfile?.name && uProfile.name.trim()) || (uProfile?.email && uProfile.email.trim()) || '';
+          if (uName) {
+            adjTx.createdBy = uName;
+            adjTx.createdByEmail = uProfile?.email || '';
           }
-          await db.transactions.add(adjTx);
         }
+        await db.transactions.add(adjTx);
         await db.accounts.update(Number(accountId), {
           balance: evaluatedAmount,
           updatedAt: Date.now()
@@ -4878,16 +4902,30 @@ const UITransactions = {
     let amountPrefix = '';
     let amountClass = 'transfer';
 
-    if (t.type === 'expense') {
-      iconName = cat ? cat.icon : 'shopping-bag';
-      iconBg = 'var(--expense-bg)';
-      iconColor = 'var(--expense)';
+    const isAdjustTx = !t.categoryId && t.note && (t.note.includes('Điều chỉnh số dư') || t.note.includes('điều chỉnh số dư'));
+
+    if (t.amount === 0) {
+      amountPrefix = '';
+      amountClass = 'adjust';
+      if (isAdjustTx) {
+        iconName = 'scale';
+        iconBg = 'rgba(168, 85, 247, 0.15)';
+        iconColor = '#a855f7';
+      } else if (cat) {
+        iconName = cat.icon;
+        iconBg = 'var(--bg-surface)';
+        iconColor = 'var(--text-muted)';
+      }
+    } else if (t.type === 'expense') {
+      iconName = cat ? cat.icon : (isAdjustTx ? 'scale' : 'shopping-bag');
+      iconBg = isAdjustTx ? 'rgba(168, 85, 247, 0.15)' : 'var(--expense-bg)';
+      iconColor = isAdjustTx ? '#a855f7' : 'var(--expense)';
       amountPrefix = '-';
       amountClass = 'expense';
     } else if (t.type === 'income') {
-      iconName = cat ? cat.icon : 'banknote';
-      iconBg = 'var(--income-bg)';
-      iconColor = 'var(--income)';
+      iconName = cat ? cat.icon : (isAdjustTx ? 'scale' : 'banknote');
+      iconBg = isAdjustTx ? 'rgba(168, 85, 247, 0.15)' : 'var(--income-bg)';
+      iconColor = isAdjustTx ? '#a855f7' : 'var(--income)';
       amountPrefix = '+';
       amountClass = 'income';
     }
