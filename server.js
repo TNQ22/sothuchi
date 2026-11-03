@@ -1149,24 +1149,34 @@ class DatabaseManager {
 
     // Nếu Editor gửi kèm bản chiếu đã cập nhật (hỗ trợ cả E2EE)
     if (incomingProjection) {
-      this.saveItemProjection(share.vault_id, share.item_type, share.item_id, incomingProjection, email);
-      this.touchVaultVersion(share.vault_id, email);
+      const existingProj = this.getItemProjection(share.vault_id, share.item_type, share.item_id);
+      const existingDataStr = existingProj && existingProj.data ? (typeof existingProj.data === 'string' ? existingProj.data : JSON.stringify(existingProj.data)) : '';
+      const incomingDataStr = typeof incomingProjection === 'string' ? incomingProjection : JSON.stringify(incomingProjection);
+      let projectionChanged = existingDataStr !== incomingDataStr;
+
+      if (projectionChanged) {
+        this.saveItemProjection(share.vault_id, share.item_type, share.item_id, incomingProjection, email);
+      }
+
+      let vaultChanged = false;
       try {
         const vault = this.getVaultData(share.vault_id);
         if (vault && vault.data && typeof vault.data === 'object' && !vault.data.encrypted) {
-          let vaultChanged = false;
           if (Array.isArray(vault.data.transactions)) {
             const txsToMerge = Array.isArray(incomingTxs) && incomingTxs.length > 0
               ? incomingTxs
               : (!incomingProjection.encrypted && Array.isArray(incomingProjection.transactions) ? incomingProjection.transactions : null);
-            if (Array.isArray(txsToMerge)) {
+            if (Array.isArray(txsToMerge) && txsToMerge.length > 0) {
+              const beforeTxsStr = JSON.stringify(vault.data.transactions);
               vault.data.transactions = mergeTableData(vault.data.transactions, txsToMerge, false, 'transactions');
-              vaultChanged = true;
+              if (beforeTxsStr !== JSON.stringify(vault.data.transactions)) {
+                vaultChanged = true;
+              }
             }
           }
           if (share.item_type === 'account' && Array.isArray(vault.data.accounts) && incomingProjection.item && incomingProjection.item.balance !== undefined) {
             const acc = vault.data.accounts.find(a => String(a.id) === String(share.item_id));
-            if (acc && acc.balance !== incomingProjection.item.balance) {
+            if (acc && Number(acc.balance || 0) !== Number(incomingProjection.item.balance || 0)) {
               acc.balance = incomingProjection.item.balance;
               acc.updatedAt = new Date().toISOString();
               vaultChanged = true;
@@ -1177,6 +1187,11 @@ class DatabaseManager {
           }
         }
       } catch (_) {}
+
+      // Chỉ tăng version sổ khi dữ liệu sổ hoặc bản chiếu thực tế có sự thay đổi
+      if (vaultChanged || projectionChanged) {
+        this.touchVaultVersion(share.vault_id, email);
+      }
       return { success: true, isProjection: true };
     }
 

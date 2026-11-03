@@ -213,11 +213,17 @@ const UIAccounts = {
 
     window.addEventListener('shared-items-updated', () => {
       this.cleanAllFalseSharedAccounts(false);
-      this.render();
+      if (this._sharedUpdateRenderTimer) clearTimeout(this._sharedUpdateRenderTimer);
+      this._sharedUpdateRenderTimer = setTimeout(() => {
+        this.render();
+      }, 50);
     });
     window.addEventListener('server-auth-changed', () => {
       this.cleanAllFalseSharedAccounts(false);
-      this.render();
+      if (this._sharedUpdateRenderTimer) clearTimeout(this._sharedUpdateRenderTimer);
+      this._sharedUpdateRenderTimer = setTimeout(() => {
+        this.render();
+      }, 50);
     });
 
     const accForm = document.getElementById('account-form');
@@ -5366,13 +5372,17 @@ const UIAccounts = {
     }
     try {
       if (window.serverSyncService) {
+        let ownedChanged = false;
         if (typeof window.serverSyncService.pullAndMergeOwnedSharedProjections === 'function') {
-          await window.serverSyncService.pullAndMergeOwnedSharedProjections();
+          ownedChanged = await window.serverSyncService.pullAndMergeOwnedSharedProjections();
         }
         const changed = await window.serverSyncService.syncReceivedSharedItems();
-        await this.render();
+        const hasAnyChange = Boolean(ownedChanged || changed);
+        if (hasAnyChange) {
+          await this.render();
+        }
         if (typeof showToast === 'function') {
-          showToast(changed ? 'Đã tải thành công các mục chia sẻ mới!' : 'Đã kiểm tra xong: Dữ liệu chia sẻ đã mới nhất.', 'info');
+          showToast(hasAnyChange ? 'Đã tải thành công các mục chia sẻ mới!' : 'Đã kiểm tra xong: Dữ liệu chia sẻ đã mới nhất.', 'info');
         }
       }
     } catch (err) {
@@ -5844,7 +5854,8 @@ const UIAccounts = {
     let accounts = (await db.accounts.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0);
     const totalBal = accounts.reduce((sum, a) => sum + Math.abs(a.balance || 0), 0);
     const txCount = await db.transactions.count();
-    if (totalBal === 0 && txCount > 0 && typeof recalculateAccountBalances === 'function') {
+    if (!this._initialBalanceChecked && totalBal === 0 && txCount > 0 && typeof recalculateAccountBalances === 'function') {
+      this._initialBalanceChecked = true;
       await recalculateAccountBalances();
       accounts = (await db.accounts.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0);
     }

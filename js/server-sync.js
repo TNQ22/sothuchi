@@ -1877,9 +1877,9 @@ class ServerSyncService {
         }
       }
 
-      const mergedList = Array.from(itemMap.values());
-      const beforeStr = JSON.stringify(localItems);
-      const afterStr = JSON.stringify(mergedList);
+      const sortById = (arr) => [...arr].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+      const beforeStr = JSON.stringify(sortById(localItems));
+      const afterStr = JSON.stringify(sortById(mergedList));
       if (beforeStr !== afterStr) {
         anyDataChanged = true;
         await table.clear();
@@ -1891,15 +1891,18 @@ class ServerSyncService {
     const sharedReceivedAccs = (await db.accounts.toArray()).filter(a => a._isSharedItem);
     const sharedReceivedTxs = (await db.transactions.toArray()).filter(t => t._isSharedItem);
 
+    const prevAccsChanged = anyDataChanged;
     if (remoteData.transactions) await mergeTable(db.transactions, await db.transactions.toArray(), remoteData.transactions, false, 'transactions');
     if (remoteData.accounts) await mergeTable(db.accounts, await db.accounts.toArray(), remoteData.accounts, true, 'accounts');
 
-    // Phục hồi lại các item chia sẻ nhận được
-    for (const sAcc of sharedReceivedAccs) {
-      await db.accounts.put(sAcc);
-    }
-    for (const sTx of sharedReceivedTxs) {
-      await db.transactions.put(sTx);
+    // Phục hồi lại các item chia sẻ nhận được chỉ khi bảng tài khoản/giao dịch thực sự bị xóa & gộp lại
+    if (anyDataChanged) {
+      for (const sAcc of sharedReceivedAccs) {
+        await db.accounts.put(sAcc);
+      }
+      for (const sTx of sharedReceivedTxs) {
+        await db.transactions.put(sTx);
+      }
     }
 
     if (remoteData.categories) await mergeTable(db.categories, await db.categories.toArray(), remoteData.categories, false, 'categories');
@@ -2349,16 +2352,16 @@ class ServerSyncService {
           let localAccId;
           if (localAcc) {
             localAccId = localAcc.id;
-            const isDiff = localAcc.name !== accData.name ||
+            const isDiff = (localAcc.name || '').trim() !== (accData.name || '').trim() ||
                            Number(localAcc.balance || 0) !== Number(accData.balance || 0) ||
-                           localAcc.type !== accData.type ||
-                           localAcc.icon !== accData.icon ||
-                           localAcc.color !== accData.color ||
-                           localAcc.currency !== accData.currency ||
-                           localAcc.description !== accData.description ||
+                           (localAcc.type || '') !== (accData.type || '') ||
+                           (localAcc.icon || '') !== (accData.icon || '') ||
+                           (localAcc.color || '') !== (accData.color || '') ||
+                           (localAcc.currency || 'VND') !== (accData.currency || 'VND') ||
+                           (localAcc.description || '').trim() !== (accData.description || '').trim() ||
                            Boolean(localAcc.isArchived) !== Boolean(accData.isArchived) ||
-                           localAcc._sharedRole !== accData._sharedRole ||
-                           localAcc._sharedFrom !== accData._sharedFrom;
+                           (localAcc._sharedRole || '') !== (accData._sharedRole || '') ||
+                           (localAcc._sharedFrom || '') !== (accData._sharedFrom || '');
             if (isDiff) {
               hasChanges = true;
               await db.accounts.update(localAccId, { ...accData, id: localAccId });
@@ -2406,10 +2409,11 @@ class ServerSyncService {
               };
               if (localTx) {
                 const isTxDiff = Number(localTx.amount || 0) !== Number(txData.amount || 0) ||
-                                 localTx.type !== txData.type ||
-                                 localTx.category !== txData.category ||
-                                 localTx.date !== txData.date ||
-                                 localTx.note !== txData.note;
+                                 (localTx.type || '') !== (txData.type || '') ||
+                                 (localTx.category || '') !== (txData.category || '') ||
+                                 (localTx.date || '') !== (txData.date || '') ||
+                                 (localTx.note || '').trim() !== (txData.note || '').trim() ||
+                                 Boolean(localTx.isDeleted) !== Boolean(txData.isDeleted);
                 if (isTxDiff) {
                   hasChanges = true;
                   await db.transactions.update(localTx.id, { ...txData, id: localTx.id });
@@ -2606,6 +2610,17 @@ class ServerSyncService {
       delete cleanItem.includeInBudget;
       cleanItem.id = remoteItemId;
 
+      // Fingerprint kiểm tra dữ liệu thay đổi thực tế trước khi gửi lên server
+      const currentFingerprint = JSON.stringify({
+        balance: cleanItem.balance,
+        name: cleanItem.name,
+        txs: mappedTxs.map(t => `${t.id}_${t.amount}_${t.type}_${t.category}_${t.date}_${(t.note || '').trim()}_${t.isDeleted ? 1 : 0}`)
+      });
+      if (!this._lastPushedSharedFingerprints) this._lastPushedSharedFingerprints = {};
+      if (this._lastPushedSharedFingerprints[shareId] === currentFingerprint) {
+        return false;
+      }
+
       const categories = await db.categories.toArray();
 
       const projectedPayload = {
@@ -2648,6 +2663,8 @@ class ServerSyncService {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Lỗi đẩy giao dịch chia sẻ');
       }
+
+      this._lastPushedSharedFingerprints[shareId] = currentFingerprint;
 
       for (const t of localTxs) {
         const updates = {};
@@ -2800,27 +2817,24 @@ class ServerSyncService {
             } else {
               const rTime = new Date(rtx.updatedAt || 0).getTime() || 0;
               const lTime = new Date(existing.updatedAt || 0).getTime() || 0;
-              if (rTime > lTime || !existing.recordedByOther) {
-                const isDiff = Number(existing.amount || 0) !== Number(rtx.amount || 0) ||
-                               existing.type !== rtx.type ||
-                               existing.category !== rtx.category ||
-                               existing.date !== rtx.date ||
-                               existing.note !== rtx.note ||
-                               existing.isDeleted !== (rtx.isDeleted ? 1 : 0) ||
-                               !existing.recordedByOther;
-                if (isDiff) {
-                  await db.transactions.update(existing.id, {
-                    ...rtx,
-                    id: existing.id,
-                    accountId: accId,
-                    isDeleted: rtx.isDeleted ? 1 : 0,
-                    updatedAt: rtx.updatedAt || Date.now(),
-                    recordedByOther: 1,
-                    createdBy: rtx.createdBy || existing.createdBy || 'Thành viên',
-                    createdByEmail: rtx.createdByEmail || existing.createdByEmail || ''
-                  });
-                  hasChanges = true;
-                }
+              const isDiff = Number(existing.amount || 0) !== Number(rtx.amount || 0) ||
+                             (existing.type || '') !== (rtx.type || '') ||
+                             (existing.category || '') !== (rtx.category || '') ||
+                             (existing.date || '') !== (rtx.date || '') ||
+                             (existing.note || '').trim() !== (rtx.note || '').trim() ||
+                             Boolean(existing.isDeleted) !== Boolean(rtx.isDeleted);
+              if (isDiff && (rTime > lTime || !existing.updatedAt)) {
+                await db.transactions.update(existing.id, {
+                  ...rtx,
+                  id: existing.id,
+                  accountId: accId,
+                  isDeleted: rtx.isDeleted ? 1 : 0,
+                  updatedAt: rtx.updatedAt || Date.now(),
+                  recordedByOther: existing.recordedByOther !== undefined ? existing.recordedByOther : 1,
+                  createdBy: rtx.createdBy || existing.createdBy || 'Thành viên',
+                  createdByEmail: rtx.createdByEmail || existing.createdByEmail || ''
+                });
+                hasChanges = true;
               }
             }
           }
