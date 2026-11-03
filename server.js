@@ -920,6 +920,32 @@ class DatabaseManager {
     return true;
   }
 
+  leaveItemShare(shareId, userEmail, vaultId = null, itemType = null, itemId = null) {
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    if (!cleanEmail) return false;
+
+    if (this.isSqlite) {
+      if (shareId) {
+        const stmt = this.sqliteDb.prepare('DELETE FROM item_shares WHERE id = ? AND LOWER(TRIM(user_email)) = ?');
+        stmt.run(shareId, cleanEmail);
+      }
+      if (vaultId && itemType && itemId) {
+        const stmt = this.sqliteDb.prepare('DELETE FROM item_shares WHERE vault_id = ? AND item_type = ? AND item_id = ? AND LOWER(TRIM(user_email)) = ?');
+        stmt.run(vaultId, itemType, String(itemId), cleanEmail);
+      }
+    } else {
+      this.jsonStore.item_shares = (this.jsonStore.item_shares || []).filter(s => {
+        const sEmail = (s.user_email || '').trim().toLowerCase();
+        if (sEmail !== cleanEmail) return true;
+        if (shareId && s.id === shareId) return false;
+        if (vaultId && itemType && itemId && s.vault_id === vaultId && s.item_type === itemType && String(s.item_id) === String(itemId)) return false;
+        return true;
+      });
+      this.saveJsonStore();
+    }
+    return true;
+  }
+
   createItemShareLink(vaultId, itemType, itemId, itemName, role, createdBy, shareKey = null) {
     const id = generateId('ilnk_');
     const token = crypto.randomBytes(16).toString('hex');
@@ -3229,12 +3255,48 @@ async function handleApiRequest(req, res, pathname, url) {
           itemName: s.item_name,
           role: s.role,
           shareKey: s.share_key || null,
+          createdAt: s.created_at,
+          updatedAt: s.updated_at,
           ...data
         });
       }
     }
 
     return sendJson(res, 200, { items: results });
+  }
+
+  // 23b. Người nhận rời khỏi mục chia sẻ (Leave Shared Item)
+  const leaveShareMatch = pathname.match(/^\/api\/shares\/item\/(?:leave|received)(?:\/([^/]+))?$/);
+  if ((req.method === 'POST' || req.method === 'DELETE') && (leaveShareMatch || pathname === '/api/shares/leave')) {
+    try {
+      let shareId = leaveShareMatch && leaveShareMatch[1] ? leaveShareMatch[1] : null;
+      let vaultId = null;
+      let itemType = null;
+      let itemId = null;
+
+      if (req.method === 'POST') {
+        const body = await parseJsonBody(req).catch(() => ({}));
+        if (body.shareId) shareId = body.shareId;
+        if (body.vaultId) vaultId = body.vaultId;
+        if (body.itemType) itemType = body.itemType;
+        if (body.itemId) itemId = body.itemId;
+      } else {
+        const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+        if (!shareId) shareId = urlObj.searchParams.get('shareId');
+        vaultId = urlObj.searchParams.get('vaultId');
+        itemType = urlObj.searchParams.get('itemType');
+        itemId = urlObj.searchParams.get('itemId');
+      }
+
+      if (!shareId && !(vaultId && itemType && itemId)) {
+        return sendJson(res, 400, { error: 'Thiếu shareId hoặc thông tin mục (vaultId, itemType, itemId)' });
+      }
+
+      dbManager.leaveItemShare(shareId, currentUser.email, vaultId, itemType, itemId);
+      return sendJson(res, 200, { success: true, message: 'Đã rời khỏi mục chia sẻ thành công' });
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
   }
 
   // 24. Đẩy cập nhật giao dịch từ thành viên (Editor) lên mục được chia sẻ

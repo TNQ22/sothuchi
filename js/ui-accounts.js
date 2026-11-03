@@ -4968,11 +4968,45 @@ const UIAccounts = {
     if (!ok) return;
     try {
       const numId = Number(id);
+      let item = null;
+      if (type === 'account') {
+        item = await db.accounts.get(numId);
+      } else if (type === 'savings' && db.savings) {
+        item = await db.savings.get(numId);
+      } else if (type === 'accumulation' && db.accumulations) {
+        item = await db.accumulations.get(numId);
+      } else if (type === 'loan' && db.loans) {
+        item = await db.loans.get(numId);
+      } else if (type === 'asset' && db.assets) {
+        item = await db.assets.get(numId);
+      }
+
+      const shareId = item?._shareId || null;
+      const remoteVaultId = item?._remoteVaultId || null;
+      const remoteId = item?._remoteId || null;
+
+      // 1. Thông báo cho ServerSync để huỷ quyền trên server và ghi vào blacklist cục bộ
+      if (window.serverSyncService && typeof window.serverSyncService.leaveReceivedSharedItem === 'function') {
+        await window.serverSyncService.leaveReceivedSharedItem({
+          shareId,
+          vaultId: remoteVaultId,
+          itemType: type,
+          itemId: remoteId || id
+        });
+      }
+
+      // 2. Xóa dữ liệu cục bộ khỏi IndexedDB
       if (type === 'account') {
         await db.accounts.delete(numId);
         const relatedTxs = await db.transactions.where('accountId').equals(numId).toArray();
         for (const tx of relatedTxs) {
           await db.transactions.delete(tx.id);
+        }
+        if (shareId) {
+          const shareTxs = (await db.transactions.toArray()).filter(t => t._shareId === shareId);
+          for (const tx of shareTxs) {
+            await db.transactions.delete(tx.id);
+          }
         }
       } else if (type === 'savings') {
         if (db.savings) await db.savings.delete(numId);
