@@ -16,6 +16,8 @@ function getLocalDateStr(date = new Date()) {
 
 const UITransactions = {
   userChangedAccount: false,
+  userSelectedAccountId: null,
+  isEditing: false,
   currentFilterType: 'all',
   filterAccountId: null,
   formInitialized: false,
@@ -617,6 +619,16 @@ const UITransactions = {
       });
       txForm.addEventListener('input', () => this.saveDraft());
       txForm.addEventListener('change', () => this.saveDraft());
+
+      const fromSelect = document.getElementById('tx-account-select');
+      if (fromSelect) {
+        fromSelect.addEventListener('change', (e) => {
+          if (!this.isEditing) {
+            this.userChangedAccount = true;
+            this.userSelectedAccountId = e.target.value;
+          }
+        });
+      }
     }
 
     window.addEventListener('beforeunload', () => {
@@ -3343,6 +3355,11 @@ const UITransactions = {
     const isSelectedFromValid = selectedFromAcc && (!selectedFromAcc.isArchived || String(selectedFromAcc.id) === String(selectedFromId)) && (!selectedFromAcc._isSharedItem || selectedFromAcc._sharedRole === 'editor');
     const activeFromId = isSelectedFromValid ? selectedFromId : (defaultAccountPool.length > 0 ? defaultAccountPool[0].id : (accounts.length > 0 ? accounts[0].id : null));
 
+    if (selectedFromId && !isSelectedFromValid && String(this.userSelectedAccountId) === String(selectedFromId)) {
+      this.userChangedAccount = false;
+      this.userSelectedAccountId = null;
+    }
+
     let activeToId = selectedToId;
     const selectedToAcc = selectedToId ? accounts.find(a => String(a.id) === String(selectedToId)) : null;
     const isSelectedToValid = selectedToAcc && (!selectedToAcc.isArchived || String(selectedToAcc.id) === String(selectedToId)) && (!selectedToAcc._isSharedItem || selectedToAcc._sharedRole === 'editor');
@@ -3486,6 +3503,9 @@ const UITransactions = {
         onSelect: async (accId) => {
           if (!accId) return;
           this.userChangedAccount = true;
+          if (!this.isEditing) {
+            this.userSelectedAccountId = accId;
+          }
           const fromSelect = document.getElementById('tx-account-select');
           if (fromSelect) fromSelect.value = accId;
           await this.updateSelectedAccountDisplay();
@@ -3542,6 +3562,9 @@ const UITransactions = {
       }
     }
     this.userChangedAccount = true;
+    if (!this.isEditing) {
+      this.userSelectedAccountId = id;
+    }
     const fromSelect = document.getElementById('tx-account-select');
     if (fromSelect) fromSelect.value = id;
     this.closeAccountDropdown();
@@ -3591,6 +3614,11 @@ const UITransactions = {
     const temp = fromSelect.value;
     fromSelect.value = toSelect.value;
     toSelect.value = temp;
+
+    this.userChangedAccount = true;
+    if (!this.isEditing) {
+      this.userSelectedAccountId = fromSelect.value;
+    }
 
     await this.updateSelectedAccountDisplay();
     await this.updateSelectedToAccountDisplay();
@@ -4032,6 +4060,7 @@ const UITransactions = {
    * @param {number|null} txId - ID giao dịch đang sửa (chỉ dùng khi isEditing=true)
    */
   setEditMode(isEditing, txId = null) {
+    this.isEditing = isEditing;
     const deleteBtn = document.getElementById('tx-delete-btn');
     const submitLabel = document.getElementById('tx-submit-label');
     const headerTitle = document.getElementById('header-page-title');
@@ -4133,6 +4162,8 @@ const UITransactions = {
         borrowDueDate,
         borrowDueDateRaw,
         extraOpen,
+        userChangedAccount: this.userChangedAccount,
+        userSelectedAccountId: this.userSelectedAccountId || '',
         savedAt: Date.now()
       };
 
@@ -4161,8 +4192,9 @@ const UITransactions = {
       if (!draft) return false;
 
       // 1. Populate accounts
-      if (draft.accountId) {
+      if (draft.userChangedAccount && (draft.userSelectedAccountId || draft.accountId)) {
         this.userChangedAccount = true;
+        this.userSelectedAccountId = draft.userSelectedAccountId || draft.accountId;
       }
       await this.populateAccounts(draft.accountId || null, draft.toAccountId || null);
 
@@ -4304,9 +4336,13 @@ const UITransactions = {
   /**
    * Đặt lại form ghi chép về trạng thái ban đầu để tiếp tục nhập
    * @param {string} defaultType - Loại ghi chép (expense, income, lend, borrow, adjust, transfer)
+   * @param {boolean} forceDefaultAccount - Nếu true, ép buộc đưa về tài khoản mặc định (khi làm mới hoàn toàn)
    */
-  async resetForm(defaultType = 'expense') {
-    this.userChangedAccount = false;
+  async resetForm(defaultType = 'expense', forceDefaultAccount = false) {
+    if (forceDefaultAccount) {
+      this.userChangedAccount = false;
+      this.userSelectedAccountId = null;
+    }
     this.clearDraft();
     const form = document.getElementById('transaction-form');
     if (!form) return;
@@ -4378,6 +4414,13 @@ const UITransactions = {
     const subBoxReset = document.getElementById('tx-selected-cat-subtext');
     if (subBoxReset) subBoxReset.textContent = 'Chọn danh mục';
 
+    // Nạp tài khoản và giữ lại nguồn tiền đã chọn (nếu có)
+    const preservedAccountId = (!forceDefaultAccount && this.userChangedAccount && this.userSelectedAccountId)
+      ? this.userSelectedAccountId
+      : null;
+    await this.populateAccounts(preservedAccountId);
+    await this.updateSelectedAccountDisplay();
+
     // Hiển thị danh mục tức thì từ bộ nhớ RAM (0ms) mà không cần chờ tài khoản nạp
     if (defaultType === 'transfer') {
       await this.selectTransferAction();
@@ -4402,9 +4445,6 @@ const UITransactions = {
         await this.renderQuickCategories(defaultType);
       }
     }
-
-    await this.populateAccounts();
-    await this.updateSelectedAccountDisplay();
 
     // Chế độ thêm mới: ẩn nút Xóa
     this.setEditMode(false);
@@ -4450,7 +4490,9 @@ const UITransactions = {
           this.updateDateTimeDisplays(dateStr, timeStr);
         }
 
-        const curAccId = this.userChangedAccount ? document.getElementById('tx-account-select')?.value : null;
+        const curAccId = (this.userChangedAccount && this.userSelectedAccountId)
+          ? this.userSelectedAccountId
+          : (this.userChangedAccount ? document.getElementById('tx-account-select')?.value : null);
         await this.populateAccounts(curAccId || null);
         await this.updateSelectedAccountDisplay();
       }

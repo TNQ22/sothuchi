@@ -228,7 +228,7 @@ class App {
     if (window.UITransactions) {
       await window.UITransactions.init();
       window.UITransactions.clearDraft();
-      await window.UITransactions.resetForm('expense');
+      await window.UITransactions.resetForm('expense', true);
     }
 
     // Cập nhật Avatar tài khoản Google/Dropbox hoặc App Logo lên Header và Trang Ghi Chép
@@ -572,7 +572,7 @@ class App {
       window.UITransactions.isEditing = false;
       const idInput = document.getElementById('tx-id-input');
       if (idInput) idInput.value = '';
-      await window.UITransactions.resetForm('expense');
+      await window.UITransactions.resetForm('expense', true);
       window.scrollTo(0, 0);
       const activeView = document.getElementById('view-new-transaction');
       if (activeView) activeView.scrollTop = 0;
