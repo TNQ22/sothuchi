@@ -4864,8 +4864,15 @@ const UITransactions = {
 
   getTxShareNote(t, acc) {
     if (!acc) return '';
-    const isSharedAccount = !!(acc._isSharedItem || acc.isShared);
+    const hasOtherAuthor = (t.recordedByOther === 1) || !!t._isSharedItem;
+    const isSharedAccount = !!(acc._isSharedItem || acc.isShared || hasOtherAuthor);
     if (!isSharedAccount) return '';
+
+    // Tự động khôi phục cờ isShared = 1 cho tài khoản chủ nếu phát hiện giao dịch có thành viên ghi
+    if (!acc._isSharedItem && !acc.isShared && hasOtherAuthor) {
+      acc.isShared = 1;
+      db.accounts.update(acc.id, { isShared: 1 }).catch(() => {});
+    }
 
     // Kiểm tra xem giao dịch này do ai ghi chép trong tài khoản chia sẻ
     const uProfile = window.serverSyncService?.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;
@@ -4880,7 +4887,7 @@ const UITransactions = {
     let isMe = false;
     let authorRoleLabel = '';
 
-    if (!acc._isSharedItem && (acc.isShared === 1 || acc.isShared === true)) {
+    if (!acc._isSharedItem) {
       // Đang xem trên máy CHỦ SỞ HỮU:
       // - Nếu recordedByOther === 1 -> Giao dịch do THÀNH VIÊN ghi (chắc chắn KHÔNG phải Tôi)
       // - Nếu !recordedByOther || recordedByOther === 0 -> Giao dịch do CHỦ VÍ ghi (Tôi)
@@ -4890,7 +4897,7 @@ const UITransactions = {
       } else {
         isMe = true;
       }
-    } else if (acc._isSharedItem) {
+    } else {
       // Đang xem trên máy THÀNH VIÊN NHẬN CHIA SẺ:
       // - Nếu !recordedByOther || recordedByOther === 0 -> Giao dịch do CHỦ VÍ ghi (chắc chắn KHÔNG phải Tôi)
       // - Nếu recordedByOther === 1 -> Giao dịch do THÀNH VIÊN ghi
@@ -4905,11 +4912,6 @@ const UITransactions = {
         } else {
           isMe = true;
         }
-      }
-    } else {
-      if (currentEmail || currentName) {
-        if (creatorEmail && currentEmail && creatorEmail === currentEmail) isMe = true;
-        else if (creatorName && currentName && creatorName === currentName) isMe = true;
       }
     }
 

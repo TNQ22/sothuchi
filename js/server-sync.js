@@ -1241,20 +1241,6 @@ class ServerSyncService {
     }
 
     const allAccs = await db.accounts.toArray();
-    // Dọn dẹp cờ isShared giả trước khi mã hóa & ghi đè lên máy chủ
-    const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
-    const validOwnedSet = new Set(
-      (ownedSetting && Array.isArray(ownedSetting.value))
-        ? ownedSetting.value.filter(x => x.itemType === 'account' && (x.shareKey || x.token)).map(x => String(x.itemId))
-        : []
-    );
-    for (const a of allAccs) {
-      if (!a._isSharedItem && a.isShared === 1 && !validOwnedSet.has(String(a.id))) {
-        a.isShared = 0;
-        await db.accounts.update(a.id, { isShared: 0, updatedAt: Date.now() });
-      }
-    }
-
     const allTxs = await db.transactions.toArray();
 
     const SYNCABLE_SETTINGS_KEYS = [
@@ -2859,7 +2845,7 @@ class ServerSyncService {
     if (!this.token || !this.serverUrl) return false;
     let changed = false;
     try {
-      const personalAccs = (await db.accounts.toArray()).filter(a => !a._isSharedItem && (a.isShared === 1 || a.isShared === true));
+      const personalAccs = (await db.accounts.toArray()).filter(a => !a._isSharedItem && (!a.isDeleted || a.isDeleted === 0));
       if (personalAccs.length === 0) return false;
 
       const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
@@ -2870,17 +2856,22 @@ class ServerSyncService {
           const res = await this.getItemShares('account', acc.id);
           if (res && Array.isArray(res.shares) && Array.isArray(res.links)) {
             const hasShares = res.shares.length > 0 || res.links.length > 0;
-            if (!hasShares) {
+            if (hasShares) {
+              if (!acc.isShared) {
+                await db.accounts.update(acc.id, { isShared: 1, updatedAt: Date.now() });
+                acc.isShared = 1;
+                changed = true;
+              }
+              if (!ownedList.some(x => x.itemType === 'account' && String(x.itemId) === String(acc.id))) {
+                ownedList.push({ itemType: 'account', itemId: String(acc.id) });
+                changed = true;
+              }
+            } else if (acc.isShared) {
               await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
               acc.isShared = 0;
               ownedList = ownedList.filter(x => !(x.itemType === 'account' && String(x.itemId) === String(acc.id)));
               changed = true;
               console.log(`[ServerSync] Tự động xóa cờ chia sẻ cho tài khoản không có người nhận: "${acc.name}"`);
-            } else {
-              if (!ownedList.some(x => x.itemType === 'account' && String(x.itemId) === String(acc.id))) {
-                ownedList.push({ itemType: 'account', itemId: String(acc.id) });
-                changed = true;
-              }
             }
           }
         } catch (_) {
