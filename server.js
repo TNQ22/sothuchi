@@ -240,6 +240,13 @@ class DatabaseManager {
         this.sqliteDb.prepare('ALTER TABLE item_share_links ADD COLUMN share_key TEXT').run();
       } catch (_) {}
 
+      // Dọn dẹp triệt để các bản ghi mồ côi nếu sổ gốc đã bị xóa trước đó
+      try {
+        this.sqliteDb.prepare('DELETE FROM item_shares WHERE vault_id NOT IN (SELECT id FROM vaults)').run();
+        this.sqliteDb.prepare('DELETE FROM item_share_links WHERE vault_id NOT IN (SELECT id FROM vaults)').run();
+        this.sqliteDb.prepare('DELETE FROM shared_item_projections WHERE vault_id NOT IN (SELECT id FROM vaults)').run();
+      } catch (_) {}
+
       this.isSqlite = true;
       console.log(`[Storage] Đã khởi tạo SQLite Database tại: ${dbPath}`);
     } catch (err) {
@@ -573,17 +580,39 @@ class DatabaseManager {
 
   deleteVault(vaultId) {
     if (this.isSqlite) {
-      this.sqliteDb.prepare('DELETE FROM vaults WHERE id = ?').run(vaultId);
-      this.sqliteDb.prepare('DELETE FROM vault_shares WHERE vault_id = ?').run(vaultId);
-      this.sqliteDb.prepare('DELETE FROM vault_data WHERE vault_id = ?').run(vaultId);
+      this.sqliteDb.prepare('DELETE FROM item_shares WHERE vault_id = ?').run(vaultId);
+      this.sqliteDb.prepare('DELETE FROM item_share_links WHERE vault_id = ?').run(vaultId);
+      this.sqliteDb.prepare('DELETE FROM shared_item_projections WHERE vault_id = ?').run(vaultId);
       this.sqliteDb.prepare('DELETE FROM vault_history WHERE vault_id = ?').run(vaultId);
+      this.sqliteDb.prepare('DELETE FROM vault_data WHERE vault_id = ?').run(vaultId);
+      this.sqliteDb.prepare('DELETE FROM vault_shares WHERE vault_id = ?').run(vaultId);
+      this.sqliteDb.prepare('DELETE FROM vaults WHERE id = ?').run(vaultId);
     } else {
       delete this.jsonStore.vaults[vaultId];
       delete this.jsonStore.vault_data[vaultId];
-      for (const k of Object.keys(this.jsonStore.vault_shares)) {
-        if (this.jsonStore.vault_shares[k].vault_id === vaultId) delete this.jsonStore.vault_shares[k];
+      if (this.jsonStore.vault_history) {
+        this.jsonStore.vault_history = this.jsonStore.vault_history.filter(h => h.vault_id !== vaultId);
       }
-      this.jsonStore.vault_history = this.jsonStore.vault_history.filter(h => h.vault_id !== vaultId);
+      if (this.jsonStore.vault_shares) {
+        for (const k of Object.keys(this.jsonStore.vault_shares)) {
+          if (this.jsonStore.vault_shares[k].vault_id === vaultId) {
+            delete this.jsonStore.vault_shares[k];
+          }
+        }
+      }
+      if (this.jsonStore.item_shares) {
+        this.jsonStore.item_shares = (this.jsonStore.item_shares || []).filter(s => s.vault_id !== vaultId);
+      }
+      if (this.jsonStore.item_share_links) {
+        this.jsonStore.item_share_links = (this.jsonStore.item_share_links || []).filter(l => l.vault_id !== vaultId);
+      }
+      if (this.jsonStore.shared_item_projections) {
+        for (const k of Object.keys(this.jsonStore.shared_item_projections)) {
+          if (this.jsonStore.shared_item_projections[k]?.vault_id === vaultId || k.startsWith(`${vaultId}_`)) {
+            delete this.jsonStore.shared_item_projections[k];
+          }
+        }
+      }
       this.saveJsonStore();
     }
   }
@@ -922,23 +951,31 @@ class DatabaseManager {
 
   leaveItemShare(shareId, userEmail, vaultId = null, itemType = null, itemId = null) {
     const cleanEmail = (userEmail || '').trim().toLowerCase();
-    if (!cleanEmail) return false;
 
     if (this.isSqlite) {
       if (shareId) {
-        const stmt = this.sqliteDb.prepare('DELETE FROM item_shares WHERE id = ? AND LOWER(TRIM(user_email)) = ?');
-        stmt.run(shareId, cleanEmail);
+        if (cleanEmail) {
+          this.sqliteDb.prepare('DELETE FROM item_shares WHERE id = ? AND LOWER(TRIM(user_email)) = ?').run(shareId, cleanEmail);
+        } else {
+          this.sqliteDb.prepare('DELETE FROM item_shares WHERE id = ?').run(shareId);
+        }
       }
       if (vaultId && itemType && itemId) {
-        const stmt = this.sqliteDb.prepare('DELETE FROM item_shares WHERE vault_id = ? AND item_type = ? AND item_id = ? AND LOWER(TRIM(user_email)) = ?');
-        stmt.run(vaultId, itemType, String(itemId), cleanEmail);
+        if (cleanEmail) {
+          this.sqliteDb.prepare('DELETE FROM item_shares WHERE vault_id = ? AND item_type = ? AND item_id = ? AND LOWER(TRIM(user_email)) = ?').run(vaultId, itemType, String(itemId), cleanEmail);
+        } else {
+          this.sqliteDb.prepare('DELETE FROM item_shares WHERE vault_id = ? AND item_type = ? AND item_id = ?').run(vaultId, itemType, String(itemId));
+        }
       }
     } else {
       this.jsonStore.item_shares = (this.jsonStore.item_shares || []).filter(s => {
         const sEmail = (s.user_email || '').trim().toLowerCase();
-        if (sEmail !== cleanEmail) return true;
-        if (shareId && s.id === shareId) return false;
-        if (vaultId && itemType && itemId && s.vault_id === vaultId && s.item_type === itemType && String(s.item_id) === String(itemId)) return false;
+        if (shareId && s.id === shareId) {
+          if (!cleanEmail || sEmail === cleanEmail) return false;
+        }
+        if (vaultId && itemType && itemId && s.vault_id === vaultId && s.item_type === itemType && String(s.item_id) === String(itemId)) {
+          if (!cleanEmail || sEmail === cleanEmail) return false;
+        }
         return true;
       });
       this.saveJsonStore();
@@ -1001,7 +1038,7 @@ class DatabaseManager {
                COALESCE(u.name, u_creator.name, '') as owner_name,
                COALESCE(u.email, u_creator.email, '') as owner_email
         FROM item_shares s
-        LEFT JOIN vaults v ON v.id = s.vault_id
+        INNER JOIN vaults v ON v.id = s.vault_id
         LEFT JOIN users u ON u.id = v.owner_id
         LEFT JOIN users u_creator ON u_creator.id = s.created_by
         WHERE LOWER(TRIM(s.user_email)) = ?
@@ -1009,9 +1046,15 @@ class DatabaseManager {
       return stmt.all(cleanEmail);
     } else {
       return (this.jsonStore.item_shares || [])
-        .filter(s => s.user_email && s.user_email.trim().toLowerCase() === cleanEmail)
+        .filter(s => {
+          if (!s.user_email || s.user_email.trim().toLowerCase() !== cleanEmail) return false;
+          const v = (this.jsonStore.vaults && this.jsonStore.vaults[s.vault_id]) ||
+                    (Array.isArray(this.jsonStore.vaults) && this.jsonStore.vaults.find(x => x.id === s.vault_id));
+          return !!v;
+        })
         .map(s => {
-          const v = (this.jsonStore.vaults || []).find(x => x.id === s.vault_id);
+          const v = (this.jsonStore.vaults && this.jsonStore.vaults[s.vault_id]) ||
+                    (Array.isArray(this.jsonStore.vaults) && this.jsonStore.vaults.find(x => x.id === s.vault_id));
           const u = v ? (this.jsonStore.users || []).find(x => x.id === v.owner_id) : (this.jsonStore.users || []).find(x => x.id === s.created_by);
           return { ...s, vault_name: v?.name || '', owner_name: u?.name || '', owner_email: u?.email || '' };
         });
@@ -1075,6 +1118,9 @@ class DatabaseManager {
   }
 
   getReceivedItemData(vaultId, itemType, itemId) {
+    if (vaultId && !this.getVaultById(vaultId)) {
+      return null;
+    }
     const proj = this.getItemProjection(vaultId, itemType, itemId);
     const vault = this.getVaultData(vaultId);
     const vaultIsEncrypted = vault && vault.data && (

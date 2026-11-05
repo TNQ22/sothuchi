@@ -4998,15 +4998,13 @@ const UIAccounts = {
       // 2. Xóa dữ liệu cục bộ khỏi IndexedDB
       if (type === 'account') {
         await db.accounts.delete(numId);
-        const relatedTxs = await db.transactions.where('accountId').equals(numId).toArray();
+        const relatedTxs = (await db.transactions.toArray()).filter(t =>
+          Number(t.accountId) === numId ||
+          Number(t.toAccountId) === numId ||
+          (shareId && t._shareId === shareId)
+        );
         for (const tx of relatedTxs) {
           await db.transactions.delete(tx.id);
-        }
-        if (shareId) {
-          const shareTxs = (await db.transactions.toArray()).filter(t => t._shareId === shareId);
-          for (const tx of shareTxs) {
-            await db.transactions.delete(tx.id);
-          }
         }
       } else if (type === 'savings') {
         if (db.savings) await db.savings.delete(numId);

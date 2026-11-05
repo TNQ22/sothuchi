@@ -2334,24 +2334,20 @@ class ServerSyncService {
 
       const leftItems = await this.getLeftSharedItems();
       const isLeft = (i) => {
+        if (!i) return false;
+        const targetType = i.itemType || i._itemType || 'account';
+        const targetItemId = i.itemId !== undefined ? String(i.itemId) : (i._remoteId !== undefined ? String(i._remoteId) : (i.id !== undefined ? String(i.id) : null));
+        const targetVaultId = i.vaultId ? String(i.vaultId) : (i._remoteVaultId ? String(i._remoteVaultId) : null);
+        const targetShareId = i.shareId ? String(i.shareId) : (i._shareId ? String(i._shareId) : null);
+
         return leftItems.some(x => {
-          const sMatch = x.shareId && i.shareId && x.shareId === i.shareId;
-          const targetType = i.itemType || i._itemType || 'account';
-          const targetItemId = i.itemId || i._remoteId || i.id;
-          const targetVaultId = i.vaultId || i._remoteVaultId;
+          const sMatch = x.shareId && targetShareId && String(x.shareId) === targetShareId;
           const vMatch = x.vaultId && x.itemType && x.itemId &&
                          targetVaultId && targetItemId &&
-                         x.vaultId === targetVaultId &&
+                         String(x.vaultId) === targetVaultId &&
                          x.itemType === targetType &&
-                         String(x.itemId) === String(targetItemId);
-          if (sMatch || vMatch) {
-            const itemTime = i.updatedAt ? new Date(i.updatedAt).getTime() : (i.createdAt ? new Date(i.createdAt).getTime() : 0);
-            if (itemTime && x.leftAt && itemTime > x.leftAt) {
-              return false; // Mời mới sau khi rời khỏi
-            }
-            return true;
-          }
-          return false;
+                         String(x.itemId) === targetItemId;
+          return !!(sMatch || vMatch);
         });
       };
 
@@ -2371,23 +2367,34 @@ class ServerSyncService {
 
       const activeReceivedShareIds = new Set(items.filter(i => !isLeft(i)).map(i => i.shareId));
 
+      const shouldDeleteItem = (type, item) => {
+        if (!item || !item._isSharedItem) return false;
+        // 1. Nếu người dùng đã bấm rời khỏi mục này
+        if (isLeft({ shareId: item._shareId, vaultId: item._remoteVaultId, itemType: type, itemId: item._remoteId, id: item.id })) {
+          return true;
+        }
+        // 2. Quyền chia sẻ không còn tồn tại trên server (bị xóa, thu hồi, hoặc sổ gốc đã bị xóa)
+        if (item._shareId && !activeReceivedShareIds.has(item._shareId)) {
+          return true;
+        }
+        return false;
+      };
+
       // 1. Xóa các item đã bị thu hồi hoặc đã rời khỏi khỏi local IndexedDB
       const localAccs = await db.accounts.toArray();
       for (const acc of localAccs) {
-        if (acc._isSharedItem && (acc._shareId ? !activeReceivedShareIds.has(acc._shareId) : isLeft({ vaultId: acc._remoteVaultId, itemType: 'account', itemId: acc._remoteId, id: acc.id }))) {
+        if (shouldDeleteItem('account', acc)) {
           console.log('[ServerSync] Quyền chia sẻ đã bị thu hồi hoặc đã rời khỏi, xóa tài khoản:', acc.name);
           hasChanges = true;
           await db.accounts.delete(acc.id);
           // Xóa giao dịch kèm theo
-          const relatedTxs = await db.transactions.where('accountId').equals(acc.id).toArray();
+          const relatedTxs = (await db.transactions.toArray()).filter(t =>
+            Number(t.accountId) === Number(acc.id) ||
+            Number(t.toAccountId) === Number(acc.id) ||
+            (acc._shareId && t._shareId === acc._shareId)
+          );
           for (const tx of relatedTxs) {
             await db.transactions.delete(tx.id);
-          }
-          if (acc._shareId) {
-            const shareTxs = (await db.transactions.toArray()).filter(t => t._shareId === acc._shareId);
-            for (const tx of shareTxs) {
-              await db.transactions.delete(tx.id);
-            }
           }
         }
       }
@@ -2395,7 +2402,7 @@ class ServerSyncService {
       if (db.savings) {
         const localSavings = await db.savings.toArray();
         for (const s of localSavings) {
-          if (s._isSharedItem && (s._shareId ? !activeReceivedShareIds.has(s._shareId) : isLeft({ vaultId: s._remoteVaultId, itemType: 'savings', itemId: s._remoteId, id: s.id }))) {
+          if (shouldDeleteItem('savings', s)) {
             hasChanges = true;
             await db.savings.delete(s.id);
           }
@@ -2405,7 +2412,7 @@ class ServerSyncService {
       if (db.accumulations) {
         const localAccums = await db.accumulations.toArray();
         for (const a of localAccums) {
-          if (a._isSharedItem && (a._shareId ? !activeReceivedShareIds.has(a._shareId) : isLeft({ vaultId: a._remoteVaultId, itemType: 'accumulation', itemId: a._remoteId, id: a.id }))) {
+          if (shouldDeleteItem('accumulation', a)) {
             hasChanges = true;
             await db.accumulations.delete(a.id);
           }
@@ -2415,7 +2422,7 @@ class ServerSyncService {
       if (db.loans) {
         const localLoans = await db.loans.toArray();
         for (const l of localLoans) {
-          if (l._isSharedItem && (l._shareId ? !activeReceivedShareIds.has(l._shareId) : isLeft({ vaultId: l._remoteVaultId, itemType: 'loan', itemId: l._remoteId, id: l.id }))) {
+          if (shouldDeleteItem('loan', l)) {
             hasChanges = true;
             await db.loans.delete(l.id);
           }
@@ -2425,7 +2432,7 @@ class ServerSyncService {
       if (db.assets) {
         const localAssets = await db.assets.toArray();
         for (const ast of localAssets) {
-          if (ast._isSharedItem && (ast._shareId ? !activeReceivedShareIds.has(ast._shareId) : isLeft({ vaultId: ast._remoteVaultId, itemType: 'asset', itemId: ast._remoteId, id: ast.id }))) {
+          if (shouldDeleteItem('asset', ast)) {
             hasChanges = true;
             await db.assets.delete(ast.id);
           }
