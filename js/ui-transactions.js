@@ -4876,34 +4876,40 @@ const UITransactions = {
     const creatorName = (t.createdBy || '').trim().toLowerCase();
     const ownerNameOrEmail = (acc._sharedFrom || '').trim();
 
-    // 1. Xác định xem người ghi chép có phải là chính người dùng hiện tại đang xem hay không
+    // 1. Phân biệt chính xác theo vai trò của thiết bị hiện tại (Chủ sổ hay Thành viên nhận chia sẻ)
     let isMe = false;
-    if (currentEmail || currentName) {
-      if (creatorEmail && currentEmail && creatorEmail === currentEmail) {
-        isMe = true;
-      } else if (creatorName && currentName && creatorName === currentName) {
-        isMe = true;
-      } else if (creatorName && currentEmail && creatorName === currentEmail) {
+    let authorRoleLabel = '';
+
+    if (!acc._isSharedItem && (acc.isShared === 1 || acc.isShared === true)) {
+      // Đang xem trên máy CHỦ SỞ HỮU:
+      // - Nếu recordedByOther === 1 -> Giao dịch do THÀNH VIÊN ghi (chắc chắn KHÔNG phải Tôi)
+      // - Nếu !recordedByOther || recordedByOther === 0 -> Giao dịch do CHỦ VÍ ghi (Tôi)
+      if (t.recordedByOther === 1) {
+        isMe = false;
+        authorRoleLabel = t.createdBy || 'Thành viên';
+      } else {
         isMe = true;
       }
-    }
-
-    // Nếu không khớp email/tên hồ sơ (ví dụ offline hoặc chưa đăng nhập đầy đủ):
-    if (!isMe) {
-      if (acc._isSharedItem) {
-        // Trên máy nhận chia sẻ: nếu giao dịch do máy này ghi nhận (recordedByOther = 1 và KHÔNG phải do chủ sổ ghi)
-        const ownerLower = ownerNameOrEmail.toLowerCase();
-        const isFromOwner = (creatorEmail && ownerLower && (creatorEmail === ownerLower || ownerLower.includes(creatorEmail))) ||
-                            (creatorName && ownerLower && (creatorName === ownerLower || ownerLower.includes(creatorName))) ||
-                            (!t.recordedByOther || t.recordedByOther === 0);
-        if (!isFromOwner && (t.recordedByOther === 1 || !t.createdBy || t.createdBy === 'Thành viên')) {
+    } else if (acc._isSharedItem) {
+      // Đang xem trên máy THÀNH VIÊN NHẬN CHIA SẺ:
+      // - Nếu !recordedByOther || recordedByOther === 0 -> Giao dịch do CHỦ VÍ ghi (chắc chắn KHÔNG phải Tôi)
+      // - Nếu recordedByOther === 1 -> Giao dịch do THÀNH VIÊN ghi
+      if (!t.recordedByOther || t.recordedByOther === 0) {
+        isMe = false;
+        authorRoleLabel = ownerNameOrEmail || 'Chủ ví';
+      } else {
+        // Giao dịch do thành viên ghi: kiểm tra xem có phải do tài khoản này tạo hay thành viên khác
+        if (creatorEmail && currentEmail && creatorEmail !== currentEmail) {
+          isMe = false;
+          authorRoleLabel = t.createdBy || 'Thành viên';
+        } else {
           isMe = true;
         }
-      } else if (acc.isShared) {
-        // Trên máy chủ sở hữu: giao dịch do chủ sổ ghi (không có cờ recordedByOther hoặc recordedByOther === 0)
-        if (!t.recordedByOther || t.recordedByOther === 0) {
-          isMe = true;
-        }
+      }
+    } else {
+      if (currentEmail || currentName) {
+        if (creatorEmail && currentEmail && creatorEmail === currentEmail) isMe = true;
+        else if (creatorName && currentName && creatorName === currentName) isMe = true;
       }
     }
 
@@ -4912,26 +4918,8 @@ const UITransactions = {
     }
 
     // 2. Không phải là Tôi -> Hiển thị tên/vai trò người đã ghi chép
-    let displayText = '';
-    let fullTitle = '';
-    if (acc._isSharedItem && (!t.recordedByOther || t.recordedByOther === 0)) {
-      // Máy thành viên nhìn thấy giao dịch của Chủ tài khoản
-      const authorLabel = ownerNameOrEmail || 'Chủ ví';
-      displayText = `(${escapeHTML(authorLabel)})`;
-      fullTitle = `Ghi chép bởi chủ tài khoản: ${escapeHTML(authorLabel)}`;
-    } else if (t.createdBy && t.createdBy.trim()) {
-      const clean = t.createdBy.trim();
-      displayText = `(${escapeHTML(clean)})`;
-      fullTitle = `Ghi chép bởi: ${escapeHTML(clean)}`;
-    } else if (t.createdByEmail && t.createdByEmail.trim()) {
-      const clean = t.createdByEmail.trim();
-      displayText = `(${escapeHTML(clean)})`;
-      fullTitle = `Ghi chép bởi: ${escapeHTML(clean)}`;
-    } else {
-      displayText = `(Thành viên)`;
-      fullTitle = `Ghi chép bởi thành viên được chia sẻ`;
-    }
-
+    const displayText = authorRoleLabel ? `(${escapeHTML(authorRoleLabel)})` : (t.createdBy ? `(${escapeHTML(t.createdBy)})` : '(Thành viên)');
+    const fullTitle = `Ghi chép bởi: ${escapeHTML(authorRoleLabel || t.createdBy || 'Thành viên')}`;
     return ` <span class="tx-share-author-note" title="${fullTitle}">${displayText}</span>`;
   },
 

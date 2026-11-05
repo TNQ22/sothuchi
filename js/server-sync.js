@@ -2876,6 +2876,11 @@ class ServerSyncService {
               ownedList = ownedList.filter(x => !(x.itemType === 'account' && String(x.itemId) === String(acc.id)));
               changed = true;
               console.log(`[ServerSync] Tự động xóa cờ chia sẻ cho tài khoản không có người nhận: "${acc.name}"`);
+            } else {
+              if (!ownedList.some(x => x.itemType === 'account' && String(x.itemId) === String(acc.id))) {
+                ownedList.push({ itemType: 'account', itemId: String(acc.id) });
+                changed = true;
+              }
             }
           }
         } catch (_) {

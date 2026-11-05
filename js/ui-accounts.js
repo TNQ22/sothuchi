@@ -806,15 +806,46 @@ const UIAccounts = {
   async confirmDeleteAccount(accId) {
     const acc = await db.accounts.get(Number(accId));
     if (!acc) return;
+    const isSharedReceived = !!acc._isSharedItem;
     const ok = await showConfirm({
-      title: 'Xoá Tài Khoản',
-      message: `Bạn có chắc chắn muốn xóa tài khoản <strong>${typeof escapeHTML === 'function' ? escapeHTML(acc.name) : acc.name}</strong>?<br><br><span style="color: var(--text-muted); font-size: 0.85rem;">Tất cả giao dịch cũ vẫn được lưu trong sổ.</span>`,
-      confirmText: 'Xoá Tài Khoản',
+      title: isSharedReceived ? 'Rời Khỏi / Xóa Tài Khoản Chia Sẻ' : 'Xoá Tài Khoản',
+      message: isSharedReceived
+        ? `Bạn có chắc chắn muốn rời khỏi tài khoản dùng chung <strong>${typeof escapeHTML === 'function' ? escapeHTML(acc.name) : acc.name}</strong>?<br><br><span style="color: var(--text-muted); font-size: 0.85rem;">Tài khoản này và các dữ liệu liên quan sẽ được xóa khỏi thiết bị của bạn.</span>`
+        : `Bạn có chắc chắn muốn xóa tài khoản <strong>${typeof escapeHTML === 'function' ? escapeHTML(acc.name) : acc.name}</strong>?<br><br><span style="color: var(--text-muted); font-size: 0.85rem;">Tất cả giao dịch cũ vẫn được lưu trong sổ.</span>`,
+      confirmText: isSharedReceived ? 'Rời Khỏi & Xóa' : 'Xoá Tài Khoản',
       cancelText: 'Huỷ',
       danger: true,
       icon: 'trash-2'
     });
     if (!ok) return;
+
+    if (isSharedReceived) {
+      if (window.serverSyncService && typeof window.serverSyncService.leaveReceivedSharedItem === 'function') {
+        await window.serverSyncService.leaveReceivedSharedItem({
+          shareId: acc._shareId,
+          vaultId: acc._remoteVaultId,
+          itemType: 'account',
+          itemId: acc._remoteId
+        });
+      }
+      await db.accounts.delete(acc.id);
+      const relTxs = await db.transactions.where('accountId').equals(acc.id).toArray();
+      for (const t of relTxs) {
+        await db.transactions.delete(t.id);
+      }
+      await window.app.refreshAll();
+      showToast(`Đã xóa tài khoản chia sẻ "${acc.name}"`, 'info');
+      return;
+    }
+
+    // Nếu là tài khoản của chủ sổ đang chia sẻ, xóa khỏi danh sách theo dõi chiếu
+    try {
+      const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
+      if (ownedSetting && Array.isArray(ownedSetting.value)) {
+        const filtered = ownedSetting.value.filter(x => !(x.itemType === 'account' && String(x.itemId) === String(accId)));
+        await db.settings.put({ key: 'syncOwnedSharedProjections', value: filtered });
+      }
+    } catch (_) {}
 
     await db.accounts.update(Number(accId), { isDeleted: 1, updatedAt: Date.now() });
     await window.app.refreshAll();
@@ -1705,23 +1736,8 @@ const UIAccounts = {
   async handleDeleteAccount() {
     const id = document.getElementById('acc-id-input').value;
     if (!id) return;
-    const acc = await db.accounts.get(Number(id));
-    const accName = acc ? acc.name : '';
-    const ok = await showConfirm({
-      title: 'Xoá Tài Khoản',
-      message: `Bạn có chắc chắn muốn xóa tài khoản <strong>${typeof escapeHTML === 'function' ? escapeHTML(accName) : accName}</strong>?<br><br><span style="color: var(--text-muted); font-size: 0.85rem;">Tất cả giao dịch cũ vẫn được lưu trong sổ.</span>`,
-      confirmText: 'Xoá Tài Khoản',
-      cancelText: 'Huỷ',
-      danger: true,
-      icon: 'trash-2'
-    });
-    if (!ok) return;
-
-    await db.accounts.update(Number(id), { isDeleted: 1, updatedAt: Date.now() });
     this.closeAccountFormView();
-    await window.app.refreshAll();
-    showToast(`Đã xóa tài khoản "${accName}"`, 'info');
-    if (typeof triggerAutoSync === 'function') triggerAutoSync();
+    await this.confirmDeleteAccount(id);
   },
 
   async moveAccount(id, direction) {

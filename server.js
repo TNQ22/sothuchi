@@ -795,6 +795,32 @@ class DatabaseManager {
       this.saveJsonStore();
     }
 
+    // Tự động dọn dẹp các mục chia sẻ nếu mục gốc (tài khoản, tiết kiệm...) đã bị chủ sở hữu xóa trong sổ
+    try {
+      if (dataObj && typeof dataObj === 'object' && !dataObj.encrypted) {
+        const activeAccIds = new Set(
+          Array.isArray(dataObj.accounts)
+            ? dataObj.accounts.filter(a => a && (!a.isDeleted || a.isDeleted === 0)).map(a => String(a.id))
+            : []
+        );
+        if (this.isSqlite) {
+          const shares = this.sqliteDb.prepare('SELECT id, item_type, item_id FROM item_shares WHERE vault_id = ?').all(vaultId);
+          for (const s of shares) {
+            if (s.item_type === 'account' && !activeAccIds.has(String(s.item_id))) {
+              this.revokeAllItemShares(vaultId, s.item_type, s.item_id);
+            }
+          }
+        } else {
+          const shares = (this.jsonStore.item_shares || []).filter(s => s.vault_id === vaultId);
+          for (const s of shares) {
+            if (s.item_type === 'account' && !activeAccIds.has(String(s.item_id))) {
+              this.revokeAllItemShares(vaultId, s.item_type, s.item_id);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
     return {
       vault_id: vaultId,
       version: nextVersion,
@@ -983,6 +1009,39 @@ class DatabaseManager {
     return true;
   }
 
+  revokeAllItemShares(vaultId, itemType, itemId) {
+    if (this.isSqlite) {
+      if (vaultId) {
+        this.sqliteDb.prepare('DELETE FROM item_shares WHERE vault_id = ? AND item_type = ? AND item_id = ?').run(vaultId, itemType, String(itemId));
+        this.sqliteDb.prepare('DELETE FROM item_share_links WHERE vault_id = ? AND item_type = ? AND item_id = ?').run(vaultId, itemType, String(itemId));
+        this.sqliteDb.prepare('DELETE FROM shared_item_projections WHERE vault_id = ? AND item_type = ? AND item_id = ?').run(vaultId, itemType, String(itemId));
+      } else {
+        this.sqliteDb.prepare('DELETE FROM item_shares WHERE item_type = ? AND item_id = ?').run(itemType, String(itemId));
+        this.sqliteDb.prepare('DELETE FROM item_share_links WHERE item_type = ? AND item_id = ?').run(itemType, String(itemId));
+        this.sqliteDb.prepare('DELETE FROM shared_item_projections WHERE item_type = ? AND item_id = ?').run(itemType, String(itemId));
+      }
+    } else {
+      this.jsonStore.item_shares = (this.jsonStore.item_shares || []).filter(s => !(
+        (vaultId ? s.vault_id === vaultId : true) && s.item_type === itemType && String(s.item_id) === String(itemId)
+      ));
+      if (this.jsonStore.item_share_links) {
+        this.jsonStore.item_share_links = this.jsonStore.item_share_links.filter(l => !(
+          (vaultId ? l.vault_id === vaultId : true) && l.item_type === itemType && String(l.item_id) === String(itemId)
+        ));
+      }
+      if (this.jsonStore.shared_item_projections) {
+        for (const k of Object.keys(this.jsonStore.shared_item_projections)) {
+          const p = this.jsonStore.shared_item_projections[k];
+          if ((vaultId ? p.vault_id === vaultId : true) && p.item_type === itemType && String(p.item_id) === String(itemId)) {
+            delete this.jsonStore.shared_item_projections[k];
+          }
+        }
+      }
+      this.saveJsonStore();
+    }
+    return true;
+  }
+
   createItemShareLink(vaultId, itemType, itemId, itemName, role, createdBy, shareKey = null) {
     const id = generateId('ilnk_');
     const token = crypto.randomBytes(16).toString('hex');
@@ -1128,8 +1187,71 @@ class DatabaseManager {
       (typeof vault.data === 'object' && vault.data.encrypted)
     );
 
-    // 1. Nếu có Bản Chiếu không mã hóa, ưu tiên dùng ngay
-    if (proj && proj.data && !proj.data.encrypted) {
+    // 1. Nếu sổ gốc của chủ sở hữu tồn tại và KHÔNG mã hóa E2EE:
+    // Kiểm tra trực tiếp dữ liệu sổ gốc để đảm bảo mục này chưa bị xóa và lấy giao dịch mới nhất
+    if (vault && vault.data && !vaultIsEncrypted) {
+      const data = vault.data;
+      let targetItem = null;
+      let vaultTxs = [];
+
+      if (itemType === 'account') {
+        const accs = Array.isArray(data.accounts) ? data.accounts : [];
+        targetItem = accs.find(a => String(a.id) === String(itemId) && (!a.isDeleted || a.isDeleted === 0)) || null;
+
+        // Nếu tài khoản không tồn tại hoặc đã bị xóa trong sổ gốc -> Dọn dẹp quyền chia sẻ và trả về null
+        if (!targetItem) {
+          try { this.revokeAllItemShares(vaultId, itemType, itemId); } catch (_) {}
+          return null;
+        }
+
+        const txs = Array.isArray(data.transactions) ? data.transactions : [];
+        vaultTxs = txs.filter(t => (!t.isDeleted || t.isDeleted === 0) && (String(t.accountId) === String(itemId) || String(t.toAccountId) === String(itemId)));
+      } else if (itemType === 'savings' || itemType === 'saving') {
+        const savings = Array.isArray(data.savings) ? data.savings : [];
+        targetItem = savings.find(s => String(s.id) === String(itemId) && (!s.isDeleted || s.isDeleted === 0)) || null;
+      } else if (itemType === 'accumulation' || itemType === 'accumulations') {
+        const accs = Array.isArray(data.accumulations) ? data.accumulations : [];
+        targetItem = accs.find(a => String(a.id) === String(itemId) && (!a.isDeleted || a.isDeleted === 0)) || null;
+      } else if (itemType === 'loan' || itemType === 'loans') {
+        const loans = Array.isArray(data.loans) ? data.loans : [];
+        targetItem = loans.find(l => String(l.id) === String(itemId) && (!l.isDeleted || l.isDeleted === 0)) || null;
+      } else if (itemType === 'asset' || itemType === 'assets') {
+        const assets = Array.isArray(data.assets) ? data.assets : [];
+        targetItem = assets.find(a => String(a.id) === String(itemId) && (!a.isDeleted || a.isDeleted === 0)) || null;
+      }
+
+      if (!targetItem) {
+        try { this.revokeAllItemShares(vaultId, itemType, itemId); } catch (_) {}
+        return null;
+      }
+
+      // Hợp nhất giao dịch từ sổ gốc với các giao dịch mà thành viên đã ghi (nếu có bản chiếu)
+      let combinedTxs = vaultTxs;
+      if (proj && proj.data && !proj.data.encrypted && Array.isArray(proj.data.transactions)) {
+        combinedTxs = mergeTableData(vaultTxs, proj.data.transactions, false, 'transactions');
+      }
+
+      return {
+        isProjection: !!proj,
+        isEncrypted: false,
+        projectionData: proj && proj.data ? { ...proj.data, item: targetItem, transactions: combinedTxs } : null,
+        item: targetItem,
+        transactions: combinedTxs,
+        categories: Array.isArray(data.categories) ? data.categories : (proj?.data?.categories || [])
+      };
+    }
+
+    // 2. Nếu là Bản Chiếu mã hóa E2EE (Zero-Knowledge)
+    if (proj && proj.data && proj.data.encrypted) {
+      return {
+        isProjection: true,
+        isEncrypted: true,
+        projectionData: proj.data
+      };
+    }
+
+    // 3. Fallback: Nếu không đọc được sổ gốc nhưng có Bản Chiếu plain còn hợp lệ
+    if (proj && proj.data && !proj.data.encrypted && proj.data.item && (!proj.data.item.isDeleted || proj.data.item.isDeleted === 0)) {
       return {
         isProjection: true,
         isEncrypted: false,
@@ -1137,52 +1259,6 @@ class DatabaseManager {
         item: proj.data.item,
         transactions: Array.isArray(proj.data.transactions) ? proj.data.transactions : [],
         categories: Array.isArray(proj.data.categories) ? proj.data.categories : []
-      };
-    }
-
-    // 2. Nếu sổ gốc của chủ sở hữu không mã hóa E2EE, lấy trực tiếp từ dữ liệu sổ
-    if (vault && vault.data && !vaultIsEncrypted) {
-      const data = vault.data;
-      let targetItem = null;
-      let transactions = [];
-
-      if (itemType === 'account') {
-        const accs = Array.isArray(data.accounts) ? data.accounts : [];
-        targetItem = accs.find(a => String(a.id) === String(itemId)) || null;
-
-        const txs = Array.isArray(data.transactions) ? data.transactions : [];
-        transactions = txs.filter(t => (!t.isDeleted || t.isDeleted === 0) && (String(t.accountId) === String(itemId) || String(t.toAccountId) === String(itemId)));
-      } else if (itemType === 'savings' || itemType === 'saving') {
-        const savings = Array.isArray(data.savings) ? data.savings : [];
-        targetItem = savings.find(s => String(s.id) === String(itemId)) || null;
-      } else if (itemType === 'accumulation' || itemType === 'accumulations') {
-        const accs = Array.isArray(data.accumulations) ? data.accumulations : [];
-        targetItem = accs.find(a => String(a.id) === String(itemId)) || null;
-      } else if (itemType === 'loan' || itemType === 'loans') {
-        const loans = Array.isArray(data.loans) ? data.loans : [];
-        targetItem = loans.find(l => String(l.id) === String(itemId)) || null;
-      } else if (itemType === 'asset' || itemType === 'assets') {
-        const assets = Array.isArray(data.assets) ? data.assets : [];
-        targetItem = assets.find(a => String(a.id) === String(itemId)) || null;
-      }
-
-      if (targetItem) {
-        return {
-          isProjection: false,
-          isEncrypted: false,
-          item: targetItem,
-          transactions,
-          categories: Array.isArray(data.categories) ? data.categories : []
-        };
-      }
-    }
-
-    // 3. Nếu là Bản Chiếu mã hóa E2EE
-    if (proj && proj.data && proj.data.encrypted) {
-      return {
-        isProjection: true,
-        isEncrypted: true,
-        projectionData: proj.data
       };
     }
 
@@ -1199,6 +1275,17 @@ class DatabaseManager {
 
     if (!share) throw new Error('Không tìm thấy thông tin chia sẻ.');
     if (share.role !== 'editor') throw new Error('Bạn không có quyền chỉnh sửa tài khoản này.');
+
+    const vaultCheck = this.getVaultData(share.vault_id);
+    if (vaultCheck && vaultCheck.data && typeof vaultCheck.data === 'object' && !vaultCheck.data.encrypted) {
+      if (share.item_type === 'account' && Array.isArray(vaultCheck.data.accounts)) {
+        const acc = vaultCheck.data.accounts.find(a => String(a.id) === String(share.item_id));
+        if (!acc || acc.isDeleted) {
+          try { this.revokeAllItemShares(share.vault_id, share.item_type, share.item_id); } catch (_) {}
+          throw new Error('Tài khoản gốc đã bị chủ sở hữu xóa hoặc ngừng chia sẻ.');
+        }
+      }
+    }
 
     let editorName = email;
     try {
