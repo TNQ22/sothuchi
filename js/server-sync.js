@@ -1999,6 +1999,10 @@ class ServerSyncService {
     if (!targetItem) throw new Error('Không tìm thấy mục cần trích xuất trên thiết bị này.');
 
     const categories = await db.categories.toArray();
+    const catMap = new Map();
+    for (const c of categories) {
+      if (c && c.id) catMap.set(String(c.id), c);
+    }
     const cleanItem = { ...targetItem };
     delete cleanItem._isSharedItem;
     delete cleanItem._shareId;
@@ -2011,6 +2015,14 @@ class ServerSyncService {
         const copy = { ...t };
         delete copy._isSharedItem;
         delete copy._shareId;
+        if (copy.categoryId) {
+          const c = catMap.get(String(copy.categoryId));
+          if (c) {
+            copy.categoryName = c.name;
+            copy.categoryIcon = c.icon;
+            copy.categoryColor = c.color;
+          }
+        }
         return copy;
       }),
       categories,
@@ -2326,6 +2338,8 @@ class ServerSyncService {
 
   async syncReceivedSharedItems() {
     if (!this.token) return false;
+    if (this._isSyncingReceivedSharedItems) return false;
+    this._isSyncingReceivedSharedItems = true;
     let hasChanges = false;
 
     // 0. Đẩy các thay đổi giao dịch từ phía Editor lên server trước khi kéo dữ liệu mới
@@ -2572,11 +2586,64 @@ class ServerSyncService {
 
           // Cập nhật giao dịch cho tài khoản này
           if (Array.isArray(transactions)) {
-            const incomingRemoteTxIds = new Set(transactions.filter(t => !t.isDeleted).map(t => String(t.id)));
+            // Danh mục dùng để map tên, icon, màu nếu giao dịch thiếu
+            const incCatMap = new Map();
+            if (Array.isArray(shareItem.categories)) {
+              for (const c of shareItem.categories) {
+                if (c && c.id) incCatMap.set(String(c.id), c);
+              }
+            }
 
-            // Xóa các giao dịch cục bộ của mục chia sẻ này nếu trên server đã bị xóa
-            const existingSharedTxs = (await db.transactions.toArray()).filter(t => t._shareId === shareId || Number(t.accountId) === localAccId);
+            // 1. Loại bỏ trùng lặp từ danh sách server trả về
+            const uniqueIncomingTxs = [];
+            const seenIncomingSigs = new Set();
+            for (const tx of transactions) {
+              if (!tx) continue;
+              const txDate = String(tx.date || '').slice(0, 10);
+              const txTime = tx.time || '';
+              const txAmt = Math.round(Number(tx.amount || 0) * 100) / 100;
+              const txNote = (tx.note || '').trim();
+              const txSig = `${tx.id || ''}_${tx.type || ''}_${txDate}_${txTime}_${txAmt}_${txNote}`;
+              if (!seenIncomingSigs.has(txSig)) {
+                seenIncomingSigs.add(txSig);
+                uniqueIncomingTxs.push(tx);
+              }
+            }
+
+            const incomingRemoteTxIds = new Set(uniqueIncomingTxs.filter(t => !t.isDeleted).map(t => String(t.id)));
+
+            // 2. Lấy tất cả giao dịch cục bộ thuộc tài khoản chia sẻ này
+            const existingSharedTxs = (await db.transactions.toArray()).filter(t =>
+              t._shareId === shareId || Number(t.accountId) === localAccId || (localAcc && localAcc._remoteId && String(t._remoteId) === String(localAcc._remoteId))
+            );
+
+            // 3. TỰ ĐỘNG DỌN DẸP TOÀN BỘ GIAO DỊCH TRÙNG LẶP CỤC BỘ TRONG INDEXEDDB
+            const localSeenSigs = new Map();
             for (const oldTx of existingSharedTxs) {
+              const oldDate = String(oldTx.date || '').slice(0, 10);
+              const oldTime = oldTx.time || '';
+              const oldAmt = Math.round(Number(oldTx.amount || 0) * 100) / 100;
+              const oldNote = (oldTx.note || '').trim();
+              const sig = `${oldTx._remoteTxId || ''}_${oldTx.type || ''}_${oldDate}_${oldTime}_${oldAmt}_${oldNote}`;
+              const fallbackSig = `${oldTx.type || ''}_${oldDate}_${oldTime}_${oldAmt}_${oldNote}`;
+              
+              if (localSeenSigs.has(sig) || (fallbackSig && localSeenSigs.has(fallbackSig))) {
+                console.log('[ServerSync] Phát hiện và xóa giao dịch trùng lặp trong IndexedDB:', oldTx.id, sig);
+                await db.transactions.delete(oldTx.id);
+                hasChanges = true;
+              } else {
+                localSeenSigs.set(sig, oldTx);
+                if (fallbackSig) localSeenSigs.set(fallbackSig, oldTx);
+              }
+            }
+
+            // Lấy lại danh sách sau khi đã loại bỏ triệt để trùng lặp nội bộ
+            const remainingLocalTxs = (await db.transactions.toArray()).filter(t =>
+              t._shareId === shareId || Number(t.accountId) === localAccId
+            );
+
+            // 4. Xóa các giao dịch cục bộ nếu trên server đã bị xóa
+            for (const oldTx of remainingLocalTxs) {
               const remoteId = oldTx._remoteTxId || oldTx.id;
               if (remoteId && !incomingRemoteTxIds.has(String(remoteId))) {
                 hasChanges = true;
@@ -2584,10 +2651,10 @@ class ServerSyncService {
               }
             }
 
-            // Thêm hoặc cập nhật các giao dịch từ server
-            for (const tx of transactions) {
+            // 5. Thêm hoặc cập nhật các giao dịch từ server
+            for (const tx of uniqueIncomingTxs) {
               if (tx.isDeleted) {
-                const localTx = existingSharedTxs.find(t => String(t._remoteTxId || t.id) === String(tx.id));
+                const localTx = remainingLocalTxs.find(t => String(t._remoteTxId || t.id) === String(tx.id));
                 if (localTx) {
                   hasChanges = true;
                   await db.transactions.delete(localTx.id);
@@ -2596,7 +2663,30 @@ class ServerSyncService {
               }
 
               const txRemoteId = tx.id;
-              const localTx = existingSharedTxs.find(t => String(t._remoteTxId || t.id) === String(txRemoteId));
+              let localTx = remainingLocalTxs.find(t => String(t._remoteTxId || t.id) === String(txRemoteId));
+              if (!localTx) {
+                // Khớp dự phòng theo đặc trưng nếu ID khác nhau
+                localTx = remainingLocalTxs.find(t =>
+                  t.type === tx.type &&
+                  String(t.date || '').slice(0, 10) === String(tx.date || '').slice(0, 10) &&
+                  (!t.time || !tx.time || String(t.time) === String(tx.time)) &&
+                  Math.abs(Number(t.amount || 0) - Number(tx.amount || 0)) < 0.01 &&
+                  (t.note || '').trim() === (tx.note || '').trim()
+                );
+              }
+
+              let catName = tx.categoryName || '';
+              let catIcon = tx.categoryIcon || '';
+              let catColor = tx.categoryColor || '';
+              if (!catName && tx.categoryId) {
+                const c = incCatMap.get(String(tx.categoryId));
+                if (c) {
+                  catName = c.name || '';
+                  catIcon = c.icon || '';
+                  catColor = c.color || '';
+                }
+              }
+
               const txData = {
                 ...tx,
                 accountId: localAccId,
@@ -2604,14 +2694,21 @@ class ServerSyncService {
                 _isSharedItem: true,
                 _shareId: shareId,
                 _remoteTxId: txRemoteId,
+                categoryName: catName,
+                categoryIcon: catIcon,
+                categoryColor: catColor,
                 recordedByOther: tx.recordedByOther !== undefined ? tx.recordedByOther : 0,
                 createdBy: tx.createdBy || (tx.recordedByOther ? 'Thành viên' : (ownerName || ownerEmail || 'Chủ sổ')),
                 createdByEmail: tx.createdByEmail || (tx.recordedByOther ? '' : (ownerEmail || ''))
               };
+
               if (localTx) {
                 const isTxDiff = Number(localTx.amount || 0) !== Number(txData.amount || 0) ||
                                  (localTx.type || '') !== (txData.type || '') ||
                                  (localTx.category || '') !== (txData.category || '') ||
+                                 (localTx.categoryName || '') !== (txData.categoryName || '') ||
+                                 (localTx.categoryIcon || '') !== (txData.categoryIcon || '') ||
+                                 (localTx.categoryColor || '') !== (txData.categoryColor || '') ||
                                  (localTx.date || '') !== (txData.date || '') ||
                                  (localTx.time || '') !== (txData.time || '') ||
                                  (localTx.note || '').trim() !== (txData.note || '').trim() ||
@@ -2625,7 +2722,8 @@ class ServerSyncService {
               } else {
                 delete txData.id;
                 hasChanges = true;
-                await db.transactions.add(txData);
+                const newAddedId = await db.transactions.add(txData);
+                remainingLocalTxs.push({ ...txData, id: newAddedId });
               }
             }
           }
@@ -2798,6 +2896,8 @@ class ServerSyncService {
     } catch (err) {
       console.warn('[ServerSync] Lỗi tải các mục được chia sẻ:', err.message);
       return false;
+    } finally {
+      this._isSyncingReceivedSharedItems = false;
     }
   }
 
@@ -2813,13 +2913,31 @@ class ServerSyncService {
       const remoteItemId = Number(localAcc._remoteId);
 
       const allTxs = await db.transactions.toArray();
-      const localTxs = allTxs.filter(t => Number(t.accountId) === localAccId || Number(t.toAccountId) === localAccId || t._shareId === shareId);
+      const rawLocalTxs = allTxs.filter(t => Number(t.accountId) === localAccId || Number(t.toAccountId) === localAccId || t._shareId === shareId);
 
-      if (localTxs.length === 0) return true;
+      if (rawLocalTxs.length === 0) return true;
+
+      // Loại bỏ trùng lặp trước khi gửi
+      const localTxs = [];
+      const seenPushSigs = new Set();
+      for (const t of rawLocalTxs) {
+        if (!t) continue;
+        const sig = `${t.type}_${String(t.date || '').slice(0, 10)}_${t.time || ''}_${Math.round(Number(t.amount || 0) * 100) / 100}_${(t.note || '').trim()}`;
+        if (!seenPushSigs.has(sig)) {
+          seenPushSigs.add(sig);
+          localTxs.push(t);
+        }
+      }
 
       const uProfile = this.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;
       const uName = (uProfile?.name && uProfile.name.trim()) || (uProfile?.email && uProfile.email.trim()) || '';
       const uEmail = uProfile?.email || '';
+
+      const localCategories = await db.categories.toArray();
+      const localCatMap = new Map();
+      for (const c of localCategories) {
+        if (c && c.id) localCatMap.set(String(c.id), c);
+      }
 
       const mappedTxs = localTxs.map(t => {
         const copy = { ...t };
@@ -2837,6 +2955,14 @@ class ServerSyncService {
           if (!copy.createdBy && uName) {
             copy.createdBy = uName;
             copy.createdByEmail = uEmail;
+          }
+        }
+        if (copy.categoryId && !copy.categoryName) {
+          const c = localCatMap.get(String(copy.categoryId));
+          if (c) {
+            copy.categoryName = c.name;
+            copy.categoryIcon = c.icon;
+            copy.categoryColor = c.color;
           }
         }
         delete copy._isSharedItem;
@@ -2943,13 +3069,19 @@ class ServerSyncService {
 
   async pushAllReceivedSharedItems() {
     if (!this.token || !this.serverUrl) return false;
-    const sharedAccounts = (await db.accounts.toArray()).filter(a => a._isSharedItem && a._sharedRole === 'editor' && a._shareId);
-    let anyPushed = false;
-    for (const acc of sharedAccounts) {
-      const ok = await this.pushReceivedSharedItemTransactions(acc._shareId);
-      if (ok) anyPushed = true;
+    if (this._isPushingReceivedSharedItems) return false;
+    this._isPushingReceivedSharedItems = true;
+    try {
+      const sharedAccounts = (await db.accounts.toArray()).filter(a => a._isSharedItem && a._sharedRole === 'editor' && a._shareId);
+      let anyPushed = false;
+      for (const acc of sharedAccounts) {
+        const ok = await this.pushReceivedSharedItemTransactions(acc._shareId);
+        if (ok) anyPushed = true;
+      }
+      return anyPushed;
+    } finally {
+      this._isPushingReceivedSharedItems = false;
     }
-    return anyPushed;
   }
 
   async auditOwnedShares() {

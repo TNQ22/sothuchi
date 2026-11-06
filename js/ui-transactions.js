@@ -4929,12 +4929,12 @@ const UITransactions = {
   },
 
   renderTxCardHtml(t, catMap, accMap) {
-    const cat = catMap.get(t.categoryId);
+    const cat = catMap.get(t.categoryId) || (t.categoryName ? { name: t.categoryName, icon: t.categoryIcon || 'shopping-bag', color: t.categoryColor || '#f43f5e' } : null);
     const fromAcc = accMap.get(t.accountId);
     const toAcc = accMap.get(t.toAccountId);
 
     const hasNote = t.note && t.note.trim();
-    let title = hasNote ? t.note : (t.type === 'transfer' ? 'Chuyển khoản' : (cat ? cat.name : 'Giao dịch'));
+    let title = hasNote ? t.note : (t.type === 'transfer' ? 'Chuyển khoản' : (cat ? cat.name : (t.categoryName || 'Giao dịch')));
     let iconName = 'arrow-right-left';
     let iconBg = 'var(--transfer-bg)';
     let iconColor = 'var(--transfer)';
@@ -4951,20 +4951,20 @@ const UITransactions = {
         iconBg = 'rgba(168, 85, 247, 0.15)';
         iconColor = '#a855f7';
       } else if (cat) {
-        iconName = cat.icon;
+        iconName = cat.icon || 'file-text';
         iconBg = 'var(--bg-surface)';
         iconColor = 'var(--text-muted)';
       }
     } else if (t.type === 'expense') {
-      iconName = cat ? cat.icon : (isAdjustTx ? 'scale' : 'shopping-bag');
-      iconBg = isAdjustTx ? 'rgba(168, 85, 247, 0.15)' : 'var(--expense-bg)';
-      iconColor = isAdjustTx ? '#a855f7' : 'var(--expense)';
+      iconName = cat ? (cat.icon || 'shopping-bag') : (isAdjustTx ? 'scale' : 'shopping-bag');
+      iconBg = isAdjustTx ? 'rgba(168, 85, 247, 0.15)' : (cat?.color && cat.color.startsWith('#') ? `${cat.color}22` : 'var(--expense-bg)');
+      iconColor = isAdjustTx ? '#a855f7' : (cat?.color || 'var(--expense)');
       amountPrefix = '-';
       amountClass = 'expense';
     } else if (t.type === 'income') {
-      iconName = cat ? cat.icon : (isAdjustTx ? 'scale' : 'banknote');
-      iconBg = isAdjustTx ? 'rgba(168, 85, 247, 0.15)' : 'var(--income-bg)';
-      iconColor = isAdjustTx ? '#a855f7' : 'var(--income)';
+      iconName = cat ? (cat.icon || 'banknote') : (isAdjustTx ? 'scale' : 'banknote');
+      iconBg = isAdjustTx ? 'rgba(168, 85, 247, 0.15)' : (cat?.color && cat.color.startsWith('#') ? `${cat.color}22` : 'var(--income-bg)');
+      iconColor = isAdjustTx ? '#a855f7' : (cat?.color || 'var(--income)');
       amountPrefix = '+';
       amountClass = 'income';
     }

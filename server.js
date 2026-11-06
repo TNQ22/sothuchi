@@ -86,6 +86,37 @@ function generateId(prefix = 'id_') {
   return (prefix || 'id_') + crypto.randomBytes(8).toString('hex');
 }
 
+// Ham tien ich loai bo cac giao dich trung lap dua tren chu ky dac trung
+function deduplicateTransactionsList(txs) {
+  if (!Array.isArray(txs)) return [];
+  const map = new Map();
+  for (const t of txs) {
+    if (!t) continue;
+    if (t.isDeleted && t.isDeleted !== 0) {
+      map.set(`del_${t.id || Math.random()}`, t);
+      continue;
+    }
+    const tDate = String(t.date || '').slice(0, 10);
+    const tTime = t.time || '';
+    const tAmt = Math.round(Number(t.amount || 0) * 100) / 100;
+    const tNote = (t.note || '').trim();
+    const tType = t.type || '';
+    const tAcc = String(t.accountId || '');
+    const sig = `${tType}_${tDate}_${tTime}_${tAmt}_${tNote}_${tAcc}`;
+    if (!map.has(sig)) {
+      map.set(sig, t);
+    } else {
+      const prev = map.get(sig);
+      const prevTime = new Date(prev.updatedAt || 0).getTime() || 0;
+      const curTime = new Date(t.updatedAt || 0).getTime() || 0;
+      if (curTime >= prevTime) {
+        map.set(sig, { ...prev, ...t });
+      }
+    }
+  }
+  return Array.from(map.values());
+}
+
 // ==============================================================================
 // 1. DATABASE & STORAGE LAYER (SQLite with node:sqlite or JSON Store Fallback)
 // ==============================================================================
@@ -1246,13 +1277,34 @@ class DatabaseManager {
         combinedTxs = mergeTableData(vaultTxs, proj.data.transactions, false, 'transactions');
       }
 
+      // Loại bỏ trùng lặp triệt để
+      combinedTxs = deduplicateTransactionsList(combinedTxs);
+
+      const allCategories = Array.isArray(data.categories) ? data.categories : (proj?.data?.categories || []);
+      const catMap = new Map();
+      for (const cat of allCategories) {
+        if (cat && cat.id) catMap.set(String(cat.id), cat);
+      }
+
+      // Gắn thông tin category (tên, icon, màu) vào từng transaction để hiển thị đúng ở client người nhận
+      for (const t of combinedTxs) {
+        if (t && t.categoryId && !t.categoryName) {
+          const c = catMap.get(String(t.categoryId));
+          if (c) {
+            t.categoryName = c.name;
+            t.categoryIcon = c.icon;
+            t.categoryColor = c.color;
+          }
+        }
+      }
+
       return {
         isProjection: !!proj,
         isEncrypted: false,
         projectionData: proj && proj.data ? { ...proj.data, item: targetItem, transactions: combinedTxs } : null,
         item: targetItem,
         transactions: combinedTxs,
-        categories: Array.isArray(data.categories) ? data.categories : (proj?.data?.categories || [])
+        categories: allCategories
       };
     }
 
@@ -1267,13 +1319,30 @@ class DatabaseManager {
 
     // 3. Fallback: Nếu không đọc được sổ gốc nhưng có Bản Chiếu plain còn hợp lệ
     if (proj && proj.data && !proj.data.encrypted && proj.data.item && (!proj.data.item.isDeleted || proj.data.item.isDeleted === 0)) {
+      const projCategories = Array.isArray(proj.data.categories) ? proj.data.categories : [];
+      const projCatMap = new Map();
+      for (const cat of projCategories) {
+        if (cat && cat.id) projCatMap.set(String(cat.id), cat);
+      }
+      const rawTxs = Array.isArray(proj.data.transactions) ? proj.data.transactions : [];
+      const cleanTxs = deduplicateTransactionsList(rawTxs);
+      for (const t of cleanTxs) {
+        if (t && t.categoryId && !t.categoryName) {
+          const c = projCatMap.get(String(t.categoryId));
+          if (c) {
+            t.categoryName = c.name;
+            t.categoryIcon = c.icon;
+            t.categoryColor = c.color;
+          }
+        }
+      }
       return {
         isProjection: true,
         isEncrypted: false,
         projectionData: proj.data,
         item: proj.data.item,
-        transactions: Array.isArray(proj.data.transactions) ? proj.data.transactions : [],
-        categories: Array.isArray(proj.data.categories) ? proj.data.categories : []
+        transactions: cleanTxs,
+        categories: projCategories
       };
     }
 
@@ -1342,6 +1411,7 @@ class DatabaseManager {
         if (baseTxs.length > 0) {
           incomingProjection.transactions = mergeTableData(baseTxs, incomingProjection.transactions, false, 'transactions');
         }
+        incomingProjection.transactions = deduplicateTransactionsList(incomingProjection.transactions);
       }
 
       const existingDataStr = existingProj && existingProj.data ? (typeof existingProj.data === 'string' ? existingProj.data : JSON.stringify(existingProj.data)) : '';
@@ -1362,7 +1432,7 @@ class DatabaseManager {
               : (!incomingProjection.encrypted && Array.isArray(incomingProjection.transactions) ? incomingProjection.transactions : null);
             if (Array.isArray(txsToMerge) && txsToMerge.length > 0) {
               const beforeTxsStr = JSON.stringify(vault.data.transactions);
-              vault.data.transactions = mergeTableData(vault.data.transactions, txsToMerge, false, 'transactions');
+              vault.data.transactions = deduplicateTransactionsList(mergeTableData(vault.data.transactions, txsToMerge, false, 'transactions'));
               if (beforeTxsStr !== JSON.stringify(vault.data.transactions)) {
                 vaultChanged = true;
               }
@@ -1393,7 +1463,7 @@ class DatabaseManager {
     const proj = this.getItemProjection(share.vault_id, share.item_type, share.item_id);
     if (proj && proj.data && !proj.data.encrypted) {
       const currentTxs = Array.isArray(proj.data.transactions) ? proj.data.transactions : [];
-      const mergedTxs = mergeTableData(currentTxs, incomingTxs, false, 'transactions');
+      const mergedTxs = deduplicateTransactionsList(mergeTableData(currentTxs, incomingTxs, false, 'transactions'));
       proj.data.transactions = mergedTxs;
       this.saveItemProjection(share.vault_id, share.item_type, share.item_id, proj.data, email);
       this.touchVaultVersion(share.vault_id, email);
@@ -1401,7 +1471,7 @@ class DatabaseManager {
       try {
         const vault = this.getVaultData(share.vault_id);
         if (vault && vault.data && typeof vault.data === 'object' && !vault.data.encrypted && Array.isArray(vault.data.transactions)) {
-          vault.data.transactions = mergeTableData(vault.data.transactions, incomingTxs, false, 'transactions');
+          vault.data.transactions = deduplicateTransactionsList(mergeTableData(vault.data.transactions, incomingTxs, false, 'transactions'));
           this.saveVaultData(share.vault_id, vault.data, email);
         }
       } catch (_) {}
@@ -1414,7 +1484,7 @@ class DatabaseManager {
 
     if (Array.isArray(vault.data.transactions)) {
       const currentTxs = vault.data.transactions;
-      const mergedTxs = mergeTableData(currentTxs, incomingTxs, false, 'transactions');
+      const mergedTxs = deduplicateTransactionsList(mergeTableData(currentTxs, incomingTxs, false, 'transactions'));
       vault.data.transactions = mergedTxs;
       this.saveVaultData(share.vault_id, vault.data, email);
       this.touchVaultVersion(share.vault_id, email);
@@ -2336,6 +2406,30 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
 
       // --- XỬ LÝ CHO CÁC BẢNG KHÁC (TRANSACTIONS, V.V...) ---
       if (!sItem) {
+        if (tableName === 'transactions' || (cItem.amount !== undefined && cItem.date !== undefined)) {
+          let matchedTx = null;
+          for (const existing of map.values()) {
+            const sameType = existing.type === cItem.type;
+            const sameDate = String(existing.date || '').slice(0, 10) === String(cItem.date || '').slice(0, 10);
+            const sameTime = !existing.time || !cItem.time || String(existing.time) === String(cItem.time);
+            const sameAmount = Math.abs(Number(existing.amount || 0) - Number(cItem.amount || 0)) < 0.01;
+            const sameAccount = String(existing.accountId || '') === String(cItem.accountId || '') ||
+                                (existing.accountId !== undefined && cItem.accountId !== undefined && Number(existing.accountId) === Number(cItem.accountId));
+            const sameNote = (existing.note || '').trim() === (cItem.note || '').trim();
+            if (sameType && sameDate && sameTime && sameAmount && sameAccount && sameNote) {
+              matchedTx = existing;
+              break;
+            }
+          }
+          if (matchedTx) {
+            const cTime = new Date(cItem.updatedAt || 0).getTime() || 0;
+            const sTime = new Date(matchedTx.updatedAt || 0).getTime() || 0;
+            if (cTime >= sTime) {
+              map.set(matchedTx.id, { ...cItem, id: matchedTx.id });
+            }
+            continue;
+          }
+        }
         map.set(cItem.id, cItem);
       } else {
         // Kiểm tra xem có phải trùng ID ngẫu nhiên do auto-increment của 2 thiết bị khác nhau không
@@ -2345,7 +2439,8 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
           const sameType = cItem.type === sItem.type;
           const sameDate = String(cItem.date || '').slice(0, 10) === String(sItem.date || '').slice(0, 10);
           const sameAmount = Math.abs(Number(cItem.amount || 0) - Number(sItem.amount || 0)) < 0.01;
-          const sameAccount = Number(cItem.accountId) === Number(sItem.accountId);
+          const sameAccount = String(cItem.accountId || '') === String(sItem.accountId || '') ||
+                              (cItem.accountId !== undefined && sItem.accountId !== undefined && Number(cItem.accountId) === Number(sItem.accountId));
           isSameEntity = sameType && sameDate && sameAmount && sameAccount;
         } else if (cItem.name && sItem.name) {
           isSameEntity = (cItem.name.trim().toLowerCase() === sItem.name.trim().toLowerCase());

@@ -572,6 +572,15 @@ async function addTransaction(data) {
         tx.createdByEmail = uEmail;
       }
     }
+
+    if (tx.categoryId) {
+      const c = await db.categories.get(tx.categoryId);
+      if (c) {
+        tx.categoryName = c.name;
+        tx.categoryIcon = c.icon;
+        tx.categoryColor = c.color;
+      }
+    }
   } catch (err) {
     if (err.message && err.message.includes('chỉ có quyền xem')) {
       throw err;
