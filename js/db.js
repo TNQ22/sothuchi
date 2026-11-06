@@ -1588,7 +1588,7 @@ function isAccountBudgetEnabled(acc) {
 window.isAccountBudgetEnabled = isAccountBudgetEnabled;
 
 // Xoá sạch toàn bộ dữ liệu người dùng trên máy để phục vụ đổi tài khoản hoặc khôi phục trạng thái mới
-async function wipeAndResetLocalDatabase() {
+async function wipeAndResetLocalDatabase(options = {}) {
   await db.transactions.clear();
   await db.debts.clear();
   await db.budgets.clear();
@@ -1608,10 +1608,17 @@ async function wipeAndResetLocalDatabase() {
     updatedAt: 1
   })));
 
-  // Xoá các mốc đồng bộ lưu trong settings
-  await db.settings.delete('syncServerLastSyncTime');
-  await db.settings.delete('lastSyncTime');
-  await db.settings.delete('syncServerActiveVaultId');
+  // Nếu là khôi phục cài đặt gốc toàn diện
+  if (options && (options.fullReset || options.wipeAllSettings)) {
+    await db.settings.clear();
+  } else {
+    // Xoá các mốc đồng bộ lưu trong settings
+    await db.settings.delete('syncServerLastSyncTime');
+    await db.settings.delete('lastSyncTime');
+    await db.settings.delete('syncServerActiveVaultId');
+    await db.settings.delete('syncOwnedSharedProjections');
+    await db.settings.delete('syncLeftSharedItems');
+  }
 
   if (typeof recalculateAccountBalances === 'function') {
     await recalculateAccountBalances();

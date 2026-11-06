@@ -7218,11 +7218,25 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         }
 
         try {
-          // 1. Xóa toàn bộ dữ liệu trong IndexedDB
+          // 0. Đăng xuất khỏi các dịch vụ đồng bộ
+          if (window.serverSyncService && typeof window.serverSyncService.logout === 'function') {
+            try { await window.serverSyncService.logout({ wipeLocal: true }); } catch (_) {}
+          }
+          if (window.googleDriveService && typeof window.googleDriveService.logout === 'function') {
+            try { await window.googleDriveService.logout(); } catch (_) {}
+          }
+          if (window.dropboxService && typeof window.dropboxService.logout === 'function') {
+            try { await window.dropboxService.logout(); } catch (_) {}
+          }
+
+          // 1. Xóa toàn bộ dữ liệu & settings trong IndexedDB
           if (typeof window.wipeAndResetLocalDatabase === 'function') {
-            await window.wipeAndResetLocalDatabase();
+            await window.wipeAndResetLocalDatabase({ fullReset: true });
           } else if (window.db && typeof window.db.delete === 'function') {
             await window.db.delete();
+          }
+          if (window.db && window.db.settings) {
+            try { await window.db.settings.clear(); } catch (_) {}
           }
 
           // 2. Dọn sạch localStorage & sessionStorage & cookies
