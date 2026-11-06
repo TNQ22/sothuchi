@@ -433,7 +433,15 @@ class DatabaseManager {
       `);
       const shared = sharedStmt.all(cleanEmail);
 
-      return [...owned, ...shared];
+      const rawList = [...owned, ...shared];
+      const seen = new Set();
+      const unique = [];
+      for (const item of rawList) {
+        if (!item || !item.id || seen.has(item.id)) continue;
+        seen.add(item.id);
+        unique.push(item);
+      }
+      return unique;
     } else {
       const result = [];
       for (const v of Object.values(this.jsonStore.vaults)) {
@@ -465,7 +473,14 @@ class DatabaseManager {
           }
         }
       }
-      return result;
+      const seen = new Set();
+      const unique = [];
+      for (const item of result) {
+        if (!item || !item.id || seen.has(item.id)) continue;
+        seen.add(item.id);
+        unique.push(item);
+      }
+      return unique;
     }
   }
 

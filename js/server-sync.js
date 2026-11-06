@@ -488,7 +488,13 @@ class ServerSyncService {
       });
       if (res.ok) {
         const data = await res.json();
-        this.vaults = data.vaults || [];
+        const rawVaults = Array.isArray(data.vaults) ? data.vaults : [];
+        const seenVIds = new Set();
+        this.vaults = rawVaults.filter(v => {
+          if (!v || !v.id || seenVIds.has(v.id)) return false;
+          seenVIds.add(v.id);
+          return true;
+        });
         await db.settings.put({ key: 'syncServerVaults', value: this.vaults });
 
         // Đảm bảo activeVaultId hợp lệ
@@ -2345,8 +2351,18 @@ class ServerSyncService {
         const targetItemId = i.itemId !== undefined ? String(i.itemId) : (i._remoteId !== undefined ? String(i._remoteId) : (i.id !== undefined ? String(i.id) : null));
         const targetVaultId = i.vaultId ? String(i.vaultId) : (i._remoteVaultId ? String(i._remoteVaultId) : null);
         const targetShareId = i.shareId ? String(i.shareId) : (i._shareId ? String(i._shareId) : null);
+        const shareTime = i.updatedAt ? new Date(i.updatedAt).getTime() : (i.createdAt ? new Date(i.createdAt).getTime() : 0);
 
         return leftItems.some(x => {
+          // Nếu share trên server được tạo hoặc cập nhật SAU thời điểm rời khỏi -> Đây là đợt share mới của chủ sở hữu
+          if (shareTime && x.leftAt && shareTime > x.leftAt) {
+            return false;
+          }
+          // Nếu shareId cụ thể khác với shareId đã rời -> Lượt share mới độc lập
+          if (x.shareId && targetShareId && String(x.shareId) !== targetShareId) {
+            return false;
+          }
+
           const sMatch = x.shareId && targetShareId && String(x.shareId) === targetShareId;
           const vMatch = x.vaultId && x.itemType && x.itemId &&
                          targetVaultId && targetItemId &&
@@ -2356,20 +2372,6 @@ class ServerSyncService {
           return !!(sMatch || vMatch);
         });
       };
-
-      // Nếu có mục trên server nhưng người dùng đã bấm rời khỏi, gọi API server để hủy trên máy chủ
-      for (const i of items) {
-        if (isLeft(i)) {
-          fetch(`${this.serverUrl}/api/shares/item/leave`, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${this.token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ shareId: i.shareId, vaultId: i.vaultId, itemType: i.itemType, itemId: i.itemId })
-          }).catch(() => {});
-        }
-      }
 
       const activeReceivedShareIds = new Set(items.filter(i => !isLeft(i)).map(i => i.shareId));
 
@@ -2483,9 +2485,53 @@ class ServerSyncService {
 
         if (!item) continue;
 
+        // Xóa mục này khỏi blacklist để luôn sẵn sàng nhận chia sẻ mới
+        await this.clearLeftSharedItem({ shareId, vaultId, itemType, itemId });
+
         if (itemType === 'account') {
           // Chỉ tìm tài khoản chia sẻ tương ứng theo _shareId hoặc _remoteId (không bao giờ đè tài khoản cá nhân)
-          let localAcc = (await db.accounts.toArray()).find(a => a._isSharedItem && (a._shareId === shareId || (a._remoteId === itemId && a._remoteVaultId === vaultId)));
+          const allLocalAccs = await db.accounts.toArray();
+          const isMatch = (a) => a && a._isSharedItem && (
+            (shareId && a._shareId && String(a._shareId) === String(shareId)) ||
+            (itemId !== undefined && a._remoteId !== undefined && String(a._remoteId) === String(itemId) &&
+             (!vaultId || !a._remoteVaultId || String(a._remoteVaultId) === String(vaultId)))
+          );
+          const matchingAccs = allLocalAccs.filter(isMatch);
+          let localAcc = matchingAccs[0] || null;
+
+          // Tự động dọn dẹp các tài khoản chia sẻ trùng lặp nếu có từ trước
+          if (matchingAccs.length > 1) {
+            for (let k = 1; k < matchingAccs.length; k++) {
+              console.log('[ServerSync] Dọn dẹp tài khoản chia sẻ trùng lặp:', matchingAccs[k].name, matchingAccs[k].id);
+              await db.accounts.delete(matchingAccs[k].id);
+              const dupTxs = (await db.transactions.toArray()).filter(t =>
+                Number(t.accountId) === Number(matchingAccs[k].id) || Number(t.toAccountId) === Number(matchingAccs[k].id)
+              );
+              for (const dt of dupTxs) {
+                await db.transactions.delete(dt.id);
+              }
+              hasChanges = true;
+            }
+          }
+
+          // Dọn dẹp cả bản sao cùng tên nếu có từ trước
+          const sameNameDups = allLocalAccs.filter(a =>
+            a && a._isSharedItem && a.id !== (localAcc ? localAcc.id : null) &&
+            (a.name || '').trim().toLowerCase() === (item.name || '').trim().toLowerCase() &&
+            (String(a._remoteId || '') === String(itemId || '') || (a._sharedFrom && a._sharedFrom === (ownerName || ownerEmail)))
+          );
+          for (const dup of sameNameDups) {
+            console.log('[ServerSync] Dọn dẹp bản sao tài khoản chia sẻ cùng tên:', dup.name, dup.id);
+            await db.accounts.delete(dup.id);
+            const dupTxs = (await db.transactions.toArray()).filter(t =>
+              Number(t.accountId) === Number(dup.id) || Number(t.toAccountId) === Number(dup.id)
+            );
+            for (const dt of dupTxs) {
+              await db.transactions.delete(dt.id);
+            }
+            hasChanges = true;
+          }
+
           const accData = {
             ...item,
             isDeleted: 0,
@@ -2512,7 +2558,8 @@ class ServerSyncService {
                            (localAcc.description || '').trim() !== (accData.description || '').trim() ||
                            Boolean(localAcc.isArchived) !== Boolean(accData.isArchived) ||
                            (localAcc._sharedRole || '') !== (accData._sharedRole || '') ||
-                           (localAcc._sharedFrom || '') !== (accData._sharedFrom || '');
+                           (localAcc._sharedFrom || '') !== (accData._sharedFrom || '') ||
+                           (localAcc._shareId || '') !== (accData._shareId || '');
             if (isDiff) {
               hasChanges = true;
               await db.accounts.update(localAccId, { ...accData, id: localAccId });
@@ -2583,7 +2630,18 @@ class ServerSyncService {
             }
           }
         } else if (itemType === 'savings' && db.savings) {
-          let localSav = (await db.savings.toArray()).find(s => s._shareId === shareId);
+          const allSav = await db.savings.toArray();
+          const matchSav = allSav.filter(s => s._isSharedItem && (
+            (shareId && s._shareId && String(s._shareId) === String(shareId)) ||
+            (itemId !== undefined && s._remoteId !== undefined && String(s._remoteId) === String(itemId))
+          ));
+          let localSav = matchSav[0] || null;
+          if (matchSav.length > 1) {
+            for (let k = 1; k < matchSav.length; k++) {
+              await db.savings.delete(matchSav[k].id);
+              hasChanges = true;
+            }
+          }
           const savData = {
             ...item,
             isDeleted: 0,
@@ -2611,7 +2669,18 @@ class ServerSyncService {
             await db.savings.add(savData);
           }
         } else if (itemType === 'accumulation' && db.accumulations) {
-          let localAcc = (await db.accumulations.toArray()).find(a => a._shareId === shareId);
+          const allAcc = await db.accumulations.toArray();
+          const matchAcc = allAcc.filter(a => a._isSharedItem && (
+            (shareId && a._shareId && String(a._shareId) === String(shareId)) ||
+            (itemId !== undefined && a._remoteId !== undefined && String(a._remoteId) === String(itemId))
+          ));
+          let localAcc = matchAcc[0] || null;
+          if (matchAcc.length > 1) {
+            for (let k = 1; k < matchAcc.length; k++) {
+              await db.accumulations.delete(matchAcc[k].id);
+              hasChanges = true;
+            }
+          }
           const accData = {
             ...item,
             isDeleted: 0,
@@ -2638,7 +2707,18 @@ class ServerSyncService {
             await db.accumulations.add(accData);
           }
         } else if (itemType === 'loan' && db.loans) {
-          let localLoan = (await db.loans.toArray()).find(l => l._shareId === shareId);
+          const allLoans = await db.loans.toArray();
+          const matchLoans = allLoans.filter(l => l._isSharedItem && (
+            (shareId && l._shareId && String(l._shareId) === String(shareId)) ||
+            (itemId !== undefined && l._remoteId !== undefined && String(l._remoteId) === String(itemId))
+          ));
+          let localLoan = matchLoans[0] || null;
+          if (matchLoans.length > 1) {
+            for (let k = 1; k < matchLoans.length; k++) {
+              await db.loans.delete(matchLoans[k].id);
+              hasChanges = true;
+            }
+          }
           const loanData = {
             ...item,
             isDeleted: 0,
@@ -2665,7 +2745,18 @@ class ServerSyncService {
             await db.loans.add(loanData);
           }
         } else if (itemType === 'asset' && db.assets) {
-          let localAsset = (await db.assets.toArray()).find(a => a._shareId === shareId);
+          const allAssets = await db.assets.toArray();
+          const matchAssets = allAssets.filter(a => a._isSharedItem && (
+            (shareId && a._shareId && String(a._shareId) === String(shareId)) ||
+            (itemId !== undefined && a._remoteId !== undefined && String(a._remoteId) === String(itemId))
+          ));
+          let localAsset = matchAssets[0] || null;
+          if (matchAssets.length > 1) {
+            for (let k = 1; k < matchAssets.length; k++) {
+              await db.assets.delete(matchAssets[k].id);
+              hasChanges = true;
+            }
+          }
           const assetData = {
             ...item,
             isDeleted: 0,
