@@ -232,15 +232,21 @@ class App {
     }
 
     // Cập nhật Avatar tài khoản Google/Dropbox hoặc App Logo lên Header và Trang Ghi Chép
+    const savedServerProfile = await db.settings.get('syncServerUserProfile');
+    const savedServerToken = await db.settings.get('syncServerToken');
     const savedGoogleProfile = await db.settings.get('googleUserProfile');
     const savedDbxProfile = await db.settings.get('dropboxUserProfile');
     const dbxHasToken = window.dropboxService && window.dropboxService.hasValidToken && window.dropboxService.hasValidToken();
     const gDriveHasToken = window.googleDriveService && window.googleDriveService.hasValidToken && window.googleDriveService.hasValidToken();
 
-    if (dbxHasToken && savedDbxProfile?.value) {
+    if (savedServerToken?.value && savedServerProfile?.value) {
+      this.updateBrandLogos(savedServerProfile.value);
+    } else if (dbxHasToken && savedDbxProfile?.value) {
       this.updateBrandLogos(savedDbxProfile.value);
     } else if (gDriveHasToken && savedGoogleProfile?.value) {
       this.updateBrandLogos(savedGoogleProfile.value);
+    } else if (savedServerProfile?.value) {
+      this.updateBrandLogos(savedServerProfile.value);
     } else if (savedGoogleProfile?.value) {
       this.updateBrandLogos(savedGoogleProfile.value);
     } else if (savedDbxProfile?.value) {
@@ -297,6 +303,14 @@ class App {
     // 7. Apply Saved Theme & Privacy Mode
     await this.loadInitialPreferences();
 
+    // 7.5. Khởi tạo phiên Máy Chủ Riêng trước để nhận diện ngay tài khoản đăng nhập (tránh chớp tài khoản mặc định)
+    if (window.serverSyncService) {
+      await window.serverSyncService.init().catch(e => console.warn('ServerSync early init error:', e));
+      if (window.SyncCoordinator) {
+        window.SyncCoordinator.registerAdapter('custom-server', window.serverSyncService);
+      }
+    }
+
     // 8. Render initial data for background tabs
     await this.refreshAll();
 
@@ -306,12 +320,6 @@ class App {
     // 9. Khởi chạy Cloud Sync & Đồng bộ ngầm ở background (hoàn toàn Non-Blocking)
     (async () => {
       try {
-        if (window.serverSyncService) {
-          await window.serverSyncService.init().catch(e => console.warn('ServerSync init error:', e));
-          if (window.SyncCoordinator) {
-            window.SyncCoordinator.registerAdapter('custom-server', window.serverSyncService);
-          }
-        }
         if (window.googleDriveService) {
           await window.googleDriveService.init().catch(e => console.warn('Drive init error:', e));
         }

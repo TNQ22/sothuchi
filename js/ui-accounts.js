@@ -1827,6 +1827,12 @@ const UIAccounts = {
     let draggedItem = null;
     const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
+    const clearAllDragOver = () => {
+      container.querySelectorAll('.account-list-item').forEach(i => {
+        i.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+      });
+    };
+
     items.forEach(item => {
       // ===== DESKTOP HTML5 DRAG & DROP =====
       item.addEventListener('mouseenter', () => {
@@ -1844,17 +1850,21 @@ const UIAccounts = {
 
       item.addEventListener('dragend', () => {
         item.classList.remove('dragging');
-        items.forEach(i => i.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'));
+        clearAllDragOver();
       });
 
       item.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         if (draggedItem && draggedItem !== item) {
+          const allItems = Array.from(container.querySelectorAll('.account-list-item'));
+          clearAllDragOver();
+
+          const isLast = (item === allItems[allItems.length - 1]);
           const rect = item.getBoundingClientRect();
-          const isAfter = (e.clientY > rect.top + rect.height / 2);
-          items.forEach(i => i.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'));
-          if (isAfter) {
+          const isLowerHalf = (e.clientY > rect.top + rect.height / 2);
+
+          if (isLast && isLowerHalf) {
             item.classList.add('drag-over-bottom');
           } else {
             item.classList.add('drag-over-top');
@@ -1863,13 +1873,13 @@ const UIAccounts = {
       });
 
       item.addEventListener('dragleave', () => {
-        item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+        clearAllDragOver();
       });
 
       item.addEventListener('drop', async (e) => {
         e.preventDefault();
         const isAfter = item.classList.contains('drag-over-bottom');
-        items.forEach(i => i.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'));
+        clearAllDragOver();
         if (draggedItem && draggedItem !== item) {
           const fromId = draggedItem.dataset.id;
           const toId = item.dataset.id;
@@ -1941,17 +1951,22 @@ const UIAccounts = {
         const el = document.elementFromPoint(touch.clientX, touch.clientY);
         const targetItem = el ? el.closest('.account-list-item') : null;
 
-        items.forEach(i => i.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'));
+        clearAllDragOver();
 
         if (targetItem && targetItem !== draggedItem) {
+          const allItems = Array.from(container.querySelectorAll('.account-list-item'));
+          const isLast = (targetItem === allItems[allItems.length - 1]);
           const rect = targetItem.getBoundingClientRect();
-          const isAfter = (touch.clientY > rect.top + rect.height / 2);
-          if (isAfter) {
+          const isLowerHalf = (touch.clientY > rect.top + rect.height / 2);
+
+          // Chỉ nhận phía dưới nếu là tài khoản cuối danh sách; các tài khoản khác chỉ nhận phía trên
+          if (isLast && isLowerHalf) {
             targetItem.classList.add('drag-over-bottom');
+            touchTarget = { id: targetItem.dataset.id, position: 'after' };
           } else {
             targetItem.classList.add('drag-over-top');
+            touchTarget = { id: targetItem.dataset.id, position: 'before' };
           }
-          touchTarget = { id: targetItem.dataset.id, position: isAfter ? 'after' : 'before' };
         } else {
           touchTarget = null;
         }
@@ -1967,11 +1982,13 @@ const UIAccounts = {
           this.suppressHistoryClickUntil = Date.now() + 450;
 
           draggedItem.classList.remove('dragging');
-          items.forEach(i => i.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'));
+          clearAllDragOver();
 
           if (touchTarget && touchTarget.id && touchTarget.id !== draggedItem.dataset.id) {
             await this.reorderAccounts(draggedItem.dataset.id, touchTarget.id, touchTarget.position);
           }
+        } else {
+          clearAllDragOver();
         }
 
         isDragActive = false;

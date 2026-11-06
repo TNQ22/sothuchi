@@ -7222,8 +7222,11 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           if (window.serverSyncService && typeof window.serverSyncService.logout === 'function') {
             try { await window.serverSyncService.logout({ wipeLocal: true }); } catch (_) {}
           }
-          if (window.googleDriveService && typeof window.googleDriveService.logout === 'function') {
-            try { await window.googleDriveService.logout(); } catch (_) {}
+          if (window.googleDriveService) {
+            try {
+              if (typeof window.googleDriveService.disconnect === 'function') await window.googleDriveService.disconnect();
+              else if (typeof window.googleDriveService.logout === 'function') await window.googleDriveService.logout();
+            } catch (_) {}
           }
           if (window.dropboxService && typeof window.dropboxService.logout === 'function') {
             try { await window.dropboxService.logout(); } catch (_) {}
@@ -7232,11 +7235,20 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           // 1. Xóa toàn bộ dữ liệu & settings trong IndexedDB
           if (typeof window.wipeAndResetLocalDatabase === 'function') {
             await window.wipeAndResetLocalDatabase({ fullReset: true });
-          } else if (window.db && typeof window.db.delete === 'function') {
-            await window.db.delete();
           }
-          if (window.db && window.db.settings) {
-            try { await window.db.settings.clear(); } catch (_) {}
+          if (window.db) {
+            try {
+              const tableNames = ['transactions', 'accounts', 'categories', 'debts', 'budgets', 'recurring', 'savings', 'accumulations', 'assets', 'loans', 'loan_schedules', 'settings'];
+              for (const t of tableNames) {
+                if (window.db[t]) await window.db[t].clear();
+              }
+              if (typeof DEFAULT_ACCOUNTS !== 'undefined' && window.db.accounts) {
+                await window.db.accounts.bulkAdd(DEFAULT_ACCOUNTS.map((a, index) => ({ ...a, order: a.order ?? index, isDeleted: 0, updatedAt: 1 })));
+              }
+              if (typeof DEFAULT_CATEGORIES !== 'undefined' && window.db.categories) {
+                await window.db.categories.bulkAdd(DEFAULT_CATEGORIES.map(c => ({ ...c, isDeleted: 0, updatedAt: Date.now() })));
+              }
+            } catch (_) {}
           }
 
           // 2. Dọn sạch localStorage & sessionStorage & cookies

@@ -907,9 +907,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
 }
 
 /* Vị trí chèn phía TRÊN của tài khoản mục tiêu */
-.account-list-item.drag-over,
 .account-list-item.drag-over-top,
-.account-list-item.shared-item-card.drag-over,
 .account-list-item.shared-item-card.drag-over-top {
   border-top: 3px solid #10b981 !important;
   box-shadow: 0 -3px 10px rgba(16, 185, 129, 0.4) !important;
@@ -917,9 +915,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   position: relative;
 }
 
-.account-list-item.drag-over::before,
 .account-list-item.drag-over-top::before,
-.account-list-item.shared-item-card.drag-over::before,
 .account-list-item.shared-item-card.drag-over-top::before {
   content: '';
   position: absolute;
@@ -934,7 +930,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   pointer-events: none;
 }
 
-/* Vị trí chèn phía DƯỚI của tài khoản mục tiêu */
+/* Vị trí chèn phía DƯỚI (chỉ dành cho tài khoản cuối danh sách) */
 .account-list-item.drag-over-bottom,
 .account-list-item.shared-item-card.drag-over-bottom {
   border-bottom: 3px solid #10b981 !important;
