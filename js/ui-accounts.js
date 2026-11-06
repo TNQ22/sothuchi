@@ -193,13 +193,11 @@ const UIAccounts = {
         if (db.settings) {
           await db.settings.put({ key: 'syncOwnedSharedProjections', value: validOwnedList });
         }
-        if (autoRender) {
-          if (typeof this.render === 'function') {
-            await this.render();
-          }
-          if (window.UITransactions && typeof window.UITransactions.updateHeaderAccountDisplay === 'function') {
-            await window.UITransactions.updateHeaderAccountDisplay();
-          }
+        if (typeof this.render === 'function') {
+          await this.render();
+        }
+        if (window.UITransactions && typeof window.UITransactions.updateHeaderAccountDisplay === 'function') {
+          await window.UITransactions.updateHeaderAccountDisplay();
         }
       }
     } catch (err) {
@@ -833,10 +831,29 @@ const UIAccounts = {
         });
       }
       await db.accounts.delete(acc.id);
-      const relTxs = await db.transactions.where('accountId').equals(acc.id).toArray();
+      if (acc.id !== undefined && !isNaN(Number(acc.id))) {
+        await db.accounts.delete(Number(acc.id));
+      }
+      await db.accounts.delete(String(acc.id));
+
+      const relTxs = (await db.transactions.toArray()).filter(t =>
+        Number(t.accountId) === Number(acc.id) ||
+        Number(t.toAccountId) === Number(acc.id) ||
+        String(t.accountId) === String(acc.id) ||
+        String(t.toAccountId) === String(acc.id) ||
+        (acc._shareId && String(t._shareId) === String(acc._shareId))
+      );
       for (const t of relTxs) {
         await db.transactions.delete(t.id);
       }
+
+      if (window.UITransactions && (window.UITransactions.filterAccountId === acc.id || String(window.UITransactions.filterAccountId) === String(acc.id))) {
+        window.UITransactions.filterAccountId = null;
+        if (typeof window.UITransactions.updateHeaderAccountDisplay === 'function') {
+          await window.UITransactions.updateHeaderAccountDisplay();
+        }
+      }
+
       await window.app.refreshAll();
       showToast(`Đã xóa tài khoản chia sẻ "${acc.name}"`, 'info');
       return;
@@ -5171,13 +5188,27 @@ const UIAccounts = {
       // 2. Xóa dữ liệu cục bộ khỏi IndexedDB
       if (type === 'account') {
         await db.accounts.delete(numId);
+        if (id && String(id) !== String(numId)) {
+          await db.accounts.delete(id);
+        }
+        await db.accounts.delete(String(id));
+
         const relatedTxs = (await db.transactions.toArray()).filter(t =>
           Number(t.accountId) === numId ||
           Number(t.toAccountId) === numId ||
-          (shareId && t._shareId === shareId)
+          String(t.accountId) === String(id) ||
+          String(t.toAccountId) === String(id) ||
+          (shareId && String(t._shareId) === String(shareId))
         );
         for (const tx of relatedTxs) {
           await db.transactions.delete(tx.id);
+        }
+
+        if (window.UITransactions && (window.UITransactions.filterAccountId === numId || String(window.UITransactions.filterAccountId) === String(id))) {
+          window.UITransactions.filterAccountId = null;
+          if (typeof window.UITransactions.updateHeaderAccountDisplay === 'function') {
+            await window.UITransactions.updateHeaderAccountDisplay();
+          }
         }
       } else if (type === 'savings') {
         if (db.savings) await db.savings.delete(numId);
@@ -6061,9 +6092,20 @@ const UIAccounts = {
     }
 
     let accounts = (await db.accounts.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0);
+
+    // Tự động kiểm tra và làm sạch cờ isShared nếu tài khoản không còn ai được chia sẻ trên server
+    if (!this._cleaningShares && window.serverSyncService && window.serverSyncService.token && window.serverSyncService.serverUrl) {
+      const hasSharedPersonal = accounts.some(a => !a._isSharedItem && (a.isShared === 1 || a.isShared === true));
+      if (hasSharedPersonal) {
+        this._cleaningShares = true;
+        this.cleanAllFalseSharedAccounts(false).catch(() => {}).finally(() => {
+          this._cleaningShares = false;
+        });
+      }
+    }
     const totalBal = accounts.reduce((sum, a) => sum + Math.abs(a.balance || 0), 0);
-    const txCount = await db.transactions.count();
-    if (!this._initialBalanceChecked && totalBal === 0 && txCount > 0 && typeof recalculateAccountBalances === 'function') {
+    const activeTxCount = await db.transactions.where('isDeleted').equals(0).count();
+    if (!this._initialBalanceChecked && totalBal === 0 && activeTxCount > 0 && typeof recalculateAccountBalances === 'function') {
       this._initialBalanceChecked = true;
       await recalculateAccountBalances();
       accounts = (await db.accounts.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0);

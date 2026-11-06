@@ -604,6 +604,19 @@ const UniversalShareModal = {
       } else if (this.currentType === 'asset' && db.assets) {
         await db.assets.update(this.currentId, { isShared: val, updatedAt: Date.now() });
       }
+
+      if (!val && db.settings) {
+        try {
+          const owned = (await db.settings.get('syncOwnedSharedProjections')) || { key: 'syncOwnedSharedProjections', value: [] };
+          const arr = Array.isArray(owned.value) ? owned.value.filter(x => !(x.itemType === this.currentType && String(x.itemId) === String(this.currentId))) : [];
+          await db.settings.put({ key: 'syncOwnedSharedProjections', value: arr });
+        } catch (_) {}
+      }
+
+      window.dispatchEvent(new CustomEvent('shared-items-updated', {
+        detail: { itemType: this.currentType, itemId: this.currentId, isShared: val }
+      }));
+
       if (window.app && typeof window.app.refreshAll === 'function') {
         await window.app.refreshAll();
       }

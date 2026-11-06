@@ -89,13 +89,17 @@ function generateId(prefix = 'id_') {
 // Ham tien ich loai bo cac giao dich trung lap dua tren chu ky dac trung
 function deduplicateTransactionsList(txs) {
   if (!Array.isArray(txs)) return [];
-  const map = new Map();
-  for (const t of txs) {
-    if (!t) continue;
-    if (t.isDeleted && t.isDeleted !== 0) {
-      map.set(`del_${t.id || Math.random()}`, t);
-      continue;
-    }
+  const finalMap = new Map();
+
+  // Sort by updatedAt ascending so latest updates win
+  const sorted = [...txs].filter(Boolean).sort((a, b) => {
+    const aTime = new Date(a.updatedAt || 0).getTime() || 0;
+    const bTime = new Date(b.updatedAt || 0).getTime() || 0;
+    return aTime - bTime;
+  });
+
+  for (const t of sorted) {
+    const idKey = (t.id !== undefined && t.id !== null) ? String(t.id) : null;
     const tDate = String(t.date || '').slice(0, 10);
     const tTime = t.time || '';
     const tAmt = Math.round(Number(t.amount || 0) * 100) / 100;
@@ -103,18 +107,27 @@ function deduplicateTransactionsList(txs) {
     const tType = t.type || '';
     const tAcc = String(t.accountId || '');
     const sig = `${tType}_${tDate}_${tTime}_${tAmt}_${tNote}_${tAcc}`;
-    if (!map.has(sig)) {
-      map.set(sig, t);
-    } else {
-      const prev = map.get(sig);
+
+    let matchedKey = null;
+    if (idKey && finalMap.has(`id_${idKey}`)) {
+      matchedKey = `id_${idKey}`;
+    } else if (finalMap.has(`sig_${sig}`)) {
+      matchedKey = `sig_${sig}`;
+    }
+
+    if (matchedKey) {
+      const prev = finalMap.get(matchedKey);
       const prevTime = new Date(prev.updatedAt || 0).getTime() || 0;
       const curTime = new Date(t.updatedAt || 0).getTime() || 0;
       if (curTime >= prevTime) {
-        map.set(sig, { ...prev, ...t });
+        finalMap.set(matchedKey, { ...prev, ...t });
       }
+    } else {
+      const key = idKey ? `id_${idKey}` : `sig_${sig}`;
+      finalMap.set(key, t);
     }
   }
-  return Array.from(map.values());
+  return Array.from(finalMap.values());
 }
 
 // ==============================================================================
@@ -2327,7 +2340,7 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
   if (Array.isArray(serverItems)) {
     for (const item of serverItems) {
       if (item && item.id !== undefined && item.id !== null) {
-        map.set(item.id, item);
+        map.set(String(item.id), item);
       }
     }
   }
@@ -2337,7 +2350,7 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
     for (const cItem of clientItems) {
       if (!cItem || cItem.id === undefined || cItem.id === null) continue;
 
-      let sItem = map.get(cItem.id);
+      let sItem = map.get(String(cItem.id));
 
       // --- XỬ LÝ RIÊNG CHO BẢNG TÀI KHOẢN (ACCOUNTS) ---
       if (isAccountTable) {
@@ -2370,7 +2383,7 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
           if (cIsUntouchedDefault && Array.isArray(serverItems) && serverItems.length > 0) {
             continue;
           }
-          map.set(cItem.id, cItem);
+          map.set(String(cItem.id), cItem);
         } else {
           // Nếu trên server tài khoản này đã bị xoá (sItem.isDeleted = 1) và client là tài khoản mặc định chưa có ghi chép:
           // Giữ nguyên trạng thái đã xoá trên server, không để client phục hồi lại
@@ -2391,14 +2404,14 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
           const cHasData = (cItem.balance !== 0 || (cItem.initialBalance || 0) !== 0);
 
           if (sIsBlank && cHasData && !sItem.isDeleted) {
-            map.set(sItem.id, { ...cItem, id: sItem.id });
+            map.set(String(sItem.id), { ...cItem, id: sItem.id });
             continue;
           }
 
           const cTime = new Date(cItem.updatedAt || 0).getTime() || 0;
           const sTime = new Date(sItem.updatedAt || 0).getTime() || 0;
           if (cTime >= sTime) {
-            map.set(sItem.id, { ...cItem, id: sItem.id });
+            map.set(String(sItem.id), { ...cItem, id: sItem.id });
           }
         }
         continue;
@@ -2408,7 +2421,8 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
       if (!sItem) {
         if (tableName === 'transactions' || (cItem.amount !== undefined && cItem.date !== undefined)) {
           let matchedTx = null;
-          for (const existing of map.values()) {
+          let matchedKey = null;
+          for (const [key, existing] of map.entries()) {
             const sameType = existing.type === cItem.type;
             const sameDate = String(existing.date || '').slice(0, 10) === String(cItem.date || '').slice(0, 10);
             const sameTime = !existing.time || !cItem.time || String(existing.time) === String(cItem.time);
@@ -2418,19 +2432,23 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
             const sameNote = (existing.note || '').trim() === (cItem.note || '').trim();
             if (sameType && sameDate && sameTime && sameAmount && sameAccount && sameNote) {
               matchedTx = existing;
+              matchedKey = key;
               break;
             }
           }
           if (matchedTx) {
             const cTime = new Date(cItem.updatedAt || 0).getTime() || 0;
             const sTime = new Date(matchedTx.updatedAt || 0).getTime() || 0;
+            if (matchedTx.isDeleted && !cItem.isDeleted && sTime >= cTime) {
+              continue;
+            }
             if (cTime >= sTime) {
-              map.set(matchedTx.id, { ...cItem, id: matchedTx.id });
+              map.set(matchedKey, { ...cItem, id: matchedTx.id });
             }
             continue;
           }
         }
-        map.set(cItem.id, cItem);
+        map.set(String(cItem.id), cItem);
       } else {
         // Kiểm tra xem có phải trùng ID ngẫu nhiên do auto-increment của 2 thiết bị khác nhau không
         let isSameEntity = false;
@@ -2452,13 +2470,16 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
           // Cùng một thực thể -> Last-Write-Wins
           const cTime = new Date(cItem.updatedAt || 0).getTime() || 0;
           const sTime = new Date(sItem.updatedAt || 0).getTime() || 0;
+          if (sItem.isDeleted && !cItem.isDeleted && sTime >= cTime) {
+            continue;
+          }
           if (cTime >= sTime) {
-            map.set(sItem.id, { ...cItem, id: sItem.id });
+            map.set(String(sItem.id), { ...cItem, id: sItem.id });
           }
         } else {
           // Xung đột ID giữa 2 trình duyệt độc lập: Cấp ID mới cho cItem và giữ cả 2!
           const newId = generateUniqueNumericId();
-          map.set(newId, { ...cItem, id: newId });
+          map.set(String(newId), { ...cItem, id: newId });
         }
       }
     }

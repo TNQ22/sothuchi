@@ -4874,11 +4874,7 @@ const UITransactions = {
     const isSharedAccount = !!(acc._isSharedItem || acc.isShared || hasOtherAuthor);
     if (!isSharedAccount) return '';
 
-    // Tự động khôi phục cờ isShared = 1 cho tài khoản chủ nếu phát hiện giao dịch có thành viên ghi
-    if (!acc._isSharedItem && !acc.isShared && hasOtherAuthor) {
-      acc.isShared = 1;
-      db.accounts.update(acc.id, { isShared: 1 }).catch(() => {});
-    }
+    // Giao dịch lịch sử có người khác ghi chép không được tự ý ghi đè cờ isShared của tài khoản hiện tại
 
     // Kiểm tra xem giao dịch này do ai ghi chép trong tài khoản chia sẻ
     const uProfile = window.serverSyncService?.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;

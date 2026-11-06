@@ -1498,6 +1498,19 @@ class ServerSyncService {
       const pullChanged = await this.mergeServerDataIntoLocal(serverData);
       if (pullChanged) localDataHasChanged = true;
 
+      // Cập nhật bản chiếu mã hóa cho các mục đang chia sẻ trước khi pull để bảo toàn thay đổi cục bộ
+      try {
+        const ownedShares = await db.settings.get('syncOwnedSharedProjections');
+        if (ownedShares && Array.isArray(ownedShares.value)) {
+          for (const s of ownedShares.value) {
+            const currentKey = s.shareKey || (await this.getItemShareKey(`${s.itemType}_${s.itemId}`));
+            await this.projectAndPushItem(s.itemType, s.itemId, currentKey);
+          }
+        }
+      } catch (projErr) {
+        console.warn('[ServerSync] Lỗi cập nhật bản chiếu chia sẻ trước khi pull:', projErr.message);
+      }
+
       // 2.5. Kéo và gộp các giao dịch/ghi chú mới từ các thành viên (Editor) được chia sẻ mục
       try {
         const ownedChanged = await this.pullAndMergeOwnedSharedProjections();
@@ -1781,14 +1794,14 @@ class ServerSyncService {
 
       for (const lItem of localItems) {
         if (lItem && lItem.id !== undefined && lItem.id !== null) {
-          itemMap.set(lItem.id, lItem);
+          itemMap.set(String(lItem.id), lItem);
         }
       }
 
       for (const rItem of remoteItems) {
         if (!rItem || rItem.id === undefined || rItem.id === null) continue;
 
-        let lItem = itemMap.get(rItem.id);
+        let lItem = itemMap.get(String(rItem.id));
 
         // --- XỬ LÝ RIÊNG CHO BẢNG TÀI KHOẢN (ACCOUNTS) ---
         if (isAccountTable) {
@@ -1806,12 +1819,12 @@ class ServerSyncService {
           }
 
           if (!lItem) {
-            itemMap.set(rItem.id, rItem);
+            itemMap.set(String(rItem.id), rItem);
           } else {
             // Nếu tài khoản local là tài khoản mặc định chưa phát sinh ghi chép và remote đánh dấu đã xoá:
             // Cập nhật trạng thái xoá ngay lập tức, không để timestamp local ghi đè
             if (isUntouchedDefAcc(lItem) && rItem.isDeleted) {
-              itemMap.set(lItem.id, { ...rItem, id: lItem.id, isDeleted: 1 });
+              itemMap.set(String(lItem.id), { ...rItem, id: lItem.id, isDeleted: 1 });
               continue;
             }
 
@@ -1821,7 +1834,7 @@ class ServerSyncService {
 
             if (lIsBlank && rHasData && !rItem.isDeleted) {
               const localOrder = (lItem && lItem.order !== undefined && lItem.order !== null) ? lItem.order : rItem.order;
-              itemMap.set(lItem.id, { ...rItem, id: lItem.id, order: localOrder });
+              itemMap.set(String(lItem.id), { ...rItem, id: lItem.id, order: localOrder });
               continue;
             }
 
@@ -1838,7 +1851,7 @@ class ServerSyncService {
             const lTime = new Date(lItem.updatedAt || 0).getTime() || 0;
             if (rTime >= lTime) {
               const localOrder = (lItem && lItem.order !== undefined && lItem.order !== null) ? lItem.order : rItem.order;
-              itemMap.set(lItem.id, { ...rItem, id: lItem.id, order: localOrder });
+              itemMap.set(String(lItem.id), { ...rItem, id: lItem.id, order: localOrder });
             }
           }
           continue;
@@ -1846,14 +1859,45 @@ class ServerSyncService {
 
         // --- XỬ LÝ CHO CÁC BẢNG KHÁC (TRANSACTIONS, V.V...) ---
         if (!lItem) {
-          itemMap.set(rItem.id, rItem);
+          // Khớp dự phòng theo signature cho bảng giao dịch tránh tạo bản ghi trùng lặp
+          let matchedTx = null;
+          let matchedKey = null;
+          if (tableName === 'transactions' || (rItem.amount !== undefined && rItem.date !== undefined)) {
+            for (const [key, existing] of itemMap.entries()) {
+              const sameType = existing.type === rItem.type;
+              const sameDate = String(existing.date || '').slice(0, 10) === String(rItem.date || '').slice(0, 10);
+              const sameTime = !existing.time || !rItem.time || String(existing.time) === String(rItem.time);
+              const sameAmount = Math.abs(Number(existing.amount || 0) - Number(rItem.amount || 0)) < 0.01;
+              const sameAccount = Number(existing.accountId) === Number(rItem.accountId);
+              const sameNote = (existing.note || '').trim() === (rItem.note || '').trim();
+              if (sameType && sameDate && sameTime && sameAmount && sameAccount && sameNote) {
+                matchedTx = existing;
+                matchedKey = key;
+                break;
+              }
+            }
+          }
+          if (matchedTx) {
+            const rTime = new Date(rItem.updatedAt || 0).getTime() || 0;
+            const lTime = new Date(matchedTx.updatedAt || 0).getTime() || 0;
+            // Local đã xóa và timestamp local mới hơn hoặc bằng -> không phục hồi
+            if (matchedTx.isDeleted && !rItem.isDeleted && lTime >= rTime) {
+              continue;
+            }
+            if (rTime >= lTime) {
+              itemMap.set(matchedKey, { ...rItem, id: matchedTx.id });
+            }
+            continue;
+          }
+
+          itemMap.set(String(rItem.id), rItem);
         } else {
           // Kiểm tra xem có phải trùng ID do auto-increment của 2 trình duyệt độc lập không
           let isSameEntity = false;
 
           if (tableName === 'transactions' || (rItem.amount !== undefined && rItem.date !== undefined)) {
             const sameType = rItem.type === lItem.type;
-            const sameDate = String(rItem.date || '').slice(0, 10) === String(lItem.date || '').slice(0, 10);
+            const sameDate = String(rItem.date || '').slice(0, 10) === String(rItem.date || '').slice(0, 10);
             const sameAmount = Math.abs(Number(rItem.amount || 0) - Number(lItem.amount || 0)) < 0.01;
             const sameAccount = Number(rItem.accountId) === Number(lItem.accountId);
             isSameEntity = sameType && sameDate && sameAmount && sameAccount;
@@ -1867,13 +1911,17 @@ class ServerSyncService {
             // Cùng một thực thể -> Last-Write-Wins
             const rTime = new Date(rItem.updatedAt || 0).getTime() || 0;
             const lTime = new Date(lItem.updatedAt || 0).getTime() || 0;
+            // Nếu local đã đánh dấu xóa và remote chưa cập nhật (hoặc timestamp local mới hơn / bằng): giữ nguyên xóa
+            if (lItem.isDeleted && !rItem.isDeleted && lTime >= rTime) {
+              continue;
+            }
             if (rTime >= lTime) {
-              itemMap.set(lItem.id, { ...rItem, id: lItem.id });
+              itemMap.set(String(lItem.id), { ...rItem, id: lItem.id });
             }
           } else {
             // Xung đột ID giữa 2 trình duyệt: Cấp ID mới cho rItem và giữ cả 2!
             const newId = generateUniqueNumericId();
-            itemMap.set(newId, { ...rItem, id: newId });
+            itemMap.set(String(newId), { ...rItem, id: newId });
           }
         }
       }
@@ -2394,7 +2442,8 @@ class ServerSyncService {
         });
       };
 
-      const activeReceivedShareIds = new Set(items.filter(i => !isLeft(i)).map(i => i.shareId));
+      const activeReceivedShareIds = new Set(items.filter(i => !isLeft(i)).map(i => String(i.shareId)));
+      const activeReceivedItemKeys = new Set(items.filter(i => !isLeft(i)).map(i => `${i.vaultId || ''}_${i.itemType || 'account'}_${i.itemId || ''}`));
 
       const shouldDeleteItem = (type, item) => {
         if (!item || !item._isSharedItem) return false;
@@ -2403,7 +2452,11 @@ class ServerSyncService {
           return true;
         }
         // 2. Quyền chia sẻ không còn tồn tại trên server (bị xóa, thu hồi, hoặc sổ gốc đã bị xóa)
-        if (item._shareId && !activeReceivedShareIds.has(item._shareId)) {
+        const hasShareId = item._shareId !== undefined && item._shareId !== null && String(item._shareId).trim() !== '';
+        const sMatch = hasShareId ? activeReceivedShareIds.has(String(item._shareId)) : false;
+        const itemKey = `${item._remoteVaultId || ''}_${type}_${item._remoteId || ''}`;
+        const kMatch = (item._remoteVaultId && item._remoteId) ? activeReceivedItemKeys.has(itemKey) : false;
+        if (!sMatch && !kMatch) {
           return true;
         }
         return false;
@@ -2416,14 +2469,28 @@ class ServerSyncService {
           console.log('[ServerSync] Quyền chia sẻ đã bị thu hồi hoặc đã rời khỏi, xóa tài khoản:', acc.name);
           hasChanges = true;
           await db.accounts.delete(acc.id);
+          if (acc.id !== undefined && !isNaN(Number(acc.id))) {
+            await db.accounts.delete(Number(acc.id));
+          }
+          await db.accounts.delete(String(acc.id));
+
           // Xóa giao dịch kèm theo
           const relatedTxs = (await db.transactions.toArray()).filter(t =>
             Number(t.accountId) === Number(acc.id) ||
             Number(t.toAccountId) === Number(acc.id) ||
-            (acc._shareId && t._shareId === acc._shareId)
+            String(t.accountId) === String(acc.id) ||
+            String(t.toAccountId) === String(acc.id) ||
+            (acc._shareId && String(t._shareId) === String(acc._shareId))
           );
           for (const tx of relatedTxs) {
             await db.transactions.delete(tx.id);
+          }
+
+          if (window.UITransactions && (window.UITransactions.filterAccountId === acc.id || String(window.UITransactions.filterAccountId) === String(acc.id))) {
+            window.UITransactions.filterAccountId = null;
+            if (typeof window.UITransactions.updateHeaderAccountDisplay === 'function') {
+              await window.UITransactions.updateHeaderAccountDisplay();
+            }
           }
         }
       }
@@ -2711,6 +2778,12 @@ class ServerSyncService {
               };
 
               if (localTx) {
+                const rTime = new Date(txData.updatedAt || 0).getTime() || 0;
+                const lTime = new Date(localTx.updatedAt || 0).getTime() || 0;
+                // Nếu local đã đánh dấu xóa và server chưa xóa mà timestamp local mới hơn / bằng: KHÔNG ghi đè phục hồi
+                if (localTx.isDeleted && !txData.isDeleted && lTime >= rTime) {
+                  continue;
+                }
                 const isTxDiff = Number(localTx.amount || 0) !== Number(txData.amount || 0) ||
                                  (localTx.type || '') !== (txData.type || '') ||
                                  (localTx.category || '') !== (txData.category || '') ||
@@ -2723,7 +2796,7 @@ class ServerSyncService {
                                  (localTx.createdBy || '') !== (txData.createdBy || '') ||
                                  localTx.recordedByOther !== txData.recordedByOther ||
                                  Boolean(localTx.isDeleted) !== Boolean(txData.isDeleted);
-                if (isTxDiff) {
+                if (isTxDiff && (rTime >= lTime || !localTx.updatedAt)) {
                   hasChanges = true;
                   await db.transactions.update(localTx.id, { ...txData, id: localTx.id });
                 }
@@ -3135,6 +3208,13 @@ class ServerSyncService {
 
       if (changed) {
         await db.settings.put({ key: 'syncOwnedSharedProjections', value: ownedList });
+        window.dispatchEvent(new CustomEvent('shared-items-updated'));
+        if (window.UIAccounts && typeof window.UIAccounts.render === 'function') {
+          await window.UIAccounts.render();
+        }
+        if (window.UITransactions && typeof window.UITransactions.updateHeaderAccountDisplay === 'function') {
+          await window.UITransactions.updateHeaderAccountDisplay();
+        }
       }
     } catch (err) {
       console.warn('[ServerSync] auditOwnedShares error:', err);
@@ -3191,7 +3271,22 @@ class ServerSyncService {
 
           for (const rtx of remoteTxs) {
             const rIdStr = String(rtx.id);
-            const existing = localMap.get(rIdStr);
+            let existing = localMap.get(rIdStr);
+
+            // Khớp dự phòng theo signature nếu không khớp ID
+            if (!existing) {
+              for (const lt of localTxs) {
+                const sameType = lt.type === rtx.type;
+                const sameDate = String(lt.date || '').slice(0, 10) === String(rtx.date || '').slice(0, 10);
+                const sameTime = !lt.time || !rtx.time || String(lt.time) === String(rtx.time);
+                const sameAmount = Math.abs(Number(lt.amount || 0) - Number(rtx.amount || 0)) < 0.01;
+                const sameNote = (lt.note || '').trim() === (rtx.note || '').trim();
+                if (sameType && sameDate && sameTime && sameAmount && sameNote) {
+                  existing = lt;
+                  break;
+                }
+              }
+            }
 
             if (rtx.isDeleted) {
               if (existing && !existing.isDeleted) {
@@ -3230,6 +3325,10 @@ class ServerSyncService {
             } else {
               const rTime = new Date(rtx.updatedAt || 0).getTime() || 0;
               const lTime = new Date(existing.updatedAt || 0).getTime() || 0;
+              // Nếu local đã xóa và remote chưa cập nhật (hoặc timestamp local mới hơn / bằng): giữ nguyên xóa
+              if (existing.isDeleted && !rtx.isDeleted && lTime >= rTime) {
+                continue;
+              }
               const isDiff = Number(existing.amount || 0) !== Number(rtx.amount || 0) ||
                              (existing.type || '') !== (rtx.type || '') ||
                              (existing.category || '') !== (rtx.category || '') ||

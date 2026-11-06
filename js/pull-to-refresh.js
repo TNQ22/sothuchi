@@ -324,6 +324,9 @@ class PullToRefresh {
           if (typeof window.serverSyncService.syncReceivedSharedItems === 'function') {
             await window.serverSyncService.syncReceivedSharedItems();
           }
+          if (typeof window.serverSyncService.auditOwnedShares === 'function') {
+            await window.serverSyncService.auditOwnedShares();
+          }
         } catch (serverInfoErr) {
           console.warn('[PullToRefresh] Cập nhật thông tin sổ & chia sẻ:', serverInfoErr);
         }

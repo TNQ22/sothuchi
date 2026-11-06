@@ -1068,13 +1068,16 @@ class GoogleDriveSync {
 
       // Nạp local
       for (const item of localItems) {
-        itemMap.set(item.id, item);
+        if (item && item.id !== undefined && item.id !== null) {
+          itemMap.set(String(item.id), item);
+        }
       }
 
       // So sánh với remote
       if (remoteItems && Array.isArray(remoteItems)) {
         for (const rItem of remoteItems) {
-          let lItem = itemMap.get(rItem.id);
+          if (!rItem || rItem.id === undefined || rItem.id === null) continue;
+          let lItem = itemMap.get(String(rItem.id));
           // Đối với tài khoản, nếu ID khác nhau nhưng cùng tên & loại -> ghép lại tránh nhân đôi
           if (!lItem && table === db.accounts && rItem.name) {
             for (const existing of itemMap.values()) {
@@ -1085,26 +1088,46 @@ class GoogleDriveSync {
             }
           }
 
+          // Đối với giao dịch, nếu chưa khớp ID thì kiểm tra khớp signature
+          if (!lItem && table === db.transactions && (rItem.amount !== undefined && rItem.date !== undefined)) {
+            for (const [key, existing] of itemMap.entries()) {
+              const sameType = existing.type === rItem.type;
+              const sameDate = String(existing.date || '').slice(0, 10) === String(rItem.date || '').slice(0, 10);
+              const sameTime = !existing.time || !rItem.time || String(existing.time) === String(rItem.time);
+              const sameAmount = Math.abs(Number(existing.amount || 0) - Number(rItem.amount || 0)) < 0.01;
+              const sameAccount = Number(existing.accountId) === Number(rItem.accountId);
+              const sameNote = (existing.note || '').trim() === (rItem.note || '').trim();
+              if (sameType && sameDate && sameTime && sameAmount && sameAccount && sameNote) {
+                lItem = existing;
+                break;
+              }
+            }
+          }
+
           if (!lItem) {
             // Mới từ remote
-            itemMap.set(rItem.id, rItem);
+            itemMap.set(String(rItem.id), rItem);
           } else {
             const DEFAULT_ACCOUNT_NAMES = ['tiền mặt', 'ngân hàng', 'ví điện tử', 'momo / zalopay', 'tài khoản ngân hàng'];
             const isDef = lItem.name && DEFAULT_ACCOUNT_NAMES.includes(lItem.name.trim().toLowerCase());
             const isBlank = (lItem.balance === 0 || lItem.balance === '0') && ((lItem.initialBalance || 0) === 0) && !lItem.isShared;
 
             if (table === db.accounts && isDef && isBlank && rItem.isDeleted) {
-              itemMap.set(lItem.id, { ...rItem, id: lItem.id, isDeleted: 1 });
+              itemMap.set(String(lItem.id), { ...rItem, id: lItem.id, isDeleted: 1 });
             } else if (table === db.accounts && (rItem.balance !== 0 || rItem.initialBalance !== 0) && isBlank) {
               const localOrder = (lItem && lItem.order !== undefined && lItem.order !== null) ? lItem.order : rItem.order;
-              itemMap.set(lItem.id, { ...rItem, id: lItem.id, order: localOrder });
+              itemMap.set(String(lItem.id), { ...rItem, id: lItem.id, order: localOrder });
             } else {
               // Giải quyết xung đột: lấy bản ghi có updatedAt mới hơn
-              const rTime = rItem.updatedAt || 0;
-              const lTime = lItem.updatedAt || 0;
-              if (rTime > lTime) {
+              const rTime = new Date(rItem.updatedAt || 0).getTime() || 0;
+              const lTime = new Date(lItem.updatedAt || 0).getTime() || 0;
+              // Nếu local đã xóa và remote chưa cập nhật (hoặc lTime >= rTime): giữ nguyên xóa
+              if (lItem.isDeleted && !rItem.isDeleted && lTime >= rTime) {
+                continue;
+              }
+              if (rTime >= lTime) {
                 const localOrder = (table === db.accounts && lItem && lItem.order !== undefined && lItem.order !== null) ? lItem.order : rItem.order;
-                itemMap.set(lItem.id, { ...rItem, id: lItem.id, order: localOrder });
+                itemMap.set(String(lItem.id), { ...rItem, id: lItem.id, order: localOrder });
               }
             }
           }

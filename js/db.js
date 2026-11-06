@@ -628,9 +628,22 @@ async function addTransaction(data) {
 
 async function deleteTransaction(txId) {
   const now = Date.now();
+  let deletedTx = null;
   await db.transaction('rw', db.transactions, db.accounts, async () => {
-    const tx = await db.transactions.get(Number(txId));
+    let tx = null;
+    const numId = Number(txId);
+    if (!isNaN(numId)) {
+      tx = await db.transactions.get(numId);
+    }
+    if (!tx && typeof txId === 'string') {
+      tx = await db.transactions.get(txId);
+    }
+    if (!tx && txId !== undefined && txId !== null) {
+      const allTxs = await db.transactions.toArray();
+      tx = allTxs.find(t => String(t.id) === String(txId));
+    }
     if (!tx || tx.isDeleted) return;
+    deletedTx = tx;
 
     // Giao dịch thuộc Sổ Vay Ngân Hàng phải được quản lý và xóa thông qua Sổ Vay
     if (tx.loanId) {
@@ -659,6 +672,30 @@ async function deleteTransaction(txId) {
 
   if (typeof recalculateAccountBalances === 'function') {
     await recalculateAccountBalances();
+  }
+
+  // Cập nhật ngay bản chiếu chia sẻ nếu giao dịch thuộc tài khoản đang chia sẻ
+  if (deletedTx && window.serverSyncService) {
+    try {
+      if (deletedTx._isSharedItem && deletedTx._shareId) {
+        window.serverSyncService.pushReceivedSharedItemTransactions(deletedTx._shareId).catch(() => {});
+      } else {
+        const accId = deletedTx.accountId;
+        const toAccId = deletedTx.toAccountId;
+        const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
+        if (ownedSetting && Array.isArray(ownedSetting.value)) {
+          const relevant = ownedSetting.value.filter(s =>
+            s.itemType === 'account' && (String(s.itemId) === String(accId) || (toAccId && String(s.itemId) === String(toAccId)))
+          );
+          for (const s of relevant) {
+            const currentKey = s.shareKey || (await window.serverSyncService.getItemShareKey(`${s.itemType}_${s.itemId}`));
+            window.serverSyncService.projectAndPushItem(s.itemType, s.itemId, currentKey).catch(() => {});
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[deleteTransaction] Error pushing projection update:', e);
+    }
   }
 
   triggerAutoSync();
