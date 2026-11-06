@@ -3947,8 +3947,7 @@ const UITransactions = {
             id: acc.id,
             name: acc.name,
             type: acc.type,
-            color: info.color,
-            balanceFormatted: balFormatted
+            color: info.color
           }));
         } catch (e) {}
       }

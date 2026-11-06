@@ -3340,16 +3340,20 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
                       var cachedAcc = localStorage.getItem('stc_last_account_cache');
                       if (cachedAcc) {
-                        var acc = JSON.parse(cachedAcc);
-                        var accLabel = document.getElementById('tx-account-label');
-                        var accBal = document.getElementById('tx-account-balance');
-                        var accBubble = document.getElementById('tx-account-icon-bubble');
-                        if (accLabel && acc.name) accLabel.textContent = acc.name;
-                        if (accBal && acc.balanceFormatted) accBal.textContent = 'Số dư: ' + acc.balanceFormatted + 'đ';
-                        if (accBubble && acc.color) {
-                          accBubble.style.background = acc.color + '22';
-                          accBubble.style.color = acc.color;
-                        }
+                        try {
+                          var acc = JSON.parse(cachedAcc);
+                          var accLabel = document.getElementById('tx-account-label');
+                          var accBubble = document.getElementById('tx-account-icon-bubble');
+                          if (accLabel && acc.name) accLabel.textContent = acc.name;
+                          if (accBubble && acc.color) {
+                            accBubble.style.background = acc.color + '22';
+                            accBubble.style.color = acc.color;
+                          }
+                          if (acc && acc.balanceFormatted) {
+                            delete acc.balanceFormatted;
+                            localStorage.setItem('stc_last_account_cache', JSON.stringify(acc));
+                          }
+                        } catch (_) {}
                       }
 
                       var cachedCat = localStorage.getItem('stc_default_cat_cache');
@@ -6970,7 +6974,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=3.0.44"></script>
-  <script src="./js/ui-transactions.js?v=3.0.44"></script>
+  <script src="./js/ui-transactions.js?v=3.0.48"></script>
   <script src="./js/ui-debts.js?v=3.0.44"></script>
   <script src="./js/ui-accounts.js?v=3.0.44"></script>
   <script src="./js/ui-share.js?v=3.0.44"></script>
@@ -6982,7 +6986,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <!-- Main Entry Coordinator -->
   <script src="./js/ui-admin.js?v=3.0.44"></script>
   <script src="./js/pull-to-refresh.js?v=3.0.44"></script>
-  <script src="./js/app.js?v=3.0.45"></script>
+  <script src="./js/app.js?v=3.0.48"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
   <script>

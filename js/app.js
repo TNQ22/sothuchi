@@ -1519,6 +1519,9 @@ class App {
     await window.UIAccounts.render();
     await window.UIBudgets.render();
     await window.UIAnalytics.render();
+    if (window.UITransactions && typeof window.UITransactions.updateSelectedAccountDisplay === 'function') {
+      window.UITransactions.updateSelectedAccountDisplay().catch(() => {});
+    }
     if (window.SyncCoordinator && typeof window.SyncCoordinator.updateVaultUI === 'function') {
       window.SyncCoordinator.updateVaultUI();
     }
