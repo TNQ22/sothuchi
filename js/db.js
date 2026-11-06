@@ -1600,9 +1600,7 @@ window.isAccountBudgetEnabled = isAccountBudgetEnabled;
 async function enforceAccountsDisplayOrder() {
   try {
     const orderSetting = await db.settings.get('accountsDisplayOrder');
-    const defSetting = await db.settings.get('defaultExpenseAccountId');
     const orderList = orderSetting && Array.isArray(orderSetting.value) ? orderSetting.value.map(Number) : [];
-    const defaultAccId = defSetting && defSetting.value ? Number(defSetting.value) : null;
 
     const allAccounts = await db.accounts.where('isDeleted').equals(0).toArray();
     if (!allAccounts || allAccounts.length === 0) return;
@@ -1610,10 +1608,6 @@ async function enforceAccountsDisplayOrder() {
     allAccounts.sort((a, b) => {
       const idA = Number(a.id);
       const idB = Number(b.id);
-      if (defaultAccId) {
-        if (idA === defaultAccId && idB !== defaultAccId) return -1;
-        if (idB === defaultAccId && idA !== defaultAccId) return 1;
-      }
       const idxA = orderList.indexOf(idA);
       const idxB = orderList.indexOf(idB);
       if (idxA !== -1 && idxB !== -1) return idxA - idxB;

@@ -5173,17 +5173,6 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         <button type="button" class="btn-icon" onclick="UIAccounts.closeActionSheet()"><i data-lucide="x"></i></button>
       </div>
       <div class="action-sheet-body">
-        <button type="button" class="action-sheet-item" id="action-sheet-set-default-btn" onclick="UIAccounts.handleActionSheetSelect('set-default')">
-          <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
-            <i data-lucide="pin" id="action-sheet-set-default-icon" style="width: 18px; height: 18px;"></i>
-          </div>
-          <div class="action-sheet-item-text">
-            <span class="action-sheet-item-title" id="action-sheet-set-default-title">Đặt làm mặc định (Đưa lên đầu)</span>
-            <span class="action-sheet-item-desc" id="action-sheet-set-default-desc">Đưa lên đầu danh sách & tự động chọn khi ghi chi tiêu</span>
-          </div>
-          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
-        </button>
-
         <button type="button" class="action-sheet-item" onclick="UIAccounts.handleActionSheetSelect('statement')">
           <div class="action-sheet-item-icon" style="background: rgba(79, 70, 229, 0.12); color: #4f46e5;">
             <i data-lucide="file-spreadsheet" style="width: 18px; height: 18px;"></i>

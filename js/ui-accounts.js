@@ -616,36 +616,6 @@ const UIAccounts = {
     if (archiveBtn) archiveBtn.style.display = isReceivedShare ? 'none' : 'flex';
     if (deleteBtn) deleteBtn.style.display = isReceivedShare ? 'none' : 'flex';
 
-    // Nút Đặt làm mặc định (Đưa lên đầu danh sách chi tiêu)
-    const setDefaultBtn = document.getElementById('action-sheet-set-default-btn');
-    const setDefaultTitle = document.getElementById('action-sheet-set-default-title');
-    const setDefaultDesc = document.getElementById('action-sheet-set-default-desc');
-    const setDefaultIcon = document.getElementById('action-sheet-set-default-icon');
-
-    if (setDefaultBtn) {
-      if (isArchived || (isReceivedShare && acc._sharedRole !== 'editor')) {
-        setDefaultBtn.style.display = 'none';
-      } else {
-        setDefaultBtn.style.display = 'flex';
-        const allActiveAccs = (await db.accounts.where('isDeleted').equals(0).toArray())
-          .filter(a => !a.isArchived)
-          .sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
-        const isCurrentlyTop = allActiveAccs.length > 0 && allActiveAccs[0].id === Number(accId);
-
-        if (isCurrentlyTop) {
-          if (setDefaultTitle) setDefaultTitle.textContent = 'Đang là mặc định (Đầu danh sách)';
-          if (setDefaultDesc) setDefaultDesc.textContent = 'Tài khoản này đang ở đầu danh sách & tự động chọn khi ghi chép';
-          if (setDefaultIcon) setDefaultIcon.setAttribute('data-lucide', 'check-circle-2');
-          setDefaultBtn.style.opacity = '0.75';
-        } else {
-          if (setDefaultTitle) setDefaultTitle.textContent = 'Đặt làm mặc định (Đưa lên đầu)';
-          if (setDefaultDesc) setDefaultDesc.textContent = 'Đưa lên đầu danh sách & tự động chọn khi ghi chi tiêu';
-          if (setDefaultIcon) setDefaultIcon.setAttribute('data-lucide', 'pin');
-          setDefaultBtn.style.opacity = '1';
-        }
-      }
-    }
-
     if (includeReportBtn) {
       includeReportBtn.style.display = isReceivedShare ? 'flex' : 'none';
       if (isReceivedShare) {
@@ -766,9 +736,7 @@ const UIAccounts = {
     this.closeActionSheet();
     if (!accId) return;
 
-    if (action === 'set-default') {
-      await this.setAccountAsDefault(accId);
-    } else if (action === 'statement') {
+    if (action === 'statement') {
       await this.openStatementHistory(accId);
     } else if (action === 'transfer') {
       await this.startTransfer(accId);
@@ -781,45 +749,6 @@ const UIAccounts = {
     } else if (action === 'delete') {
       await this.confirmDeleteAccount(accId);
     }
-  },
-
-  async setAccountAsDefault(accId) {
-    const id = Number(accId);
-    const targetAcc = await db.accounts.get(id);
-    if (!targetAcc) return;
-
-    if (targetAcc._isSharedItem && targetAcc._sharedRole !== 'editor') {
-      showToast(`Tài khoản "${targetAcc.name}" chỉ có quyền xem, không thể đặt làm mặc định chi tiêu!`, 'warning');
-      return;
-    }
-
-    const accounts = (await db.accounts.where('isDeleted').equals(0).toArray())
-      .filter(a => !a.isArchived)
-      .sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
-
-    const targetIndex = accounts.findIndex(a => a.id === id);
-    if (targetIndex !== -1) {
-      const [moved] = accounts.splice(targetIndex, 1);
-      accounts.unshift(moved);
-      const now = Date.now();
-      for (let i = 0; i < accounts.length; i++) {
-        await db.accounts.update(accounts[i].id, { order: i, updatedAt: now });
-      }
-    }
-
-    await db.settings.put({ key: 'accountsDisplayOrder', value: accounts.map(a => Number(a.id)) });
-    await db.settings.put({ key: 'defaultExpenseAccountId', value: id });
-
-    await this.render();
-    if (window.UITransactions) {
-      window.UITransactions.userChangedAccount = false;
-      window.UITransactions.userSelectedAccountId = null;
-      if (typeof window.UITransactions.populateAccounts === 'function') {
-        await window.UITransactions.populateAccounts(id);
-      }
-    }
-    showToast(`Đã đặt "${targetAcc.name}" làm mặc định & đưa lên đầu danh sách!`, 'success');
-    if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
   /* ==================== XEM LỊCH SỬ THU CHI TÀI KHOẢN ==================== */
@@ -1832,9 +1761,6 @@ const UIAccounts = {
     }
 
     await db.settings.put({ key: 'accountsDisplayOrder', value: accounts.map(a => Number(a.id)) });
-    if (accounts[0] && (!accounts[0]._isSharedItem || accounts[0]._sharedRole === 'editor')) {
-      await db.settings.put({ key: 'defaultExpenseAccountId', value: Number(accounts[0].id) });
-    }
 
     await this.render();
     if (window.UITransactions && typeof window.UITransactions.populateAccounts === 'function') {
@@ -1867,9 +1793,6 @@ const UIAccounts = {
     }
 
     await db.settings.put({ key: 'accountsDisplayOrder', value: accounts.map(a => Number(a.id)) });
-    if (toIndex === 0 && (!moved._isSharedItem || moved._sharedRole === 'editor')) {
-      await db.settings.put({ key: 'defaultExpenseAccountId', value: Number(moved.id) });
-    }
 
     await this.render();
     if (window.UITransactions && typeof window.UITransactions.populateAccounts === 'function') {
@@ -6134,7 +6057,6 @@ const UIAccounts = {
                 <div class="account-info" style="flex: 1 1 0%; min-width: 0; overflow: hidden;">
                   <div class="account-name-row" style="display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
                     <span class="account-name" title="${escapeHTML(a.name)}" style="white-space: nowrap; overflow: hidden; text-overflow: clip; font-weight: 700; min-width: 0; flex-shrink: 1;">${escapeHTML(a.name)}</span>
-                    ${index === 0 ? `<span class="account-default-tag" style="font-size: 0.65rem; color: #10b981; background: rgba(16, 185, 129, 0.12); padding: 1px 5px; border-radius: 4px; font-weight: 600; display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0;" title="Tài khoản mặc định khi ghi chi tiêu"><i data-lucide="check" style="width: 8px; height: 8px;"></i> Mặc định</span>` : ''}
                     ${this.renderSharedRoleBadge(a)}
                   </div>
                   <div class="account-sub-row" style="display: flex; align-items: center; gap: 4px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: clip;">
