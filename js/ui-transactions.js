@@ -4890,7 +4890,7 @@ const UITransactions = {
     if (!acc._isSharedItem) {
       // Đang xem trên máy CHỦ SỞ HỮU:
       // - Nếu recordedByOther === 1 -> Giao dịch do THÀNH VIÊN ghi (chắc chắn KHÔNG phải Tôi)
-      // - Nếu !recordedByOther || recordedByOther === 0 -> Giao dịch do CHỦ VÍ ghi (Tôi)
+      // - Nếu !recordedByOther || recordedByOther === 0 -> Giao dịch do CHỦ SỔ ghi (Tôi)
       if (t.recordedByOther === 1) {
         isMe = false;
         authorRoleLabel = t.createdBy || 'Thành viên';
@@ -4899,14 +4899,16 @@ const UITransactions = {
       }
     } else {
       // Đang xem trên máy THÀNH VIÊN NHẬN CHIA SẺ:
-      // - Nếu !recordedByOther || recordedByOther === 0 -> Giao dịch do CHỦ VÍ ghi (chắc chắn KHÔNG phải Tôi)
+      // - Nếu !recordedByOther || recordedByOther === 0 -> Giao dịch do CHỦ SỔ ghi (hiển thị là Chủ sổ)
       // - Nếu recordedByOther === 1 -> Giao dịch do THÀNH VIÊN ghi
       if (!t.recordedByOther || t.recordedByOther === 0) {
         isMe = false;
-        authorRoleLabel = ownerNameOrEmail || 'Chủ ví';
+        authorRoleLabel = 'Chủ sổ';
       } else {
-        // Giao dịch do thành viên ghi: kiểm tra xem có phải do tài khoản này tạo hay thành viên khác
-        if (creatorEmail && currentEmail && creatorEmail !== currentEmail) {
+        // Giao dịch do thành viên ghi: nếu có thông tin người tạo khác tài khoản hiện tại -> thành viên khác
+        const isDifferentUser = (creatorEmail && currentEmail && creatorEmail !== currentEmail) ||
+                                (!creatorEmail && creatorName && currentName && creatorName !== currentName);
+        if (isDifferentUser) {
           isMe = false;
           authorRoleLabel = t.createdBy || 'Thành viên';
         } else {
@@ -4915,11 +4917,12 @@ const UITransactions = {
       }
     }
 
+    // Nếu là do chính mình tự ghi chép thì để trống cho tinh gọn (không hiển thị "(Tôi)")
     if (isMe) {
-      return ` <span class="tx-share-author-note" title="Ghi chép bởi bạn">(Tôi)</span>`;
+      return '';
     }
 
-    // 2. Không phải là Tôi -> Hiển thị tên/vai trò người đã ghi chép
+    // Không phải là Tôi -> Hiển thị tên/vai trò người đã ghi chép: (Chủ sổ) hoặc (Tên người ghi)
     const displayText = authorRoleLabel ? `(${escapeHTML(authorRoleLabel)})` : (t.createdBy ? `(${escapeHTML(t.createdBy)})` : '(Thành viên)');
     const fullTitle = `Ghi chép bởi: ${escapeHTML(authorRoleLabel || t.createdBy || 'Thành viên')}`;
     return ` <span class="tx-share-author-note" title="${fullTitle}">${displayText}</span>`;

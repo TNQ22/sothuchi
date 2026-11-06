@@ -2538,7 +2538,7 @@ class ServerSyncService {
                 _shareId: shareId,
                 _remoteTxId: txRemoteId,
                 recordedByOther: tx.recordedByOther !== undefined ? tx.recordedByOther : 0,
-                createdBy: tx.createdBy || (tx.recordedByOther ? 'Thành viên' : (ownerName || ownerEmail || 'Chủ ví')),
+                createdBy: tx.createdBy || (tx.recordedByOther ? 'Thành viên' : (ownerName || ownerEmail || 'Chủ sổ')),
                 createdByEmail: tx.createdByEmail || (tx.recordedByOther ? '' : (ownerEmail || ''))
               };
               if (localTx) {
