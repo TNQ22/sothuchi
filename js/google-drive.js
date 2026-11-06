@@ -1096,13 +1096,15 @@ class GoogleDriveSync {
             if (table === db.accounts && isDef && isBlank && rItem.isDeleted) {
               itemMap.set(lItem.id, { ...rItem, id: lItem.id, isDeleted: 1 });
             } else if (table === db.accounts && (rItem.balance !== 0 || rItem.initialBalance !== 0) && isBlank) {
-              itemMap.set(lItem.id, { ...rItem, id: lItem.id });
+              const localOrder = (lItem && lItem.order !== undefined && lItem.order !== null) ? lItem.order : rItem.order;
+              itemMap.set(lItem.id, { ...rItem, id: lItem.id, order: localOrder });
             } else {
               // Giải quyết xung đột: lấy bản ghi có updatedAt mới hơn
               const rTime = rItem.updatedAt || 0;
               const lTime = lItem.updatedAt || 0;
               if (rTime > lTime) {
-                itemMap.set(lItem.id, { ...rItem, id: lItem.id });
+                const localOrder = (table === db.accounts && lItem && lItem.order !== undefined && lItem.order !== null) ? lItem.order : rItem.order;
+                itemMap.set(lItem.id, { ...rItem, id: lItem.id, order: localOrder });
               }
             }
           }
@@ -1171,6 +1173,10 @@ class GoogleDriveSync {
           }
         }
       }
+    }
+
+    if (typeof window.enforceAccountsDisplayOrder === 'function') {
+      await window.enforceAccountsDisplayOrder();
     }
 
     // Tự động đối soát và tính lại số dư sau khi gộp dữ liệu

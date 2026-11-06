@@ -1596,6 +1596,47 @@ function isAccountBudgetEnabled(acc) {
 }
 window.isAccountBudgetEnabled = isAccountBudgetEnabled;
 
+// Duy trì và củng cố thứ tự hiển thị tùy chỉnh của tài khoản trên thiết bị (không bị đồng bộ làm xáo trộn)
+async function enforceAccountsDisplayOrder() {
+  try {
+    const orderSetting = await db.settings.get('accountsDisplayOrder');
+    const defSetting = await db.settings.get('defaultExpenseAccountId');
+    const orderList = orderSetting && Array.isArray(orderSetting.value) ? orderSetting.value.map(Number) : [];
+    const defaultAccId = defSetting && defSetting.value ? Number(defSetting.value) : null;
+
+    const allAccounts = await db.accounts.where('isDeleted').equals(0).toArray();
+    if (!allAccounts || allAccounts.length === 0) return;
+
+    allAccounts.sort((a, b) => {
+      const idA = Number(a.id);
+      const idB = Number(b.id);
+      if (defaultAccId) {
+        if (idA === defaultAccId && idB !== defaultAccId) return -1;
+        if (idB === defaultAccId && idA !== defaultAccId) return 1;
+      }
+      const idxA = orderList.indexOf(idA);
+      const idxB = orderList.indexOf(idB);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      const oA = a.order !== undefined && a.order !== null ? a.order : 999;
+      const oB = b.order !== undefined && b.order !== null ? b.order : 999;
+      if (oA !== oB) return oA - oB;
+      return idA - idB;
+    });
+
+    const now = Date.now();
+    for (let i = 0; i < allAccounts.length; i++) {
+      if (allAccounts[i].order !== i) {
+        await db.accounts.update(allAccounts[i].id, { order: i, updatedAt: now });
+      }
+    }
+  } catch (err) {
+    console.warn('[AccountsOrder] Enforce error:', err);
+  }
+}
+window.enforceAccountsDisplayOrder = enforceAccountsDisplayOrder;
+
 // Xoá sạch toàn bộ dữ liệu người dùng trên máy để phục vụ đổi tài khoản hoặc khôi phục trạng thái mới
 async function wipeAndResetLocalDatabase(options = {}) {
   await db.transactions.clear();

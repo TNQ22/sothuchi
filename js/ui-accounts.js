@@ -807,6 +807,7 @@ const UIAccounts = {
       }
     }
 
+    await db.settings.put({ key: 'accountsDisplayOrder', value: accounts.map(a => Number(a.id)) });
     await db.settings.put({ key: 'defaultExpenseAccountId', value: id });
 
     await this.render();
@@ -1830,6 +1831,11 @@ const UIAccounts = {
       await db.accounts.update(accounts[i].id, { order: i, updatedAt: now });
     }
 
+    await db.settings.put({ key: 'accountsDisplayOrder', value: accounts.map(a => Number(a.id)) });
+    if (accounts[0] && (!accounts[0]._isSharedItem || accounts[0]._sharedRole === 'editor')) {
+      await db.settings.put({ key: 'defaultExpenseAccountId', value: Number(accounts[0].id) });
+    }
+
     await this.render();
     if (window.UITransactions && typeof window.UITransactions.populateAccounts === 'function') {
       if (!window.UITransactions.userChangedAccount) {
@@ -1858,6 +1864,11 @@ const UIAccounts = {
     const now = Date.now();
     for (let i = 0; i < accounts.length; i++) {
       await db.accounts.update(accounts[i].id, { order: i, updatedAt: now });
+    }
+
+    await db.settings.put({ key: 'accountsDisplayOrder', value: accounts.map(a => Number(a.id)) });
+    if (toIndex === 0 && (!moved._isSharedItem || moved._sharedRole === 'editor')) {
+      await db.settings.put({ key: 'defaultExpenseAccountId', value: Number(moved.id) });
     }
 
     await this.render();
@@ -6008,6 +6019,10 @@ const UIAccounts = {
       await deduplicateAccounts();
     }
 
+    if (typeof enforceAccountsDisplayOrder === 'function') {
+      await enforceAccountsDisplayOrder();
+    }
+
     let accounts = (await db.accounts.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0);
     const totalBal = accounts.reduce((sum, a) => sum + Math.abs(a.balance || 0), 0);
     const txCount = await db.transactions.count();
@@ -6016,7 +6031,12 @@ const UIAccounts = {
       await recalculateAccountBalances();
       accounts = (await db.accounts.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0);
     }
-    accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
+    accounts.sort((a, b) => {
+      const oA = a.order !== undefined && a.order !== null ? a.order : 999;
+      const oB = b.order !== undefined && b.order !== null ? b.order : 999;
+      if (oA !== oB) return oA - oB;
+      return (a.id || 0) - (b.id || 0);
+    });
 
     // Retrieve shared items across all categories for total badge count
     const allSavings = db.savings ? (await db.savings.toArray()).filter(s => !s.isDeleted || s.isDeleted === 0) : [];

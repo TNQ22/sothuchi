@@ -3336,7 +3336,12 @@ const UITransactions = {
     if (!fromSelect) return;
 
     const accounts = (await db.accounts.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0);
-    accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
+    accounts.sort((a, b) => {
+      const oA = a.order !== undefined && a.order !== null ? a.order : 999;
+      const oB = b.order !== undefined && b.order !== null ? b.order : 999;
+      if (oA !== oB) return oA - oB;
+      return (a.id || 0) - (b.id || 0);
+    });
 
     const iconMap = {
       cash: { icon: 'wallet', color: '#10b981' },

@@ -1663,6 +1663,11 @@ class ServerSyncService {
         await window.recalculateAccountBalances();
       }
 
+      // Đảm bảo thứ tự hiển thị tùy chỉnh của tài khoản không bị xáo trộn sau khi đồng bộ
+      if (typeof window.enforceAccountsDisplayOrder === 'function') {
+        await window.enforceAccountsDisplayOrder();
+      }
+
       this.lastSyncTime = new Date().toISOString();
       this.lastError = null;
       await db.settings.put({ key: 'syncServerLastSyncTime', value: this.lastSyncTime });
@@ -1815,7 +1820,8 @@ class ServerSyncService {
             const rHasData = (rItem.balance !== 0 || (rItem.initialBalance || 0) !== 0);
 
             if (lIsBlank && rHasData && !rItem.isDeleted) {
-              itemMap.set(lItem.id, { ...rItem, id: lItem.id });
+              const localOrder = (lItem && lItem.order !== undefined && lItem.order !== null) ? lItem.order : rItem.order;
+              itemMap.set(lItem.id, { ...rItem, id: lItem.id, order: localOrder });
               continue;
             }
 
@@ -1831,7 +1837,8 @@ class ServerSyncService {
             const rTime = new Date(rItem.updatedAt || 0).getTime() || 0;
             const lTime = new Date(lItem.updatedAt || 0).getTime() || 0;
             if (rTime >= lTime) {
-              itemMap.set(lItem.id, { ...rItem, id: lItem.id });
+              const localOrder = (lItem && lItem.order !== undefined && lItem.order !== null) ? lItem.order : rItem.order;
+              itemMap.set(lItem.id, { ...rItem, id: lItem.id, order: localOrder });
             }
           }
           continue;
@@ -2885,6 +2892,9 @@ class ServerSyncService {
         }
       }
       if (hasChanges) {
+        if (typeof window.enforceAccountsDisplayOrder === 'function') {
+          await window.enforceAccountsDisplayOrder();
+        }
         if (typeof window.recalculateAccountBalances === 'function') {
           await window.recalculateAccountBalances();
         }
