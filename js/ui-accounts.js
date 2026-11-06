@@ -1775,16 +1775,28 @@ const UIAccounts = {
     if (typeof triggerAutoSync === 'function') triggerAutoSync();
   },
 
-  async reorderAccounts(fromId, toId) {
+  async reorderAccounts(fromId, toId, position = 'before') {
     if (fromId === toId) return;
     const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
-    accounts.sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
+    accounts.sort((a, b) => {
+      const oA = a.order !== undefined && a.order !== null ? a.order : 999;
+      const oB = b.order !== undefined && b.order !== null ? b.order : 999;
+      if (oA !== oB) return oA - oB;
+      return (a.id || 0) - (b.id || 0);
+    });
 
     const fromIndex = accounts.findIndex(a => a.id === Number(fromId));
-    const toIndex = accounts.findIndex(a => a.id === Number(toId));
-    if (fromIndex === -1 || toIndex === -1) return;
+    if (fromIndex === -1) return;
 
     const [moved] = accounts.splice(fromIndex, 1);
+    let toIndex = accounts.findIndex(a => a.id === Number(toId));
+    if (toIndex === -1) {
+      accounts.splice(fromIndex, 0, moved);
+      return;
+    }
+    if (position === 'after') {
+      toIndex += 1;
+    }
     accounts.splice(toIndex, 0, moved);
 
     const now = Date.now();
@@ -1812,6 +1824,7 @@ const UIAccounts = {
     let draggedItem = null;
 
     items.forEach(item => {
+      // ===== DESKTOP HTML5 DRAG & DROP =====
       item.addEventListener('dragstart', (e) => {
         draggedItem = item;
         item.classList.add('dragging');
@@ -1821,68 +1834,127 @@ const UIAccounts = {
 
       item.addEventListener('dragend', () => {
         item.classList.remove('dragging');
-        items.forEach(i => i.classList.remove('drag-over'));
+        items.forEach(i => i.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'));
       });
 
       item.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         if (draggedItem && draggedItem !== item) {
-          items.forEach(i => i.classList.remove('drag-over'));
-          item.classList.add('drag-over');
+          const rect = item.getBoundingClientRect();
+          const isAfter = (e.clientY > rect.top + rect.height / 2);
+          items.forEach(i => i.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'));
+          if (isAfter) {
+            item.classList.add('drag-over-bottom');
+          } else {
+            item.classList.add('drag-over-top');
+          }
         }
       });
 
       item.addEventListener('dragleave', () => {
-        item.classList.remove('drag-over');
+        item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
       });
 
       item.addEventListener('drop', async (e) => {
         e.preventDefault();
-        item.classList.remove('drag-over');
+        const isAfter = item.classList.contains('drag-over-bottom');
+        items.forEach(i => i.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'));
         if (draggedItem && draggedItem !== item) {
           const fromId = draggedItem.dataset.id;
           const toId = item.dataset.id;
-          await this.reorderAccounts(fromId, toId);
+          await this.reorderAccounts(fromId, toId, isAfter ? 'after' : 'before');
         }
       });
 
-      // Hỗ trợ cảm ứng (Touch Drag & Drop) trên thiết bị di động
+      // ===== MOBILE TOUCH DRAG & DROP (NHẤN GIỮ ĐỂ DI CHUYỂN) =====
       const handle = item.querySelector('.account-drag-handle');
       if (handle) {
-        let touchTarget = null;
+        let longPressTimer = null;
+        let isDragActive = false;
+        let startX = 0;
+        let startY = 0;
+        let touchTarget = null; // { id: string, position: 'before' | 'after' }
+
         handle.addEventListener('touchstart', (e) => {
-          draggedItem = item;
-          item.classList.add('dragging');
+          if (e.touches.length !== 1) return;
+          const touch = e.touches[0];
+          startX = touch.clientX;
+          startY = touch.clientY;
+          isDragActive = false;
+          touchTarget = null;
+
+          handle.classList.add('holding');
+
+          // Nhấn giữ 280ms mới bắt đầu kích hoạt chế độ kéo di chuyển
+          longPressTimer = setTimeout(() => {
+            isDragActive = true;
+            draggedItem = item;
+            item.classList.add('dragging');
+            handle.classList.remove('holding');
+
+            // Rung phản hồi xúc giác nhẹ (Haptic feedback)
+            if (navigator.vibrate) {
+              try { navigator.vibrate(40); } catch (_) {}
+            }
+          }, 280);
         }, { passive: true });
 
         handle.addEventListener('touchmove', (e) => {
-          if (!draggedItem) return;
           const touch = e.touches[0];
+          const deltaX = Math.abs(touch.clientX - startX);
+          const deltaY = Math.abs(touch.clientY - startY);
+
+          // Nếu chưa qua 280ms mà người dùng đã di chuyển ngón tay > 10px -> Đang cuộn trang thông thường
+          if (!isDragActive) {
+            if (deltaX > 10 || deltaY > 10) {
+              clearTimeout(longPressTimer);
+              handle.classList.remove('holding');
+            }
+            return;
+          }
+
+          // Khi đã kích hoạt chế độ kéo: ngăn chặn trang bị cuộn
+          if (e.cancelable) e.preventDefault();
+
           const el = document.elementFromPoint(touch.clientX, touch.clientY);
           const targetItem = el ? el.closest('.account-list-item') : null;
-          items.forEach(i => i.classList.remove('drag-over'));
+
+          items.forEach(i => i.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'));
+
           if (targetItem && targetItem !== draggedItem) {
-            targetItem.classList.add('drag-over');
-            touchTarget = targetItem;
+            const rect = targetItem.getBoundingClientRect();
+            const isAfter = (touch.clientY > rect.top + rect.height / 2);
+            if (isAfter) {
+              targetItem.classList.add('drag-over-bottom');
+            } else {
+              targetItem.classList.add('drag-over-top');
+            }
+            touchTarget = { id: targetItem.dataset.id, position: isAfter ? 'after' : 'before' };
           } else {
             touchTarget = null;
           }
-        }, { passive: true });
+        }, { passive: false });
 
-        handle.addEventListener('touchend', async () => {
-          if (draggedItem) {
+        const endTouch = async () => {
+          clearTimeout(longPressTimer);
+          handle.classList.remove('holding');
+
+          if (isDragActive && draggedItem) {
             draggedItem.classList.remove('dragging');
-            items.forEach(i => i.classList.remove('drag-over'));
-            if (touchTarget && touchTarget !== draggedItem) {
-              const fromId = draggedItem.dataset.id;
-              const toId = touchTarget.dataset.id;
-              await this.reorderAccounts(fromId, toId);
+            items.forEach(i => i.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'));
+
+            if (touchTarget && touchTarget.id && touchTarget.id !== draggedItem.dataset.id) {
+              await this.reorderAccounts(draggedItem.dataset.id, touchTarget.id, touchTarget.position);
             }
-            draggedItem = null;
-            touchTarget = null;
           }
-        });
+          isDragActive = false;
+          draggedItem = null;
+          touchTarget = null;
+        };
+
+        handle.addEventListener('touchend', endTouch);
+        handle.addEventListener('touchcancel', endTouch);
       }
     });
   },

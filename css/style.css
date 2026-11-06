@@ -886,12 +886,62 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
 }
 
 .account-list-item.dragging {
-  opacity: 0.35;
+  opacity: 0.45 !important;
   transform: scale(0.98);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+  border: 1.5px dashed var(--primary) !important;
 }
 
-.account-list-item.drag-over {
-  border-top: 2px solid var(--primary);
+/* Vị trí chèn phía TRÊN của tài khoản mục tiêu */
+.account-list-item.drag-over,
+.account-list-item.drag-over-top,
+.account-list-item.shared-item-card.drag-over,
+.account-list-item.shared-item-card.drag-over-top {
+  border-top: 3px solid #10b981 !important;
+  box-shadow: 0 -3px 10px rgba(16, 185, 129, 0.4) !important;
+  background: rgba(16, 185, 129, 0.08) !important;
+  position: relative;
+}
+
+.account-list-item.drag-over::before,
+.account-list-item.drag-over-top::before,
+.account-list-item.shared-item-card.drag-over::before,
+.account-list-item.shared-item-card.drag-over-top::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #10b981;
+  border-radius: 2px;
+  z-index: 20;
+  box-shadow: 0 0 8px #10b981;
+  pointer-events: none;
+}
+
+/* Vị trí chèn phía DƯỚI của tài khoản mục tiêu */
+.account-list-item.drag-over-bottom,
+.account-list-item.shared-item-card.drag-over-bottom {
+  border-bottom: 3px solid #10b981 !important;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.4) !important;
+  background: rgba(16, 185, 129, 0.08) !important;
+  position: relative;
+}
+
+.account-list-item.drag-over-bottom::after,
+.account-list-item.shared-item-card.drag-over-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #10b981;
+  border-radius: 2px;
+  z-index: 20;
+  box-shadow: 0 0 8px #10b981;
+  pointer-events: none;
 }
 
 .account-drag-handle {
@@ -903,8 +953,15 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   padding: 4px;
   border-radius: 4px;
   flex-shrink: 0;
-  touch-action: none;
-  transition: color 0.15s;
+  touch-action: pan-y;
+  transition: transform 0.15s ease, color 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.account-drag-handle.holding {
+  color: var(--primary) !important;
+  transform: scale(1.22);
 }
 
 .account-drag-handle:hover {
