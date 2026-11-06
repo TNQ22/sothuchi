@@ -753,6 +753,9 @@ const UIAccounts = {
 
   /* ==================== XEM LỊCH SỬ THU CHI TÀI KHOẢN ==================== */
   async viewAccountHistory(accId) {
+    if (this.suppressHistoryClickUntil && Date.now() < this.suppressHistoryClickUntil) {
+      return;
+    }
     if (window.app) {
       window.app.txHistorySource = 'accounts';
       window.app.previousView = 'accounts';
@@ -1822,9 +1825,16 @@ const UIAccounts = {
   setupDragAndDrop(container) {
     const items = container.querySelectorAll('.account-list-item');
     let draggedItem = null;
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
     items.forEach(item => {
       // ===== DESKTOP HTML5 DRAG & DROP =====
+      item.addEventListener('mouseenter', () => {
+        if (!isTouchDevice) {
+          item.setAttribute('draggable', 'true');
+        }
+      });
+
       item.addEventListener('dragstart', (e) => {
         draggedItem = item;
         item.classList.add('dragging');
@@ -1869,93 +1879,108 @@ const UIAccounts = {
 
       // ===== MOBILE TOUCH DRAG & DROP (NHẤN GIỮ ĐỂ DI CHUYỂN) =====
       const handle = item.querySelector('.account-drag-handle');
-      if (handle) {
-        let longPressTimer = null;
-        let isDragActive = false;
-        let startX = 0;
-        let startY = 0;
-        let touchTarget = null; // { id: string, position: 'before' | 'after' }
+      let longPressTimer = null;
+      let isDragActive = false;
+      let startX = 0;
+      let startY = 0;
+      let touchTarget = null; // { id: string, position: 'before' | 'after' }
 
-        handle.addEventListener('touchstart', (e) => {
-          if (e.touches.length !== 1) return;
-          const touch = e.touches[0];
-          startX = touch.clientX;
-          startY = touch.clientY;
-          isDragActive = false;
-          touchTarget = null;
+      item.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        // Bỏ qua nếu chạm vào menu tùy chọn 3 chấm hoặc nút bấm
+        if (e.target.closest('.account-menu-wrapper, .account-menu-btn, button, a, input, select')) {
+          return;
+        }
 
-          handle.classList.add('holding');
+        // Trên thiết bị cảm ứng, xóa thuộc tính draggable để iOS Safari không kích hoạt thumbnail native drag session
+        item.removeAttribute('draggable');
 
-          // Nhấn giữ 280ms mới bắt đầu kích hoạt chế độ kéo di chuyển
-          longPressTimer = setTimeout(() => {
-            isDragActive = true;
-            draggedItem = item;
-            item.classList.add('dragging');
-            handle.classList.remove('holding');
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        isDragActive = false;
+        touchTarget = null;
 
-            // Rung phản hồi xúc giác nhẹ (Haptic feedback)
-            if (navigator.vibrate) {
-              try { navigator.vibrate(40); } catch (_) {}
-            }
-          }, 280);
-        }, { passive: true });
+        item.classList.add('press-holding');
+        if (handle) handle.classList.add('holding');
 
-        handle.addEventListener('touchmove', (e) => {
-          const touch = e.touches[0];
-          const deltaX = Math.abs(touch.clientX - startX);
-          const deltaY = Math.abs(touch.clientY - startY);
+        // Nhấn giữ 260ms trên thẻ tài khoản (hoặc icon 6 chấm) để kích hoạt chế độ di chuyển
+        longPressTimer = setTimeout(() => {
+          isDragActive = true;
+          draggedItem = item;
+          item.classList.remove('press-holding');
+          item.classList.add('dragging');
+          if (handle) handle.classList.remove('holding');
 
-          // Nếu chưa qua 280ms mà người dùng đã di chuyển ngón tay > 10px -> Đang cuộn trang thông thường
-          if (!isDragActive) {
-            if (deltaX > 10 || deltaY > 10) {
-              clearTimeout(longPressTimer);
-              handle.classList.remove('holding');
-            }
-            return;
+          // Phản hồi rung haptic nhẹ nếu hỗ trợ
+          if (navigator.vibrate) {
+            try { navigator.vibrate(40); } catch (_) {}
           }
+        }, 260);
+      }, { passive: true });
 
-          // Khi đã kích hoạt chế độ kéo: ngăn chặn trang bị cuộn
-          if (e.cancelable) e.preventDefault();
+      item.addEventListener('touchmove', (e) => {
+        const touch = e.touches[0];
+        if (!touch) return;
+        const deltaX = Math.abs(touch.clientX - startX);
+        const deltaY = Math.abs(touch.clientY - startY);
 
-          const el = document.elementFromPoint(touch.clientX, touch.clientY);
-          const targetItem = el ? el.closest('.account-list-item') : null;
+        // Nếu ngón tay di chuyển > 8px trước khi đủ 260ms -> Người dùng đang cuộn trang thông thường
+        if (!isDragActive) {
+          if (deltaX > 8 || deltaY > 8) {
+            clearTimeout(longPressTimer);
+            item.classList.remove('press-holding');
+            if (handle) handle.classList.remove('holding');
+          }
+          return;
+        }
 
+        // Đã vào chế độ di chuyển: chặn cuộn trang
+        if (e.cancelable) e.preventDefault();
+
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        const targetItem = el ? el.closest('.account-list-item') : null;
+
+        items.forEach(i => i.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'));
+
+        if (targetItem && targetItem !== draggedItem) {
+          const rect = targetItem.getBoundingClientRect();
+          const isAfter = (touch.clientY > rect.top + rect.height / 2);
+          if (isAfter) {
+            targetItem.classList.add('drag-over-bottom');
+          } else {
+            targetItem.classList.add('drag-over-top');
+          }
+          touchTarget = { id: targetItem.dataset.id, position: isAfter ? 'after' : 'before' };
+        } else {
+          touchTarget = null;
+        }
+      }, { passive: false });
+
+      const endTouch = async () => {
+        clearTimeout(longPressTimer);
+        item.classList.remove('press-holding');
+        if (handle) handle.classList.remove('holding');
+
+        if (isDragActive && draggedItem) {
+          // Ngăn chặn sự kiện click mở lịch sử tài khoản ngay sau khi thả tay
+          this.suppressHistoryClickUntil = Date.now() + 450;
+
+          draggedItem.classList.remove('dragging');
           items.forEach(i => i.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'));
 
-          if (targetItem && targetItem !== draggedItem) {
-            const rect = targetItem.getBoundingClientRect();
-            const isAfter = (touch.clientY > rect.top + rect.height / 2);
-            if (isAfter) {
-              targetItem.classList.add('drag-over-bottom');
-            } else {
-              targetItem.classList.add('drag-over-top');
-            }
-            touchTarget = { id: targetItem.dataset.id, position: isAfter ? 'after' : 'before' };
-          } else {
-            touchTarget = null;
+          if (touchTarget && touchTarget.id && touchTarget.id !== draggedItem.dataset.id) {
+            await this.reorderAccounts(draggedItem.dataset.id, touchTarget.id, touchTarget.position);
           }
-        }, { passive: false });
+        }
 
-        const endTouch = async () => {
-          clearTimeout(longPressTimer);
-          handle.classList.remove('holding');
+        isDragActive = false;
+        draggedItem = null;
+        touchTarget = null;
+      };
 
-          if (isDragActive && draggedItem) {
-            draggedItem.classList.remove('dragging');
-            items.forEach(i => i.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'));
-
-            if (touchTarget && touchTarget.id && touchTarget.id !== draggedItem.dataset.id) {
-              await this.reorderAccounts(draggedItem.dataset.id, touchTarget.id, touchTarget.position);
-            }
-          }
-          isDragActive = false;
-          draggedItem = null;
-          touchTarget = null;
-        };
-
-        handle.addEventListener('touchend', endTouch);
-        handle.addEventListener('touchcancel', endTouch);
-      }
+      item.addEventListener('touchend', endTouch);
+      item.addEventListener('touchcancel', endTouch);
     });
   },
 
@@ -6106,6 +6131,7 @@ const UIAccounts = {
         </div>
       `;
     } else {
+      const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
       let html = '';
       activeAccounts.forEach((a, index) => {
         const info = iconMap[a.type] || { icon: a.icon || 'wallet', color: a.color || '#4f46e5', label: 'Tài khoản' };
@@ -6115,7 +6141,7 @@ const UIAccounts = {
         const miniShareHtml = this.getMiniShareIndicatorHtml(a);
 
         html += `
-          <div class="account-list-item ${a._isSharedItem ? 'shared-item-card' : ''}" draggable="true" data-id="${a.id}" data-index="${index}">
+          <div class="account-list-item ${a._isSharedItem ? 'shared-item-card' : ''}" ${isTouchDevice ? '' : 'draggable="true"'} data-id="${a.id}" data-index="${index}">
             <div class="account-item-inner-row" style="display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0;">
               <div class="account-drag-handle" title="Kéo để sắp xếp vị trí" style="padding: 2px 0;">
                 <i data-lucide="grip-vertical" style="width: 15px; height: 15px;"></i>

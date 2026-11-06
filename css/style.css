@@ -867,12 +867,25 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   gap: 6px;
   transition: border-color 0.15s, background-color 0.15s, transform 0.15s;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none !important;
+  -webkit-user-drag: none !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   position: relative;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   overflow: visible;
+}
+
+.account-list-item * {
+  -webkit-touch-callout: none !important;
+  -webkit-user-drag: none !important;
+}
+
+.account-list-item.press-holding {
+  background: var(--bg-card-hover);
+  border-color: rgba(99, 102, 241, 0.45);
 }
 
 .account-list-item.archived {
@@ -886,10 +899,11 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
 }
 
 .account-list-item.dragging {
-  opacity: 0.45 !important;
-  transform: scale(0.98);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+  opacity: 0.55 !important;
+  transform: scale(1.02);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
   border: 1.5px dashed var(--primary) !important;
+  z-index: 100;
 }
 
 /* Vị trí chèn phía TRÊN của tài khoản mục tiêu */
