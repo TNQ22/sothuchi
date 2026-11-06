@@ -1111,10 +1111,11 @@ class GoogleDriveSync {
             const DEFAULT_ACCOUNT_NAMES = ['tiền mặt', 'ngân hàng', 'ví điện tử', 'momo / zalopay', 'tài khoản ngân hàng'];
             const isDef = lItem.name && DEFAULT_ACCOUNT_NAMES.includes(lItem.name.trim().toLowerCase());
             const isBlank = (lItem.balance === 0 || lItem.balance === '0') && ((lItem.initialBalance || 0) === 0) && !lItem.isShared;
+            const isUntouchedDef = isDef && isBlank && (Number(lItem.updatedAt || 0) <= 1);
 
             if (table === db.accounts && isDef && isBlank && rItem.isDeleted) {
               itemMap.set(String(lItem.id), { ...rItem, id: lItem.id, isDeleted: 1 });
-            } else if (table === db.accounts && (rItem.balance !== 0 || rItem.initialBalance !== 0) && isBlank) {
+            } else if (table === db.accounts && isUntouchedDef && (rItem.balance !== 0 || rItem.initialBalance !== 0) && !rItem.isDeleted) {
               const localOrder = (lItem && lItem.order !== undefined && lItem.order !== null) ? lItem.order : rItem.order;
               itemMap.set(String(lItem.id), { ...rItem, id: lItem.id, order: localOrder });
             } else {

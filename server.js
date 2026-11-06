@@ -2375,7 +2375,7 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
         const cHasTx = Array.isArray(clientTransactions) && clientTransactions.some(t =>
           !t.isDeleted && (String(t.accountId) === String(cItem.id) || String(t.toAccountId) === String(cItem.id))
         );
-        const cIsUntouchedDefault = isDefAcc && cIsBlank && !cHasTx;
+        const cIsUntouchedDefault = isDefAcc && cIsBlank && !cHasTx && (Number(cItem.updatedAt || 0) <= 1);
 
         if (!sItem) {
           // Nếu server đã có tài khoản mà cItem là tài khoản mặc định chưa từng có giao dịch:
@@ -2391,21 +2391,10 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
             continue;
           }
 
-          // Bảo vệ tài khoản có số dư trên server tránh bị tài khoản trắng mới khởi tạo của client ghi đè
+          // Chỉ bỏ qua cItem nếu nó là tài khoản mặc định chưa từng sử dụng (seed data ban đầu với updatedAt <= 1)
           const sHasData = (sItem.balance !== 0 || (sItem.initialBalance || 0) !== 0);
-
-          if (cIsBlank && sHasData && !cItem.isDeleted) {
+          if (cIsUntouchedDefault && sHasData && !cItem.isDeleted) {
             continue; // Giữ nguyên tài khoản server
-          }
-
-          const sIsBlank = (sItem.balance === 0 || sItem.balance === '0') &&
-                           ((sItem.initialBalance || 0) === 0) &&
-                           !sItem.isShared;
-          const cHasData = (cItem.balance !== 0 || (cItem.initialBalance || 0) !== 0);
-
-          if (sIsBlank && cHasData && !sItem.isDeleted) {
-            map.set(String(sItem.id), { ...cItem, id: sItem.id });
-            continue;
           }
 
           const cTime = new Date(cItem.updatedAt || 0).getTime() || 0;
@@ -2527,9 +2516,38 @@ function mergeFullVaultData(serverVault, clientVault) {
   const s = serverVault || {};
   const c = clientVault || {};
 
+  const mergedTxs = mergeTableData(s.transactions, c.transactions, false, 'transactions');
+  const mergedAccs = mergeTableData(s.accounts, c.accounts, true, 'accounts', mergedTxs);
+
+  // Đối soát lại số dư các tài khoản trên server dựa theo giao dịch đã gộp
+  if (Array.isArray(mergedAccs) && Array.isArray(mergedTxs)) {
+    for (const acc of mergedAccs) {
+      if (acc.isDeleted) continue;
+      const accId = String(acc.id);
+      const accTxs = mergedTxs.filter(t => !t.isDeleted && (String(t.accountId) === accId || String(t.toAccountId) === accId));
+      if (accTxs.length === 0) {
+        acc.balance = Number(acc.initialBalance || 0);
+      } else {
+        let bal = Number(acc.initialBalance || 0);
+        for (const t of accTxs) {
+          const amt = Number(t.amount || 0);
+          const fee = Number(t.fee || 0);
+          if (String(t.accountId) === accId) {
+            if (t.type === 'income') bal += (amt - fee);
+            else if (t.type === 'expense' || t.type === 'transfer') bal -= (amt + fee);
+          }
+          if (t.type === 'transfer' && String(t.toAccountId) === accId) {
+            bal += amt;
+          }
+        }
+        acc.balance = bal;
+      }
+    }
+  }
+
   return {
-    transactions: mergeTableData(s.transactions, c.transactions, false, 'transactions'),
-    accounts: mergeTableData(s.accounts, c.accounts, true, 'accounts', c.transactions),
+    transactions: mergedTxs,
+    accounts: mergedAccs,
     categories: mergeTableData(s.categories, c.categories, false, 'categories'),
     debts: mergeTableData(s.debts, c.debts, false, 'debts'),
     budgets: mergeTableData(s.budgets, c.budgets, false, 'budgets'),

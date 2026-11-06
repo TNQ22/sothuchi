@@ -1790,7 +1790,7 @@ class ServerSyncService {
       const isBlankAcc = (a) => (a.balance === 0 || a.balance === '0') &&
                                 ((a.initialBalance || 0) === 0) &&
                                 !a.isShared;
-      const isUntouchedDefAcc = (a) => isAccountTable && isDefAcc(a) && isBlankAcc(a) && !localTxAccIds.has(String(a.id));
+      const isUntouchedDefAcc = (a) => isAccountTable && isDefAcc(a) && isBlankAcc(a) && !localTxAccIds.has(String(a.id)) && (Number(a.updatedAt || 0) <= 1);
 
       for (const lItem of localItems) {
         if (lItem && lItem.id !== undefined && lItem.id !== null) {
@@ -1828,23 +1828,13 @@ class ServerSyncService {
               continue;
             }
 
-            // Bảo vệ tài khoản có số dư trên remote tránh bị tài khoản trắng mới khởi tạo của local ghi đè
-            const lIsBlank = isBlankAcc(lItem);
+            // Chỉ bảo vệ nếu tài khoản local là tài khoản mặc định chưa từng sử dụng (seed data ban đầu với updatedAt <= 1)
             const rHasData = (rItem.balance !== 0 || (rItem.initialBalance || 0) !== 0);
 
-            if (lIsBlank && rHasData && !rItem.isDeleted) {
+            if (isUntouchedDefAcc(lItem) && rHasData && !rItem.isDeleted) {
               const localOrder = (lItem && lItem.order !== undefined && lItem.order !== null) ? lItem.order : rItem.order;
               itemMap.set(String(lItem.id), { ...rItem, id: lItem.id, order: localOrder });
               continue;
-            }
-
-            const rIsBlank = (rItem.balance === 0 || rItem.balance === '0') &&
-                             ((rItem.initialBalance || 0) === 0) &&
-                             !rItem.isShared;
-            const lHasData = (lItem.balance !== 0 || (lItem.initialBalance || 0) !== 0);
-
-            if (rIsBlank && lHasData && !lItem.isDeleted) {
-              continue; // Giữ nguyên local
             }
 
             const rTime = new Date(rItem.updatedAt || 0).getTime() || 0;
@@ -1962,6 +1952,11 @@ class ServerSyncService {
     const prevAccsChanged = anyDataChanged;
     if (remoteData.transactions) await mergeTable(db.transactions, await db.transactions.toArray(), remoteData.transactions, false, 'transactions');
     if (remoteData.accounts) await mergeTable(db.accounts, await db.accounts.toArray(), remoteData.accounts, true, 'accounts');
+
+    // Đối soát ngay số dư tài khoản theo giao dịch vừa gộp để không bao giờ hiển thị số dư cũ bị lệch
+    if (typeof window.recalculateAccountBalances === 'function') {
+      await window.recalculateAccountBalances();
+    }
 
     // Phục hồi lại các item chia sẻ nhận được chỉ khi bảng tài khoản/giao dịch thực sự bị xóa & gộp lại
     if (anyDataChanged) {

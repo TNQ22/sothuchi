@@ -586,11 +586,12 @@ class DropboxSync {
         if (isAccounts) {
           const isDef = local.name && DEFAULT_ACCOUNT_NAMES.includes(local.name.trim().toLowerCase());
           const isBlank = (local.balance === 0 || local.balance === '0') && ((local.initialBalance || 0) === 0) && !local.isShared;
+          const isUntouchedDef = isDef && isBlank && (Number(local.updatedAt || 0) <= 1);
           if (isDef && isBlank && remote.isDeleted) {
             map.set(key, { ...remote, id: local.id, isDeleted: 1 });
             continue;
           }
-          if ((remote.balance !== 0 || remote.initialBalance !== 0) && isBlank) {
+          if ((remote.balance !== 0 || remote.initialBalance !== 0) && isUntouchedDef && !remote.isDeleted) {
             map.set(key, { ...remote, id: local.id });
             continue;
           }
