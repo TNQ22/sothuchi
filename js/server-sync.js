@@ -644,7 +644,7 @@ class ServerSyncService {
 
     // 1. Lưu thay đổi của sổ hiện tại lên máy chủ trước khi chuyển sang sổ khác
     const oldVaultId = this.activeVaultId;
-    if (oldVaultId && oldVaultId !== vaultId && this.serverUrl && this.token) {
+    if (oldVaultId && oldVaultId !== vaultId && this.serverUrl && this.token && !options.skipPushCurrent) {
       const oldVault = this.getActiveVault();
       if (oldVault && (oldVault.role === 'owner' || oldVault.role === 'editor')) {
         try {
@@ -854,13 +854,33 @@ class ServerSyncService {
     });
 
     if (!res.ok) {
-      const err = await res.json();
+      const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Xóa sổ thất bại');
     }
 
-    this.activeVaultId = null;
-    await db.settings.delete('syncServerActiveVaultId');
+    const wasActive = (this.activeVaultId === vaultId);
+    if (wasActive) {
+      this.activeVaultId = null;
+      await db.settings.delete('syncServerActiveVaultId');
+    }
+    await db.settings.delete('syncServerEncryptionPassword_' + vaultId);
+
+    // Lấy lại danh sách sổ mới từ máy chủ
     await this.fetchVaults();
+
+    if (wasActive) {
+      if (this.vaults && this.vaults.length > 0) {
+        // Tự động chuyển sang sổ còn lại đầu tiên (hoặc Sổ mặc định do server tự tạo mới)
+        // và nạp/làm sạch dữ liệu tương ứng của sổ đó
+        await this.switchVault(this.vaults[0].id, { skipPushCurrent: true });
+      } else {
+        // Nếu không còn sổ nào, khởi tạo dữ liệu cục bộ trắng
+        await this.initializeBlankVault();
+        if (window.app && typeof window.app.refreshAll === 'function') {
+          await window.app.refreshAll();
+        }
+      }
+    }
     return true;
   }
 
