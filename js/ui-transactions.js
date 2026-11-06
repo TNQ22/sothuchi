@@ -3351,9 +3351,20 @@ const UITransactions = {
     const nonArchived = accounts.filter(a => !a.isArchived);
     const defaultAccountPool = writableAccounts.length > 0 ? writableAccounts : nonArchived;
 
+    // Kiểm tra cấu hình tài khoản mặc định rõ ràng từ người dùng (nếu có)
+    let configuredDefaultAcc = null;
+    try {
+      const defSetting = await db.settings.get('defaultExpenseAccountId');
+      if (defSetting && defSetting.value) {
+        configuredDefaultAcc = defaultAccountPool.find(a => Number(a.id) === Number(defSetting.value)) || null;
+      }
+    } catch (_) {}
+
+    const defaultAcc = configuredDefaultAcc || (defaultAccountPool.length > 0 ? defaultAccountPool[0] : (accounts.length > 0 ? accounts[0] : null));
+
     const selectedFromAcc = selectedFromId ? accounts.find(a => String(a.id) === String(selectedFromId)) : null;
     const isSelectedFromValid = selectedFromAcc && (!selectedFromAcc.isArchived || String(selectedFromAcc.id) === String(selectedFromId)) && (!selectedFromAcc._isSharedItem || selectedFromAcc._sharedRole === 'editor');
-    const activeFromId = isSelectedFromValid ? selectedFromId : (defaultAccountPool.length > 0 ? defaultAccountPool[0].id : (accounts.length > 0 ? accounts[0].id : null));
+    const activeFromId = isSelectedFromValid ? selectedFromId : (defaultAcc ? defaultAcc.id : null);
 
     if (selectedFromId && !isSelectedFromValid && String(this.userSelectedAccountId) === String(selectedFromId)) {
       this.userChangedAccount = false;

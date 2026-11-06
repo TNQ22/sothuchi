@@ -2552,6 +2552,7 @@ class ServerSyncService {
             isArchived: item.isArchived ? 1 : 0,
             includeInReport: localAcc && localAcc.includeInReport !== undefined ? localAcc.includeInReport : 0,
             includeInBudget: localAcc && localAcc.includeInBudget !== undefined ? localAcc.includeInBudget : 0,
+            order: localAcc && localAcc.order !== undefined ? localAcc.order : (item.order !== undefined ? item.order : 999),
             _isSharedItem: true,
             _sharedRole: role,
             _shareId: shareId,
