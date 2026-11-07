@@ -366,7 +366,11 @@ class App {
         // Tự động đồng bộ với Máy Chủ Riêng khi mở app
         if (window.serverSyncService && window.serverSyncService.isAutoSyncEnabled()) {
           console.log('[ServerSync] Tự động đồng bộ với Máy Chủ Riêng khi mở app...');
-          window.serverSyncService.sync().catch(e => console.warn('[ServerSync] Startup sync error:', e));
+          window.serverSyncService.sync()
+            .then(async () => {
+              await this.refreshAll();
+            })
+            .catch(e => console.warn('[ServerSync] Startup sync error:', e));
         }
       } catch (err) {
         console.warn('Background sync init error:', err);

@@ -179,7 +179,15 @@ class ServerSyncService {
         this.checkConnection().then(async (isOk) => {
           if (isOk && this.token) {
             await this.refreshSession();
-            await this.syncReceivedSharedItems();
+            const sharedChanged = await this.syncReceivedSharedItems();
+            if (sharedChanged) {
+              if (typeof window.recalculateAccountBalances === 'function') {
+                await window.recalculateAccountBalances();
+              }
+              if (window.app && typeof window.app.refreshAll === 'function') {
+                await window.app.refreshAll();
+              }
+            }
           }
         }).catch(() => {});
       }
@@ -1716,23 +1724,34 @@ class ServerSyncService {
       await this.checkRemoteVersionAndSync();
     }, 60000);
 
-    // 2. Kiểm tra ngay lập tức khi người dùng chuyển qua lại giữa các tab hoặc app
+    // 2. Kiểm tra ngay lập tức khi người dùng chuyển qua lại giữa các tab hoặc mở lại app
+    const onAppResume = async () => {
+      await this.checkRemoteVersionAndSync();
+      if (this.serverUrl && this.token) {
+        try {
+          const p1 = this.syncReceivedSharedItems();
+          const p2 = this.pullAndMergeOwnedSharedProjections();
+          const [changed1, changed2] = await Promise.all([p1.catch(() => false), p2.catch(() => false)]);
+          if (changed1 || changed2) {
+            if (typeof window.recalculateAccountBalances === 'function') {
+              await window.recalculateAccountBalances();
+            }
+            if (window.app && typeof window.app.refreshAll === 'function') {
+              await window.app.refreshAll();
+            }
+          }
+        } catch (_) {}
+      }
+    };
+
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible') {
-        await this.checkRemoteVersionAndSync();
-        if (this.serverUrl && this.token) {
-          this.syncReceivedSharedItems().catch(() => {});
-          this.pullAndMergeOwnedSharedProjections().catch(() => {});
-        }
+        await onAppResume();
       }
     });
 
     window.addEventListener('focus', async () => {
-      await this.checkRemoteVersionAndSync();
-      if (this.serverUrl && this.token) {
-        this.syncReceivedSharedItems().catch(() => {});
-        this.pullAndMergeOwnedSharedProjections().catch(() => {});
-      }
+      await onAppResume();
     });
   }
 

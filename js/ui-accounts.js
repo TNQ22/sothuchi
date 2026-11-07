@@ -820,15 +820,16 @@ const UIAccounts = {
           showToast('Mật khẩu mã hoá không chính xác hoặc không thể giải mã!', 'error');
         } else {
           showToast(`Đã mở khoá và giải mã thành công "${itemName}"!`, 'success');
-          if (type === 'account') {
-            await this.renderAccountsList();
-          } else if (type === 'savings') {
+          if (typeof this.render === 'function') {
+            await this.render();
+          }
+          if (type === 'savings' && typeof this.renderSavings === 'function') {
             await this.renderSavings();
-          } else if (type === 'accumulation') {
+          } else if (type === 'accumulation' && typeof this.renderAccumulations === 'function') {
             await this.renderAccumulations();
-          } else if (type === 'loan') {
+          } else if (type === 'loan' && typeof this.renderLoans === 'function') {
             await this.renderLoans();
-          } else if (type === 'asset') {
+          } else if (type === 'asset' && typeof this.renderAssets === 'function') {
             await this.renderAssets();
           }
           if (typeof window.recalculateAccountBalances === 'function') {
