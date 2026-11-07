@@ -5512,30 +5512,40 @@ const UIAccounts = {
 
       if (!isLoggedIn) {
         container.innerHTML = `
-          <div class=\"accounts-empty-card\" style=\"padding: 24px 16px; text-align: center;\">
-            <div style=\"width: 44px; height: 44px; border-radius: 50%; background: rgba(239, 68, 68, 0.12); color: #ef4444; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;\">
-              <i data-lucide=\"cloud-off\" style=\"width: 22px; height: 22px;\"></i>
+          <div class="accounts-empty-card shared-empty-card" style="padding: 20px 14px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; box-sizing: border-box;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(239, 68, 68, 0.12); color: #ef4444; display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+              <i data-lucide="cloud-off" style="width: 18px; height: 18px;"></i>
             </div>
-            <p class=\"empty-text\" style=\"font-weight: 600; color: var(--text-primary); margin-bottom: 4px;\">Chưa đăng nhập Máy Chủ Riêng</p>
-            <p style=\"font-size: 0.8rem; color: var(--text-muted); margin: 0 0 12px 0;\">Sau khi xoá cache trình duyệt, phiên đăng nhập đã được xóa. Bạn cần đăng nhập tài khoản Google vào Máy Chủ Riêng để tải về các tài khoản được chia sẻ.</p>
-            <button class=\"btn btn-primary btn-sm\" onclick=\"if(window.app) window.app.switchView('settings')\" style=\"display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; margin: 0 auto; padding: 6px 14px; border-radius: 8px;\">
-              <i data-lucide=\"settings\" style=\"width: 15px; height: 15px;\"></i> Mở Cài Đặt & Đăng Nhập
+            <p class="empty-text" style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 4px;">Chưa đăng nhập Máy Chủ Riêng</p>
+            <p style="font-size: 0.76rem; color: var(--text-muted); margin: 0 0 10px 0; max-width: 300px; line-height: 1.4;">Đăng nhập Google để đồng bộ các ví và sổ được chia sẻ với bạn.</p>
+            <button class="btn btn-primary btn-sm" onclick="if(window.app) window.app.switchView('settings')" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; padding: 5px 12px; border-radius: 8px;">
+              <i data-lucide="settings" style="width: 13px; height: 13px;"></i> Mở Cài Đặt & Đăng Nhập
             </button>
           </div>
         `;
       } else {
         const userEmail = sService.userProfile.email || '';
+        const safeEmail = typeof escapeHTML === 'function' ? escapeHTML(userEmail) : userEmail;
         container.innerHTML = `
-          <div class=\"accounts-empty-card\" style=\"padding: 24px 16px; text-align: center;\">
-            <div style=\"width: 44px; height: 44px; border-radius: 50%; background: rgba(59, 130, 246, 0.12); color: #3b82f6; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;\">
-              <i data-lucide=\"share-2\" style=\"width: 22px; height: 22px;\"></i>
+          <div class="accounts-empty-card shared-empty-card" style="padding: 20px 14px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; box-sizing: border-box;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(59, 130, 246, 0.12); color: #3b82f6; display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+              <i data-lucide="share-2" style="width: 18px; height: 18px;"></i>
             </div>
-            <p class=\"empty-text\" style=\"font-weight: 600; color: var(--text-primary); margin-bottom: 4px;\">Chưa có mục nào được chia sẻ với bạn</p>
-            <p style=\"font-size: 0.8rem; color: var(--text-muted); margin: 0 0 4px 0;\">Đang đăng nhập email: <strong style=\"color: var(--text-primary);\">${typeof escapeHTML === 'function' ? escapeHTML(userEmail) : userEmail}</strong></p>
-            <p style=\"font-size: 0.76rem; color: var(--text-secondary); margin: 0 0 12px 0;\">Hãy đảm bảo người chia sẻ đã nhập đúng email này hoặc gửi liên kết chia sẻ cho bạn.</p>
-            <button class=\"btn btn-outline btn-sm\" onclick=\"UIAccounts.manualSyncSharedItems(this)\" style=\"display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; margin: 0 auto; padding: 5px 12px; border-radius: 8px;\">
-              <i data-lucide=\"refresh-cw\" style=\"width: 14px; height: 14px;\"></i> Kiểm tra & Đồng bộ ngay
-            </button>
+            <p class="empty-text" style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 4px;">Chưa có mục nào được chia sẻ</p>
+            ${userEmail ? `
+              <div style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 10px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: rgba(59, 130, 246, 0.08); border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.15); max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <i data-lucide="mail" style="width: 12px; height: 12px; flex-shrink: 0; color: #3b82f6;"></i>
+                <span style="overflow: hidden; text-overflow: ellipsis;">${safeEmail}</span>
+              </div>
+            ` : ''}
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 2px;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="UIAccounts.manualSyncSharedItems(this)" style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; padding: 5px 12px; border-radius: 8px; border-color: rgba(59, 130, 246, 0.35); color: #3b82f6;">
+                <i data-lucide="refresh-cw" style="width: 13px; height: 13px;"></i> Kiểm tra & Đồng bộ
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="window.ReceiveShareModal && ReceiveShareModal.promptManual()" style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; padding: 5px 12px; border-radius: 8px;">
+                <i data-lucide="link" style="width: 13px; height: 13px;"></i> Nhập liên kết
+              </button>
+            </div>
           </div>
         `;
       }
@@ -5550,7 +5560,7 @@ const UIAccounts = {
 
     // 1. Shared Accounts
     if (sharedAccounts.length > 0) {
-      html += `<div class="shared-group-category-title"><i data-lucide="wallet" style="width:14px;height:14px;color:#10b981;"></i> Ví & Tài khoản chi tiêu (${sharedAccounts.length})</div>`;
+      html += `<div class="shared-group-category-title"><i data-lucide="wallet" style="width:13px;height:13px;color:#10b981;"></i> Ví & Tài khoản chi tiêu (${sharedAccounts.length})</div>`;
       sharedAccounts.forEach(a => {
         totalSharedVal += (a.balance || 0);
         html += this.renderSingleAccountItem(a, true);
@@ -5559,7 +5569,7 @@ const UIAccounts = {
 
     // 2. Shared Savings
     if (sharedSavings.length > 0) {
-      html += `<div class="shared-group-category-title"><i data-lucide="piggy-bank" style="width:14px;height:14px;color:#0ea5e9;"></i> Sổ tiết kiệm (${sharedSavings.length})</div>`;
+      html += `<div class="shared-group-category-title"><i data-lucide="piggy-bank" style="width:13px;height:13px;color:#0ea5e9;"></i> Sổ tiết kiệm (${sharedSavings.length})</div>`;
       sharedSavings.forEach(s => {
         totalSharedVal += (s.balance || s.depositAmount || 0);
         html += this.renderSingleSavingsItem(s, true);
@@ -5568,7 +5578,7 @@ const UIAccounts = {
 
     // 3. Shared Accumulations
     if (sharedAccums.length > 0) {
-      html += `<div class="shared-group-category-title"><i data-lucide="target" style="width:14px;height:14px;color:#f59e0b;"></i> Sổ tích luỹ (${sharedAccums.length})</div>`;
+      html += `<div class="shared-group-category-title"><i data-lucide="target" style="width:13px;height:13px;color:#f59e0b;"></i> Sổ tích lũy (${sharedAccums.length})</div>`;
       sharedAccums.forEach(acc => {
         totalSharedVal += (acc.currentAmount || 0);
         html += this.renderSingleAccumulationItem(acc, true);
@@ -5577,7 +5587,7 @@ const UIAccounts = {
 
     // 4. Shared Loans
     if (sharedLoans.length > 0) {
-      html += `<div class="shared-group-category-title"><i data-lucide="badge-percent" style="width:14px;height:14px;color:#ef4444;"></i> Sổ vay ngân hàng (${sharedLoans.length})</div>`;
+      html += `<div class="shared-group-category-title"><i data-lucide="badge-percent" style="width:13px;height:13px;color:#ef4444;"></i> Sổ vay ngân hàng (${sharedLoans.length})</div>`;
       sharedLoans.forEach(l => {
         const rem = l.remainingAmount !== undefined ? l.remainingAmount : (l.loanAmount || 0);
         totalSharedVal -= rem;
@@ -5587,7 +5597,7 @@ const UIAccounts = {
 
     // 5. Shared Assets
     if (sharedAssets.length > 0) {
-      html += `<div class="shared-group-category-title"><i data-lucide="gem" style="width:14px;height:14px;color:#a855f7;"></i> Quản lý tài sản (${sharedAssets.length})</div>`;
+      html += `<div class="shared-group-category-title"><i data-lucide="gem" style="width:13px;height:13px;color:#a855f7;"></i> Quản lý tài sản (${sharedAssets.length})</div>`;
       sharedAssets.forEach(ast => {
         const cur = Math.round((ast.quantity || 1) * (ast.currentPrice || 0));
         totalSharedVal += cur;
@@ -5601,9 +5611,15 @@ const UIAccounts = {
   },
 
   async manualSyncSharedItems(btn) {
+    const isIconOnly = btn && btn.classList.contains('btn-group-circle-add');
+    const originalHtml = btn ? btn.innerHTML : '';
     if (btn) {
       btn.disabled = true;
-      btn.innerHTML = `<i data-lucide="loader" class="spin" style="width: 14px; height: 14px;"></i> Đang kiểm tra...`;
+      if (isIconOnly) {
+        btn.innerHTML = `<i data-lucide="loader" class="spin" style="width: 14px; height: 14px;"></i>`;
+      } else {
+        btn.innerHTML = `<i data-lucide="loader" class="spin" style="width: 13px; height: 13px;"></i> Đang kiểm tra...`;
+      }
       if (window.lucide) lucide.createIcons();
     }
     try {
@@ -5626,7 +5642,7 @@ const UIAccounts = {
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.innerHTML = `<i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Kiểm tra & Đồng bộ ngay`;
+        btn.innerHTML = originalHtml || `<i data-lucide="refresh-cw" style="width: 13px; height: 13px;"></i> Kiểm tra & Đồng bộ`;
         if (window.lucide) lucide.createIcons();
       }
     }

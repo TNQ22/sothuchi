@@ -1522,7 +1522,10 @@
                 <span class="accounts-group-subtitle stat-amount" id="label-shared-items-total" style="color: #3b82f6;">0đ</span>
               </div>
             </div>
-            <div class="accounts-group-actions">
+            <div class="accounts-group-actions" style="display: flex; align-items: center; gap: 6px;">
+              <button type="button" class="btn-group-circle-add" style="color: #3b82f6;" onclick="UIAccounts.manualSyncSharedItems(this)" title="Kiểm tra & Đồng bộ" aria-label="Kiểm tra & Đồng bộ">
+                <i data-lucide="refresh-cw"></i>
+              </button>
               <button type="button" class="btn-group-circle-add" style="color: #3b82f6;" onclick="window.ReceiveShareModal && ReceiveShareModal.promptManual()" title="Nhập link nhận chia sẻ" aria-label="Nhận chia sẻ">
                 <i data-lucide="link"></i>
               </button>
