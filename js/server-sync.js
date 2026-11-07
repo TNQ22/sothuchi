@@ -2809,9 +2809,9 @@ class ServerSyncService {
             for (const tx of transactions) {
               if (!tx) continue;
               const txDate = String(tx.date || '').slice(0, 10);
-              const txTime = tx.time || '';
+              const txTime = String(tx.time || '').slice(0, 5);
               const txAmt = Math.round(Number(tx.amount || 0) * 100) / 100;
-              const txNote = (tx.note || '').trim();
+              const txNote = (tx.note || '').trim().toLowerCase();
               const txSig = `${tx.id || ''}_${tx.type || ''}_${txDate}_${txTime}_${txAmt}_${txNote}`;
               if (!seenIncomingSigs.has(txSig)) {
                 seenIncomingSigs.add(txSig);
@@ -2830,9 +2830,9 @@ class ServerSyncService {
             const localSeenSigs = new Map();
             for (const oldTx of existingSharedTxs) {
               const oldDate = String(oldTx.date || '').slice(0, 10);
-              const oldTime = oldTx.time || '';
+              const oldTime = String(oldTx.time || '').slice(0, 5);
               const oldAmt = Math.round(Number(oldTx.amount || 0) * 100) / 100;
-              const oldNote = (oldTx.note || '').trim();
+              const oldNote = (oldTx.note || '').trim().toLowerCase();
               const sig = `${oldTx._remoteTxId || ''}_${oldTx.type || ''}_${oldDate}_${oldTime}_${oldAmt}_${oldNote}`;
               const fallbackSig = `${oldTx.type || ''}_${oldDate}_${oldTime}_${oldAmt}_${oldNote}`;
               
@@ -2882,9 +2882,9 @@ class ServerSyncService {
                 localTx = remainingLocalTxs.find(t =>
                   t.type === tx.type &&
                   String(t.date || '').slice(0, 10) === String(tx.date || '').slice(0, 10) &&
-                  (!t.time || !tx.time || String(t.time) === String(tx.time)) &&
+                  (!t.time || !tx.time || String(t.time || '').slice(0, 5) === String(tx.time || '').slice(0, 5)) &&
                   Math.abs(Number(t.amount || 0) - Number(tx.amount || 0)) < 0.01 &&
-                  (t.note || '').trim() === (tx.note || '').trim()
+                  (t.note || '').trim().toLowerCase() === (tx.note || '').trim().toLowerCase()
                 );
               }
 
@@ -2929,14 +2929,16 @@ class ServerSyncService {
                                  (localTx.categoryIcon || '') !== (txData.categoryIcon || '') ||
                                  (localTx.categoryColor || '') !== (txData.categoryColor || '') ||
                                  (localTx.date || '') !== (txData.date || '') ||
-                                 (localTx.time || '') !== (txData.time || '') ||
-                                 (localTx.note || '').trim() !== (txData.note || '').trim() ||
+                                 String(localTx.time || '').slice(0, 5) !== String(txData.time || '').slice(0, 5) ||
+                                 (localTx.note || '').trim().toLowerCase() !== (txData.note || '').trim().toLowerCase() ||
                                  (localTx.createdBy || '') !== (txData.createdBy || '') ||
                                  localTx.recordedByOther !== txData.recordedByOther ||
                                  Boolean(localTx.isDeleted) !== Boolean(txData.isDeleted);
                 if (isTxDiff && (rTime >= lTime || !localTx.updatedAt)) {
                   hasChanges = true;
                   await db.transactions.update(localTx.id, { ...txData, id: localTx.id });
+                } else if (localTx._remoteTxId !== txRemoteId) {
+                  await db.transactions.update(localTx.id, { _remoteTxId: txRemoteId });
                 }
               } else {
                 delete txData.id;
@@ -3148,7 +3150,7 @@ class ServerSyncService {
       const seenPushSigs = new Set();
       for (const t of rawLocalTxs) {
         if (!t) continue;
-        const sig = `${t.type}_${String(t.date || '').slice(0, 10)}_${t.time || ''}_${Math.round(Number(t.amount || 0) * 100) / 100}_${(t.note || '').trim()}`;
+        const sig = `${t.type}_${String(t.date || '').slice(0, 10)}_${String(t.time || '').slice(0, 5)}_${Math.round(Number(t.amount || 0) * 100) / 100}_${(t.note || '').trim().toLowerCase()}`;
         if (!seenPushSigs.has(sig)) {
           seenPushSigs.add(sig);
           localTxs.push(t);
@@ -3420,9 +3422,9 @@ class ServerSyncService {
               for (const lt of localTxs) {
                 const sameType = lt.type === rtx.type;
                 const sameDate = String(lt.date || '').slice(0, 10) === String(rtx.date || '').slice(0, 10);
-                const sameTime = !lt.time || !rtx.time || String(lt.time) === String(rtx.time);
+                const sameTime = !lt.time || !rtx.time || String(lt.time || '').slice(0, 5) === String(rtx.time || '').slice(0, 5);
                 const sameAmount = Math.abs(Number(lt.amount || 0) - Number(rtx.amount || 0)) < 0.01;
-                const sameNote = (lt.note || '').trim() === (rtx.note || '').trim();
+                const sameNote = (lt.note || '').trim().toLowerCase() === (rtx.note || '').trim().toLowerCase();
                 if (sameType && sameDate && sameTime && sameAmount && sameNote) {
                   existing = lt;
                   break;

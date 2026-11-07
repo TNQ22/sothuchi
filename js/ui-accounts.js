@@ -2358,7 +2358,7 @@ const UIAccounts = {
       const isSharedByMe = !isSharedItem && (acc.isShared === 1 || acc.isShared === true);
       const isEditor = isSharedItem ? (acc._sharedRole === 'editor') : true;
       const isReadOnly = isSharedItem && !isEditor;
-      const isForbidden = forbidReadOnly && isReadOnly;
+      const isForbidden = (forbidReadOnly && isReadOnly) || (isSharedItem && acc._needsPassword === 1);
 
       let shareBadge = '';
       if (isSharedItem) {
@@ -2385,7 +2385,7 @@ const UIAccounts = {
         ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 8px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 8px; height: 8px;"></i></div>`
         : (isSharedByMe ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 8px;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 8px; height: 8px;"></i></div>` : '');
 
-      const hasSubRow = !!shareBadge || subParts.length > 0;
+      const hasSubRow = !!shareBadge || subParts.length > 0 || !!acc._needsPassword;
 
       html += `
         <div class="source-acc-item ${isSelected ? 'active' : ''} ${isForbidden ? 'disabled-readonly' : ''}" onclick="UIAccounts.selectSourceAccount('${acc.id}')" ${isForbidden ? 'data-is-readonly="true"' : ''}>
@@ -2401,6 +2401,7 @@ const UIAccounts = {
               </div>
               ${hasSubRow ? `
                 <div style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0;">
+                  ${this.renderSharedLockBadge(acc)}
                   ${shareBadge}
                   ${subParts.length > 0 ? `<span style="overflow: hidden; text-overflow: clip; white-space: nowrap;">${subParts.join(' • ')}</span>` : ''}
                 </div>
@@ -2424,14 +2425,22 @@ const UIAccounts = {
   },
 
   selectSourceAccount(accId) {
-    if (this._sourcePickerOptions && this._sourcePickerOptions.forbidReadOnly && accId) {
+    if (accId) {
       const acc = this._currentPickerAccounts?.find(a => String(a.id) === String(accId));
-      if (acc && acc._isSharedItem && acc._sharedRole !== 'editor') {
-        const owner = acc._sharedFrom ? ` (chia sẻ bởi ${acc._sharedFrom})` : '';
+      if (acc && acc._isSharedItem && acc._needsPassword === 1) {
         if (window.showToast) {
-          window.showToast(`Tài khoản "${acc.name}"${owner} chỉ có quyền xem, bạn không thể chọn để ghi chép giao dịch!`, 'error');
+          window.showToast(`Tài khoản "${acc.name}" đang cần mật khẩu mã hoá. Vui lòng mở menu tài khoản để nhập mật khẩu trước khi ghi chép!`, 'warning');
         }
         return;
+      }
+      if (this._sourcePickerOptions && this._sourcePickerOptions.forbidReadOnly) {
+        if (acc && acc._isSharedItem && acc._sharedRole !== 'editor') {
+          const owner = acc._sharedFrom ? ` (chia sẻ bởi ${acc._sharedFrom})` : '';
+          if (window.showToast) {
+            window.showToast(`Tài khoản "${acc.name}"${owner} chỉ có quyền xem, bạn không thể chọn để ghi chép giao dịch!`, 'error');
+          }
+          return;
+        }
       }
     }
     this.closeSourceAccountPicker();
@@ -5288,13 +5297,14 @@ const UIAccounts = {
     return '';
   },
 
+  renderSharedLockBadge(item) {
+    if (!item || !item._isSharedItem || !item._needsPassword) return '';
+    const type = item._itemType || (item.bankCode ? 'savings' : (item.targetAmount !== undefined ? 'accumulation' : (item.loanAmount !== undefined ? 'loan' : (item.assetType ? 'asset' : 'account'))));
+    return `<span class="account-role-badge locked" title="Cần mật khẩu mã hoá để đồng bộ. Bấm để nhập mật khẩu" onclick="event.stopPropagation(); UIAccounts.promptItemShareKey('${type}', ${item.id});" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 600; font-size: 0.72rem; padding: 1px 6px; border-radius: 5px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; flex-shrink: 0; line-height: 1.2;"><i data-lucide="key" style="width: 10px; height: 10px;"></i> Cần mật khẩu</span>`;
+  },
+
   renderSharedRoleBadge(item, clickable = true) {
     if (!item || !item._isSharedItem) return '';
-    let lockBadge = '';
-    if (item._needsPassword) {
-      const type = item._itemType || (item.bankCode ? 'savings' : (item.targetAmount !== undefined ? 'accumulation' : (item.loanAmount !== undefined ? 'loan' : (item.assetType ? 'asset' : 'account'))));
-      lockBadge = `<span class="account-role-badge locked" title="Cần mật khẩu mã hoá để đồng bộ. Bấm để nhập mật khẩu" onclick="event.stopPropagation(); UIAccounts.promptItemShareKey('${type}', ${item.id});" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 600; font-size: 0.72rem; padding: 2px 7px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; flex-shrink: 0;"><i data-lucide="key" style="width: 11px; height: 11px;"></i> Cần mật khẩu</span> `;
-    }
     const isEditor = item._sharedRole === 'editor';
     const roleText = isEditor ? 'Chỉnh sửa' : 'Chỉ xem';
     const roleIcon = isEditor ? 'edit-3' : 'eye';
@@ -5302,9 +5312,9 @@ const UIAccounts = {
     const owner = item._sharedFrom || 'Thành viên';
     const infoText = `Quyền: ${roleText} • Được chia sẻ bởi: ${owner}`;
     if (!clickable) {
-      return lockBadge + `<span class="account-role-badge ${roleClass}" title="${escapeHTML(infoText)}"><i data-lucide="${roleIcon}" style="width: 12px; height: 12px;"></i></span>`;
+      return `<span class="account-role-badge ${roleClass}" title="${escapeHTML(infoText)}"><i data-lucide="${roleIcon}" style="width: 12px; height: 12px;"></i></span>`;
     }
-    return lockBadge + `<span class="account-role-badge ${roleClass}" title="${escapeHTML(infoText)}" data-role-info="${escapeHTML(infoText)}" onclick="event.stopPropagation(); if (window.showToast) window.showToast(this.getAttribute('data-role-info'), 'info');"><i data-lucide="${roleIcon}" style="width: 12px; height: 12px;"></i></span>`;
+    return `<span class="account-role-badge ${roleClass}" title="${escapeHTML(infoText)}" data-role-info="${escapeHTML(infoText)}" onclick="event.stopPropagation(); if (window.showToast) window.showToast(this.getAttribute('data-role-info'), 'info');"><i data-lucide="${roleIcon}" style="width: 12px; height: 12px;"></i></span>`;
   },
 
   async leaveSharedItem(type, id) {
@@ -5420,6 +5430,7 @@ const UIAccounts = {
                 ${this.renderSharedRoleBadge(a)}
               </div>
               <div class="account-sub-row" style="display: flex; align-items: center; gap: 4px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: clip;">
+                ${this.renderSharedLockBadge(a)}
                 ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                 ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">${(a.currency && a.currency !== 'VND') ? '• ' : ''}${escapeHTML(a.description)}</span>` : ''}
                 ${(typeof isAccountBudgetEnabled === 'function' ? isAccountBudgetEnabled(a) : (a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : (a._isSharedItem ? false : !a.excludeFromReport))) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
@@ -5459,7 +5470,8 @@ const UIAccounts = {
                 <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(s.name)}">${escapeHTML(s.name)}</div>
                 ${this.renderSharedRoleBadge(s)}
               </div>
-              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;">
+                ${this.renderSharedLockBadge(s)}
                 <span class="rate-badge">${s.interestRate || 0}%/năm</span>
                 <span class="term-badge">${s.termMonths ? s.termMonths + ' tháng' : 'Không kỳ hạn'}</span>
                 ${s.excludeFromReport ? '<span class="account-badge exclude"><i data-lucide="eye-off" style="width:10px;height:10px;"></i> Ẩn</span>' : ''}
@@ -5504,7 +5516,8 @@ const UIAccounts = {
                 <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
                 ${this.renderSharedRoleBadge(item)}
               </div>
-              <div class="group-card-sub">
+              <div class="group-card-sub" style="display: flex; align-items: center; gap: 4px;">
+                ${this.renderSharedLockBadge(item)}
                 <span>${targetDateStr}</span>
                 ${item.hasRecurring ? '<span class="term-badge"><i data-lucide="repeat" style="width:10px;height:10px;"></i> Định kỳ</span>' : ''}
               </div>
@@ -5558,7 +5571,8 @@ const UIAccounts = {
                 <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(l.name)}">${escapeHTML(l.name)}</div>
                 ${this.renderSharedRoleBadge(l)}
               </div>
-              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;">
+                ${this.renderSharedLockBadge(l)}
                 <span class="rate-badge" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">${l.interestRate || 0}%/năm</span>
                 <span class="term-badge">${l.termMonths ? l.termMonths + ' tháng' : 'Vay linh hoạt'}</span>
                 ${dueDayText ? `<span style="color: var(--text-muted); font-size: 0.72rem;">• ${dueDayText}</span>` : ''}
@@ -5625,6 +5639,7 @@ const UIAccounts = {
                 ${this.renderSharedRoleBadge(item)}
               </div>
               <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0;">
+                ${this.renderSharedLockBadge(item)}
                 <span class="term-badge" style="flex-shrink: 0;">${meta.label}</span>
                 <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${qty} ${escapeHTML(item.unit || '')}</span>
                 ${item.location ? `<span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">• ${escapeHTML(item.location)}</span>` : ''}
@@ -6394,6 +6409,7 @@ const UIAccounts = {
                     ${this.renderSharedRoleBadge(a)}
                   </div>
                   <div class="account-sub-row" style="display: flex; align-items: center; gap: 4px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: clip;">
+                    ${this.renderSharedLockBadge(a)}
                     ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                     ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">${(a.currency && a.currency !== 'VND') ? '• ' : ''}${escapeHTML(a.description)}</span>` : ''}
                     ${(typeof isAccountBudgetEnabled === 'function' ? isAccountBudgetEnabled(a) : (a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : (a._isSharedItem ? false : !a.excludeFromReport))) ? '<span class="account-budget-badge" title="Đang áp dụng ngân sách"><i data-lucide="piggy-bank" style="width:12px;height:12px;"></i></span>' : ''}
@@ -6456,6 +6472,7 @@ const UIAccounts = {
                       ${this.renderSharedRoleBadge(a)}
                     </div>
                     <div class="account-sub-row" style="display: flex; align-items: center; gap: 4px; font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: clip;">
+                      ${this.renderSharedLockBadge(a)}
                       ${a.currency && a.currency !== 'VND' ? `<span class="account-currency-tag">${escapeHTML(a.currency)}</span>` : ''}
                       ${a.description ? `<span class="account-desc-label" title="${escapeHTML(a.description)}">${(a.currency && a.currency !== 'VND') ? '• ' : ''}${escapeHTML(a.description)}</span>` : ''}
                       <span class="account-archived-badge" title="Đã ngừng sử dụng">Ngừng sử dụng</span>
