@@ -1498,25 +1498,25 @@ class ServerSyncService {
       const pullChanged = await this.mergeServerDataIntoLocal(serverData);
       if (pullChanged) localDataHasChanged = true;
 
-      // Cập nhật bản chiếu mã hóa cho các mục đang chia sẻ trước khi pull để bảo toàn thay đổi cục bộ
-      try {
-        const ownedShares = await db.settings.get('syncOwnedSharedProjections');
-        if (ownedShares && Array.isArray(ownedShares.value)) {
-          for (const s of ownedShares.value) {
-            const currentKey = s.shareKey || (await this.getItemShareKey(`${s.itemType}_${s.itemId}`));
-            await this.projectAndPushItem(s.itemType, s.itemId, currentKey);
-          }
-        }
-      } catch (projErr) {
-        console.warn('[ServerSync] Lỗi cập nhật bản chiếu chia sẻ trước khi pull:', projErr.message);
-      }
-
-      // 2.5. Kéo và gộp các giao dịch/ghi chú mới từ các thành viên (Editor) được chia sẻ mục
+      // 2.5. Kéo và gộp các giao dịch/ghi chú mới từ các thành viên (Editor) được chia sẻ mục TRƯỚC TIÊN
       try {
         const ownedChanged = await this.pullAndMergeOwnedSharedProjections();
         if (ownedChanged) localDataHasChanged = true;
       } catch (ownedErr) {
         console.warn('[ServerSync] Lỗi kéo giao dịch từ mục chia sẻ của chủ:', ownedErr.message);
+      }
+
+      // Sau khi đã gộp giao dịch từ thành viên vào IndexedDB, cập nhật lại bản chiếu mới nhất lên Server
+      try {
+        const ownedShares = await db.settings.get('syncOwnedSharedProjections');
+        if (ownedShares && Array.isArray(ownedShares.value)) {
+          for (const s of ownedShares.value) {
+            const currentKey = s.shareKey || (await this.getItemShareKey(`${s.itemType}_${s.itemId}`)) || this.encryptionPassword;
+            await this.projectAndPushItem(s.itemType, s.itemId, currentKey);
+          }
+        }
+      } catch (projErr) {
+        console.warn('[ServerSync] Lỗi cập nhật bản chiếu chia sẻ:', projErr.message);
       }
 
       // 3. Nếu là Editor hoặc Owner: Chuẩn bị dữ liệu để đẩy (Push) lên Server
@@ -1649,7 +1649,7 @@ class ServerSyncService {
             const ownedShares = await db.settings.get('syncOwnedSharedProjections');
             if (ownedShares && Array.isArray(ownedShares.value)) {
               for (const s of ownedShares.value) {
-                const currentKey = s.shareKey || (await this.getItemShareKey(`${s.itemType}_${s.itemId}`));
+                const currentKey = s.shareKey || (await this.getItemShareKey(`${s.itemType}_${s.itemId}`)) || this.encryptionPassword;
                 await this.projectAndPushItem(s.itemType, s.itemId, currentKey);
               }
             }
@@ -2079,7 +2079,11 @@ class ServerSyncService {
       projectedAt: new Date().toISOString()
     };
 
-    // 2. Mã hóa bằng Khóa Chia Sẻ (Item Share Key) nếu có
+    // 2. Mã hóa bằng Khóa Chia Sẻ (Item Share Key) nếu có hoặc mật khẩu mã hóa sổ của chủ sở hữu
+    if (!shareKey && this.encryptionPassword) {
+      shareKey = (await this.getItemShareKey(`${itemType}_${itemId}`)) || this.encryptionPassword;
+    }
+
     let projectionToSend;
     if (shareKey && window.CryptoService) {
       const encryptedStr = await window.CryptoService.encrypt(JSON.stringify(projectedPayload), shareKey);
@@ -2539,6 +2543,7 @@ class ServerSyncService {
         let transactions = shareItem.transactions;
 
         // Xử lý bản chiếu mã hóa E2EE (Zero-Knowledge Item Projection)
+        let needsPassword = false;
         if (shareItem.isProjection && shareItem.isEncrypted && shareItem.projectionData) {
           if (shareItem.shareKey) {
             await this.saveItemShareKey(shareId, shareItem.shareKey);
@@ -2548,9 +2553,8 @@ class ServerSyncService {
           const shareKey = shareItem.shareKey || (await this.getItemShareKey(shareId)) || (await this.getItemShareKey(itemId)) || (await this.getItemShareKey(`${itemType}_${itemId}`));
           if (!shareKey) {
             console.warn('[ServerSync] Chưa có khóa giải mã cho mục chia sẻ:', shareItem.itemName);
-            continue;
-          }
-          if (window.CryptoService) {
+            needsPassword = true;
+          } else if (window.CryptoService) {
             try {
               const decStr = await window.CryptoService.decrypt(shareItem.projectionData.payload, shareKey);
               const decData = JSON.parse(decStr);
@@ -2558,12 +2562,145 @@ class ServerSyncService {
               transactions = decData.transactions;
             } catch (decErr) {
               console.error('[ServerSync] Lỗi giải mã mục chia sẻ:', decErr);
-              continue;
+              needsPassword = true;
             }
           }
         } else if (shareItem.projectionData && !shareItem.isEncrypted) {
           item = shareItem.projectionData.item || shareItem.item;
           transactions = shareItem.projectionData.transactions || shareItem.transactions;
+        }
+
+        if (needsPassword) {
+          // Đánh dấu _needsPassword cho local item để UI hiển thị badge cảnh báo và cho phép nhập mật khẩu
+          if (itemType === 'account') {
+            const allLocalAccs = await db.accounts.toArray();
+            const localAcc = allLocalAccs.find(a => a && a._isSharedItem && (
+              (shareId && a._shareId && String(a._shareId) === String(shareId)) ||
+              (itemId !== undefined && a._remoteId !== undefined && String(a._remoteId) === String(itemId))
+            ));
+            if (localAcc) {
+              if (!localAcc._needsPassword) {
+                await db.accounts.update(localAcc.id, { _needsPassword: 1 });
+                hasChanges = true;
+              }
+            } else {
+              await db.accounts.add({
+                name: shareItem.itemName || 'Ví được chia sẻ',
+                type: 'cash',
+                balance: 0,
+                isDeleted: 0,
+                _isSharedItem: true,
+                _needsPassword: 1,
+                _sharedRole: role,
+                _shareId: shareId,
+                _remoteId: itemId,
+                _remoteVaultId: vaultId,
+                _sharedFrom: ownerName || ownerEmail
+              });
+              hasChanges = true;
+            }
+          } else if (itemType === 'savings' && db.savings) {
+            const allSav = await db.savings.toArray();
+            const localSav = allSav.find(s => s._isSharedItem && (
+              (shareId && s._shareId && String(s._shareId) === String(shareId)) ||
+              (itemId !== undefined && s._remoteId !== undefined && String(s._remoteId) === String(itemId))
+            ));
+            if (localSav && !localSav._needsPassword) {
+              await db.savings.update(localSav.id, { _needsPassword: 1 });
+              hasChanges = true;
+            } else if (!localSav) {
+              await db.savings.add({
+                name: shareItem.itemName || 'Sổ tiết kiệm chia sẻ',
+                balance: 0,
+                status: 'active',
+                isDeleted: 0,
+                _isSharedItem: true,
+                _needsPassword: 1,
+                _sharedRole: role,
+                _shareId: shareId,
+                _remoteId: itemId,
+                _remoteVaultId: vaultId,
+                _sharedFrom: ownerName || ownerEmail
+              });
+              hasChanges = true;
+            }
+          } else if (itemType === 'accumulation' && db.accumulations) {
+            const allAcc = await db.accumulations.toArray();
+            const localAcc = allAcc.find(a => a._isSharedItem && (
+              (shareId && a._shareId && String(a._shareId) === String(shareId)) ||
+              (itemId !== undefined && a._remoteId !== undefined && String(a._remoteId) === String(itemId))
+            ));
+            if (localAcc && !localAcc._needsPassword) {
+              await db.accumulations.update(localAcc.id, { _needsPassword: 1 });
+              hasChanges = true;
+            } else if (!localAcc) {
+              await db.accumulations.add({
+                name: shareItem.itemName || 'Mục tích luỹ chia sẻ',
+                targetAmount: 0,
+                currentAmount: 0,
+                isDeleted: 0,
+                _isSharedItem: true,
+                _needsPassword: 1,
+                _sharedRole: role,
+                _shareId: shareId,
+                _remoteId: itemId,
+                _remoteVaultId: vaultId,
+                _sharedFrom: ownerName || ownerEmail
+              });
+              hasChanges = true;
+            }
+          } else if (itemType === 'loan' && db.loans) {
+            const allLoans = await db.loans.toArray();
+            const localLoan = allLoans.find(l => l._isSharedItem && (
+              (shareId && l._shareId && String(l._shareId) === String(shareId)) ||
+              (itemId !== undefined && l._remoteId !== undefined && String(l._remoteId) === String(itemId))
+            ));
+            if (localLoan && !localLoan._needsPassword) {
+              await db.loans.update(localLoan.id, { _needsPassword: 1 });
+              hasChanges = true;
+            } else if (!localLoan) {
+              await db.loans.add({
+                name: shareItem.itemName || 'Sổ vay chia sẻ',
+                loanAmount: 0,
+                remainingAmount: 0,
+                status: 'active',
+                isDeleted: 0,
+                _isSharedItem: true,
+                _needsPassword: 1,
+                _sharedRole: role,
+                _shareId: shareId,
+                _remoteId: itemId,
+                _remoteVaultId: vaultId,
+                _sharedFrom: ownerName || ownerEmail
+              });
+              hasChanges = true;
+            }
+          } else if (itemType === 'asset' && db.assets) {
+            const allAssets = await db.assets.toArray();
+            const localAsset = allAssets.find(a => a._isSharedItem && (
+              (shareId && a._shareId && String(a._shareId) === String(shareId)) ||
+              (itemId !== undefined && a._remoteId !== undefined && String(a._remoteId) === String(itemId))
+            ));
+            if (localAsset && !localAsset._needsPassword) {
+              await db.assets.update(localAsset.id, { _needsPassword: 1 });
+              hasChanges = true;
+            } else if (!localAsset) {
+              await db.assets.add({
+                name: shareItem.itemName || 'Tài sản chia sẻ',
+                assetType: 'other',
+                isDeleted: 0,
+                _isSharedItem: true,
+                _needsPassword: 1,
+                _sharedRole: role,
+                _shareId: shareId,
+                _remoteId: itemId,
+                _remoteVaultId: vaultId,
+                _sharedFrom: ownerName || ownerEmail
+              });
+              hasChanges = true;
+            }
+          }
+          continue;
         }
 
         if (!item) continue;
@@ -2619,6 +2756,7 @@ class ServerSyncService {
             ...item,
             isDeleted: 0,
             isArchived: item.isArchived ? 1 : 0,
+            _needsPassword: 0,
             includeInReport: localAcc && localAcc.includeInReport !== undefined ? localAcc.includeInReport : 0,
             includeInBudget: localAcc && localAcc.includeInBudget !== undefined ? localAcc.includeInBudget : 0,
             order: localAcc && localAcc.order !== undefined ? localAcc.order : (item.order !== undefined ? item.order : 999),
@@ -2633,7 +2771,8 @@ class ServerSyncService {
           let localAccId;
           if (localAcc) {
             localAccId = localAcc.id;
-            const isDiff = (localAcc.name || '').trim() !== (accData.name || '').trim() ||
+            const isDiff = localAcc._needsPassword === 1 ||
+                           (localAcc.name || '').trim() !== (accData.name || '').trim() ||
                            Number(localAcc.balance || 0) !== Number(accData.balance || 0) ||
                            (localAcc.type || '') !== (accData.type || '') ||
                            (localAcc.icon || '') !== (accData.icon || '') ||
@@ -2646,7 +2785,7 @@ class ServerSyncService {
                            (localAcc._shareId || '') !== (accData._shareId || '');
             if (isDiff) {
               hasChanges = true;
-              await db.accounts.update(localAccId, { ...accData, id: localAccId });
+              await db.accounts.update(localAccId, { ...accData, id: localAccId, _needsPassword: 0 });
             }
           } else {
             delete accData.id;
@@ -2712,10 +2851,14 @@ class ServerSyncService {
               t._shareId === shareId || Number(t.accountId) === localAccId
             );
 
-            // 4. Xóa các giao dịch cục bộ nếu trên server đã bị xóa
+            // 4. Xóa các giao dịch cục bộ nếu trên server đã bị xóa (bảo toàn tuyệt đối giao dịch của thành viên)
             for (const oldTx of remainingLocalTxs) {
-              const remoteId = oldTx._remoteTxId || oldTx.id;
-              if (remoteId && !incomingRemoteTxIds.has(String(remoteId))) {
+              const remoteId = oldTx._remoteTxId;
+              // TUYỆT ĐỐI KHÔNG XÓA giao dịch mới do thành viên này tạo (recordedByOther === 1 hoặc chưa có remoteId)
+              if (!remoteId || oldTx.recordedByOther === 1) {
+                continue;
+              }
+              if (!incomingRemoteTxIds.has(String(remoteId))) {
                 hasChanges = true;
                 await db.transactions.delete(oldTx.id);
               }
@@ -2987,6 +3130,10 @@ class ServerSyncService {
       const localAcc = (await db.accounts.toArray()).find(a => a._isSharedItem && a._shareId === shareId);
       if (!localAcc) return false;
       if (localAcc._sharedRole !== 'editor') return false;
+      if (localAcc._needsPassword) {
+        // Tài khoản đang cần mật khẩu mã hoá, tạm dừng đẩy để không ghi đè dữ liệu lỗi
+        return false;
+      }
 
       const localAccId = Number(localAcc.id);
       const remoteItemId = Number(localAcc._remoteId);

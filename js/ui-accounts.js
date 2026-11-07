@@ -554,7 +554,8 @@ const UIAccounts = {
       let shareBadge = '';
       if (isSharedItem) {
         const owner = acc._sharedFrom || 'Thành viên';
-        shareBadge = ` <span class="action-sheet-share-tag" title="Từ: ${escapeHTML(owner)}"><i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0; display: inline-block;"></i><span class="share-tag-text">Từ: ${escapeHTML(owner)}</span></span>`;
+        const lockText = acc._needsPassword ? ` <span class="action-sheet-share-tag" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;"><i data-lucide="key" style="width: 10px; height: 10px;"></i> Cần mật khẩu</span>` : '';
+        shareBadge = ` <span class="action-sheet-share-tag" title="Từ: ${escapeHTML(owner)}"><i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0; display: inline-block;"></i><span class="share-tag-text">Từ: ${escapeHTML(owner)}</span></span>${lockText}`;
       } else if (isSharedByMe) {
         shareBadge = ` <span class="action-sheet-share-tag owner" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0; display: inline-block;"></i><span class="share-tag-text">Đang chia sẻ</span></span>`;
       }
@@ -609,10 +610,29 @@ const UIAccounts = {
     const includeReportSwitch = document.getElementById('action-sheet-include-report-switch');
     const includeReportBadge = document.getElementById('action-sheet-include-report-badge');
     const includeReportDesc = document.getElementById('action-sheet-include-report-desc');
+    const shareKeyBtn = document.getElementById('action-sheet-share-key-btn');
+    const shareKeyTitle = document.getElementById('action-sheet-share-key-title');
+    const shareKeyDesc = document.getElementById('action-sheet-share-key-desc');
+
     if (leaveBtn) leaveBtn.style.display = isReceivedShare ? 'flex' : 'none';
     if (uniShareBtn) uniShareBtn.style.display = isReceivedShare ? 'none' : 'flex';
     if (archiveBtn) archiveBtn.style.display = isReceivedShare ? 'none' : 'flex';
     if (deleteBtn) deleteBtn.style.display = isReceivedShare ? 'none' : 'flex';
+
+    if (shareKeyBtn) {
+      shareKeyBtn.style.display = isReceivedShare ? 'flex' : 'none';
+      if (isReceivedShare) {
+        if (acc._needsPassword) {
+          if (shareKeyTitle) shareKeyTitle.textContent = 'Nhập mật khẩu mã hoá (Cần thiết)';
+          if (shareKeyDesc) shareKeyDesc.textContent = 'Ví này đã bị khoá bằng mật khẩu mã hoá E2EE';
+          shareKeyBtn.style.background = 'rgba(239, 68, 68, 0.08)';
+        } else {
+          if (shareKeyTitle) shareKeyTitle.textContent = 'Mật khẩu mã hoá';
+          if (shareKeyDesc) shareKeyDesc.textContent = 'Đổi hoặc cập nhật mật khẩu mã hoá cho ví này';
+          shareKeyBtn.style.background = '';
+        }
+      }
+    }
 
     if (includeReportBtn) {
       includeReportBtn.style.display = isReceivedShare ? 'flex' : 'none';
@@ -727,6 +747,102 @@ const UIAccounts = {
   closeActionSheet() {
     const sheet = document.getElementById('modal-account-actions');
     if (sheet) sheet.classList.remove('open');
+  },
+
+  async promptItemShareKey(type, id) {
+    this.closeActionSheet();
+    this.closeItemActionSheet();
+
+    const numId = Number(id);
+    let item = null;
+    if (type === 'account') {
+      item = await db.accounts.get(numId);
+    } else if (type === 'savings' && db.savings) {
+      item = await db.savings.get(numId);
+    } else if (type === 'accumulation' && db.accumulations) {
+      item = await db.accumulations.get(numId);
+    } else if (type === 'loan' && db.loans) {
+      item = await db.loans.get(numId);
+    } else if (type === 'asset' && db.assets) {
+      item = await db.assets.get(numId);
+    }
+    if (!item) return;
+
+    const itemName = item.name || 'Mục chia sẻ';
+    const shareId = item._shareId;
+    const remoteId = item._remoteId;
+
+    let currentPass = '';
+    if (window.serverSyncService && typeof window.serverSyncService.getItemShareKey === 'function') {
+      currentPass = (await window.serverSyncService.getItemShareKey(shareId)) ||
+                    (await window.serverSyncService.getItemShareKey(remoteId)) ||
+                    (await window.serverSyncService.getItemShareKey(`${type}_${remoteId}`)) || '';
+    }
+
+    const inputPass = await showPrompt({
+      title: 'Mật Khẩu Mã Hoá (E2EE)',
+      message: `Nhập mật khẩu mã hoá do chủ sổ cung cấp để giải mã và đồng bộ <b>${escapeHTML(itemName)}</b>:`,
+      placeholder: 'Nhập mật khẩu mã hoá...',
+      defaultValue: currentPass,
+      inputType: 'password',
+      confirmText: 'Lưu & Giải mã',
+      cancelText: 'Huỷ',
+      icon: 'key'
+    });
+
+    if (inputPass === null) return;
+
+    const cleanPass = inputPass.trim();
+    if (!cleanPass) {
+      showToast('Vui lòng nhập mật khẩu mã hoá.', 'warning');
+      return;
+    }
+
+    try {
+      showToast('Đang kiểm tra và giải mã dữ liệu...', 'info');
+      if (window.serverSyncService) {
+        if (shareId) await window.serverSyncService.saveItemShareKey(shareId, cleanPass);
+        if (remoteId) await window.serverSyncService.saveItemShareKey(remoteId, cleanPass);
+        if (remoteId) await window.serverSyncService.saveItemShareKey(`${type}_${remoteId}`, cleanPass);
+
+        // Chạy đồng bộ giải mã lại
+        await window.serverSyncService.syncReceivedSharedItems();
+
+        // Kiểm tra xem item sau khi sync có còn bị _needsPassword không
+        let updatedItem = null;
+        if (type === 'account') updatedItem = await db.accounts.get(numId);
+        else if (type === 'savings' && db.savings) updatedItem = await db.savings.get(numId);
+        else if (type === 'accumulation' && db.accumulations) updatedItem = await db.accumulations.get(numId);
+        else if (type === 'loan' && db.loans) updatedItem = await db.loans.get(numId);
+        else if (type === 'asset' && db.assets) updatedItem = await db.assets.get(numId);
+
+        if (updatedItem && updatedItem._needsPassword) {
+          showToast('Mật khẩu mã hoá không chính xác hoặc không thể giải mã!', 'error');
+        } else {
+          showToast(`Đã mở khoá và giải mã thành công "${itemName}"!`, 'success');
+          if (type === 'account') {
+            await this.renderAccountsList();
+          } else if (type === 'savings') {
+            await this.renderSavings();
+          } else if (type === 'accumulation') {
+            await this.renderAccumulations();
+          } else if (type === 'loan') {
+            await this.renderLoans();
+          } else if (type === 'asset') {
+            await this.renderAssets();
+          }
+          if (typeof window.recalculateAccountBalances === 'function') {
+            await window.recalculateAccountBalances();
+          }
+          if (window.app && typeof window.app.refreshAll === 'function') {
+            await window.app.refreshAll();
+          }
+          if (window.lucide) lucide.createIcons();
+        }
+      }
+    } catch (err) {
+      showToast('Lỗi giải mã: ' + err.message, 'error');
+    }
   },
 
   async handleActionSheetSelect(action) {
@@ -4219,6 +4335,16 @@ const UIAccounts = {
                 <span class="app-switch-slider"></span>
               </label>
             </div>
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.promptItemShareKey('loan', ${l.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                <i data-lucide="key" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">${l._needsPassword ? 'Nhập mật khẩu mã hoá (Cần thiết)' : 'Mật khẩu mã hoá'}</span>
+                <span class="action-sheet-item-desc">${l._needsPassword ? 'Sổ vay đã bị khoá, cần mật khẩu để giải mã' : 'Đổi hoặc cập nhật mật khẩu mã hoá cho sổ vay này'}</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('loan', ${l.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -4325,6 +4451,16 @@ const UIAccounts = {
                 <span class="app-switch-slider"></span>
               </label>
             </div>
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.promptItemShareKey('savings', ${s.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                <i data-lucide="key" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">${s._needsPassword ? 'Nhập mật khẩu mã hoá (Cần thiết)' : 'Mật khẩu mã hoá'}</span>
+                <span class="action-sheet-item-desc">${s._needsPassword ? 'Sổ tiết kiệm đã bị khoá, cần mật khẩu để giải mã' : 'Đổi hoặc cập nhật mật khẩu mã hoá cho sổ này'}</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('savings', ${s.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -4432,6 +4568,16 @@ const UIAccounts = {
                 <span class="app-switch-slider"></span>
               </label>
             </div>
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.promptItemShareKey('accumulation', ${acc.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                <i data-lucide="key" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">${acc._needsPassword ? 'Nhập mật khẩu mã hoá (Cần thiết)' : 'Mật khẩu mã hoá'}</span>
+                <span class="action-sheet-item-desc">${acc._needsPassword ? 'Mục tích luỹ đã bị khoá, cần mật khẩu để giải mã' : 'Đổi hoặc cập nhật mật khẩu mã hoá cho mục này'}</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('accumulation', ${acc.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -4531,6 +4677,16 @@ const UIAccounts = {
                 <span class="app-switch-slider"></span>
               </label>
             </div>
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.promptItemShareKey('asset', ${asset.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                <i data-lucide="key" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">${asset._needsPassword ? 'Nhập mật khẩu mã hoá (Cần thiết)' : 'Mật khẩu mã hoá'}</span>
+                <span class="action-sheet-item-desc">${asset._needsPassword ? 'Tài sản đã bị khoá, cần mật khẩu để giải mã' : 'Đổi hoặc cập nhật mật khẩu mã hoá cho mục này'}</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('asset', ${asset.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -5134,6 +5290,11 @@ const UIAccounts = {
 
   renderSharedRoleBadge(item, clickable = true) {
     if (!item || !item._isSharedItem) return '';
+    let lockBadge = '';
+    if (item._needsPassword) {
+      const type = item._itemType || (item.bankCode ? 'savings' : (item.targetAmount !== undefined ? 'accumulation' : (item.loanAmount !== undefined ? 'loan' : (item.assetType ? 'asset' : 'account'))));
+      lockBadge = `<span class="account-role-badge locked" title="Cần mật khẩu mã hoá để đồng bộ. Bấm để nhập mật khẩu" onclick="event.stopPropagation(); UIAccounts.promptItemShareKey('${type}', ${item.id});" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 600; font-size: 0.72rem; padding: 2px 7px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; flex-shrink: 0;"><i data-lucide="key" style="width: 11px; height: 11px;"></i> Cần mật khẩu</span> `;
+    }
     const isEditor = item._sharedRole === 'editor';
     const roleText = isEditor ? 'Chỉnh sửa' : 'Chỉ xem';
     const roleIcon = isEditor ? 'edit-3' : 'eye';
@@ -5141,9 +5302,9 @@ const UIAccounts = {
     const owner = item._sharedFrom || 'Thành viên';
     const infoText = `Quyền: ${roleText} • Được chia sẻ bởi: ${owner}`;
     if (!clickable) {
-      return `<span class="account-role-badge ${roleClass}" title="${escapeHTML(infoText)}"><i data-lucide="${roleIcon}" style="width: 12px; height: 12px;"></i></span>`;
+      return lockBadge + `<span class="account-role-badge ${roleClass}" title="${escapeHTML(infoText)}"><i data-lucide="${roleIcon}" style="width: 12px; height: 12px;"></i></span>`;
     }
-    return `<span class="account-role-badge ${roleClass}" title="${escapeHTML(infoText)}" data-role-info="${escapeHTML(infoText)}" onclick="event.stopPropagation(); if (window.showToast) window.showToast(this.getAttribute('data-role-info'), 'info');"><i data-lucide="${roleIcon}" style="width: 12px; height: 12px;"></i></span>`;
+    return lockBadge + `<span class="account-role-badge ${roleClass}" title="${escapeHTML(infoText)}" data-role-info="${escapeHTML(infoText)}" onclick="event.stopPropagation(); if (window.showToast) window.showToast(this.getAttribute('data-role-info'), 'info');"><i data-lucide="${roleIcon}" style="width: 12px; height: 12px;"></i></span>`;
   },
 
   async leaveSharedItem(type, id) {

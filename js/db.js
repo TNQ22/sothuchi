@@ -537,16 +537,23 @@ async function addTransaction(data) {
   };
 
   // Tự động nhận diện và gắn metadata nếu giao dịch thuộc tài khoản được chia sẻ (Shared Account)
+  let sharedAcc = null;
   try {
     const targetAcc = await db.accounts.get(tx.accountId);
     if (targetAcc && targetAcc._isSharedItem && targetAcc._sharedRole !== 'editor') {
       throw new Error(`Tài khoản "${targetAcc.name}" chỉ có quyền xem, không thể ghi giao dịch!`);
     }
+    if (targetAcc && targetAcc._isSharedItem && targetAcc._needsPassword === 1) {
+      throw new Error(`Tài khoản "${targetAcc.name}" đang bị mã hoá. Vui lòng nhập mật khẩu mã hoá trong menu trước khi ghi chép!`);
+    }
     const toAcc = tx.toAccountId ? await db.accounts.get(tx.toAccountId) : null;
     if (toAcc && toAcc._isSharedItem && toAcc._sharedRole !== 'editor') {
       throw new Error(`Tài khoản nhận "${toAcc.name}" chỉ có quyền xem, không thể ghi giao dịch!`);
     }
-    const sharedAcc = (targetAcc && targetAcc._isSharedItem) ? targetAcc : (toAcc && toAcc._isSharedItem ? toAcc : null);
+    if (toAcc && toAcc._isSharedItem && toAcc._needsPassword === 1) {
+      throw new Error(`Tài khoản nhận "${toAcc.name}" đang bị mã hoá. Vui lòng nhập mật khẩu mã hoá trong menu trước khi ghi chép!`);
+    }
+    sharedAcc = (targetAcc && targetAcc._isSharedItem) ? targetAcc : (toAcc && toAcc._isSharedItem ? toAcc : null);
     const uProfile = window.serverSyncService?.userProfile || window.googleDriveService?.userProfile || window.dropboxService?.userProfile;
     const uName = (uProfile?.name && uProfile.name.trim()) || (uProfile?.email && uProfile.email.trim()) || '';
     const uEmail = (uProfile?.email || '').trim();
@@ -582,7 +589,7 @@ async function addTransaction(data) {
       }
     }
   } catch (err) {
-    if (err.message && err.message.includes('chỉ có quyền xem')) {
+    if (err.message && (err.message.includes('chỉ có quyền xem') || err.message.includes('mã hoá'))) {
       throw err;
     }
   }
@@ -621,6 +628,32 @@ async function addTransaction(data) {
       if (toAcc) await db.accounts.update(toAcc.id, { balance: toAcc.balance + tx.amount, updatedAt: now });
     }
   });
+
+  // Cập nhật ngay bản chiếu chia sẻ nếu giao dịch thuộc tài khoản chia sẻ hoặc tài khoản sở hữu đang chia sẻ
+  if (window.serverSyncService) {
+    try {
+      if (sharedAcc && sharedAcc._shareId) {
+        window.serverSyncService.pushReceivedSharedItemTransactions(sharedAcc._shareId).catch(err => {
+          console.warn('[addTransaction] Error pushing shared item tx:', err);
+        });
+      } else {
+        const accId = tx.accountId;
+        const toAccId = tx.toAccountId;
+        const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
+        if (ownedSetting && Array.isArray(ownedSetting.value)) {
+          const relevant = ownedSetting.value.filter(s =>
+            s.itemType === 'account' && (String(s.itemId) === String(accId) || (toAccId && String(s.itemId) === String(toAccId)))
+          );
+          for (const s of relevant) {
+            const currentKey = s.shareKey || (await window.serverSyncService.getItemShareKey(`${s.itemType}_${s.itemId}`));
+            window.serverSyncService.projectAndPushItem(s.itemType, s.itemId, currentKey).catch(() => {});
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[addTransaction] Error pushing projection update:', e);
+    }
+  }
 
   // Trigger sync if enabled
   triggerAutoSync();

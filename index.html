@@ -5278,6 +5278,18 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           <span id="action-sheet-include-report-badge" style="display: none;"></span>
         </div>
 
+        <!-- Nút Mật khẩu mã hoá (Người nhận - shared item) -->
+        <button type="button" class="action-sheet-item" id="action-sheet-share-key-btn" style="display: none;" onclick="UIAccounts.promptItemShareKey('account', UIAccounts.currentActionAccountId)">
+          <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
+            <i data-lucide="key" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title" id="action-sheet-share-key-title">Mật khẩu mã hoá</span>
+            <span class="action-sheet-item-desc" id="action-sheet-share-key-desc">Nhập mật khẩu do chủ sổ cung cấp để mở khoá &amp; đồng bộ</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
         <!-- Nút Rời khỏi mục chia sẻ (Người nhận) -->
         <button type="button" class="action-sheet-item text-danger" id="action-sheet-leave-shared-btn" style="display: none;" onclick="UIAccounts.leaveSharedItem('account', UIAccounts.currentActionAccountId)">
           <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">
