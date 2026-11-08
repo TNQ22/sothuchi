@@ -1387,6 +1387,25 @@ class ServerSyncService {
     // Xóa mật khẩu trên máy khách
     await this.setEncryptionPassword(null, this.activeVaultId);
 
+    // Cập nhật lại các mục chia sẻ (Universal Share Projections) sang dạng KHÔNG mã hoá (plain JSON) và xoá khóa mã hoá đã lưu
+    try {
+      const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
+      if (ownedSetting && Array.isArray(ownedSetting.value)) {
+        for (const s of ownedSetting.value) {
+          if (s.shareKey) {
+            await this.deleteItemShareKey(s.shareKey);
+          }
+          await this.deleteItemShareKey(`${s.itemType}_${s.itemId}`);
+          await this.deleteItemShareKey(s.itemId);
+          s.shareKey = null;
+          await this.projectAndPushItem(s.itemType, s.itemId, null);
+        }
+        await db.settings.put({ key: 'syncOwnedSharedProjections', value: ownedSetting.value });
+      }
+    } catch (e) {
+      console.warn('[ServerSync] Lỗi cập nhật bản chiếu khi tắt mã hoá:', e);
+    }
+
     return { success: true };
   }
 
@@ -2040,6 +2059,21 @@ class ServerSyncService {
     }
   }
 
+  async deleteItemShareKey(keyIdentifier) {
+    if (!keyIdentifier) return;
+    try {
+      const settings = (await db.settings.get('syncItemShareKeys')) || { key: 'syncItemShareKeys', value: {} };
+      const map = settings.value || {};
+      const idStr = String(keyIdentifier);
+      if (map[idStr] !== undefined) {
+        delete map[idStr];
+        await db.settings.put({ key: 'syncItemShareKeys', value: map });
+      }
+    } catch (e) {
+      console.warn('[ServerSync] Không thể xóa item share key:', e);
+    }
+  }
+
   async projectAndPushItem(itemType, itemId, shareKey = null) {
     if (!this.token) throw new Error('Vui lòng kết nối và đăng nhập máy chủ riêng.');
 
@@ -2563,7 +2597,9 @@ class ServerSyncService {
 
         // Xử lý bản chiếu mã hóa E2EE (Zero-Knowledge Item Projection)
         let needsPassword = false;
-        if (shareItem.isProjection && shareItem.isEncrypted && shareItem.projectionData) {
+        const isEncrypted = Boolean(shareItem.isEncrypted || (shareItem.isProjection && shareItem.projectionData && shareItem.projectionData.encrypted));
+
+        if (isEncrypted) {
           if (shareItem.shareKey) {
             await this.saveItemShareKey(shareId, shareItem.shareKey);
             await this.saveItemShareKey(itemId, shareItem.shareKey);
@@ -2575,22 +2611,94 @@ class ServerSyncService {
             needsPassword = true;
           } else if (window.CryptoService) {
             try {
-              const decStr = await window.CryptoService.decrypt(shareItem.projectionData.payload, shareKey);
-              const decData = JSON.parse(decStr);
-              item = decData.item;
-              transactions = decData.transactions;
+              const payloadToDecrypt = (shareItem.projectionData && shareItem.projectionData.payload) ? shareItem.projectionData.payload : (typeof shareItem.projectionData === 'string' ? shareItem.projectionData : null);
+              if (payloadToDecrypt) {
+                const decStr = await window.CryptoService.decrypt(payloadToDecrypt, shareKey);
+                const decData = JSON.parse(decStr);
+                item = decData.item;
+                transactions = decData.transactions;
+              } else {
+                needsPassword = true;
+              }
             } catch (decErr) {
               console.error('[ServerSync] Lỗi giải mã mục chia sẻ:', decErr);
               needsPassword = true;
             }
           }
-        } else if (shareItem.projectionData && !shareItem.isEncrypted) {
-          item = shareItem.projectionData.item || shareItem.item;
-          transactions = shareItem.projectionData.transactions || shareItem.transactions;
+        } else {
+          // KHÔNG MÃ HOÁ:
+          // Xoá mọi khoá chia sẻ cũ đã lưu trên máy khách
+          await this.deleteItemShareKey(shareId);
+          await this.deleteItemShareKey(itemId);
+          await this.deleteItemShareKey(`${itemType}_${itemId}`);
+
+          if (shareItem.projectionData && !shareItem.projectionData.encrypted) {
+            item = shareItem.projectionData.item || shareItem.item;
+            transactions = shareItem.projectionData.transactions || shareItem.transactions;
+          }
+
+          // Thông báo cho người nhận nếu chủ sổ vừa tắt mã hoá
+          let wasEncrypted = false;
+          let foundName = shareItem.itemName || '';
+          if (itemType === 'account') {
+            const allA = await db.accounts.toArray();
+            const prevA = allA.find(a => a && a._isSharedItem && (
+              (shareId && a._shareId && String(a._shareId) === String(shareId)) ||
+              (itemId !== undefined && a._remoteId !== undefined && String(a._remoteId) === String(itemId))
+            ));
+            if (prevA && (prevA._needsPassword === 1 || prevA._isEncrypted === 1)) {
+              wasEncrypted = true;
+              foundName = prevA.name || foundName;
+            }
+          } else if (itemType === 'savings' && db.savings) {
+            const allS = await db.savings.toArray();
+            const prevS = allS.find(s => s && s._isSharedItem && (
+              (shareId && s._shareId && String(s._shareId) === String(shareId)) ||
+              (itemId !== undefined && s._remoteId !== undefined && String(s._remoteId) === String(itemId))
+            ));
+            if (prevS && (prevS._needsPassword === 1 || prevS._isEncrypted === 1)) {
+              wasEncrypted = true;
+              foundName = prevS.name || foundName;
+            }
+          } else if (itemType === 'accumulation' && db.accumulations) {
+            const allAcc = await db.accumulations.toArray();
+            const prevAcc = allAcc.find(a => a && a._isSharedItem && (
+              (shareId && a._shareId && String(a._shareId) === String(shareId)) ||
+              (itemId !== undefined && a._remoteId !== undefined && String(a._remoteId) === String(itemId))
+            ));
+            if (prevAcc && (prevAcc._needsPassword === 1 || prevAcc._isEncrypted === 1)) {
+              wasEncrypted = true;
+              foundName = prevAcc.name || foundName;
+            }
+          } else if (itemType === 'loan' && db.loans) {
+            const allL = await db.loans.toArray();
+            const prevL = allL.find(l => l && l._isSharedItem && (
+              (shareId && l._shareId && String(l._shareId) === String(shareId)) ||
+              (itemId !== undefined && l._remoteId !== undefined && String(l._remoteId) === String(itemId))
+            ));
+            if (prevL && (prevL._needsPassword === 1 || prevL._isEncrypted === 1)) {
+              wasEncrypted = true;
+              foundName = prevL.borrowerName || prevL.name || foundName;
+            }
+          } else if (itemType === 'asset' && db.assets) {
+            const allAst = await db.assets.toArray();
+            const prevAst = allAst.find(a => a && a._isSharedItem && (
+              (shareId && a._shareId && String(a._shareId) === String(shareId)) ||
+              (itemId !== undefined && a._remoteId !== undefined && String(a._remoteId) === String(itemId))
+            ));
+            if (prevAst && (prevAst._needsPassword === 1 || prevAst._isEncrypted === 1)) {
+              wasEncrypted = true;
+              foundName = prevAst.name || foundName;
+            }
+          }
+
+          if (wasEncrypted && window.showToast) {
+            window.showToast(`Chủ sổ đã tắt mã hoá cho "${foundName || 'mục chia sẻ'}". Mật khẩu đã được gỡ bỏ.`, 'info');
+          }
         }
 
         if (needsPassword) {
-          // Đánh dấu _needsPassword cho local item để UI hiển thị badge cảnh báo và cho phép nhập mật khẩu
+          // Đánh dấu _needsPassword và _isEncrypted cho local item để UI hiển thị badge cảnh báo và cho phép nhập mật khẩu
           if (itemType === 'account') {
             const allLocalAccs = await db.accounts.toArray();
             const localAcc = allLocalAccs.find(a => a && a._isSharedItem && (
@@ -2598,8 +2706,8 @@ class ServerSyncService {
               (itemId !== undefined && a._remoteId !== undefined && String(a._remoteId) === String(itemId))
             ));
             if (localAcc) {
-              if (!localAcc._needsPassword) {
-                await db.accounts.update(localAcc.id, { _needsPassword: 1 });
+              if (!localAcc._needsPassword || !localAcc._isEncrypted) {
+                await db.accounts.update(localAcc.id, { _needsPassword: 1, _isEncrypted: 1 });
                 hasChanges = true;
               }
             } else {
@@ -2609,6 +2717,7 @@ class ServerSyncService {
                 balance: 0,
                 isDeleted: 0,
                 _isSharedItem: true,
+                _isEncrypted: 1,
                 _needsPassword: 1,
                 _sharedRole: role,
                 _shareId: shareId,
@@ -2624,8 +2733,8 @@ class ServerSyncService {
               (shareId && s._shareId && String(s._shareId) === String(shareId)) ||
               (itemId !== undefined && s._remoteId !== undefined && String(s._remoteId) === String(itemId))
             ));
-            if (localSav && !localSav._needsPassword) {
-              await db.savings.update(localSav.id, { _needsPassword: 1 });
+            if (localSav && (!localSav._needsPassword || !localSav._isEncrypted)) {
+              await db.savings.update(localSav.id, { _needsPassword: 1, _isEncrypted: 1 });
               hasChanges = true;
             } else if (!localSav) {
               await db.savings.add({
@@ -2634,6 +2743,7 @@ class ServerSyncService {
                 status: 'active',
                 isDeleted: 0,
                 _isSharedItem: true,
+                _isEncrypted: 1,
                 _needsPassword: 1,
                 _sharedRole: role,
                 _shareId: shareId,
@@ -2649,8 +2759,8 @@ class ServerSyncService {
               (shareId && a._shareId && String(a._shareId) === String(shareId)) ||
               (itemId !== undefined && a._remoteId !== undefined && String(a._remoteId) === String(itemId))
             ));
-            if (localAcc && !localAcc._needsPassword) {
-              await db.accumulations.update(localAcc.id, { _needsPassword: 1 });
+            if (localAcc && (!localAcc._needsPassword || !localAcc._isEncrypted)) {
+              await db.accumulations.update(localAcc.id, { _needsPassword: 1, _isEncrypted: 1 });
               hasChanges = true;
             } else if (!localAcc) {
               await db.accumulations.add({
@@ -2659,6 +2769,7 @@ class ServerSyncService {
                 currentAmount: 0,
                 isDeleted: 0,
                 _isSharedItem: true,
+                _isEncrypted: 1,
                 _needsPassword: 1,
                 _sharedRole: role,
                 _shareId: shareId,
@@ -2674,8 +2785,8 @@ class ServerSyncService {
               (shareId && l._shareId && String(l._shareId) === String(shareId)) ||
               (itemId !== undefined && l._remoteId !== undefined && String(l._remoteId) === String(itemId))
             ));
-            if (localLoan && !localLoan._needsPassword) {
-              await db.loans.update(localLoan.id, { _needsPassword: 1 });
+            if (localLoan && (!localLoan._needsPassword || !localLoan._isEncrypted)) {
+              await db.loans.update(localLoan.id, { _needsPassword: 1, _isEncrypted: 1 });
               hasChanges = true;
             } else if (!localLoan) {
               await db.loans.add({
@@ -2685,6 +2796,7 @@ class ServerSyncService {
                 status: 'active',
                 isDeleted: 0,
                 _isSharedItem: true,
+                _isEncrypted: 1,
                 _needsPassword: 1,
                 _sharedRole: role,
                 _shareId: shareId,
@@ -2700,8 +2812,8 @@ class ServerSyncService {
               (shareId && a._shareId && String(a._shareId) === String(shareId)) ||
               (itemId !== undefined && a._remoteId !== undefined && String(a._remoteId) === String(itemId))
             ));
-            if (localAsset && !localAsset._needsPassword) {
-              await db.assets.update(localAsset.id, { _needsPassword: 1 });
+            if (localAsset && (!localAsset._needsPassword || !localAsset._isEncrypted)) {
+              await db.assets.update(localAsset.id, { _needsPassword: 1, _isEncrypted: 1 });
               hasChanges = true;
             } else if (!localAsset) {
               await db.assets.add({
@@ -2709,6 +2821,7 @@ class ServerSyncService {
                 assetType: 'other',
                 isDeleted: 0,
                 _isSharedItem: true,
+                _isEncrypted: 1,
                 _needsPassword: 1,
                 _sharedRole: role,
                 _shareId: shareId,
@@ -2775,6 +2888,7 @@ class ServerSyncService {
             ...item,
             isDeleted: 0,
             isArchived: item.isArchived ? 1 : 0,
+            _isEncrypted: isEncrypted ? 1 : 0,
             _needsPassword: 0,
             includeInReport: localAcc && localAcc.includeInReport !== undefined ? localAcc.includeInReport : 0,
             includeInBudget: localAcc && localAcc.includeInBudget !== undefined ? localAcc.includeInBudget : 0,
@@ -2791,6 +2905,7 @@ class ServerSyncService {
           if (localAcc) {
             localAccId = localAcc.id;
             const isDiff = localAcc._needsPassword === 1 ||
+                           localAcc._isEncrypted !== accData._isEncrypted ||
                            (localAcc.name || '').trim() !== (accData.name || '').trim() ||
                            Number(localAcc.balance || 0) !== Number(accData.balance || 0) ||
                            (localAcc.type || '') !== (accData.type || '') ||
@@ -2804,7 +2919,7 @@ class ServerSyncService {
                            (localAcc._shareId || '') !== (accData._shareId || '');
             if (isDiff) {
               hasChanges = true;
-              await db.accounts.update(localAccId, { ...accData, id: localAccId, _needsPassword: 0 });
+              await db.accounts.update(localAccId, { ...accData, id: localAccId, _needsPassword: 0, _isEncrypted: isEncrypted ? 1 : 0 });
             }
           } else {
             delete accData.id;
@@ -2983,6 +3098,8 @@ class ServerSyncService {
           const savData = {
             ...item,
             isDeleted: 0,
+            _isEncrypted: isEncrypted ? 1 : 0,
+            _needsPassword: 0,
             includeInReport: localSav && localSav.includeInReport !== undefined ? localSav.includeInReport : 0,
             _isSharedItem: true,
             _sharedRole: role,
@@ -2992,14 +3109,16 @@ class ServerSyncService {
             _sharedFrom: ownerName || ownerEmail
           };
           if (localSav) {
-            const isDiff = localSav.name !== savData.name ||
+            const isDiff = localSav._needsPassword === 1 ||
+                           localSav._isEncrypted !== savData._isEncrypted ||
+                           localSav.name !== savData.name ||
                            Number(localSav.balance || localSav.depositAmount || 0) !== Number(savData.balance || savData.depositAmount || 0) ||
                            localSav.status !== savData.status ||
                            localSav.interestRate !== savData.interestRate ||
                            localSav._sharedRole !== savData._sharedRole;
             if (isDiff) {
               hasChanges = true;
-              await db.savings.update(localSav.id, { ...savData, id: localSav.id });
+              await db.savings.update(localSav.id, { ...savData, id: localSav.id, _needsPassword: 0, _isEncrypted: isEncrypted ? 1 : 0 });
             }
           } else {
             delete savData.id;
@@ -3022,6 +3141,8 @@ class ServerSyncService {
           const accData = {
             ...item,
             isDeleted: 0,
+            _isEncrypted: isEncrypted ? 1 : 0,
+            _needsPassword: 0,
             includeInReport: localAcc && localAcc.includeInReport !== undefined ? localAcc.includeInReport : 0,
             _isSharedItem: true,
             _sharedRole: role,
@@ -3031,13 +3152,15 @@ class ServerSyncService {
             _sharedFrom: ownerName || ownerEmail
           };
           if (localAcc) {
-            const isDiff = localAcc.name !== accData.name ||
+            const isDiff = localAcc._needsPassword === 1 ||
+                           localAcc._isEncrypted !== accData._isEncrypted ||
+                           localAcc.name !== accData.name ||
                            Number(localAcc.currentAmount || 0) !== Number(accData.currentAmount || 0) ||
                            Number(localAcc.targetAmount || 0) !== Number(accData.targetAmount || 0) ||
                            localAcc._sharedRole !== accData._sharedRole;
             if (isDiff) {
               hasChanges = true;
-              await db.accumulations.update(localAcc.id, { ...accData, id: localAcc.id });
+              await db.accumulations.update(localAcc.id, { ...accData, id: localAcc.id, _needsPassword: 0, _isEncrypted: isEncrypted ? 1 : 0 });
             }
           } else {
             delete accData.id;
@@ -3060,6 +3183,8 @@ class ServerSyncService {
           const loanData = {
             ...item,
             isDeleted: 0,
+            _isEncrypted: isEncrypted ? 1 : 0,
+            _needsPassword: 0,
             includeInReport: localLoan && localLoan.includeInReport !== undefined ? localLoan.includeInReport : 0,
             _isSharedItem: true,
             _sharedRole: role,
@@ -3069,13 +3194,15 @@ class ServerSyncService {
             _sharedFrom: ownerName || ownerEmail
           };
           if (localLoan) {
-            const isDiff = localLoan.borrowerName !== loanData.borrowerName ||
+            const isDiff = localLoan._needsPassword === 1 ||
+                           localLoan._isEncrypted !== loanData._isEncrypted ||
+                           localLoan.borrowerName !== loanData.borrowerName ||
                            Number(localLoan.remainingAmount !== undefined ? localLoan.remainingAmount : (localLoan.loanAmount || 0)) !== Number(loanData.remainingAmount !== undefined ? loanData.remainingAmount : (loanData.loanAmount || 0)) ||
                            localLoan.status !== loanData.status ||
                            localLoan._sharedRole !== loanData._sharedRole;
             if (isDiff) {
               hasChanges = true;
-              await db.loans.update(localLoan.id, { ...loanData, id: localLoan.id });
+              await db.loans.update(localLoan.id, { ...loanData, id: localLoan.id, _needsPassword: 0, _isEncrypted: isEncrypted ? 1 : 0 });
             }
           } else {
             delete loanData.id;
@@ -3098,6 +3225,8 @@ class ServerSyncService {
           const assetData = {
             ...item,
             isDeleted: 0,
+            _isEncrypted: isEncrypted ? 1 : 0,
+            _needsPassword: 0,
             includeInReport: localAsset && localAsset.includeInReport !== undefined ? localAsset.includeInReport : 0,
             _isSharedItem: true,
             _sharedRole: role,
@@ -3107,14 +3236,16 @@ class ServerSyncService {
             _sharedFrom: ownerName || ownerEmail
           };
           if (localAsset) {
-            const isDiff = localAsset.name !== assetData.name ||
+            const isDiff = localAsset._needsPassword === 1 ||
+                           localAsset._isEncrypted !== assetData._isEncrypted ||
+                           localAsset.name !== assetData.name ||
                            Number(localAsset.quantity || 0) !== Number(assetData.quantity || 0) ||
                            Number(localAsset.currentPrice || 0) !== Number(assetData.currentPrice || 0) ||
                            localAsset.status !== assetData.status ||
                            localAsset._sharedRole !== assetData._sharedRole;
             if (isDiff) {
               hasChanges = true;
-              await db.assets.update(localAsset.id, { ...assetData, id: localAsset.id });
+              await db.assets.update(localAsset.id, { ...assetData, id: localAsset.id, _needsPassword: 0, _isEncrypted: isEncrypted ? 1 : 0 });
             }
           } else {
             delete assetData.id;

@@ -817,6 +817,14 @@ class DatabaseManager {
           SELECT id FROM vault_history WHERE vault_id = ? ORDER BY synced_at DESC LIMIT 20
         )
       `).run(vaultId, vaultId);
+
+      // Nếu sổ gốc được lưu dạng không mã hoá, tự động xoá share_key cũ trong item_shares và item_share_links
+      if (typeof dataObj === 'object' && !dataObj.encrypted) {
+        try {
+          this.sqliteDb.prepare('UPDATE item_shares SET share_key = NULL WHERE vault_id = ?').run(vaultId);
+          this.sqliteDb.prepare('UPDATE item_share_links SET share_key = NULL WHERE vault_id = ?').run(vaultId);
+        } catch (_) {}
+      }
     } else {
       this.jsonStore.vault_data[vaultId] = {
         vault_id: vaultId,
@@ -851,6 +859,10 @@ class DatabaseManager {
         }
       }
       this.jsonStore.vault_history = keep;
+      if (typeof dataObj === 'object' && !dataObj.encrypted) {
+        (this.jsonStore.item_shares || []).forEach(s => { if (s.vault_id === vaultId) s.share_key = null; });
+        (this.jsonStore.item_share_links || []).forEach(l => { if (l.vault_id === vaultId) l.share_key = null; });
+      }
       this.saveJsonStore();
     }
 
@@ -3536,7 +3548,7 @@ async function handleApiRequest(req, res, pathname, url) {
           itemId: s.item_id,
           itemName: s.item_name,
           role: s.role,
-          shareKey: s.share_key || null,
+          shareKey: (data && data.isEncrypted) ? (s.share_key || null) : null,
           createdAt: s.created_at,
           updatedAt: s.updated_at,
           ...data

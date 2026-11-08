@@ -602,6 +602,7 @@ const UIAccounts = {
     }
 
     const isReceivedShare = !!acc._isSharedItem;
+    const isEncrypted = isReceivedShare && (acc._isEncrypted === 1 || acc._needsPassword === 1);
     const leaveBtn = document.getElementById('action-sheet-leave-shared-btn');
     const uniShareBtn = document.getElementById('action-sheet-universal-share-btn');
     const archiveBtn = document.getElementById('action-sheet-archive-btn');
@@ -620,8 +621,8 @@ const UIAccounts = {
     if (deleteBtn) deleteBtn.style.display = isReceivedShare ? 'none' : 'flex';
 
     if (shareKeyBtn) {
-      shareKeyBtn.style.display = isReceivedShare ? 'flex' : 'none';
-      if (isReceivedShare) {
+      shareKeyBtn.style.display = isEncrypted ? 'flex' : 'none';
+      if (isEncrypted) {
         if (acc._needsPassword) {
           if (shareKeyTitle) shareKeyTitle.textContent = 'Nhập mật khẩu mã hoá (Cần thiết)';
           if (shareKeyDesc) shareKeyDesc.textContent = 'Ví này đã bị khoá bằng mật khẩu mã hoá E2EE';
@@ -4345,16 +4346,22 @@ const UIAccounts = {
                 <span class="app-switch-slider"></span>
               </label>
             </div>
-            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.promptItemShareKey('loan', ${l.id})">
-              <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
-                <i data-lucide="key" style="width: 20px; height: 20px;"></i>
-              </div>
-              <div class="action-sheet-item-text">
-                <span class="action-sheet-item-title">${l._needsPassword ? 'Nhập mật khẩu mã hoá (Cần thiết)' : 'Mật khẩu mã hoá'}</span>
-                <span class="action-sheet-item-desc">${l._needsPassword ? 'Sổ vay đã bị khoá, cần mật khẩu để giải mã' : 'Đổi hoặc cập nhật mật khẩu mã hoá cho sổ vay này'}</span>
-              </div>
-              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
-            </button>
+          `;
+          if (l._isEncrypted === 1 || l._needsPassword === 1) {
+            btns += `
+              <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.promptItemShareKey('loan', ${l.id})">
+                <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                  <i data-lucide="key" style="width: 20px; height: 20px;"></i>
+                </div>
+                <div class="action-sheet-item-text">
+                  <span class="action-sheet-item-title">${l._needsPassword ? 'Nhập mật khẩu mã hoá (Cần thiết)' : 'Mật khẩu mã hoá'}</span>
+                  <span class="action-sheet-item-desc">${l._needsPassword ? 'Sổ vay đã bị khoá, cần mật khẩu để giải mã' : 'Đổi hoặc cập nhật mật khẩu mã hoá cho sổ vay này'}</span>
+                </div>
+                <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+              </button>
+            `;
+          }
+          btns += `
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('loan', ${l.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -4461,16 +4468,22 @@ const UIAccounts = {
                 <span class="app-switch-slider"></span>
               </label>
             </div>
-            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.promptItemShareKey('savings', ${s.id})">
-              <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
-                <i data-lucide="key" style="width: 20px; height: 20px;"></i>
-              </div>
-              <div class="action-sheet-item-text">
-                <span class="action-sheet-item-title">${s._needsPassword ? 'Nhập mật khẩu mã hoá (Cần thiết)' : 'Mật khẩu mã hoá'}</span>
-                <span class="action-sheet-item-desc">${s._needsPassword ? 'Sổ tiết kiệm đã bị khoá, cần mật khẩu để giải mã' : 'Đổi hoặc cập nhật mật khẩu mã hoá cho sổ này'}</span>
-              </div>
-              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
-            </button>
+          `;
+          if (s._isEncrypted === 1 || s._needsPassword === 1) {
+            btns += `
+              <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.promptItemShareKey('savings', ${s.id})">
+                <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                  <i data-lucide="key" style="width: 20px; height: 20px;"></i>
+                </div>
+                <div class="action-sheet-item-text">
+                  <span class="action-sheet-item-title">${s._needsPassword ? 'Nhập mật khẩu mã hoá (Cần thiết)' : 'Mật khẩu mã hoá'}</span>
+                  <span class="action-sheet-item-desc">${s._needsPassword ? 'Sổ tiết kiệm đã bị khoá, cần mật khẩu để giải mã' : 'Đổi hoặc cập nhật mật khẩu mã hoá cho sổ này'}</span>
+                </div>
+                <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+              </button>
+            `;
+          }
+          btns += `
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('savings', ${s.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -4578,16 +4591,22 @@ const UIAccounts = {
                 <span class="app-switch-slider"></span>
               </label>
             </div>
-            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.promptItemShareKey('accumulation', ${acc.id})">
-              <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
-                <i data-lucide="key" style="width: 20px; height: 20px;"></i>
-              </div>
-              <div class="action-sheet-item-text">
-                <span class="action-sheet-item-title">${acc._needsPassword ? 'Nhập mật khẩu mã hoá (Cần thiết)' : 'Mật khẩu mã hoá'}</span>
-                <span class="action-sheet-item-desc">${acc._needsPassword ? 'Mục tích luỹ đã bị khoá, cần mật khẩu để giải mã' : 'Đổi hoặc cập nhật mật khẩu mã hoá cho mục này'}</span>
-              </div>
-              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
-            </button>
+          `;
+          if (acc._isEncrypted === 1 || acc._needsPassword === 1) {
+            btns += `
+              <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.promptItemShareKey('accumulation', ${acc.id})">
+                <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                  <i data-lucide="key" style="width: 20px; height: 20px;"></i>
+                </div>
+                <div class="action-sheet-item-text">
+                  <span class="action-sheet-item-title">${acc._needsPassword ? 'Nhập mật khẩu mã hoá (Cần thiết)' : 'Mật khẩu mã hoá'}</span>
+                  <span class="action-sheet-item-desc">${acc._needsPassword ? 'Mục tích luỹ đã bị khoá, cần mật khẩu để giải mã' : 'Đổi hoặc cập nhật mật khẩu mã hoá cho mục này'}</span>
+                </div>
+                <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+              </button>
+            `;
+          }
+          btns += `
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('accumulation', ${acc.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -4687,16 +4706,22 @@ const UIAccounts = {
                 <span class="app-switch-slider"></span>
               </label>
             </div>
-            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.promptItemShareKey('asset', ${asset.id})">
-              <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
-                <i data-lucide="key" style="width: 20px; height: 20px;"></i>
-              </div>
-              <div class="action-sheet-item-text">
-                <span class="action-sheet-item-title">${asset._needsPassword ? 'Nhập mật khẩu mã hoá (Cần thiết)' : 'Mật khẩu mã hoá'}</span>
-                <span class="action-sheet-item-desc">${asset._needsPassword ? 'Tài sản đã bị khoá, cần mật khẩu để giải mã' : 'Đổi hoặc cập nhật mật khẩu mã hoá cho mục này'}</span>
-              </div>
-              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
-            </button>
+          `;
+          if (asset._isEncrypted === 1 || asset._needsPassword === 1) {
+            btns += `
+              <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.promptItemShareKey('asset', ${asset.id})">
+                <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                  <i data-lucide="key" style="width: 20px; height: 20px;"></i>
+                </div>
+                <div class="action-sheet-item-text">
+                  <span class="action-sheet-item-title">${asset._needsPassword ? 'Nhập mật khẩu mã hoá (Cần thiết)' : 'Mật khẩu mã hoá'}</span>
+                  <span class="action-sheet-item-desc">${asset._needsPassword ? 'Tài sản đã bị khoá, cần mật khẩu để giải mã' : 'Đổi hoặc cập nhật mật khẩu mã hoá cho mục này'}</span>
+                </div>
+                <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+              </button>
+            `;
+          }
+          btns += `
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('asset', ${asset.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
