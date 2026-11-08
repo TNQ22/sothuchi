@@ -5709,48 +5709,11 @@ const UIAccounts = {
     if (!container) return;
 
     if (totalCount === 0) {
-      const sService = window.serverSyncService;
-      const isLoggedIn = !!(sService && sService.token && sService.userProfile);
-
-      if (!isLoggedIn) {
-        container.innerHTML = `
-          <div class="accounts-empty-card shared-empty-card" style="padding: 20px 14px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; box-sizing: border-box;">
-            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(239, 68, 68, 0.12); color: #ef4444; display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
-              <i data-lucide="cloud-off" style="width: 18px; height: 18px;"></i>
-            </div>
-            <p class="empty-text" style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 4px;">Chưa đăng nhập Máy Chủ Riêng</p>
-            <p style="font-size: 0.76rem; color: var(--text-muted); margin: 0 0 10px 0; max-width: 300px; line-height: 1.4;">Đăng nhập Google để đồng bộ các ví và sổ được chia sẻ với bạn.</p>
-            <button class="btn btn-primary btn-sm" onclick="if(window.app) window.app.switchView('settings')" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; padding: 5px 12px; border-radius: 8px;">
-              <i data-lucide="settings" style="width: 13px; height: 13px;"></i> Mở Cài Đặt & Đăng Nhập
-            </button>
-          </div>
-        `;
-      } else {
-        const userEmail = sService.userProfile.email || '';
-        const safeEmail = typeof escapeHTML === 'function' ? escapeHTML(userEmail) : userEmail;
-        container.innerHTML = `
-          <div class="accounts-empty-card shared-empty-card" style="padding: 20px 14px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; box-sizing: border-box;">
-            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(59, 130, 246, 0.12); color: #3b82f6; display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
-              <i data-lucide="share-2" style="width: 18px; height: 18px;"></i>
-            </div>
-            <p class="empty-text" style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 4px;">Chưa có mục nào được chia sẻ</p>
-            ${userEmail ? `
-              <div style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 10px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: rgba(59, 130, 246, 0.08); border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.15); max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                <i data-lucide="mail" style="width: 12px; height: 12px; flex-shrink: 0; color: #3b82f6;"></i>
-                <span style="overflow: hidden; text-overflow: ellipsis;">${safeEmail}</span>
-              </div>
-            ` : ''}
-            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 2px;">
-              <button type="button" class="btn btn-outline btn-sm" onclick="UIAccounts.manualSyncSharedItems(this)" style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; padding: 5px 12px; border-radius: 8px; border-color: rgba(59, 130, 246, 0.35); color: #3b82f6;">
-                <i data-lucide="refresh-cw" style="width: 13px; height: 13px;"></i> Kiểm tra & Đồng bộ
-              </button>
-              <button type="button" class="btn btn-outline btn-sm" onclick="window.ReceiveShareModal && ReceiveShareModal.promptManual()" style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; padding: 5px 12px; border-radius: 8px;">
-                <i data-lucide="link" style="width: 13px; height: 13px;"></i> Nhập liên kết
-              </button>
-            </div>
-          </div>
-        `;
-      }
+      container.innerHTML = `
+        <div class="accounts-empty-card">
+          <p class="empty-text">Chưa có mục nào được chia sẻ</p>
+        </div>
+      `;
 
       if (totalValEl) totalValEl.textContent = '0đ';
       if (window.lucide) lucide.createIcons();
