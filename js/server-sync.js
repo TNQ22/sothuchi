@@ -1537,9 +1537,24 @@ class ServerSyncService {
       try {
         const ownedShares = await db.settings.get('syncOwnedSharedProjections');
         if (ownedShares && Array.isArray(ownedShares.value)) {
+          let dirty = false;
           for (const s of ownedShares.value) {
-            const currentKey = s.shareKey || (await this.getItemShareKey(`${s.itemType}_${s.itemId}`)) || this.encryptionPassword;
+            let currentKey = null;
+            if (this.encryptionPassword) {
+              currentKey = s.shareKey || (await this.getItemShareKey(`${s.itemType}_${s.itemId}`)) || this.encryptionPassword;
+            } else {
+              // Sổ không mã hoá: xoá khoá cũ để đảm bảo không bị mã hoá sót
+              if (s.shareKey) {
+                s.shareKey = null;
+                dirty = true;
+              }
+              await this.deleteItemShareKey(`${s.itemType}_${s.itemId}`);
+              await this.deleteItemShareKey(s.itemId);
+            }
             await this.projectAndPushItem(s.itemType, s.itemId, currentKey);
+          }
+          if (dirty) {
+            await db.settings.put({ key: 'syncOwnedSharedProjections', value: ownedShares.value });
           }
         }
       } catch (projErr) {
@@ -1671,13 +1686,27 @@ class ServerSyncService {
 
         // Tự động đồng bộ các mục được người khác chia sẻ (Received Shared Items)
         try {
-          // Tự động làm mới và cập nhật bản chiếu mã hóa cho các mục đang chia sẻ
+          // Tự động làm mới và cập nhật bản chiếu cho các mục đang chia sẻ
           try {
             const ownedShares = await db.settings.get('syncOwnedSharedProjections');
             if (ownedShares && Array.isArray(ownedShares.value)) {
+              let dirty = false;
               for (const s of ownedShares.value) {
-                const currentKey = s.shareKey || (await this.getItemShareKey(`${s.itemType}_${s.itemId}`)) || this.encryptionPassword;
+                let currentKey = null;
+                if (this.encryptionPassword) {
+                  currentKey = s.shareKey || (await this.getItemShareKey(`${s.itemType}_${s.itemId}`)) || this.encryptionPassword;
+                } else {
+                  if (s.shareKey) {
+                    s.shareKey = null;
+                    dirty = true;
+                  }
+                  await this.deleteItemShareKey(`${s.itemType}_${s.itemId}`);
+                  await this.deleteItemShareKey(s.itemId);
+                }
                 await this.projectAndPushItem(s.itemType, s.itemId, currentKey);
+              }
+              if (dirty) {
+                await db.settings.put({ key: 'syncOwnedSharedProjections', value: ownedShares.value });
               }
             }
           } catch (projErr) {
@@ -2133,7 +2162,9 @@ class ServerSyncService {
     };
 
     // 2. Mã hóa bằng Khóa Chia Sẻ (Item Share Key) nếu có hoặc mật khẩu mã hóa sổ của chủ sở hữu
-    if (!shareKey && this.encryptionPassword) {
+    if (!this.encryptionPassword) {
+      shareKey = null;
+    } else if (!shareKey) {
       shareKey = (await this.getItemShareKey(`${itemType}_${itemId}`)) || this.encryptionPassword;
     }
 
@@ -2249,10 +2280,17 @@ class ServerSyncService {
     try {
       const owned = (await db.settings.get('syncOwnedSharedProjections')) || { key: 'syncOwnedSharedProjections', value: [] };
       const arr = Array.isArray(owned.value) ? owned.value : [];
-      if (!arr.some(x => x.itemType === itemType && String(x.itemId) === String(itemId))) {
-        arr.push({ itemType, itemId: String(itemId), shareKey });
-        await db.settings.put({ key: 'syncOwnedSharedProjections', value: arr });
+      const existing = arr.find(x => x.itemType === itemType && String(x.itemId) === String(itemId));
+      if (existing) {
+        existing.shareKey = shareKey || null;
+      } else {
+        arr.push({ itemType, itemId: String(itemId), shareKey: shareKey || null });
       }
+      if (!shareKey) {
+        await this.deleteItemShareKey(`${itemType}_${itemId}`);
+        await this.deleteItemShareKey(itemId);
+      }
+      await db.settings.put({ key: 'syncOwnedSharedProjections', value: arr });
     } catch (_) {}
     return result;
   }
@@ -2299,6 +2337,21 @@ class ServerSyncService {
       await this.saveItemShareKey(result.link.token, shareKey);
       result.link.shareKey = shareKey;
     }
+    try {
+      const owned = (await db.settings.get('syncOwnedSharedProjections')) || { key: 'syncOwnedSharedProjections', value: [] };
+      const arr = Array.isArray(owned.value) ? owned.value : [];
+      const existing = arr.find(x => x.itemType === itemType && String(x.itemId) === String(itemId));
+      if (existing) {
+        existing.shareKey = shareKey || null;
+      } else {
+        arr.push({ itemType, itemId: String(itemId), shareKey: shareKey || null });
+      }
+      if (!shareKey) {
+        await this.deleteItemShareKey(`${itemType}_${itemId}`);
+        await this.deleteItemShareKey(itemId);
+      }
+      await db.settings.put({ key: 'syncOwnedSharedProjections', value: arr });
+    } catch (_) {}
     return result;
   }
 
@@ -2597,7 +2650,12 @@ class ServerSyncService {
 
         // Xử lý bản chiếu mã hóa E2EE (Zero-Knowledge Item Projection)
         let needsPassword = false;
-        const isEncrypted = Boolean(shareItem.isEncrypted || (shareItem.isProjection && shareItem.projectionData && shareItem.projectionData.encrypted));
+        let isEncrypted = false;
+        if (shareItem.isEncrypted !== undefined) {
+          isEncrypted = Boolean(shareItem.isEncrypted);
+        } else if (shareItem.isProjection && shareItem.projectionData) {
+          isEncrypted = Boolean(shareItem.projectionData.encrypted);
+        }
 
         if (isEncrypted) {
           if (shareItem.shareKey) {
@@ -2632,9 +2690,12 @@ class ServerSyncService {
           await this.deleteItemShareKey(itemId);
           await this.deleteItemShareKey(`${itemType}_${itemId}`);
 
-          if (shareItem.projectionData && !shareItem.projectionData.encrypted) {
-            item = shareItem.projectionData.item || shareItem.item;
-            transactions = shareItem.projectionData.transactions || shareItem.transactions;
+          if (shareItem.projectionData) {
+            item = shareItem.projectionData.item || shareItem.item || item;
+            transactions = shareItem.projectionData.transactions || shareItem.transactions || transactions;
+          } else {
+            item = shareItem.item || item;
+            transactions = shareItem.transactions || transactions;
           }
 
           // Thông báo cho người nhận nếu chủ sổ vừa tắt mã hoá

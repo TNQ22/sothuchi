@@ -996,6 +996,19 @@ class DatabaseManager {
     const now = new Date().toISOString();
     const cleanEmail = email.trim().toLowerCase();
 
+    // Kiểm tra xem sổ có mã hoá không: nếu sổ không mã hoá, shareKey phải luôn là null
+    let effectiveKey = shareKey || null;
+    try {
+      const vault = this.getVaultData(vaultId);
+      const vaultIsEncrypted = vault && vault.data && (
+        (typeof vault.data === 'string' && vault.data.startsWith('vault_enc_')) ||
+        (typeof vault.data === 'object' && vault.data.encrypted)
+      );
+      if (vault && !vaultIsEncrypted) {
+        effectiveKey = null;
+      }
+    } catch (_) {}
+
     if (this.isSqlite) {
       const checkStmt = this.sqliteDb.prepare(`
         SELECT id FROM item_shares
@@ -1005,30 +1018,30 @@ class DatabaseManager {
       if (existing) {
         const updateStmt = this.sqliteDb.prepare(`
           UPDATE item_shares
-          SET role = ?, updated_at = ?, share_key = COALESCE(?, share_key)
+          SET role = ?, updated_at = ?, share_key = ?
           WHERE id = ?
         `);
-        updateStmt.run(role, now, shareKey, existing.id);
-        return { id: existing.id, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, user_email: cleanEmail, role, updated_at: now, share_key: shareKey };
+        updateStmt.run(role, now, effectiveKey, existing.id);
+        return { id: existing.id, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, user_email: cleanEmail, role, updated_at: now, share_key: effectiveKey };
       }
 
       const insertStmt = this.sqliteDb.prepare(`
         INSERT INTO item_shares (id, vault_id, item_type, item_id, item_name, user_email, role, created_by, created_at, updated_at, share_key)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      insertStmt.run(id, vaultId, itemType, String(itemId), itemName || '', cleanEmail, role, createdBy, now, now, shareKey);
-      return { id, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, user_email: cleanEmail, role, created_by: createdBy, created_at: now, updated_at: now, share_key: shareKey };
+      insertStmt.run(id, vaultId, itemType, String(itemId), itemName || '', cleanEmail, role, createdBy, now, now, effectiveKey);
+      return { id, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, user_email: cleanEmail, role, created_by: createdBy, created_at: now, updated_at: now, share_key: effectiveKey };
     } else {
       this.jsonStore.item_shares = this.jsonStore.item_shares || [];
       const idx = this.jsonStore.item_shares.findIndex(s => s.vault_id === vaultId && s.item_type === itemType && String(s.item_id) === String(itemId) && s.user_email.toLowerCase() === cleanEmail);
       if (idx >= 0) {
         this.jsonStore.item_shares[idx].role = role;
         this.jsonStore.item_shares[idx].updated_at = now;
-        if (shareKey) this.jsonStore.item_shares[idx].share_key = shareKey;
+        this.jsonStore.item_shares[idx].share_key = effectiveKey;
         this.saveJsonStore();
         return this.jsonStore.item_shares[idx];
       }
-      const record = { id, vault_id: vaultId, item_type: itemType, item_id: String(itemId), item_name: itemName || '', user_email: cleanEmail, role, created_by: createdBy, created_at: now, updated_at: now, share_key: shareKey };
+      const record = { id, vault_id: vaultId, item_type: itemType, item_id: String(itemId), item_name: itemName || '', user_email: cleanEmail, role, created_by: createdBy, created_at: now, updated_at: now, share_key: effectiveKey };
       this.jsonStore.item_shares.push(record);
       this.saveJsonStore();
       return record;
@@ -1118,18 +1131,30 @@ class DatabaseManager {
     const token = crypto.randomBytes(16).toString('hex');
     const now = new Date().toISOString();
 
+    let effectiveKey = shareKey || null;
+    try {
+      const vault = this.getVaultData(vaultId);
+      const vaultIsEncrypted = vault && vault.data && (
+        (typeof vault.data === 'string' && vault.data.startsWith('vault_enc_')) ||
+        (typeof vault.data === 'object' && vault.data.encrypted)
+      );
+      if (vault && !vaultIsEncrypted) {
+        effectiveKey = null;
+      }
+    } catch (_) {}
+
     if (this.isSqlite) {
       const stmt = this.sqliteDb.prepare(`
         INSERT INTO item_share_links (id, token, vault_id, item_type, item_id, item_name, role, created_by, created_at, share_key)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      stmt.run(id, token, vaultId, itemType, String(itemId), itemName || '', role, createdBy, now, shareKey);
+      stmt.run(id, token, vaultId, itemType, String(itemId), itemName || '', role, createdBy, now, effectiveKey);
     } else {
       this.jsonStore.item_share_links = this.jsonStore.item_share_links || [];
-      this.jsonStore.item_share_links.push({ id, token, vault_id: vaultId, item_type: itemType, item_id: String(itemId), item_name: itemName || '', role, created_by: createdBy, created_at: now, share_key: shareKey });
+      this.jsonStore.item_share_links.push({ id, token, vault_id: vaultId, item_type: itemType, item_id: String(itemId), item_name: itemName || '', role, created_by: createdBy, created_at: now, share_key: effectiveKey });
       this.saveJsonStore();
     }
-    return { id, token, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, role, created_at: now, share_key: shareKey };
+    return { id, token, vault_id: vaultId, item_type: itemType, item_id: itemId, item_name: itemName, role, created_at: now, share_key: effectiveKey };
   }
 
   revokeItemShareLink(linkId) {
@@ -1323,10 +1348,39 @@ class DatabaseManager {
         }
       }
 
+      // Auto-heal: Nếu bản chiếu trong DB đang mang cờ encrypted (do tạo trước khi tắt mã hoá sổ gốc),
+      // tự động cập nhật lại bản chiếu này trên database sang dạng không mã hoá
+      if (proj && proj.data && proj.data.encrypted) {
+        proj.data.encrypted = false;
+        delete proj.data.payload;
+        delete proj.data.iv;
+        delete proj.data.salt;
+        try {
+          this.saveItemProjection(vaultId, itemType, itemId, {
+            encrypted: false,
+            item: targetItem,
+            transactions: combinedTxs,
+            categories: allCategories,
+            updatedAt: new Date().toISOString()
+          }, 'system-autoheal');
+        } catch (_) {}
+      }
+
+      const cleanProjData = proj && proj.data ? {
+        ...proj.data,
+        encrypted: false,
+        payload: undefined,
+        iv: undefined,
+        salt: undefined,
+        item: targetItem,
+        transactions: combinedTxs,
+        categories: allCategories
+      } : null;
+
       return {
         isProjection: !!proj,
         isEncrypted: false,
-        projectionData: proj && proj.data ? { ...proj.data, item: targetItem, transactions: combinedTxs } : null,
+        projectionData: cleanProjData,
         item: targetItem,
         transactions: combinedTxs,
         categories: allCategories
@@ -1334,12 +1388,15 @@ class DatabaseManager {
     }
 
     // 2. Nếu là Bản Chiếu mã hóa E2EE (Zero-Knowledge)
+    // CHỈ coi là mã hóa E2EE nếu vault không tồn tại (zero-knowledge vault) HOẶC vault tồn tại và thực sự bị mã hoá (vaultIsEncrypted === true)!
     if (proj && proj.data && proj.data.encrypted) {
-      return {
-        isProjection: true,
-        isEncrypted: true,
-        projectionData: proj.data
-      };
+      if (!vault || vaultIsEncrypted) {
+        return {
+          isProjection: true,
+          isEncrypted: true,
+          projectionData: proj.data
+        };
+      }
     }
 
     // 3. Fallback: Nếu không đọc được sổ gốc nhưng có Bản Chiếu plain còn hợp lệ
@@ -3065,8 +3122,8 @@ async function handleApiRequest(req, res, pathname, url) {
     const link = dbManager.getShareLinkByToken(token);
     if (!link) return sendJson(res, 404, { error: 'Liên kết không tồn tại hoặc đã bị thu hồi' });
 
-    const proj = dbManager.getItemProjection(link.vault_id, link.item_type, link.item_id);
-    const isEncrypted = !!(proj && proj.data && proj.data.encrypted);
+    const itemData = dbManager.getReceivedItemData(link.vault_id, link.item_type, link.item_id);
+    const isEncrypted = Boolean(itemData && itemData.isEncrypted);
 
     return sendJson(res, 200, {
       token: link.token,
@@ -3507,10 +3564,12 @@ async function handleApiRequest(req, res, pathname, url) {
       const link = dbManager.getShareLinkByToken(token);
       if (!link) return sendJson(res, 404, { error: 'Liên kết không tồn tại hoặc đã hết hạn' });
 
-      // Tự động thêm quyền cho email của currentUser kèm share_key từ link
-      const share = dbManager.addItemShare(link.vault_id, link.item_type, link.item_id, link.item_name, currentUser.email, link.role, link.created_by, link.share_key || null);
-
       const itemData = dbManager.getReceivedItemData(link.vault_id, link.item_type, link.item_id);
+      const isEnc = Boolean(itemData && itemData.isEncrypted);
+      const effectiveKey = isEnc ? (link.share_key || null) : null;
+
+      // Tự động thêm quyền cho email của currentUser kèm share_key từ link (chỉ nếu mục thực sự mã hoá)
+      const share = dbManager.addItemShare(link.vault_id, link.item_type, link.item_id, link.item_name, currentUser.email, link.role, link.created_by, effectiveKey);
 
       return sendJson(res, 200, {
         success: true,
@@ -3520,7 +3579,7 @@ async function handleApiRequest(req, res, pathname, url) {
         itemId: link.item_id,
         itemName: link.item_name,
         role: link.role,
-        shareKey: link.share_key || null,
+        shareKey: effectiveKey,
         ownerName: link.owner_name,
         ownerEmail: link.owner_email,
         ...itemData
