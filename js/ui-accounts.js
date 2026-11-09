@@ -2379,7 +2379,7 @@ const UIAccounts = {
 
       const miniShareIndicator = isSharedItem
         ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 8px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 8px; height: 8px;"></i></div>`
-        : '';
+        : (isSharedByMe ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 8px;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 8px; height: 8px;"></i></div>` : '');
 
       const hasSubRow = !!shareBadge || subParts.length > 0 || !!acc._needsPassword;
 

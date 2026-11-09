@@ -2150,7 +2150,7 @@ const UITransactions = {
 
     const miniShareIndicator = isSharedItem
       ? `<div class=\"mini-share-indicator\" style=\"position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;\" title=\"Được chia sẻ\"><i data-lucide=\"share-2\" style=\"width: 7px; height: 7px;\"></i></div>`
-      : '';
+      : (isSharedByMe ? `<div class=\"mini-share-indicator\" style=\"position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;\" title=\"Đang chia sẻ\"><i data-lucide=\"share-2\" style=\"width: 7px; height: 7px;\"></i></div>` : '');
 
     if (input) input.value = acc.id;
     if (label) {
@@ -3406,7 +3406,7 @@ const UITransactions = {
 
         const miniShareIndicator = isSharedItem
           ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>`
-          : '';
+          : (isSharedByMe ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>` : '');
 
         const badgeHtml = window.UIAccounts ? `<div style="position: relative; display: inline-flex;">${window.UIAccounts.renderLogoBadge(a, 32)}${miniShareIndicator}</div>` : `
           <div class="tx-info-icon-bubble" style="background:${info.color}22; color:${info.color}; width:32px; height:32px; flex-shrink:0; position: relative; display: inline-flex;">
@@ -3451,7 +3451,7 @@ const UITransactions = {
 
         const miniShareIndicator = isSharedItem
           ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>`
-          : '';
+          : (isSharedByMe ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>` : '');
 
         const badgeHtml = window.UIAccounts ? `<div style="position: relative; display: inline-flex;">${window.UIAccounts.renderLogoBadge(a, 32)}${miniShareIndicator}</div>` : `
           <div class="tx-info-icon-bubble" style="background:${info.color}22; color:${info.color}; width:32px; height:32px; flex-shrink:0; position: relative; display: inline-flex;">
@@ -3904,7 +3904,7 @@ const UITransactions = {
 
       const miniShareIndicator = isSharedItem
         ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>`
-        : '';
+        : (isSharedByMe ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>` : '');
 
       if (window.UIAccounts) {
         bubble.innerHTML = `<div style="position: relative; display: inline-flex;">${window.UIAccounts.renderLogoBadge(acc, 32)}${miniShareIndicator}</div>`;
@@ -3987,7 +3987,7 @@ const UITransactions = {
 
       const miniShareIndicator = isSharedItem
         ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>`
-        : '';
+        : (isSharedByMe ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 7px;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 7px; height: 7px;"></i></div>` : '');
 
       if (window.UIAccounts) {
         bubble.innerHTML = `<div style="position: relative; display: inline-flex;">${window.UIAccounts.renderLogoBadge(acc, 32)}${miniShareIndicator}</div>`;
