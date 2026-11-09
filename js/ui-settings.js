@@ -180,9 +180,15 @@ const UISettings = {
     const gDrive = window.googleDriveService;
     if (gBadge && gDesc) {
       if (gDrive && gDrive.userProfile && gDrive.userProfile.email) {
-        gBadge.className = 'settings-status-pill pill-green';
-        gBadge.textContent = 'Đã kết nối';
-        gDesc.textContent = `Tài khoản: ${gDrive.userProfile.email}`;
+        if (gDrive.autoSync === false) {
+          gBadge.className = 'settings-status-pill pill-blue';
+          gBadge.textContent = 'Sẵn sàng';
+          gDesc.textContent = `Tài khoản: ${gDrive.userProfile.email}`;
+        } else {
+          gBadge.className = 'settings-status-pill pill-green';
+          gBadge.textContent = 'Đã kết nối';
+          gDesc.textContent = `Tài khoản: ${gDrive.userProfile.email}`;
+        }
       } else {
         gBadge.className = 'settings-status-pill pill-gray';
         gBadge.textContent = 'Chưa kết nối';
@@ -196,9 +202,15 @@ const UISettings = {
     const dbx = window.dropboxService;
     if (dBadge && dDesc) {
       if (dbx && (dbx.refreshToken || dbx.accessToken) && dbx.userProfile) {
-        dBadge.className = 'settings-status-pill pill-green';
-        dBadge.textContent = 'Đã kết nối';
-        dDesc.textContent = `Tài khoản: ${dbx.userProfile.name || dbx.userProfile.email || 'Dropbox'}`;
+        if (dbx.autoSync === false) {
+          dBadge.className = 'settings-status-pill pill-blue';
+          dBadge.textContent = 'Sẵn sàng';
+          dDesc.textContent = `Tài khoản: ${dbx.userProfile.name || dbx.userProfile.email || 'Dropbox'}`;
+        } else {
+          dBadge.className = 'settings-status-pill pill-green';
+          dBadge.textContent = 'Đã kết nối';
+          dDesc.textContent = `Tài khoản: ${dbx.userProfile.name || dbx.userProfile.email || 'Dropbox'}`;
+        }
       } else {
         dBadge.className = 'settings-status-pill pill-gray';
         dBadge.textContent = 'Chưa kết nối';
@@ -212,9 +224,15 @@ const UISettings = {
     const sService = window.serverSyncService;
     if (sBadge && sDesc) {
       if (sService && sService.token && sService.userProfile) {
-        sBadge.className = 'settings-status-pill pill-green';
-        sBadge.textContent = 'Đã kết nối';
-        sDesc.textContent = `Tài khoản: ${sService.userProfile.email || sService.userProfile.name}`;
+        if (sService.autoSync === false) {
+          sBadge.className = 'settings-status-pill pill-blue';
+          sBadge.textContent = 'Sẵn sàng';
+          sDesc.textContent = `Tài khoản: ${sService.userProfile.email || sService.userProfile.name}`;
+        } else {
+          sBadge.className = 'settings-status-pill pill-green';
+          sBadge.textContent = 'Đã kết nối';
+          sDesc.textContent = `Tài khoản: ${sService.userProfile.email || sService.userProfile.name}`;
+        }
       } else if (sService && sService.serverUrl) {
         sBadge.className = 'settings-status-pill pill-blue';
         sBadge.textContent = 'Sẵn sàng';
@@ -1883,6 +1901,7 @@ const UISettings = {
       serverAutoSyncToggle.addEventListener('change', (e) => {
         if (sService) {
           sService.setAutoSync(e.target.checked);
+          this.updateHubBadges();
           showToast(e.target.checked ? 'Đã kích hoạt đồng bộ Máy Chủ Riêng' : 'Đã vô hiệu hóa Máy Chủ Riêng', 'info');
         }
       });
@@ -2465,6 +2484,7 @@ const UISettings = {
         } else {
           await db.settings.put({ key: 'autoSyncEnabled', value: e.target.checked });
         }
+        this.updateHubBadges();
         showToast(e.target.checked ? 'Đã kích hoạt đồng bộ Google Drive' : 'Đã vô hiệu hóa Google Drive', 'info');
       });
     }
@@ -2478,6 +2498,7 @@ const UISettings = {
         } else {
           await db.settings.put({ key: 'dropboxAutoSync', value: e.target.checked });
         }
+        this.updateHubBadges();
         showToast(e.target.checked ? 'Đã kích hoạt đồng bộ Dropbox' : 'Đã vô hiệu hóa Dropbox', 'info');
       });
     }

@@ -174,10 +174,10 @@ const UniversalShareModal = {
 
     let serverStatusText = 'Chưa kết nối';
     let serverStatusClass = 'not-connected';
-    if (isServerLoggedIn) {
+    if (isServerLoggedIn && sService.autoSync !== false) {
       serverStatusText = 'Đã kết nối';
       serverStatusClass = 'connected';
-    } else if (isServerReachable) {
+    } else if (isServerLoggedIn || isServerReachable) {
       serverStatusText = 'Sẵn sàng';
       serverStatusClass = 'ready';
     }

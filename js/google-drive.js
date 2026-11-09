@@ -258,7 +258,7 @@ class GoogleDriveSync {
     }
 
     // Nếu đã cấu hình Cloudflare Worker: dùng Authorization Code flow để lấy Refresh Token vĩnh viễn
-    if (this.workerUrl && this.clientSecret && window.google?.accounts?.oauth2?.initCodeClient && (options.forceCode || options.interactive)) {
+    if (this.workerUrl && window.google?.accounts?.oauth2?.initCodeClient && (options.forceCode || options.interactive)) {
       return new Promise((resolve, reject) => {
         let settled = false;
         const startTime = Date.now();
@@ -288,7 +288,7 @@ class GoogleDriveSync {
                   body: JSON.stringify({
                     code: resp.code,
                     client_id: this.clientId,
-                    client_secret: this.clientSecret,
+                    client_secret: this.clientSecret || '',
                     redirect_uri: 'postmessage'
                   })
                 });
