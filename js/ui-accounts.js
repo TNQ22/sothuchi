@@ -2370,12 +2370,6 @@ const UIAccounts = {
             <i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0;"></i> <span style="white-space: nowrap; overflow: hidden; text-overflow: clip;">Từ: ${escapeHTML(owner)}</span>
           </span>
         `;
-      } else if (isSharedByMe) {
-        shareBadge = `
-          <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 1px 6px; border-radius: 4px; vertical-align: middle; flex-shrink: 0; white-space: nowrap;" title="Đang chia sẻ">
-            <i data-lucide="share-2" style="width: 10px; height: 10px; flex-shrink: 0;"></i> <span>Đang chia sẻ</span>
-          </span>
-        `;
       }
 
       const subParts = [];
@@ -2385,7 +2379,7 @@ const UIAccounts = {
 
       const miniShareIndicator = isSharedItem
         ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 8px;" title="Được chia sẻ"><i data-lucide="share-2" style="width: 8px; height: 8px;"></i></div>`
-        : (isSharedByMe ? `<div class="mini-share-indicator" style="position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--bg-card); font-size: 8px;" title="Đang chia sẻ"><i data-lucide="share-2" style="width: 8px; height: 8px;"></i></div>` : '');
+        : '';
 
       const hasSubRow = !!shareBadge || subParts.length > 0 || !!acc._needsPassword;
 
