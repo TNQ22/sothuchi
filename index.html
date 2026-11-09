@@ -2676,17 +2676,17 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                     <div class="local-folder-icon">
                       <i data-lucide="folder" style="width: 20px; height: 20px; color: #f59e0b;"></i>
                     </div>
-                    <div style="min-width: 0;">
+                    <div class="local-folder-text-wrap" style="min-width: 0; flex: 1;">
                       <div class="local-folder-title" id="local-folder-name" style="font-weight: 600; font-size: 0.88rem;">Chưa chọn thư mục sao lưu</div>
                       <div class="local-folder-desc" id="local-folder-status" style="font-size: 0.76rem; color: var(--text-muted);">Tự động ghi file SoThuChi_AutoBackup vào ổ cứng khi có thay đổi</div>
                     </div>
                   </div>
-                  <div style="display: flex; gap: 6px; flex-shrink: 0; align-items: center;">
-                    <button type="button" id="btn-select-local-folder" class="btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 4px; padding: 7px 12px;">
+                  <div class="local-folder-actions">
+                    <button type="button" id="btn-select-local-folder" class="btn-primary btn-sm">
                       <i data-lucide="folder-plus" style="width: 14px; height: 14px;"></i>
                       <span id="btn-select-local-folder-text">Chọn Thư Mục</span>
                     </button>
-                    <button type="button" id="btn-remove-local-folder" class="btn-server-logout-compact" style="display: none; width: 32px; height: 32px;" title="Hủy liên kết thư mục">
+                    <button type="button" id="btn-remove-local-folder" class="btn-server-logout-compact" title="Hủy liên kết thư mục">
                       <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
                     </button>
                   </div>
@@ -2727,7 +2727,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 </p>
 
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                  <button id="btn-export-json" class="btn-primary" style="flex: 1; min-width: 170px;">
+                  <button id="btn-export-json" class="btn-primary" style="flex: 1; min-width: 170px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
                     <i data-lucide="hard-drive-download" style="width: 16px; height: 16px;"></i>
                     <span>Tải File Sao Lưu (.JSON / .STC)</span>
                   </button>

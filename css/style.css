@@ -574,6 +574,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
 .btn-primary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
   color: #ffffff;
@@ -10893,48 +10894,86 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 
 /* Local Folder Connection Card */
 .local-folder-card {
- display: flex;
- align-items: center;
- justify-content: space-between;
- padding: 12px 16px;
- background: var(--bg-card);
- border: 1px solid var(--border-color);
- border-radius: var(--radius-md);
- margin-bottom: 12px;
- gap: 12px;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  gap: 12px;
 }
 
 .local-folder-left {
- display: flex;
- align-items: center;
- gap: 12px;
- min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
 }
 
 .local-folder-icon {
- width: 36px;
- height: 36px;
- border-radius: var(--radius-sm);
- background: rgba(245, 158, 11, 0.12);
- color: #f59e0b;
- display: flex;
- align-items: center;
- justify-content: center;
- flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.local-folder-text-wrap {
+  min-width: 0;
+  flex: 1;
 }
 
 .local-folder-title {
- font-size: 0.88rem;
- font-weight: 700;
- color: var(--text-primary);
- white-space: nowrap;
- overflow: hidden;
- text-overflow: ellipsis;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.35;
+  margin-bottom: 4px;
+  word-break: break-word;
 }
 
 .local-folder-desc {
- font-size: 0.76rem;
- color: var(--text-muted);
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.local-folder-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+}
+
+.local-folder-actions #btn-select-local-folder {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  min-height: 36px;
+}
+
+.local-folder-actions #btn-remove-local-folder {
+  width: 36px !important;
+  height: 36px !important;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Dedicated Sync Server Styles */
@@ -12975,7 +13014,7 @@ body.light .ptr-circle-badge,
   border: 1px solid rgba(239, 68, 68, 0.25) !important;
   background: rgba(239, 68, 68, 0.1) !important;
   color: #ef4444 !important;
-  display: inline-flex !important;
+  display: inline-flex;
   align-items: center !important;
   justify-content: center !important;
   cursor: pointer !important;

@@ -469,7 +469,7 @@ const UISettings = {
         selectBtn.className = 'btn-secondary btn-sm';
         selectBtn.innerHTML = '<i data-lucide="download" style="width: 14px; height: 14px;"></i> <span id="btn-select-local-folder-text">Tải Về Máy Ngay</span>';
       }
-      if (removeBtn) removeBtn.style.display = 'none';
+      if (removeBtn) removeBtn.style.display = 'inline-flex';
       if (window.lucide) lucide.createIcons();
       this.updateHubBadges();
       return;
