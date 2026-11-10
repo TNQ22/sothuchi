@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SyncCoordinator - Trung tâm điều phối đồng bộ hợp nhất
  * Hỗ trợ: Dedicated Sync Server (Self-Hosted), Google Drive, Dropbox, Local Folder
  * Quản lý trạng thái, Micro Popover và kích hoạt đồng bộ thông minh
@@ -26,6 +26,14 @@ class SyncCoordinator {
           this.lastSyncTime = lastTime.value;
           this.lastSyncTarget = lastTarget ? lastTarget.value : 'Đám mây';
           this.status = 'synced';
+        } else {
+          // Fallback kiểm tra lastSyncTime từ Google Drive / Dropbox nếu có
+          const gdLastSync = await db.settings.get('lastSyncTime');
+          if (gdLastSync && gdLastSync.value) {
+            this.lastSyncTime = gdLastSync.value;
+            this.lastSyncTarget = 'Google Drive';
+            this.status = 'synced';
+          }
         }
       }
     } catch (e) {
@@ -373,11 +381,11 @@ class SyncCoordinator {
 
         case 'idle':
         default:
-          titleText = this.lastSyncTime ? `Sao lưu lần cuối: ${this.formatRelativeTime(this.lastSyncTime)}` : 'Sẵn sàng sao lưu';
-          dotClass = this.lastSyncTime ? 'sync-status-dot synced quiet' : 'sync-status-dot idle';
-          iconName = 'cloud';
+          titleText = this.lastSyncTime ? `Đã sao lưu an toàn (${this.formatRelativeTime(this.lastSyncTime)})` : 'Đã kết nối đám mây';
+          dotClass = 'sync-status-dot synced';
+          iconName = 'cloud-check';
           if (sidebarText) sidebarText.textContent = this.lastSyncTime ? `Đã lưu: ${this.formatRelativeTime(this.lastSyncTime)}` : 'Đám mây: Sẵn sàng';
-          if (sidebarDot) sidebarDot.className = 'status-dot';
+          if (sidebarDot) sidebarDot.className = 'status-dot active';
           break;
       }
     }
@@ -515,8 +523,8 @@ class SyncCoordinator {
       titleEl.textContent = 'Đã sao lưu an toàn';
       if (dotEl) dotEl.className = 'sync-popover-dot synced';
     } else {
-      titleEl.textContent = 'Sẵn sàng sao lưu';
-      if (dotEl) dotEl.className = 'sync-popover-dot idle';
+      titleEl.textContent = 'Đã kết nối đám mây';
+      if (dotEl) dotEl.className = 'sync-popover-dot synced';
     }
 
     if (timeEl) {

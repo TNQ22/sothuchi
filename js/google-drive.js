@@ -135,6 +135,9 @@ class GoogleDriveSync {
         } else {
           this.accessToken = null;
           this.tokenExpiresAt = 0;
+          if (this.workerUrl && this.refreshToken && this.clientId) {
+            this.refreshViaWorker().catch(e => console.warn('[GoogleDrive] Auto-refresh on init failed:', e));
+          }
         }
       } catch (tErr) {}
     } catch (err) {
@@ -196,6 +199,9 @@ class GoogleDriveSync {
           await db.settings.put({ key: 'googleAccessToken', value: this.accessToken });
           await db.settings.put({ key: 'googleTokenExpiresAt', value: this.tokenExpiresAt });
           console.log('[GoogleDrive] Đã gia hạn token ngầm thành công qua Cloudflare Worker!');
+          if (window.SyncCoordinator && typeof window.SyncCoordinator.updateUI === 'function') {
+            window.SyncCoordinator.updateUI();
+          }
           return true;
         }
       }

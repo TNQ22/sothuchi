@@ -322,6 +322,9 @@ class App {
       try {
         if (window.googleDriveService) {
           await window.googleDriveService.init().catch(e => console.warn('Drive init error:', e));
+          if (window.SyncCoordinator) {
+            window.SyncCoordinator.registerAdapter('google-drive', window.googleDriveService);
+          }
         }
         if (window.dropboxService) {
           await window.dropboxService.init().catch(e => console.warn('Dropbox init error:', e));
@@ -338,6 +341,11 @@ class App {
 
         // Tự động đồng bộ dữ liệu từ Google Drive khi mở app
         if (window.googleDriveService && window.googleDriveService.clientId && window.googleDriveService.autoSync) {
+          if (!window.googleDriveService.hasValidToken() && window.googleDriveService.workerUrl && window.googleDriveService.refreshToken) {
+            console.log('[GoogleDrive] Đang gia hạn ngầm token qua Worker khi mở app...');
+            await window.googleDriveService.refreshViaWorker();
+          }
+
           if (window.googleDriveService.hasValidToken()) {
             console.log('[GoogleDrive] Token còn hạn, tự động đồng bộ khi mở app...');
             if (window.SyncCoordinator) {
