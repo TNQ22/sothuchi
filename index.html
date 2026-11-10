@@ -2265,12 +2265,65 @@
                 </div>
               </div>
 
-              <!-- Cài đặt nâng cao (ẩn trong mũi tên xuống) -->
+              <!-- Chia Sẻ (Nằm ở phía trên Cài Đặt Nâng Cao) -->
+              <div class="settings-accordion">
+                <div class="settings-accordion-header" onclick="UISettings.toggleAccordion(this)">
+                  <div class="settings-accordion-title">
+                    <i data-lucide="share-2"></i>
+                    <span>Chia Sẻ</span>
+                  </div>
+                  <i data-lucide="chevron-down" class="settings-accordion-arrow"></i>
+                </div>
+
+                <div class="settings-accordion-content">
+                  <!-- 1. Chia sẻ sổ cho thành viên -->
+                  <div class="server-vault-section-box" style="margin-bottom: 14px;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-weight: 600; font-size: 0.88rem; color: var(--text-primary);">
+                      <i data-lucide="user-plus" style="width: 15px; height: 15px; color: var(--primary);"></i>
+                      <span>Chia Sẻ Sổ Cho Thành Viên</span>
+                    </div>
+                    <div style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 10px;">Thành viên chỉ cần đăng nhập Google bằng email này để vào chung sổ</div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                      <input type="email" id="settings-share-email" class="form-control" placeholder="Nhập email Google thành viên (vd: banbe@gmail.com)" style="flex: 1; min-width: 0; font-size: 0.82rem; padding: 7px 10px;">
+                      <select id="settings-share-role" class="form-control" style="width: auto; min-width: 110px; font-size: 0.82rem; padding: 7px 8px;">
+                        <option value="writer">Ghi chép</option>
+                        <option value="reader">Chỉ xem</option>
+                      </select>
+                      <button type="button" id="btn-share-invite" class="btn-primary btn-sm" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Cấp quyền chia sẻ">
+                        <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- 2. Bản sao lưu dự phòng vào Drive cá nhân (Mirror Backup) -->
+                  <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                      <div>
+                        <div style="font-weight: 600; font-size: 0.88rem;">Bản sao lưu dự phòng vào Drive cá nhân (Mirror Backup)</div>
+                        <div style="font-size: 0.76rem; color: var(--text-muted);">Tự động lưu thêm 1 bản dự phòng vào Google Drive của bạn khi dùng chung sổ</div>
+                      </div>
+                      <label class="app-switch switch switch-sm" title="Kích hoạt / Vô hiệu hóa Mirror Backup" style="margin: 0; flex-shrink: 0;">
+                        <input type="checkbox" id="settings-auto-mirror">
+                        <span class="app-switch-slider slider round"></span>
+                      </label>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px; flex-wrap: wrap; gap: 8px;">
+                      <span style="font-size: 0.76rem; color: var(--text-secondary);">Thăng cấp thành sổ độc lập:</span>
+                      <button type="button" id="btn-promote-master" class="btn-secondary btn-sm" title="Tách sổ thành sổ chính độc lập trên tài khoản của bạn">
+                        <i data-lucide="crown" style="width: 13px; height: 13px; color: #f59e0b;"></i>
+                        <span>Thăng cấp thành Sổ chính</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cài đặt nâng cao (ẩn trong mũi tên xuống, nằm ở phía dưới) -->
               <div class="settings-accordion">
                 <div class="settings-accordion-header" onclick="UISettings.toggleAccordion(this)">
                   <div class="settings-accordion-title">
                     <i data-lucide="sliders"></i>
-                    <span>Cài Đặt Nâng Cao & Chia Sẻ</span>
+                    <span>Cài Đặt Nâng Cao</span>
                   </div>
                   <i data-lucide="chevron-down" class="settings-accordion-arrow"></i>
                 </div>
@@ -2280,28 +2333,34 @@
                   <div class="form-group" style="margin-bottom: 18px;">
                     <label class="form-label" style="font-weight: 600;">Vị trí lưu trữ dữ liệu trên Drive:</label>
                     <div class="storage-loc-grid">
-                      <label class="storage-loc-card active" id="loc-card-appdata">
-                        <input type="radio" name="drive-storage-location" id="loc-radio-appdata" value="appDataFolder" checked>
-                        <div class="storage-loc-info">
-                          <span class="storage-loc-title"><i data-lucide="shield-check" style="width: 15px; height: 15px; color: var(--primary);"></i> Thư mục ẩn AppData (Khuyên dùng)</span>
-                          <span class="storage-loc-desc">Lưu trong vùng an toàn, không lo bị bấm xóa nhầm khi duyệt Drive.</span>
-                        </div>
-                      </label>
+                      <!-- 1. Thư mục ẩn AppData (Khuyên dùng) -->
+                      <div class="storage-loc-card active" id="loc-card-appdata" onclick="const r = document.getElementById('loc-radio-appdata'); if (!r.checked) { r.checked = true; r.dispatchEvent(new Event('change')); }">
+                        <label for="loc-radio-appdata" style="display: flex; align-items: flex-start; gap: 10px; width: 100%; cursor: pointer; margin: 0;">
+                          <input type="radio" name="drive-storage-location" id="loc-radio-appdata" value="appDataFolder" checked style="margin-top: 3px; accent-color: var(--primary);">
+                          <div class="storage-loc-info" style="flex: 1;">
+                            <span class="storage-loc-title"><i data-lucide="shield-check" style="width: 15px; height: 15px; color: var(--primary);"></i> Thư mục ẩn AppData (Khuyên dùng)</span>
+                            <span class="storage-loc-desc">Lưu trong vùng an toàn, không lo bị bấm xóa nhầm khi duyệt Drive.</span>
+                          </div>
+                        </label>
+                      </div>
 
-                      <label class="storage-loc-card" id="loc-card-custom">
-                        <input type="radio" name="drive-storage-location" id="loc-radio-custom" value="customFolder">
-                        <div class="storage-loc-info">
-                          <span class="storage-loc-title"><i data-lucide="folder" style="width: 15px; height: 15px; color: var(--income);"></i> Thư mục riêng hiển thị</span>
-                          <span class="storage-loc-desc">Lưu trong thư mục Drive thông thường, bạn có thể xem và tải file trực tiếp.</span>
-                        </div>
-                      </label>
-                    </div>
+                      <!-- 2. Gộp Thư mục riêng hiển thị và Tên thư mục hiển thị trên Drive vào 1 viền bao chung -->
+                      <div class="storage-loc-card" id="loc-card-custom" onclick="if (!event.target.closest('#custom-folder-name-wrap')) { const r = document.getElementById('loc-radio-custom'); if (!r.checked) { r.checked = true; r.dispatchEvent(new Event('change')); } }">
+                        <label for="loc-radio-custom" style="display: flex; align-items: flex-start; gap: 10px; width: 100%; cursor: pointer; margin: 0;">
+                          <input type="radio" name="drive-storage-location" id="loc-radio-custom" value="customFolder" style="margin-top: 3px; accent-color: var(--primary);">
+                          <div class="storage-loc-info" style="flex: 1;">
+                            <span class="storage-loc-title"><i data-lucide="folder" style="width: 15px; height: 15px; color: var(--income);"></i> Thư mục riêng hiển thị</span>
+                            <span class="storage-loc-desc">Lưu trong thư mục Drive thông thường, bạn có thể xem và tải file trực tiếp.</span>
+                          </div>
+                        </label>
 
-                    <div id="custom-folder-name-wrap" style="display: none; margin-top: 8px;">
-                      <label class="form-label" style="font-size: 0.8rem; color: var(--text-muted);">Tên thư mục trên Google Drive:</label>
-                      <div style="display: flex; gap: 8px;">
-                        <input type="text" id="settings-drive-folder-name" class="form-control" value="Sổ Thu Chi" placeholder="Ví dụ: Sổ Thu Chi">
-                        <button type="button" id="btn-save-folder-name" class="btn-secondary btn-sm">Áp dụng</button>
+                        <div id="custom-folder-name-wrap" style="display: none; margin-top: 10px; width: 100%; border-top: 1px dashed var(--border-color); padding-top: 10px;">
+                          <label class="form-label" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px;">Tên thư mục hiển thị trên Drive:</label>
+                          <div style="display: flex; gap: 8px;">
+                            <input type="text" id="settings-drive-folder-name" class="form-control" value="Sổ Thu Chi" placeholder="Ví dụ: Sổ Thu Chi" style="font-size: 0.82rem; background: var(--bg-surface);">
+                            <button type="button" id="btn-save-folder-name" class="btn-secondary btn-sm" style="white-space: nowrap;">Áp dụng</button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2326,47 +2385,7 @@
                     </small>
                   </div>
 
-                  <!-- 3. Bản sao lưu Mirror Backup -->
-                  <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 18px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                      <div>
-                        <div style="font-weight: 600; font-size: 0.88rem;">Bản sao lưu dự phòng vào Drive cá nhân (Mirror Backup)</div>
-                        <div style="font-size: 0.76rem; color: var(--text-muted);">Tự động lưu thêm 1 bản dự phòng vào Google Drive của bạn khi dùng chung sổ</div>
-                      </div>
-                      <label class="app-switch switch switch-sm" title="Kích hoạt / Vô hiệu hóa Mirror Backup" style="margin: 0; flex-shrink: 0;">
-                        <input type="checkbox" id="settings-auto-mirror">
-                        <span class="app-switch-slider slider round"></span>
-                      </label>
-                    </div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px; flex-wrap: wrap; gap: 8px;">
-                      <span style="font-size: 0.76rem; color: var(--text-secondary);">Thăng cấp thành sổ độc lập:</span>
-                      <button type="button" id="btn-promote-master" class="btn-secondary btn-sm" title="Tách sổ thành sổ chính độc lập trên tài khoản của bạn">
-                        <i data-lucide="crown" style="width: 13px; height: 13px; color: #f59e0b;"></i>
-                        <span>Thăng cấp thành Sổ chính</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- 4. Chia sẻ sổ qua Email Google -->
-                  <div class="server-vault-section-box" style="margin-bottom: 14px;">
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-weight: 600; font-size: 0.88rem; color: var(--text-primary);">
-                      <i data-lucide="user-plus" style="width: 15px; height: 15px; color: var(--primary);"></i>
-                      <span>Chia Sẻ Sổ Cho Thành Viên</span>
-                    </div>
-                    <div style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 10px;">Thành viên chỉ cần đăng nhập Google bằng email này để vào chung sổ</div>
-                    <div style="display: flex; gap: 6px; align-items: center;">
-                      <input type="email" id="settings-share-email" class="form-control" placeholder="Nhập email Google thành viên (vd: banbe@gmail.com)" style="flex: 1; min-width: 0; font-size: 0.82rem; padding: 7px 10px;">
-                      <select id="settings-share-role" class="form-control" style="width: auto; min-width: 110px; font-size: 0.82rem; padding: 7px 8px;">
-                        <option value="writer">Ghi chép</option>
-                        <option value="reader">Chỉ xem</option>
-                      </select>
-                      <button type="button" id="btn-share-invite" class="btn-primary btn-sm" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Cấp quyền chia sẻ">
-                        <i data-lucide="send" style="width: 14px; height: 14px;"></i>
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- 5. Tùy chỉnh Google Client ID -->
+                  <!-- 3. Tùy chỉnh Google Client ID -->
                   <div class="form-group" style="margin-bottom: 18px;">
                     <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
                       <span style="font-weight: 600;">Google Cloud OAuth 2.0 Client ID:</span>
@@ -2381,7 +2400,7 @@
                     </div>
                   </div>
 
-                  <!-- 6. Cloudflare Worker Bridge -->
+                  <!-- 4. Cloudflare Worker Bridge -->
                   <div style="border-top: 1px dashed var(--border-color); padding-top: 12px;">
                     <button type="button" id="btn-toggle-google-advanced" class="btn-text" style="font-size: 0.8rem; color: var(--primary); display: flex; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 0;">
                       <i data-lucide="zap" style="width: 14px; height: 14px;"></i>

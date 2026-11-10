@@ -10770,24 +10770,17 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 
 /* Settings Storage Location Cards */
 .storage-loc-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   margin-top: 8px;
   margin-bottom: 12px;
 }
 
-@media (max-width: 600px) {
-  .storage-loc-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 .storage-loc-card {
   position: relative;
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  flex-direction: column;
   padding: 12px 14px;
   background: var(--bg-card);
   border: 1.5px solid var(--border-color);
