@@ -172,6 +172,29 @@ class GoogleDriveSync {
     db.settings.put({ key: 'autoMirrorToPersonalDrive', value: this.autoMirror });
   }
 
+  get isConnected() {
+    return Boolean((this.accessToken && this.hasValidToken()) || this.userProfile);
+  }
+
+  get isLoggedIn() {
+    return Boolean(this.accessToken || this.userProfile);
+  }
+
+  async ensureToken(interactive = false) {
+    if (this.hasValidToken()) return this.accessToken;
+    if (this.workerUrl && this.refreshToken && this.clientId) {
+      try {
+        const refreshed = await this.refreshViaWorker();
+        if (refreshed && this.hasValidToken()) return this.accessToken;
+      } catch (_) {}
+    }
+    if (interactive) {
+      return await this.requestToken({ interactive: true, prompt: '' });
+    }
+    if (this.accessToken) return this.accessToken;
+    throw new Error('Chưa kết nối Google Drive hoặc phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.');
+  }
+
   hasValidToken() {
     return !!(this.accessToken && (!this.tokenExpiresAt || Date.now() < this.tokenExpiresAt));
   }
@@ -1013,6 +1036,15 @@ class GoogleDriveSync {
         await this.saveMirrorBackup(payload);
       }
 
+      // 3. Đồng bộ các mục chia sẻ độc lập (Individual Shared Items)
+      try {
+        await this.pushAllReceivedSharedItems();
+        await this.pullAndMergeOwnedSharedProjections();
+        await this.syncReceivedSharedItems();
+      } catch (shareErr) {
+        console.warn('[GoogleDrive] Lỗi đồng bộ mục chia sẻ:', shareErr);
+      }
+
       this.lastSyncTime = new Date().toISOString();
       await db.settings.put({ key: 'lastSyncTime', value: this.lastSyncTime });
 
@@ -1228,6 +1260,1062 @@ class GoogleDriveSync {
       loans: finalLoans,
       settings: finalSettings
     };
+  }
+
+  // ===========================================================================
+  // GRANULAR PER-ITEM SHARING (TÀI KHOẢN, SỔ TIẾT KIỆM, TÍCH LUỸ, VAY, TÀI SẢN)
+  // CLIENT-SIDE SERVERLESS GOOGLE DRIVE REST API v3
+  // ===========================================================================
+
+  async getSharedFileMap() {
+    try {
+      const s = await db.settings.get('googleDriveSharedFileMap');
+      return (s && s.value && typeof s.value === 'object') ? s.value : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  async setSharedFileId(itemType, itemId, fileId) {
+    const map = await this.getSharedFileMap();
+    map[`${itemType}_${itemId}`] = fileId;
+    await db.settings.put({ key: 'googleDriveSharedFileMap', value: map });
+  }
+
+  async getSharedFileId(itemType, itemId) {
+    const map = await this.getSharedFileMap();
+    if (map[`${itemType}_${itemId}`]) return map[`${itemType}_${itemId}`];
+    if (this.accessToken) {
+      try {
+        const fileName = `stc_shared_${itemType}_${itemId}.json`;
+        const q = encodeURIComponent(`name = '${fileName}' and trashed = false`);
+        const res = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=drive&q=${q}&fields=files(id,name)&orderBy=modifiedTime desc`, {
+          headers: { Authorization: `Bearer ${this.accessToken}` }
+        });
+        if (res.ok) {
+          const d = await res.json();
+          if (d.files && d.files.length > 0) {
+            const fid = d.files[0].id;
+            await this.setSharedFileId(itemType, itemId, fid);
+            return fid;
+          }
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  async getItemShareKey(keyIdentifier) {
+    if (!keyIdentifier) return null;
+    try {
+      const settings = (await db.settings.get('syncItemShareKeys')) || { value: {} };
+      const map = settings.value || {};
+      return map[String(keyIdentifier)] || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async saveItemShareKey(keyIdentifier, key) {
+    if (!keyIdentifier || !key) return;
+    try {
+      const settings = (await db.settings.get('syncItemShareKeys')) || { key: 'syncItemShareKeys', value: {} };
+      const map = settings.value || {};
+      map[String(keyIdentifier)] = key;
+      await db.settings.put({ key: 'syncItemShareKeys', value: map });
+    } catch (e) {
+      console.warn('[GoogleDrive] Không thể lưu item share key:', e);
+    }
+  }
+
+  async deleteItemShareKey(keyIdentifier) {
+    if (!keyIdentifier) return;
+    try {
+      const settings = (await db.settings.get('syncItemShareKeys')) || { key: 'syncItemShareKeys', value: {} };
+      const map = settings.value || {};
+      const idStr = String(keyIdentifier);
+      if (map[idStr] !== undefined) {
+        delete map[idStr];
+        await db.settings.put({ key: 'syncItemShareKeys', value: map });
+      }
+    } catch (e) {
+      console.warn('[GoogleDrive] Không thể xóa item share key:', e);
+    }
+  }
+
+  async getLeftSharedItems() {
+    try {
+      const setting = await db.settings.get('syncLeftSharedItems');
+      return (setting && Array.isArray(setting.value)) ? setting.value : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  async recordLeftSharedItem({ shareId, vaultId, itemType, itemId }) {
+    try {
+      const list = await this.getLeftSharedItems();
+      const sId = shareId ? String(shareId) : null;
+      const vId = vaultId ? String(vaultId) : null;
+      const iId = itemId ? String(itemId) : null;
+      const exists = list.some(x => {
+        if (sId && x.shareId && x.shareId === sId) return true;
+        if (itemType && iId && x.itemType === itemType && String(x.itemId) === iId) return true;
+        return false;
+      });
+      if (!exists) {
+        list.push({ shareId: sId, vaultId: vId, itemType, itemId: iId, service: 'google-drive', leftAt: Date.now() });
+        await db.settings.put({ key: 'syncLeftSharedItems', value: list });
+      }
+    } catch (e) {
+      console.warn('[GoogleDrive] recordLeftSharedItem error:', e);
+    }
+  }
+
+  async clearLeftSharedItem({ shareId, vaultId, itemType, itemId }) {
+    try {
+      let list = await this.getLeftSharedItems();
+      const sId = shareId ? String(shareId) : null;
+      const iId = itemId ? String(itemId) : null;
+      const filtered = list.filter(x => {
+        if (sId && x.shareId && x.shareId === sId) return false;
+        if (itemType && iId && x.itemType === itemType && String(x.itemId) === iId) return false;
+        return true;
+      });
+      await db.settings.put({ key: 'syncLeftSharedItems', value: filtered });
+    } catch (_) {}
+  }
+
+  async leaveReceivedSharedItem({ shareId, vaultId, itemType, itemId }) {
+    await this.recordLeftSharedItem({ shareId, vaultId, itemType, itemId });
+    try {
+      const settings = (await db.settings.get('syncItemShareKeys')) || { key: 'syncItemShareKeys', value: {} };
+      const map = settings.value || {};
+      if (shareId) delete map[String(shareId)];
+      if (itemId) delete map[String(itemId)];
+      if (itemType && itemId) delete map[`${itemType}_${itemId}`];
+      await db.settings.put({ key: 'syncItemShareKeys', value: map });
+    } catch (_) {}
+
+    try {
+      const recSetting = (await db.settings.get('googleDriveReceivedFiles')) || { key: 'googleDriveReceivedFiles', value: [] };
+      const list = Array.isArray(recSetting.value) ? recSetting.value.filter(x => x.fileId !== shareId) : [];
+      await db.settings.put({ key: 'googleDriveReceivedFiles', value: list });
+    } catch (_) {}
+  }
+
+  async projectAndPushItem(itemType, itemId, shareKey = null) {
+    await this.ensureToken(true);
+
+    let targetItem = null;
+    let transactions = [];
+    if (itemType === 'account') {
+      targetItem = await db.accounts.get(Number(itemId));
+      if (targetItem) {
+        transactions = (await db.transactions.toArray()).filter(t => {
+          if (t._isSharedItem) return false;
+          if (t.isDeleted && t.isDeleted !== 0) return false;
+          return Number(t.accountId) === Number(itemId) || Number(t.toAccountId) === Number(itemId);
+        });
+      }
+    } else if (itemType === 'savings' && db.savings) {
+      targetItem = await db.savings.get(Number(itemId));
+    } else if (itemType === 'accumulation' && db.accumulations) {
+      targetItem = await db.accumulations.get(Number(itemId));
+    } else if (itemType === 'loan' && db.loans) {
+      targetItem = await db.loans.get(Number(itemId));
+    } else if (itemType === 'asset' && db.assets) {
+      targetItem = await db.assets.get(Number(itemId));
+    }
+
+    if (!targetItem) throw new Error('Không tìm thấy mục cần trích xuất trên thiết bị này.');
+
+    let fileId = await this.getSharedFileId(itemType, itemId);
+
+    // Differential merge: Nếu file đã tồn tại trên Drive, tải về để kiểm tra giao dịch do thành viên khác tạo
+    if (fileId && itemType === 'account') {
+      try {
+        const pullRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+          headers: { Authorization: `Bearer ${this.accessToken}` }
+        });
+        if (pullRes.ok) {
+          const pullText = await pullRes.text();
+          let remoteJson = JSON.parse(pullText);
+          let remotePayload = remoteJson;
+          const currentShareKey = shareKey || (await this.getItemShareKey(`${itemType}_${itemId}`)) || this.encryptionPassword;
+          if (remoteJson.encrypted && remoteJson.payload && currentShareKey && window.CryptoService) {
+            try {
+              const dec = await window.CryptoService.decrypt(remoteJson.payload, currentShareKey);
+              remotePayload = JSON.parse(dec);
+            } catch (_) {}
+          }
+          const remoteTxs = Array.isArray(remotePayload.transactions) ? remotePayload.transactions : [];
+          if (remoteTxs.length > 0) {
+            let localChanged = false;
+            const currentTxs = await db.transactions.toArray();
+            const currentMap = new Map();
+            for (const ct of currentTxs) {
+              currentMap.set(String(ct._remoteTxId || ct.id), ct);
+            }
+            for (const rtx of remoteTxs) {
+              if (rtx && rtx.recordedByOther === 1) {
+                const existing = currentMap.get(String(rtx.id));
+                if (!existing) {
+                  const toAdd = {
+                    ...rtx,
+                    accountId: Number(itemId),
+                    _remoteTxId: rtx.id,
+                    isDeleted: rtx.isDeleted ? 1 : 0
+                  };
+                  delete toAdd.id;
+                  await db.transactions.add(toAdd);
+                  localChanged = true;
+                }
+              }
+            }
+            if (localChanged) {
+              if (typeof window.recalculateAccountBalances === 'function') {
+                await window.recalculateAccountBalances();
+              }
+              // Nạp lại giao dịch mới nhất
+              transactions = (await db.transactions.toArray()).filter(t => {
+                if (t._isSharedItem) return false;
+                if (t.isDeleted && t.isDeleted !== 0) return false;
+                return Number(t.accountId) === Number(itemId) || Number(t.toAccountId) === Number(itemId);
+              });
+            }
+          }
+        }
+      } catch (mergeErr) {
+        console.warn('[GoogleDrive] Kiểm tra giao dịch từ xa khi chiếu:', mergeErr);
+      }
+    }
+
+    const categories = await db.categories.toArray();
+    const catMap = new Map();
+    for (const c of categories) {
+      if (c && c.id) catMap.set(String(c.id), c);
+    }
+    const cleanItem = { ...targetItem };
+    delete cleanItem._isSharedItem;
+    delete cleanItem._shareId;
+    delete cleanItem.includeInReport;
+    delete cleanItem.includeInBudget;
+
+    const projectedPayload = {
+      version: 1,
+      itemType,
+      itemId: String(itemId),
+      itemName: cleanItem.name || cleanItem.borrowerName || 'Mục chia sẻ',
+      owner: {
+        name: this.userProfile?.name || '',
+        email: this.userProfile?.email || ''
+      },
+      item: cleanItem,
+      transactions: transactions.map(t => {
+        const copy = { ...t };
+        delete copy._isSharedItem;
+        delete copy._shareId;
+        if (copy.categoryId) {
+          const c = catMap.get(String(copy.categoryId));
+          if (c) {
+            copy.categoryName = c.name;
+            copy.categoryIcon = c.icon;
+            copy.categoryColor = c.color;
+          }
+        }
+        return copy;
+      }),
+      categories,
+      projectedAt: new Date().toISOString()
+    };
+
+    if (!shareKey && this.encryptionPassword) {
+      shareKey = (await this.getItemShareKey(`${itemType}_${itemId}`)) || this.encryptionPassword;
+    }
+
+    let fileContent = '';
+    if (shareKey && window.CryptoService) {
+      const encryptedStr = await window.CryptoService.encrypt(JSON.stringify(projectedPayload), shareKey);
+      fileContent = JSON.stringify({
+        encrypted: true,
+        payload: encryptedStr,
+        itemType,
+        itemId: String(itemId),
+        itemName: projectedPayload.itemName,
+        owner: projectedPayload.owner,
+        updatedAt: new Date().toISOString()
+      }, null, 2);
+      await this.saveItemShareKey(`${itemType}_${itemId}`, shareKey);
+    } else {
+      fileContent = JSON.stringify({
+        encrypted: false,
+        ...projectedPayload,
+        updatedAt: new Date().toISOString()
+      }, null, 2);
+    }
+
+    if (!fileId) {
+      // Bắt buộc lưu vào My Drive Custom Folder (Google Drive CẤM share file trong appDataFolder)
+      const folderId = await this.ensureCustomFolder();
+      const metadata = {
+        name: `stc_shared_${itemType}_${itemId}.json`,
+        mimeType: 'application/json'
+      };
+      if (folderId) {
+        metadata.parents = [folderId];
+      }
+
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', new Blob([fileContent], { type: 'application/json' }));
+
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${this.accessToken}` },
+        body: form
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'Không thể tạo file chia sẻ trên Google Drive.');
+      }
+      const created = await res.json();
+      fileId = created.id;
+      await this.setSharedFileId(itemType, itemId, fileId);
+    } else {
+      const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: fileContent
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'Không thể cập nhật file chia sẻ trên Google Drive.');
+      }
+    }
+
+    try {
+      const ownedShares = (await db.settings.get('syncOwnedSharedProjections')) || { key: 'syncOwnedSharedProjections', value: [] };
+      const list = Array.isArray(ownedShares.value) ? ownedShares.value : [];
+      const existing = list.find(x => x.itemType === itemType && String(x.itemId) === String(itemId) && x.service === 'google-drive');
+      if (existing) {
+        existing.fileId = fileId;
+        existing.shareKey = shareKey || null;
+      } else {
+        list.push({ itemType, itemId: String(itemId), fileId, shareKey: shareKey || null, service: 'google-drive' });
+      }
+      await db.settings.put({ key: 'syncOwnedSharedProjections', value: list });
+    } catch (_) {}
+
+    return { success: true, fileId, shareKey };
+  }
+
+  async getItemShares(itemType, itemId) {
+    const fileId = await this.getSharedFileId(itemType, itemId);
+    if (!fileId) return { shares: [], links: [] };
+
+    await this.ensureToken();
+    try {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?fields=permissions(id,type,role,emailAddress,displayName,photoLink)`, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (!res.ok) return { shares: [], links: [] };
+      const data = await res.json();
+      const myEmail = (this.userProfile?.email || '').toLowerCase();
+      const shares = [];
+      const links = [];
+
+      for (const p of (data.permissions || [])) {
+        if (p.type === 'user') {
+          if (p.emailAddress && p.emailAddress.toLowerCase() === myEmail) continue;
+          shares.push({
+            id: p.id,
+            user_email: p.emailAddress || '',
+            user_name: p.displayName || p.emailAddress || '',
+            user_picture: p.photoLink || null,
+            role: p.role === 'writer' ? 'editor' : 'viewer',
+            service: 'google-drive'
+          });
+        } else if (p.type === 'anyone') {
+          links.push({
+            id: p.id,
+            token: `gdrive_${fileId}`,
+            role: p.role === 'writer' ? 'editor' : 'viewer',
+            created_at: new Date().toISOString(),
+            service: 'google-drive'
+          });
+        }
+      }
+      return { shares, links };
+    } catch (err) {
+      console.warn('[GoogleDrive] getItemShares error:', err);
+      return { shares: [], links: [] };
+    }
+  }
+
+  async shareItemWithEmail(itemType, itemId, itemName, email, role = 'viewer', password = null) {
+    await this.ensureToken(true);
+    let shareKey = password ? password.trim() : null;
+    if (!shareKey && this.encryptionPassword) {
+      shareKey = (await this.getItemShareKey(`${itemType}_${itemId}`)) || this.encryptionPassword;
+    }
+
+    const { fileId } = await this.projectAndPushItem(itemType, itemId, shareKey);
+
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?sendNotificationEmail=false`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        role: role === 'editor' ? 'writer' : 'reader',
+        type: 'user',
+        emailAddress: email.trim()
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Không thể chia sẻ tới email này trên Google Drive.');
+    }
+
+    const perm = await res.json();
+    if (shareKey) {
+      await this.saveItemShareKey(perm.id, shareKey);
+    }
+
+    return {
+      success: true,
+      share: {
+        id: perm.id,
+        user_email: email.trim(),
+        role,
+        shareKey
+      }
+    };
+  }
+
+  async createItemShareLink(itemType, itemId, itemName, role = 'viewer', customKey = null) {
+    await this.ensureToken(true);
+    let shareKey = customKey ? customKey.trim() : null;
+    if (!shareKey && this.encryptionPassword) {
+      shareKey = (await this.getItemShareKey(`${itemType}_${itemId}`)) || this.encryptionPassword;
+    }
+
+    const { fileId } = await this.projectAndPushItem(itemType, itemId, shareKey);
+
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        role: role === 'editor' ? 'writer' : 'reader',
+        type: 'anyone'
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Không thể tạo liên kết chia sẻ trên Google Drive.');
+    }
+
+    const perm = await res.json();
+    const token = `gdrive_${fileId}`;
+    if (shareKey) {
+      await this.saveItemShareKey(token, shareKey);
+      await this.saveItemShareKey(fileId, shareKey);
+    }
+
+    return {
+      success: true,
+      link: {
+        id: perm.id,
+        token,
+        role,
+        shareKey
+      }
+    };
+  }
+
+  async revokeItemEmailShare(shareId, itemType, itemId) {
+    await this.ensureToken();
+    const fileId = await this.getSharedFileId(itemType, itemId);
+    if (!fileId) return { success: true };
+
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions/${shareId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${this.accessToken}` }
+    });
+    if (!res.ok && res.status !== 404) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Thu hồi quyền chia sẻ thất bại.');
+    }
+    await this.deleteItemShareKey(shareId);
+    return { success: true };
+  }
+
+  async revokeItemShareLink(linkId, itemType, itemId) {
+    await this.ensureToken();
+    const fileId = await this.getSharedFileId(itemType, itemId);
+    if (!fileId) return { success: true };
+
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions/${linkId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${this.accessToken}` }
+    });
+    if (!res.ok && res.status !== 404) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Thu hồi liên kết chia sẻ thất bại.');
+    }
+    await this.deleteItemShareKey(`gdrive_${fileId}`);
+    return { success: true };
+  }
+
+  async getShareLinkInfo(token) {
+    const fileId = token.replace(/^gdrive_/, '');
+    await this.ensureToken(true);
+
+    const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,owners,capabilities,shared`, {
+      headers: { Authorization: `Bearer ${this.accessToken}` }
+    });
+    if (!metaRes.ok) {
+      throw new Error('Liên kết chia sẻ không tồn tại hoặc bạn không có quyền truy cập file này.');
+    }
+    const meta = await metaRes.json();
+
+    const mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: { Authorization: `Bearer ${this.accessToken}` }
+    });
+    if (!mediaRes.ok) {
+      throw new Error('Không thể đọc dữ liệu mục chia sẻ từ Google Drive.');
+    }
+    const rawText = await mediaRes.text();
+    let json = JSON.parse(rawText);
+
+    const isEncrypted = Boolean(json.encrypted);
+    const itemName = json.itemName || json.item?.name || meta.name?.replace(/^stc_shared_[^_]+_[^_]+_?/, '').replace(/\.json$/, '') || 'Tài khoản chia sẻ';
+    const itemType = json.itemType || 'account';
+    const ownerName = json.owner?.name || meta.owners?.[0]?.displayName || 'Chủ sở hữu';
+    const ownerEmail = json.owner?.email || meta.owners?.[0]?.emailAddress || '';
+    const role = meta.capabilities?.canEdit ? 'editor' : 'viewer';
+
+    return {
+      token,
+      fileId,
+      itemType,
+      itemId: json.itemId || fileId,
+      itemName,
+      ownerName,
+      ownerEmail,
+      role,
+      isEncrypted,
+      service: 'google-drive'
+    };
+  }
+
+  async acceptShareLink(token, key = null) {
+    const fileId = token.replace(/^gdrive_/, '');
+    const recSetting = (await db.settings.get('googleDriveReceivedFiles')) || { key: 'googleDriveReceivedFiles', value: [] };
+    const list = Array.isArray(recSetting.value) ? recSetting.value : [];
+    if (!list.some(x => x.fileId === fileId)) {
+      list.push({ fileId, token, acceptedAt: Date.now() });
+      await db.settings.put({ key: 'googleDriveReceivedFiles', value: list });
+    }
+    await this.clearLeftSharedItem({ shareId: fileId, itemId: fileId });
+
+    if (key) {
+      await this.saveItemShareKey(fileId, key);
+      await this.saveItemShareKey(token, key);
+    }
+    return { success: true, shareId: fileId, fileId };
+  }
+
+  async syncReceivedSharedItems() {
+    if (!this.accessToken) return false;
+    if (this._isSyncingReceivedSharedItems) return false;
+    this._isSyncingReceivedSharedItems = true;
+    let hasChanges = false;
+
+    try {
+      // 0. Đẩy các giao dịch thành viên tạo lên Drive trước
+      await this.pushAllReceivedSharedItems();
+
+      // 1. Quét file từ SharedWithMe & Received via Link
+      const fileMap = new Map();
+      const sharedQuery = encodeURIComponent("sharedWithMe = true and name contains 'stc_shared_' and trashed = false");
+      try {
+        const swmRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${sharedQuery}&fields=files(id,name,modifiedTime,owners,capabilities,shared)`, {
+          headers: { Authorization: `Bearer ${this.accessToken}` }
+        });
+        if (swmRes.ok) {
+          const swmData = await swmRes.json();
+          if (Array.isArray(swmData.files)) {
+            for (const f of swmData.files) fileMap.set(f.id, f);
+          }
+        }
+      } catch (swmErr) {
+        console.warn('[GoogleDrive] Quét sharedWithMe warning:', swmErr);
+      }
+
+      const recSetting = (await db.settings.get('googleDriveReceivedFiles')) || { value: [] };
+      const recList = Array.isArray(recSetting.value) ? recSetting.value : [];
+      for (const item of recList) {
+        if (!fileMap.has(item.fileId)) {
+          try {
+            const fRes = await fetch(`https://www.googleapis.com/drive/v3/files/${item.fileId}?fields=id,name,modifiedTime,owners,capabilities,shared`, {
+              headers: { Authorization: `Bearer ${this.accessToken}` }
+            });
+            if (fRes.ok) {
+              const fData = await fRes.json();
+              fileMap.set(fData.id, fData);
+            }
+          } catch (_) {}
+        }
+      }
+
+      const leftItems = await this.getLeftSharedItems();
+      const isLeft = (shareId, remoteId) => {
+        return leftItems.some(x => (x.shareId && String(x.shareId) === String(shareId)) || (x.itemId && String(x.itemId) === String(remoteId)));
+      };
+
+      // Xóa các mục Google Drive chia sẻ đã rời khỏi hoặc không còn tồn tại
+      const localAccs = await db.accounts.toArray();
+      for (const acc of localAccs) {
+        if (acc._isSharedItem && acc._sharedService === 'google-drive') {
+          const removed = !fileMap.has(acc._shareId) || isLeft(acc._shareId, acc._remoteId);
+          if (removed) {
+            hasChanges = true;
+            await db.accounts.delete(acc.id);
+            const relTxs = (await db.transactions.toArray()).filter(t =>
+              Number(t.accountId) === Number(acc.id) || Number(t.toAccountId) === Number(acc.id) || (acc._shareId && String(t._shareId) === String(acc._shareId))
+            );
+            for (const t of relTxs) await db.transactions.delete(t.id);
+          }
+        }
+      }
+
+      // Xử lý từng file chia sẻ nhận được
+      for (const [fileId, fileMeta] of fileMap.entries()) {
+        const canEdit = Boolean(fileMeta.capabilities?.canEdit);
+        const role = canEdit ? 'editor' : 'viewer';
+        const ownerEmail = fileMeta.owners?.[0]?.emailAddress || '';
+        const ownerName = fileMeta.owners?.[0]?.displayName || ownerEmail || 'Chủ sở hữu';
+
+        let mediaRes;
+        try {
+          mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+            headers: { Authorization: `Bearer ${this.accessToken}` }
+          });
+        } catch (_) {
+          continue;
+        }
+        if (!mediaRes || !mediaRes.ok) continue;
+
+        const rawText = await mediaRes.text();
+        let remoteJson;
+        try {
+          remoteJson = JSON.parse(rawText);
+        } catch (_) {
+          continue;
+        }
+
+        const itemType = remoteJson.itemType || 'account';
+        const remoteItemId = remoteJson.itemId || fileId;
+
+        if (isLeft(fileId, remoteItemId)) continue;
+
+        let needsPassword = false;
+        let isEncrypted = Boolean(remoteJson.encrypted);
+        let parsedPayload = remoteJson;
+
+        if (isEncrypted) {
+          const shareKey = (await this.getItemShareKey(fileId)) || (await this.getItemShareKey(`gdrive_${fileId}`)) || (await this.getItemShareKey(remoteItemId)) || (await this.getItemShareKey(`${itemType}_${remoteItemId}`));
+          if (!shareKey) {
+            needsPassword = true;
+          } else if (window.CryptoService) {
+            try {
+              const decStr = await window.CryptoService.decrypt(remoteJson.payload, shareKey);
+              parsedPayload = JSON.parse(decStr);
+            } catch (decErr) {
+              console.warn('[GoogleDrive] Giải mã mục chia sẻ thất bại:', decErr);
+              needsPassword = true;
+            }
+          }
+        }
+
+        if (needsPassword) {
+          if (itemType === 'account') {
+            const currentAcc = (await db.accounts.toArray()).find(a => a._isSharedItem && a._shareId === fileId);
+            if (currentAcc) {
+              if (!currentAcc._needsPassword || !currentAcc._isEncrypted) {
+                await db.accounts.update(currentAcc.id, { _needsPassword: 1, _isEncrypted: 1 });
+                hasChanges = true;
+              }
+            } else {
+              await db.accounts.add({
+                name: remoteJson.itemName || 'Ví chia sẻ Google Drive',
+                type: 'cash',
+                balance: 0,
+                isDeleted: 0,
+                _isSharedItem: true,
+                _sharedService: 'google-drive',
+                _isEncrypted: 1,
+                _needsPassword: 1,
+                _sharedRole: role,
+                _shareId: fileId,
+                _remoteId: remoteItemId,
+                _sharedFrom: ownerName || ownerEmail
+              });
+              hasChanges = true;
+            }
+          }
+          continue;
+        }
+
+        const item = parsedPayload.item || {};
+        const transactions = Array.isArray(parsedPayload.transactions) ? parsedPayload.transactions : [];
+
+        if (itemType === 'account') {
+          const allAccs = await db.accounts.toArray();
+          const matchAccs = allAccs.filter(a => a._isSharedItem && a._shareId === fileId);
+          let localAcc = matchAccs[0] || null;
+
+          if (matchAccs.length > 1) {
+            for (let k = 1; k < matchAccs.length; k++) {
+              await db.accounts.delete(matchAccs[k].id);
+              hasChanges = true;
+            }
+          }
+
+          const accData = {
+            ...item,
+            isDeleted: 0,
+            _isSharedItem: true,
+            _sharedService: 'google-drive',
+            _isEncrypted: isEncrypted ? 1 : 0,
+            _needsPassword: 0,
+            _sharedRole: role,
+            _shareId: fileId,
+            _remoteId: remoteItemId,
+            _sharedFrom: ownerName || ownerEmail,
+            order: localAcc?.order !== undefined ? localAcc.order : (item.order !== undefined ? item.order : 999),
+            includeInReport: localAcc?.includeInReport !== undefined ? localAcc.includeInReport : 0,
+            includeInBudget: localAcc?.includeInBudget !== undefined ? localAcc.includeInBudget : 0
+          };
+
+          let localAccId;
+          if (localAcc) {
+            localAccId = localAcc.id;
+            const isDiff = localAcc._needsPassword === 1 ||
+              localAcc.name !== accData.name ||
+              Number(localAcc.balance || 0) !== Number(accData.balance || 0) ||
+              localAcc._sharedRole !== accData._sharedRole;
+            if (isDiff) {
+              hasChanges = true;
+              await db.accounts.update(localAccId, { ...accData, id: localAccId });
+            }
+          } else {
+            delete accData.id;
+            hasChanges = true;
+            localAccId = await db.accounts.add(accData);
+          }
+
+          // 3-Way differential merge cho giao dịch
+          const existingTxs = (await db.transactions.toArray()).filter(t =>
+            t._shareId === fileId || Number(t.accountId) === localAccId
+          );
+          const incomingRemoteIds = new Set(transactions.filter(t => !t.isDeleted).map(t => String(t.id)));
+
+          // Xoá giao dịch đã bị chủ sở hữu xoá (trừ giao dịch do thành viên tạo)
+          for (const oldTx of existingTxs) {
+            if (oldTx.recordedByOther === 1 || !oldTx._remoteTxId) continue;
+            if (!incomingRemoteIds.has(String(oldTx._remoteTxId))) {
+              hasChanges = true;
+              await db.transactions.delete(oldTx.id);
+            }
+          }
+
+          // Cập nhật hoặc thêm giao dịch từ xa
+          for (const rx of transactions) {
+            if (rx.isDeleted) {
+              const localMatch = existingTxs.find(t => String(t._remoteTxId || t.id) === String(rx.id));
+              if (localMatch) {
+                hasChanges = true;
+                await db.transactions.delete(localMatch.id);
+              }
+              continue;
+            }
+
+            let localMatch = existingTxs.find(t => String(t._remoteTxId || t.id) === String(rx.id));
+            if (!localMatch) {
+              localMatch = existingTxs.find(t =>
+                t.type === rx.type &&
+                String(t.date || '').slice(0, 10) === String(rx.date || '').slice(0, 10) &&
+                Math.abs(Number(t.amount || 0) - Number(rx.amount || 0)) < 0.01 &&
+                (t.note || '').trim().toLowerCase() === (rx.note || '').trim().toLowerCase()
+              );
+            }
+
+            const txData = {
+              ...rx,
+              accountId: localAccId,
+              isDeleted: 0,
+              _isSharedItem: true,
+              _sharedService: 'google-drive',
+              _shareId: fileId,
+              _remoteTxId: rx.id,
+              recordedByOther: rx.recordedByOther !== undefined ? rx.recordedByOther : 0,
+              createdBy: rx.createdBy || (ownerName || ownerEmail || 'Chủ sổ')
+            };
+
+            if (localMatch) {
+              const rTime = new Date(rx.updatedAt || 0).getTime() || 0;
+              const lTime = new Date(localMatch.updatedAt || 0).getTime() || 0;
+              if (rTime >= lTime) {
+                hasChanges = true;
+                await db.transactions.update(localMatch.id, { ...txData, id: localMatch.id });
+              }
+            } else {
+              delete txData.id;
+              hasChanges = true;
+              await db.transactions.add(txData);
+            }
+          }
+        }
+      }
+
+      if (hasChanges) {
+        if (typeof window.enforceAccountsDisplayOrder === 'function') {
+          await window.enforceAccountsDisplayOrder();
+        }
+        if (typeof window.recalculateAccountBalances === 'function') {
+          await window.recalculateAccountBalances();
+        }
+        if (window.app && typeof window.app.refreshAll === 'function') {
+          await window.app.refreshAll();
+        }
+        window.dispatchEvent(new CustomEvent('shared-items-updated'));
+      }
+      return hasChanges;
+    } catch (err) {
+      console.warn('[GoogleDrive] syncReceivedSharedItems error:', err);
+      return false;
+    } finally {
+      this._isSyncingReceivedSharedItems = false;
+    }
+  }
+
+  async pushReceivedSharedItemTransactions(shareId) {
+    if (!this.accessToken) return false;
+    try {
+      const localAcc = (await db.accounts.toArray()).find(a => a._isSharedItem && a._sharedService === 'google-drive' && a._shareId === shareId);
+      if (!localAcc || localAcc._sharedRole !== 'editor' || localAcc._needsPassword) return false;
+
+      const localAccId = Number(localAcc.id);
+      const allTxs = await db.transactions.toArray();
+      const rawLocalTxs = allTxs.filter(t => Number(t.accountId) === localAccId || Number(t.toAccountId) === localAccId || t._shareId === shareId);
+      if (rawLocalTxs.length === 0) return true;
+
+      const uProfile = this.userProfile;
+      const uName = (uProfile?.name && uProfile.name.trim()) || (uProfile?.email && uProfile.email.trim()) || 'Thành viên';
+      const uEmail = uProfile?.email || '';
+
+      // Tải bản chiếu hiện tại trên Drive
+      const mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${shareId}?alt=media`, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (!mediaRes.ok) return false;
+
+      const rawText = await mediaRes.text();
+      let remoteJson = JSON.parse(rawText);
+      let parsedPayload = remoteJson;
+      const shareKey = (await this.getItemShareKey(shareId)) || (await this.getItemShareKey(`gdrive_${shareId}`));
+
+      if (remoteJson.encrypted && remoteJson.payload) {
+        if (!shareKey || !window.CryptoService) return false;
+        try {
+          const dec = await window.CryptoService.decrypt(remoteJson.payload, shareKey);
+          parsedPayload = JSON.parse(dec);
+        } catch (_) {
+          return false;
+        }
+      }
+
+      const remoteTxs = Array.isArray(parsedPayload.transactions) ? parsedPayload.transactions : [];
+      const mergedMap = new Map();
+      for (const rx of remoteTxs) {
+        mergedMap.set(String(rx.id), rx);
+      }
+
+      for (const lx of rawLocalTxs) {
+        const idKey = String(lx._remoteTxId || lx.id);
+        const mappedTx = {
+          ...lx,
+          id: lx._remoteTxId || lx.id,
+          recordedByOther: 1,
+          createdBy: lx.createdBy || uName,
+          createdByEmail: lx.createdByEmail || uEmail
+        };
+        delete mappedTx._isSharedItem;
+        delete mappedTx._shareId;
+        delete mappedTx._remoteTxId;
+        mergedMap.set(idKey, mappedTx);
+      }
+
+      const updatedPayload = {
+        ...parsedPayload,
+        transactions: Array.from(mergedMap.values()),
+        updatedAt: new Date().toISOString()
+      };
+
+      let bodyContent;
+      if (shareKey && window.CryptoService) {
+        const encStr = await window.CryptoService.encrypt(JSON.stringify(updatedPayload), shareKey);
+        bodyContent = JSON.stringify({
+          encrypted: true,
+          payload: encStr,
+          itemType: 'account',
+          itemId: String(localAcc._remoteId || shareId),
+          itemName: localAcc.name,
+          updatedAt: updatedPayload.updatedAt
+        }, null, 2);
+      } else {
+        bodyContent = JSON.stringify({
+          encrypted: false,
+          ...updatedPayload
+        }, null, 2);
+      }
+
+      const patchRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${shareId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: bodyContent
+      });
+
+      if (patchRes.ok) {
+        for (const t of rawLocalTxs) {
+          if (!t._remoteTxId) {
+            await db.transactions.update(t.id, { _remoteTxId: t.id, _shareId: shareId, _isSharedItem: true });
+          }
+        }
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.warn('[GoogleDrive] pushReceivedSharedItemTransactions error:', err);
+      return false;
+    }
+  }
+
+  async pushAllReceivedSharedItems() {
+    if (!this.accessToken) return false;
+    if (this._isPushingReceivedSharedItems) return false;
+    this._isPushingReceivedSharedItems = true;
+    try {
+      const sharedAccounts = (await db.accounts.toArray()).filter(a =>
+        a._isSharedItem && a._sharedService === 'google-drive' && a._sharedRole === 'editor' && a._shareId
+      );
+      let anyPushed = false;
+      for (const acc of sharedAccounts) {
+        const ok = await this.pushReceivedSharedItemTransactions(acc._shareId);
+        if (ok) anyPushed = true;
+      }
+      return anyPushed;
+    } finally {
+      this._isPushingReceivedSharedItems = false;
+    }
+  }
+
+  async pullAndMergeOwnedSharedProjections() {
+    if (!this.accessToken) return false;
+    let hasChanges = false;
+    try {
+      const map = await this.getSharedFileMap();
+      const entries = Object.entries(map);
+      if (entries.length === 0) return false;
+
+      for (const [key, fileId] of entries) {
+        const [itemType, itemId] = key.split('_');
+        const shareKey = (await this.getItemShareKey(key)) || (await this.getItemShareKey(itemId)) || this.encryptionPassword;
+
+        let mediaRes;
+        try {
+          mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+            headers: { Authorization: `Bearer ${this.accessToken}` }
+          });
+        } catch (_) {
+          continue;
+        }
+        if (!mediaRes || !mediaRes.ok) continue;
+
+        const text = await mediaRes.text();
+        let json = JSON.parse(text);
+        let payload = json;
+        if (json.encrypted && json.payload) {
+          if (!shareKey || !window.CryptoService) continue;
+          try {
+            const dec = await window.CryptoService.decrypt(json.payload, shareKey);
+            payload = JSON.parse(dec);
+          } catch (_) {
+            continue;
+          }
+        }
+
+        const remoteTxs = Array.isArray(payload.transactions) ? payload.transactions : [];
+        if (itemType === 'account' && remoteTxs.length > 0) {
+          const accId = Number(itemId);
+          const localTxs = (await db.transactions.toArray()).filter(t => !t._isSharedItem && (Number(t.accountId) === accId || Number(t.toAccountId) === accId));
+          const localMap = new Map();
+          for (const lt of localTxs) localMap.set(String(lt._remoteTxId || lt.id), lt);
+
+          for (const rtx of remoteTxs) {
+            let existing = localMap.get(String(rtx.id));
+            if (!existing) {
+              existing = localTxs.find(t =>
+                t.type === rtx.type &&
+                String(t.date || '').slice(0, 10) === String(rtx.date || '').slice(0, 10) &&
+                Math.abs(Number(t.amount || 0) - Number(rtx.amount || 0)) < 0.01 &&
+                (t.note || '').trim().toLowerCase() === (rtx.note || '').trim().toLowerCase()
+              );
+            }
+
+            if (rtx.recordedByOther === 1) {
+              if (!existing) {
+                const toAdd = {
+                  ...rtx,
+                  accountId: accId,
+                  _remoteTxId: rtx.id,
+                  isDeleted: rtx.isDeleted ? 1 : 0
+                };
+                delete toAdd.id;
+                hasChanges = true;
+                await db.transactions.add(toAdd);
+              } else if (rtx.isDeleted && !existing.isDeleted) {
+                hasChanges = true;
+                await db.transactions.update(existing.id, { isDeleted: 1, updatedAt: rtx.updatedAt || Date.now() });
+              }
+            }
+          }
+        }
+      }
+
+      if (hasChanges && typeof window.recalculateAccountBalances === 'function') {
+        await window.recalculateAccountBalances();
+      }
+      return hasChanges;
+    } catch (e) {
+      console.warn('[GoogleDrive] pullAndMergeOwnedSharedProjections error:', e);
+      return false;
+    }
   }
 }
 

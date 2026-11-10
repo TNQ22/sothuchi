@@ -1,0 +1,7 @@
+# SỔ THU CHI - CURSOR & AI CODING RULES
+Luôn tuân thủ tài liệu hướng dẫn và ngôn ngữ thiết kế tại AGENTS.md:
+
+1. Màu sắc chủ đạo: Xanh ngọc bích (Jade / Teal / Emerald - CSS variable: --primary: #0d9488, --primary-hover: #0f766e, --border-focus: #14b8a6).
+2. Bố cục không gian: Xát viền màn hình (Edge-to-edge), triệt để tối ưu diện tích hiển thị, hạn chế lề thừa (margin/padding bao ngoài) trên di động.
+3. Nút bấm tương tác: Căng đều các nút (flex 1 hoặc grid căng đầy 100%), nút bấm to rõ dễ chạm (min-height 44px - 48px), bo góc mượt mà 12px-16px.
+4. Kiến trúc: Thuần HTML/CSS/JS, PWA Offline-First, tái sử dụng các biến CSS trong css/style.css.

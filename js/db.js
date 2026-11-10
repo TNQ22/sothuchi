@@ -645,8 +645,18 @@ async function addTransaction(data) {
             s.itemType === 'account' && (String(s.itemId) === String(accId) || (toAccId && String(s.itemId) === String(toAccId)))
           );
           for (const s of relevant) {
-            const currentKey = s.shareKey || (await window.serverSyncService.getItemShareKey(`${s.itemType}_${s.itemId}`));
-            window.serverSyncService.projectAndPushItem(s.itemType, s.itemId, currentKey).catch(() => {});
+            if (s.service === 'google-drive' || (!s.service && window.googleDriveService?.isConnected)) {
+              if (window.googleDriveService && typeof window.googleDriveService.projectAndPushItem === 'function') {
+                const currentKey = s.shareKey || (await window.googleDriveService.getItemShareKey(`${s.itemType}_${s.itemId}`));
+                window.googleDriveService.projectAndPushItem(s.itemType, s.itemId, currentKey).catch(() => {});
+              }
+            }
+            if (!s.service || s.service === 'server') {
+              if (window.serverSyncService && typeof window.serverSyncService.projectAndPushItem === 'function' && window.serverSyncService.isConnected) {
+                const currentKey = s.shareKey || (await window.serverSyncService.getItemShareKey(`${s.itemType}_${s.itemId}`));
+                window.serverSyncService.projectAndPushItem(s.itemType, s.itemId, currentKey).catch(() => {});
+              }
+            }
           }
         }
       }
@@ -721,8 +731,18 @@ async function deleteTransaction(txId) {
             s.itemType === 'account' && (String(s.itemId) === String(accId) || (toAccId && String(s.itemId) === String(toAccId)))
           );
           for (const s of relevant) {
-            const currentKey = s.shareKey || (await window.serverSyncService.getItemShareKey(`${s.itemType}_${s.itemId}`));
-            window.serverSyncService.projectAndPushItem(s.itemType, s.itemId, currentKey).catch(() => {});
+            if (s.service === 'google-drive' || (!s.service && window.googleDriveService?.isConnected)) {
+              if (window.googleDriveService && typeof window.googleDriveService.projectAndPushItem === 'function') {
+                const currentKey = s.shareKey || (await window.googleDriveService.getItemShareKey(`${s.itemType}_${s.itemId}`));
+                window.googleDriveService.projectAndPushItem(s.itemType, s.itemId, currentKey).catch(() => {});
+              }
+            }
+            if (!s.service || s.service === 'server') {
+              if (window.serverSyncService && typeof window.serverSyncService.projectAndPushItem === 'function' && window.serverSyncService.isConnected) {
+                const currentKey = s.shareKey || (await window.serverSyncService.getItemShareKey(`${s.itemType}_${s.itemId}`));
+                window.serverSyncService.projectAndPushItem(s.itemType, s.itemId, currentKey).catch(() => {});
+              }
+            }
           }
         }
       }

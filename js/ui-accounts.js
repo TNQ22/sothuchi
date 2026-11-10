@@ -801,46 +801,55 @@ const UIAccounts = {
 
     try {
       showToast('Đang kiểm tra và giải mã dữ liệu...', 'info');
+      if (window.googleDriveService) {
+        if (shareId) await window.googleDriveService.saveItemShareKey(shareId, cleanPass);
+        if (remoteId) await window.googleDriveService.saveItemShareKey(remoteId, cleanPass);
+        if (remoteId) await window.googleDriveService.saveItemShareKey(`${type}_${remoteId}`, cleanPass);
+      }
       if (window.serverSyncService) {
         if (shareId) await window.serverSyncService.saveItemShareKey(shareId, cleanPass);
         if (remoteId) await window.serverSyncService.saveItemShareKey(remoteId, cleanPass);
         if (remoteId) await window.serverSyncService.saveItemShareKey(`${type}_${remoteId}`, cleanPass);
+      }
 
-        // Chạy đồng bộ giải mã lại
+      // Chạy đồng bộ giải mã lại
+      if (item && item._sharedService === 'google-drive' && window.googleDriveService) {
+        await window.googleDriveService.syncReceivedSharedItems();
+      } else if (window.serverSyncService) {
         await window.serverSyncService.syncReceivedSharedItems();
+      }
 
-        // Kiểm tra xem item sau khi sync có còn bị _needsPassword không
-        let updatedItem = null;
-        if (type === 'account') updatedItem = await db.accounts.get(numId);
-        else if (type === 'savings' && db.savings) updatedItem = await db.savings.get(numId);
-        else if (type === 'accumulation' && db.accumulations) updatedItem = await db.accumulations.get(numId);
-        else if (type === 'loan' && db.loans) updatedItem = await db.loans.get(numId);
-        else if (type === 'asset' && db.assets) updatedItem = await db.assets.get(numId);
+      // Kiểm tra xem item sau khi sync có còn bị _needsPassword không
+      let updatedItem = null;
+      if (type === 'account') updatedItem = await db.accounts.get(numId);
+      else if (type === 'savings' && db.savings) updatedItem = await db.savings.get(numId);
+      else if (type === 'accumulation' && db.accumulations) updatedItem = await db.accumulations.get(numId);
+      else if (type === 'loan' && db.loans) updatedItem = await db.loans.get(numId);
+      else if (type === 'asset' && db.assets) updatedItem = await db.assets.get(numId);
 
-        if (updatedItem && updatedItem._needsPassword) {
-          showToast('Mật khẩu mã hoá không chính xác hoặc không thể giải mã!', 'error');
-        } else {
-          showToast(`Đã mở khoá và giải mã thành công "${itemName}"!`, 'success');
-          if (typeof this.render === 'function') {
-            await this.render();
-          }
-          if (type === 'savings' && typeof this.renderSavings === 'function') {
-            await this.renderSavings();
-          } else if (type === 'accumulation' && typeof this.renderAccumulations === 'function') {
-            await this.renderAccumulations();
-          } else if (type === 'loan' && typeof this.renderLoans === 'function') {
-            await this.renderLoans();
-          } else if (type === 'asset' && typeof this.renderAssets === 'function') {
-            await this.renderAssets();
-          }
-          if (typeof window.recalculateAccountBalances === 'function') {
-            await window.recalculateAccountBalances();
-          }
-          if (window.app && typeof window.app.refreshAll === 'function') {
-            await window.app.refreshAll();
-          }
-          if (window.lucide) lucide.createIcons();
+      if (updatedItem && updatedItem._needsPassword) {
+        showToast('Mật khẩu mã hoá không chính xác hoặc không thể giải mã!', 'error');
+      } else {
+        showToast(`Đã mở khoá và giải mã thành công "${itemName}"!`, 'success');
+        if (typeof this.render === 'function') {
+          await this.render();
         }
+        if (type === 'savings' && typeof this.renderSavings === 'function') {
+          await this.renderSavings();
+        } else if (type === 'accumulation' && typeof this.renderAccumulations === 'function') {
+          await this.renderAccumulations();
+        } else if (type === 'loan' && typeof this.renderLoans === 'function') {
+          await this.renderLoans();
+        } else if (type === 'asset' && typeof this.renderAssets === 'function') {
+          await this.renderAssets();
+        }
+        if (typeof window.recalculateAccountBalances === 'function') {
+          await window.recalculateAccountBalances();
+        }
+        if (window.app && typeof window.app.refreshAll === 'function') {
+          await window.app.refreshAll();
+        }
+        if (window.lucide) lucide.createIcons();
       }
     } catch (err) {
       showToast('Lỗi giải mã: ' + err.message, 'error');
@@ -942,6 +951,14 @@ const UIAccounts = {
     if (isSharedReceived) {
       if (window.serverSyncService && typeof window.serverSyncService.leaveReceivedSharedItem === 'function') {
         await window.serverSyncService.leaveReceivedSharedItem({
+          shareId: acc._shareId,
+          vaultId: acc._remoteVaultId,
+          itemType: 'account',
+          itemId: acc._remoteId
+        });
+      }
+      if (window.googleDriveService && typeof window.googleDriveService.leaveReceivedSharedItem === 'function') {
+        await window.googleDriveService.leaveReceivedSharedItem({
           shareId: acc._shareId,
           vaultId: acc._remoteVaultId,
           itemType: 'account',
@@ -5366,9 +5383,17 @@ const UIAccounts = {
       const remoteVaultId = item?._remoteVaultId || null;
       const remoteId = item?._remoteId || null;
 
-      // 1. Thông báo cho ServerSync để huỷ quyền trên server và ghi vào blacklist cục bộ
+      // 1. Thông báo cho Sync Service để huỷ quyền và ghi vào blacklist cục bộ
       if (window.serverSyncService && typeof window.serverSyncService.leaveReceivedSharedItem === 'function') {
         await window.serverSyncService.leaveReceivedSharedItem({
+          shareId,
+          vaultId: remoteVaultId,
+          itemType: type,
+          itemId: remoteId || id
+        });
+      }
+      if (window.googleDriveService && typeof window.googleDriveService.leaveReceivedSharedItem === 'function') {
+        await window.googleDriveService.leaveReceivedSharedItem({
           shareId,
           vaultId: remoteVaultId,
           itemType: type,

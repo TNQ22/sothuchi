@@ -21,11 +21,14 @@ const UniversalShareModal = {
   serverUsersCache: [],
   isLoading: false,
 
+  getActiveService() {
+    return this.currentService === 'google-drive' ? window.googleDriveService : window.serverSyncService;
+  },
+
   async open(type, id) {
     this.currentType = type;
     this.currentId = Number(id);
     this.currentItem = null;
-    this.currentService = 'server';
     this.currentTab = 'email';
 
     // 1. Lấy thông tin tài khoản / sổ từ IndexedDB
@@ -50,6 +53,20 @@ const UniversalShareModal = {
       return;
     }
 
+    // Tự động ưu tiên Google Drive nếu mục đã được chia sẻ qua Drive hoặc chỉ có Drive kết nối
+    let preferredService = 'server';
+    try {
+      const gDriveHasFile = window.googleDriveService && typeof window.googleDriveService.getSharedFileId === 'function'
+        ? await window.googleDriveService.getSharedFileId(type, this.currentId)
+        : null;
+      if (gDriveHasFile) {
+        preferredService = 'google-drive';
+      } else if (window.googleDriveService?.isConnected && (!window.serverSyncService || !window.serverSyncService.isConnected)) {
+        preferredService = 'google-drive';
+      }
+    } catch (_) {}
+    this.currentService = preferredService;
+
     // 2. Hiển thị modal
     const modal = document.getElementById('modal-universal-share');
     if (!modal) return;
@@ -69,11 +86,14 @@ const UniversalShareModal = {
     // 3. Tải danh sách dịch vụ và dữ liệu chia sẻ
     await this.loadServices();
     await this.loadShareData();
-    this.loadServerUsersForShare();
+    if (this.currentService === 'server') {
+      this.loadServerUsersForShare();
+    }
 
-    // Tự động cập nhật bản chiếu mới nhất lên máy chủ
-    if (window.serverSyncService && window.serverSyncService.isConnected) {
-      window.serverSyncService.projectAndPushItem(type, this.currentId).catch(err => {
+    // Tự động cập nhật bản chiếu mới nhất lên dịch vụ đã chọn
+    const activeService = this.getActiveService();
+    if (activeService && activeService.isConnected && typeof activeService.projectAndPushItem === 'function') {
+      activeService.projectAndPushItem(type, this.currentId).catch(err => {
         console.warn('[ShareModal] Cập nhật bản chiếu tự động:', err?.message || err);
       });
     }
@@ -200,6 +220,26 @@ const UniversalShareModal = {
       serverPill.style.border = sSt.border;
     }
 
+    // Cập nhật badge trên menu option của Google Drive
+    const gService = window.googleDriveService;
+    const isDriveConnected = Boolean(gService && (gService.userProfile || gService.isConnected));
+    let driveStatusText = 'Chưa kết nối';
+    let driveStatusClass = 'not-connected';
+    if (isDriveConnected) {
+      driveStatusText = 'Đã kết nối';
+      driveStatusClass = 'connected';
+    }
+
+    const gdrivePill = document.getElementById('share-service-option-gdrive-pill');
+    if (gdrivePill) {
+      gdrivePill.textContent = driveStatusText;
+      gdrivePill.className = `share-service-status-pill ${driveStatusClass}`;
+      const gSt = statusStyles[driveStatusClass] || statusStyles['ready'];
+      gdrivePill.style.background = gSt.bg;
+      gdrivePill.style.color = gSt.color;
+      gdrivePill.style.border = gSt.border;
+    }
+
     const configs = {
       'server': {
         label: 'Máy Chủ Riêng (Self-Hosted)',
@@ -210,8 +250,8 @@ const UniversalShareModal = {
       'google-drive': {
         label: 'Google Drive',
         iconHtml: '<svg viewBox="0 0 87.3 78" style="width: 18px; height: 16px;"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg>',
-        statusText: 'Sắp hỗ trợ',
-        statusClass: 'planned'
+        statusText: driveStatusText,
+        statusClass: driveStatusClass
       },
       'dropbox': {
         label: 'Dropbox',
@@ -384,10 +424,11 @@ const UniversalShareModal = {
 
     // 2. GOOGLE DRIVE
     if (this.currentService === 'google-drive') {
-      if (serverSection) serverSection.style.display = 'none';
-      const isDriveConnected = Boolean(window.googleDriveService && (window.googleDriveService.userProfile || window.googleDriveService.isConnected));
+      const gService = window.googleDriveService;
+      const isDriveConnected = Boolean(gService && (gService.userProfile || gService.isConnected));
 
       if (!isDriveConnected) {
+        if (serverSection) serverSection.style.display = 'none';
         if (cloudNoticeSection) {
           cloudNoticeSection.style.display = 'block';
           cloudNoticeSection.innerHTML = `
@@ -395,7 +436,7 @@ const UniversalShareModal = {
               <div class="share-auth-icon-wrap warn" style="margin: 0 auto 12px; width: 48px; height: 48px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); display: flex; align-items: center; justify-content: center;">
                 <i data-lucide="cloud-off" style="width: 24px; height: 24px; color: #f59e0b;"></i>
               </div>
-              <h4 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-bottom: 6px;">Cần kết nối tới dịch vụ sao lưu để có thể bắt đầu chia sẻ.</h4>
+              <h4 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-bottom: 6px;">Cần kết nối tới Google Drive để có thể bắt đầu chia sẻ.</h4>
               <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 18px; line-height: 1.45;">Vui lòng kết nối tài khoản Google Drive trong phần Cài đặt.</p>
               <button type="button" class="btn-primary" style="padding: 10px 22px; font-size: 0.84rem; display: inline-flex; align-items: center; gap: 8px; margin: 0 auto; border-radius: 8px; font-weight: 600;" onclick="UniversalShareModal.goToSettings('google-drive')">
                 <i data-lucide="settings" style="width: 15px; height: 15px;"></i> Chuyển đến Cài đặt
@@ -403,22 +444,60 @@ const UniversalShareModal = {
             </div>
           `;
         }
-      } else {
-        if (cloudNoticeSection) {
-          cloudNoticeSection.style.display = 'block';
-          cloudNoticeSection.innerHTML = `
-            <div class="share-cloud-notice-box">
-              <div class="share-notice-icon">
-                <i data-lucide="info" style="width: 28px; height: 28px;"></i>
-              </div>
-              <h4>Dịch vụ Google Drive</h4>
-              <p>Hiện tại Google Drive hỗ trợ sao lưu dự phòng toàn bộ sổ vào tài khoản đám mây cá nhân. Cơ chế chia sẻ độc lập từng tài khoản/sổ qua Drive đang được hoàn thiện.</p>
-              <p style="margin-top: 10px; font-weight: 500; color: var(--primary-color);">Vui lòng chọn <strong>Máy Chủ Riêng (Self-Hosted)</strong> để phân quyền và chia sẻ tức thì.</p>
-            </div>
-          `;
-        }
+        if (window.lucide) lucide.createIcons();
+        return;
       }
+
+      // Đã kết nối Google Drive thành công
+      if (cloudNoticeSection) cloudNoticeSection.style.display = 'none';
+      if (serverSection) serverSection.style.display = 'block';
+      if (notConnectedBox) notConnectedBox.style.display = 'none';
+      if (mainBox) mainBox.style.display = 'block';
+
+      // Cập nhật banner trạng thái Google Drive
+      const gEmail = gService.userProfile?.email || 'Google Drive';
+      const existingStatus = document.getElementById('share-server-active-pill');
+      const pillHtml = `
+        <span class="status-dot"></span>
+        <span>Google Drive: <strong>${escapeHTML(gEmail)}</strong> (Trực tiếp REST API v3)</span>
+      `;
+      if (!existingStatus) {
+        const pillDiv = document.createElement('div');
+        pillDiv.id = 'share-server-active-pill';
+        pillDiv.className = 'share-server-status-pill';
+        pillDiv.style.marginBottom = '12px';
+        pillDiv.innerHTML = pillHtml;
+        mainBox.insertBefore(pillDiv, mainBox.firstChild);
+      } else {
+        existingStatus.innerHTML = pillHtml;
+      }
+
+      const emailListEl = document.getElementById('share-email-members-list');
+      const linkListEl = document.getElementById('share-active-links-list');
+
+      if (emailListEl) emailListEl.innerHTML = '<div class="share-loading-spinner"><i data-lucide="loader-2" class="spin"></i> Đang tải danh sách phân quyền từ Google Drive...</div>';
+      if (linkListEl) linkListEl.innerHTML = '<div class="share-loading-spinner"><i data-lucide="loader-2" class="spin"></i> Đang tải danh sách liên kết...</div>';
       if (window.lucide) lucide.createIcons();
+
+      try {
+        const res = await window.googleDriveService.getItemShares(this.currentType, this.currentId);
+        this.shares = res.shares || [];
+        const rawLinks = res.links || [];
+        for (const l of rawLinks) {
+          l.shareKey = await window.googleDriveService.getItemShareKey(l.token) || await window.googleDriveService.getItemShareKey(`${this.currentType}_${this.currentId}`);
+        }
+        this.links = rawLinks;
+
+        this.renderEmailShares();
+        this.renderShareLinks();
+
+        const totalShares = (this.shares.length || 0) + (this.links.length || 0);
+        await this.updateItemSharedState(totalShares > 0 ? 1 : 0);
+      } catch (err) {
+        console.warn('[ShareModal] Lỗi tải dữ liệu chia sẻ Google Drive:', err);
+        if (emailListEl) emailListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
+        if (linkListEl) linkListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
+      }
       return;
     }
 
@@ -638,7 +717,8 @@ const UniversalShareModal = {
 
     try {
       if (typeof showToast === 'function') showToast('Đang cấp quyền chia sẻ...', 'info');
-      await window.serverSyncService.shareItemWithEmail(
+      const syncService = this.getActiveService();
+      await syncService.shareItemWithEmail(
         this.currentType,
         this.currentId,
         this.currentItem.name,
@@ -668,7 +748,8 @@ const UniversalShareModal = {
     if (!ok) return;
 
     try {
-      await window.serverSyncService.revokeItemEmailShare(shareId);
+      const syncService = this.getActiveService();
+      await syncService.revokeItemEmailShare(shareId, this.currentType, this.currentId);
       if (typeof showToast === 'function') showToast('Đã thu hồi quyền thành công.', 'success');
       await this.loadShareData();
       if ((this.shares.length || 0) + (this.links.length || 0) === 0) {
@@ -685,7 +766,8 @@ const UniversalShareModal = {
 
     try {
       if (typeof showToast === 'function') showToast('Đang tạo liên kết chia sẻ...', 'info');
-      await window.serverSyncService.createItemShareLink(
+      const syncService = this.getActiveService();
+      await syncService.createItemShareLink(
         this.currentType,
         this.currentId,
         this.currentItem.name,
@@ -712,7 +794,8 @@ const UniversalShareModal = {
     if (!ok) return;
 
     try {
-      await window.serverSyncService.revokeItemShareLink(linkId);
+      const syncService = this.getActiveService();
+      await syncService.revokeItemShareLink(linkId, this.currentType, this.currentId);
       if (typeof showToast === 'function') showToast('Đã thu hồi liên kết thành công.', 'success');
       await this.loadShareData();
       if ((this.shares.length || 0) + (this.links.length || 0) === 0) {
@@ -724,7 +807,8 @@ const UniversalShareModal = {
   },
 
   async copyLink(token) {
-    const key = (await window.serverSyncService.getItemShareKey(token)) || (await window.serverSyncService.getItemShareKey(`${this.currentType}_${this.currentId}`));
+    const syncService = this.getActiveService();
+    const key = (await syncService.getItemShareKey(token)) || (await syncService.getItemShareKey(`${this.currentType}_${this.currentId}`));
     const fullUrl = key
       ? `${window.location.origin}${window.location.pathname}#share_token=${token}&key=${encodeURIComponent(key)}`
       : `${window.location.origin}${window.location.pathname}#share_token=${token}`;
@@ -916,7 +1000,11 @@ const ReceiveShareModal = {
     if (typeof showToast === 'function') showToast('Đang kiểm tra liên kết chia sẻ...', 'info');
 
     try {
-      const info = await window.serverSyncService.getShareLinkInfo(token);
+      const isGDrive = token.startsWith('gdrive_');
+      const syncService = isGDrive ? window.googleDriveService : window.serverSyncService;
+      if (!syncService) throw new Error('Dịch vụ đồng bộ chưa sẵn sàng.');
+
+      const info = await syncService.getShareLinkInfo(token);
       this.shareData = info;
 
       const modal = document.getElementById('modal-receive-share');
@@ -930,6 +1018,9 @@ const ReceiveShareModal = {
       if (nameEl) nameEl.textContent = info.itemName || 'Tài khoản chia sẻ';
       if (typeEl) {
         let typeBadgeHtml = UniversalShareModal.getTypeLabel(info.itemType);
+        if (info.service === 'google-drive') {
+          typeBadgeHtml += ' &bull; <span style="color:#2563eb; font-weight:600;"><i data-lucide="cloud" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Google Drive</span>';
+        }
         if (info.isEncrypted) {
           typeBadgeHtml += ' &bull; <span style="color:#10b981; font-weight:600;"><i data-lucide="shield-check" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Mã Hóa Đầu Cuối (E2EE)</span>';
         }
@@ -986,21 +1077,26 @@ const ReceiveShareModal = {
       }
 
       if (typeof showToast === 'function') showToast('Đang nhận tài khoản vào sổ...', 'info');
-      const result = await window.serverSyncService.acceptShareLink(this.currentToken);
+      const isGDrive = this.currentToken.startsWith('gdrive_');
+      const syncService = isGDrive ? window.googleDriveService : window.serverSyncService;
+      if (!syncService) throw new Error('Dịch vụ đồng bộ chưa sẵn sàng.');
+
+      const result = await syncService.acceptShareLink(this.currentToken, this.currentKey);
 
       // Lưu khóa giải mã cho item này nếu có
       if (this.currentKey) {
-        if (result && result.shareId) {
-          await window.serverSyncService.saveItemShareKey(result.shareId, this.currentKey);
+        const targetShareId = result?.shareId || result?.fileId;
+        if (targetShareId) {
+          await syncService.saveItemShareKey(targetShareId, this.currentKey);
         }
         if (this.shareData && this.shareData.itemId) {
-          await window.serverSyncService.saveItemShareKey(this.shareData.itemId, this.currentKey);
-          await window.serverSyncService.saveItemShareKey(`${this.shareData.itemType}_${this.shareData.itemId}`, this.currentKey);
+          await syncService.saveItemShareKey(this.shareData.itemId, this.currentKey);
+          await syncService.saveItemShareKey(`${this.shareData.itemType}_${this.shareData.itemId}`, this.currentKey);
         }
       }
 
       // Đồng bộ ngay dữ liệu vào IndexedDB
-      await window.serverSyncService.syncReceivedSharedItems();
+      await syncService.syncReceivedSharedItems();
 
       if (typeof window.app?.refreshAll === 'function') {
         await window.app.refreshAll();
