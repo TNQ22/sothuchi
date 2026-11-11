@@ -419,6 +419,7 @@ const UniversalShareModal = {
         if (emailListEl) emailListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
         if (linkListEl) linkListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
       }
+      this.renderSharedServicesSummary();
       return;
     }
 
@@ -445,6 +446,7 @@ const UniversalShareModal = {
           `;
         }
         if (window.lucide) lucide.createIcons();
+        this.renderSharedServicesSummary();
         return;
       }
 
@@ -498,6 +500,7 @@ const UniversalShareModal = {
         if (emailListEl) emailListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
         if (linkListEl) linkListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
       }
+      this.renderSharedServicesSummary();
       return;
     }
 
@@ -670,30 +673,61 @@ const UniversalShareModal = {
 
   async updateItemSharedState(isShared) {
     const val = isShared ? 1 : 0;
-    if (this.currentItem) this.currentItem.isShared = val;
+    const currentService = this.currentService || 'server';
+
     try {
-      if (this.currentType === 'account') {
-        await db.accounts.update(this.currentId, { isShared: val, updatedAt: Date.now() });
-      } else if (this.currentType === 'savings' && db.savings) {
-        await db.savings.update(this.currentId, { isShared: val, updatedAt: Date.now() });
-      } else if (this.currentType === 'accumulation' && db.accumulations) {
-        await db.accumulations.update(this.currentId, { isShared: val, updatedAt: Date.now() });
-      } else if (this.currentType === 'loan' && db.loans) {
-        await db.loans.update(this.currentId, { isShared: val, updatedAt: Date.now() });
-      } else if (this.currentType === 'asset' && db.assets) {
-        await db.assets.update(this.currentId, { isShared: val, updatedAt: Date.now() });
+      let ownedList = [];
+      if (db.settings) {
+        const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
+        ownedList = (ownedSetting && Array.isArray(ownedSetting.value)) ? [...ownedSetting.value] : [];
       }
 
-      if (!val && db.settings) {
-        try {
-          const owned = (await db.settings.get('syncOwnedSharedProjections')) || { key: 'syncOwnedSharedProjections', value: [] };
-          const arr = Array.isArray(owned.value) ? owned.value.filter(x => !(x.itemType === this.currentType && String(x.itemId) === String(this.currentId))) : [];
-          await db.settings.put({ key: 'syncOwnedSharedProjections', value: arr });
-        } catch (_) {}
+      if (val === 1) {
+        // Ghi nhận projection cho dịch vụ hiện tại nếu chưa có
+        const exists = ownedList.some(x => x.itemType === this.currentType && String(x.itemId) === String(this.currentId) && (x.service === currentService || (!x.service && currentService === 'server')));
+        if (!exists) {
+          ownedList.push({
+            itemType: this.currentType,
+            itemId: String(this.currentId),
+            service: currentService
+          });
+          if (db.settings) {
+            await db.settings.put({ key: 'syncOwnedSharedProjections', value: ownedList });
+          }
+        }
+      } else {
+        // Chỉ gỡ projection của dịch vụ hiện tại (không ảnh hưởng dịch vụ đồng bộ khác)
+        ownedList = ownedList.filter(x => {
+          const matchItem = x.itemType === this.currentType && String(x.itemId) === String(this.currentId);
+          if (!matchItem) return true;
+          const svc = x.service || 'server';
+          return svc !== currentService;
+        });
+        if (db.settings) {
+          await db.settings.put({ key: 'syncOwnedSharedProjections', value: ownedList });
+        }
+      }
+
+      // Xác định cờ isShared chung cho item: Nếu item còn bất kỳ projection nào ở bất kỳ dịch vụ nào -> 1, ngược lại -> 0
+      const stillSharedAnywhere = ownedList.some(x => x.itemType === this.currentType && String(x.itemId) === String(this.currentId));
+      const finalVal = stillSharedAnywhere ? 1 : 0;
+
+      if (this.currentItem) this.currentItem.isShared = finalVal;
+
+      if (this.currentType === 'account') {
+        await db.accounts.update(this.currentId, { isShared: finalVal, updatedAt: Date.now() });
+      } else if (this.currentType === 'savings' && db.savings) {
+        await db.savings.update(this.currentId, { isShared: finalVal, updatedAt: Date.now() });
+      } else if (this.currentType === 'accumulation' && db.accumulations) {
+        await db.accumulations.update(this.currentId, { isShared: finalVal, updatedAt: Date.now() });
+      } else if (this.currentType === 'loan' && db.loans) {
+        await db.loans.update(this.currentId, { isShared: finalVal, updatedAt: Date.now() });
+      } else if (this.currentType === 'asset' && db.assets) {
+        await db.assets.update(this.currentId, { isShared: finalVal, updatedAt: Date.now() });
       }
 
       window.dispatchEvent(new CustomEvent('shared-items-updated', {
-        detail: { itemType: this.currentType, itemId: this.currentId, isShared: val }
+        detail: { itemType: this.currentType, itemId: this.currentId, isShared: finalVal, service: currentService }
       }));
 
       if (window.app && typeof window.app.refreshAll === 'function') {
@@ -702,6 +736,147 @@ const UniversalShareModal = {
     } catch (e) {
       console.warn('[UniversalShareModal] updateItemSharedState error:', e);
     }
+  },
+
+  async renderSharedServicesSummary() {
+    const listEl = document.getElementById('universal-share-summary-list');
+    const badgeEl = document.getElementById('universal-share-summary-total-badge');
+    if (!listEl) return;
+
+    const sService = window.serverSyncService;
+    const gService = window.googleDriveService;
+
+    // Lấy thông tin chia sẻ từ Máy Chủ Riêng
+    let serverSharesCount = 0;
+    let serverLinksCount = 0;
+    let serverStatus = 'not-connected';
+    let serverStatusText = 'Chưa kết nối';
+    if (sService && sService.token && sService.serverUrl) {
+      serverStatus = sService.autoSync !== false ? 'connected' : 'disabled';
+      serverStatusText = sService.autoSync !== false ? 'Đã kết nối' : 'Đã vô hiệu hóa';
+      try {
+        const sRes = await sService.getItemShares(this.currentType, this.currentId);
+        serverSharesCount = sRes?.shares?.length || 0;
+        serverLinksCount = sRes?.links?.length || 0;
+      } catch (_) {}
+    }
+
+    // Lấy thông tin chia sẻ từ Google Drive
+    let driveSharesCount = 0;
+    let driveLinksCount = 0;
+    let driveStatus = 'not-connected';
+    let driveStatusText = 'Chưa kết nối';
+    if (gService && gService.isConnected) {
+      driveStatus = gService.autoSync !== false ? 'connected' : 'disabled';
+      driveStatusText = gService.autoSync !== false ? 'Đã kết nối' : 'Đã vô hiệu hóa';
+      try {
+        const gRes = await gService.getItemShares(this.currentType, this.currentId);
+        driveSharesCount = gRes?.shares?.length || 0;
+        driveLinksCount = gRes?.links?.length || 0;
+      } catch (_) {}
+    }
+
+    const services = [
+      {
+        id: 'server',
+        name: 'Máy Chủ Riêng (Self-Hosted)',
+        iconHtml: '<i data-lucide="server" style="width: 15px; height: 15px; color: #10b981;"></i>',
+        status: serverStatus,
+        statusText: serverStatusText,
+        sharesCount: serverSharesCount,
+        linksCount: serverLinksCount,
+        isCurrent: this.currentService === 'server'
+      },
+      {
+        id: 'google-drive',
+        name: 'Google Drive',
+        iconHtml: '<svg viewBox="0 0 87.3 78" style="width: 15px; height: 14px;"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg>',
+        status: driveStatus,
+        statusText: driveStatusText,
+        sharesCount: driveSharesCount,
+        linksCount: driveLinksCount,
+        isCurrent: this.currentService === 'google-drive'
+      },
+      {
+        id: 'dropbox',
+        name: 'Dropbox',
+        iconHtml: '<i data-lucide="box" style="width: 15px; height: 15px; color: #0061ff;"></i>',
+        status: 'planned',
+        statusText: 'Sắp hỗ trợ',
+        sharesCount: 0,
+        linksCount: 0,
+        isCurrent: this.currentService === 'dropbox',
+        isPlanned: true
+      }
+    ];
+
+    let totalActiveMembers = serverSharesCount + driveSharesCount;
+    let totalActiveLinks = serverLinksCount + driveLinksCount;
+    let activePlatformsCount = (serverSharesCount + serverLinksCount > 0 ? 1 : 0) + (driveSharesCount + driveLinksCount > 0 ? 1 : 0);
+
+    if (badgeEl) {
+      if (activePlatformsCount > 0) {
+        badgeEl.textContent = `Đang share trên ${activePlatformsCount} dịch vụ (${totalActiveMembers} email, ${totalActiveLinks} link)`;
+        badgeEl.style.background = 'rgba(16, 185, 129, 0.16)';
+        badgeEl.style.color = '#10b981';
+        badgeEl.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+      } else {
+        badgeEl.textContent = 'Chưa chia sẻ trên dịch vụ nào';
+        badgeEl.style.background = 'rgba(148, 163, 184, 0.15)';
+        badgeEl.style.color = '#94a3b8';
+        badgeEl.style.borderColor = 'rgba(148, 163, 184, 0.25)';
+      }
+    }
+
+    listEl.innerHTML = services.map(s => {
+      const hasShares = (s.sharesCount + s.linksCount) > 0;
+      let shareDetailText = 'Chưa có thành viên nào';
+      if (s.isPlanned) {
+        shareDetailText = 'Hiện hỗ trợ sao lưu toàn bộ sổ';
+      } else if (hasShares) {
+        const parts = [];
+        if (s.sharesCount > 0) parts.push(`<strong>${s.sharesCount}</strong> email`);
+        if (s.linksCount > 0) parts.push(`<strong>${s.linksCount}</strong> link`);
+        shareDetailText = `Đang chia sẻ: ${parts.join(', ')}`;
+      }
+
+      const statusBadgeStyles = {
+        connected: 'background: rgba(16, 185, 129, 0.14); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.28);',
+        disabled: 'background: rgba(245, 158, 11, 0.14); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.28);',
+        'not-connected': 'background: rgba(239, 68, 68, 0.14); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.28);',
+        planned: 'background: rgba(148, 163, 184, 0.14); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.25);'
+      }[s.status] || 'background: rgba(148, 163, 184, 0.14); color: #94a3b8;';
+
+      const rowBorder = s.isCurrent ? 'border: 1px solid rgba(59, 130, 246, 0.45); background: rgba(59, 130, 246, 0.08);' : 'border: 1px solid rgba(255, 255, 255, 0.06); background: rgba(30, 41, 59, 0.4);';
+
+      return `
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-radius: 8px; ${rowBorder}">
+          <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
+            <div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              ${s.iconHtml}
+            </div>
+            <div style="min-width: 0; flex: 1;">
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-primary); white-space: nowrap;">${s.name}</span>
+                <span style="font-size: 0.65rem; font-weight: 600; padding: 1px 6px; border-radius: 9999px; ${statusBadgeStyles}">${s.statusText}</span>
+                ${s.isCurrent ? '<span style="font-size: 0.65rem; font-weight: 600; padding: 1px 6px; border-radius: 9999px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.35);">Đang mở</span>' : ''}
+              </div>
+              <div style="font-size: 0.74rem; color: ${hasShares ? '#10b981' : 'var(--text-muted)'}; margin-top: 1px;">
+                ${shareDetailText}
+              </div>
+            </div>
+          </div>
+          ${!s.isCurrent && !s.isPlanned ? `
+            <button type="button" class="btn-secondary btn-sm" onclick="UniversalShareModal.selectService('${s.id}', event)" style="padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px;">
+              <span>Quản lý</span>
+              <i data-lucide="chevron-right" style="width: 12px; height: 12px;"></i>
+            </button>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
   },
 
   async handleAddEmailShare() {

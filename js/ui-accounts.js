@@ -104,11 +104,12 @@ const UIAccounts = {
     if (!a) return '';
     const isSharedItem = !!a._isSharedItem;
     const isSharedByMe = a.isShared === 1 || a.isShared === true;
+    const shareSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width: 8px; height: 8px; display: block;"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>';
     if (isSharedItem) {
-      return '<div class="mini-share-indicator shared" title="Được chia sẻ"><i data-lucide="share-2"></i></div>';
+      return `<div class="mini-share-indicator shared" title="Tài khoản được chia sẻ">${shareSvg}</div>`;
     }
     if (isSharedByMe) {
-      return '<div class="mini-share-indicator owner" title="Đang chia sẻ"><i data-lucide="share-2"></i></div>';
+      return `<div class="mini-share-indicator owner" title="Tài khoản đang chia sẻ">${shareSvg}</div>`;
     }
     return '';
   },
@@ -156,42 +157,78 @@ const UIAccounts = {
     try {
       if (typeof db === 'undefined' || !db.accounts) return;
       const sService = window.serverSyncService;
-      // Chỉ kiểm tra khi máy chủ riêng đã được kết nối và xác thực phiên hoàn tất
-      const isServerAvailable = Boolean(sService && sService.token && sService.serverUrl);
-      if (!isServerAvailable) return;
+      const gService = window.googleDriveService;
+
+      const isServerAvailable = Boolean(sService && sService.token && sService.serverUrl && sService.autoSync !== false);
+      const isDriveAvailable = Boolean(gService && gService.isConnected && gService.autoSync !== false);
+
+      // Nếu không có bất kỳ dịch vụ đồng bộ nào đang kết nối và kích hoạt, không tự ý dọn dẹp trạng thái cục bộ
+      if (!isServerAvailable && !isDriveAvailable) return;
 
       const personalAccs = (await db.accounts.toArray()).filter(a => !a.isDeleted && !a._isSharedItem && (a.isShared === 1 || a.isShared === true));
       if (personalAccs.length === 0) return;
 
+      const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
+      let currentOwnedList = (ownedSetting && Array.isArray(ownedSetting.value)) ? [...ownedSetting.value] : [];
+
       let changed = false;
-      const validOwnedList = [];
 
       for (const acc of personalAccs) {
-        try {
-          const res = await sService.getItemShares('account', acc.id);
-          if (res && Array.isArray(res.shares) && Array.isArray(res.links)) {
-            const activeCount = res.shares.length + res.links.length;
-            if (activeCount > 0) {
-              validOwnedList.push({ itemType: 'account', itemId: String(acc.id) });
-            } else {
-              await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
-              acc.isShared = 0;
-              changed = true;
-              console.log(`[UIAccounts] Đã tắt cờ chia sẻ cho tài khoản không có người nhận: "${acc.name}"`);
+        let serverActiveCount = 0;
+        let serverChecked = false;
+        let driveActiveCount = 0;
+        let driveChecked = false;
+
+        // 1. Kiểm tra Máy Chủ Riêng
+        if (isServerAvailable && typeof sService.getItemShares === 'function') {
+          try {
+            const res = await sService.getItemShares('account', acc.id);
+            if (res && Array.isArray(res.shares) && Array.isArray(res.links)) {
+              serverActiveCount = res.shares.length + res.links.length;
+              serverChecked = true;
             }
-          } else {
-            // Không nhận được mảng xác nhận từ server -> giữ nguyên trạng thái
-            validOwnedList.push({ itemType: 'account', itemId: String(acc.id) });
-          }
-        } catch (_) {
-          // Lỗi mạng hoặc server không phản hồi -> giữ nguyên trạng thái cục bộ
-          validOwnedList.push({ itemType: 'account', itemId: String(acc.id) });
+          } catch (_) {}
+        }
+
+        // 2. Kiểm tra Google Drive
+        if (isDriveAvailable && typeof gService.getItemShares === 'function') {
+          try {
+            const res = await gService.getItemShares('account', acc.id);
+            if (res && Array.isArray(res.shares) && Array.isArray(res.links)) {
+              driveActiveCount = res.shares.length + res.links.length;
+              driveChecked = true;
+            }
+          } catch (_) {}
+        }
+
+        // Kiểm tra xem trong bộ nhớ đệm projection có ghi nhận dịch vụ nào khác đang giữ share không
+        const localProjections = currentOwnedList.filter(x => x.itemType === 'account' && String(x.itemId) === String(acc.id));
+        const hasUncheckedServiceProjection = localProjections.some(x => {
+          if (x.service === 'google-drive' && !driveChecked) return true;
+          if ((!x.service || x.service === 'server') && !serverChecked) return true;
+          return false;
+        });
+
+        const totalActive = serverActiveCount + driveActiveCount;
+
+        if (totalActive > 0 || hasUncheckedServiceProjection) {
+          // Còn người nhận hoặc còn dịch vụ chưa kiểm tra được -> Giữ nguyên cờ chia sẻ
+          continue;
+        }
+
+        // Chỉ khi TẤT CẢ các dịch vụ đang kết nối xác nhận 0 người nhận VÀ không còn dịch vụ chưa check
+        if ((serverChecked || !isServerAvailable) && (driveChecked || !isDriveAvailable)) {
+          await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
+          acc.isShared = 0;
+          currentOwnedList = currentOwnedList.filter(x => !(x.itemType === 'account' && String(x.itemId) === String(acc.id)));
+          changed = true;
+          console.log(`[UIAccounts] Đã tắt cờ chia sẻ cho tài khoản không còn dịch vụ nào chia sẻ: "${acc.name}"`);
         }
       }
 
       if (changed) {
         if (db.settings) {
-          await db.settings.put({ key: 'syncOwnedSharedProjections', value: validOwnedList });
+          await db.settings.put({ key: 'syncOwnedSharedProjections', value: currentOwnedList });
         }
         if (typeof this.render === 'function') {
           await this.render();
@@ -604,6 +641,7 @@ const UIAccounts = {
     const isReceivedShare = !!acc._isSharedItem;
     const isEncrypted = isReceivedShare && (acc._isEncrypted === 1 || acc._needsPassword === 1);
     const leaveBtn = document.getElementById('action-sheet-leave-shared-btn');
+    const copyPersonalBtn = document.getElementById('action-sheet-copy-to-personal-btn');
     const uniShareBtn = document.getElementById('action-sheet-universal-share-btn');
     const archiveBtn = document.getElementById('action-sheet-archive-btn');
     const deleteBtn = document.getElementById('action-sheet-delete-btn');
@@ -616,6 +654,7 @@ const UIAccounts = {
     const shareKeyDesc = document.getElementById('action-sheet-share-key-desc');
 
     if (leaveBtn) leaveBtn.style.display = isReceivedShare ? 'flex' : 'none';
+    if (copyPersonalBtn) copyPersonalBtn.style.display = isReceivedShare ? 'flex' : 'none';
     if (uniShareBtn) uniShareBtn.style.display = isReceivedShare ? 'none' : 'flex';
     if (archiveBtn) archiveBtn.style.display = isReceivedShare ? 'none' : 'flex';
     if (deleteBtn) deleteBtn.style.display = isReceivedShare ? 'none' : 'flex';
@@ -4373,6 +4412,16 @@ const UIAccounts = {
             `;
           }
           btns += `
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.copySharedItemToPersonal('loan', ${l.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                <i data-lucide="copy" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Sao chép thành sổ vay chính chủ</span>
+                <span class="action-sheet-item-desc">Tạo bản sao độc lập dùng cá nhân</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('loan', ${l.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -4495,6 +4544,16 @@ const UIAccounts = {
             `;
           }
           btns += `
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.copySharedItemToPersonal('savings', ${s.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                <i data-lucide="copy" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Sao chép thành sổ tiết kiệm chính chủ</span>
+                <span class="action-sheet-item-desc">Tạo bản sao độc lập dùng cá nhân</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('savings', ${s.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -4618,6 +4677,16 @@ const UIAccounts = {
             `;
           }
           btns += `
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.copySharedItemToPersonal('accumulation', ${acc.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                <i data-lucide="copy" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Sao chép thành sổ tích luỹ chính chủ</span>
+                <span class="action-sheet-item-desc">Tạo bản sao độc lập dùng cá nhân</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('accumulation', ${acc.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -4733,6 +4802,16 @@ const UIAccounts = {
             `;
           }
           btns += `
+            <button type="button" class="action-sheet-item" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.copySharedItemToPersonal('asset', ${asset.id})">
+              <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                <i data-lucide="copy" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Sao chép thành tài sản chính chủ</span>
+                <span class="action-sheet-item-desc">Tạo bản sao độc lập dùng cá nhân</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
             <button type="button" class="action-sheet-item text-danger" onclick="UIAccounts.closeItemActionSheet(); UIAccounts.leaveSharedItem('asset', ${asset.id})">
               <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
                 <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
@@ -5323,8 +5402,13 @@ const UIAccounts = {
       btn.classList.toggle('active', btn.dataset.filter === tab);
     });
 
-    if (tab === 'shared' && window.serverSyncService && window.serverSyncService.isConnected) {
-      window.serverSyncService.syncReceivedSharedItems().catch(() => {});
+    if (tab === 'shared') {
+      if (window.serverSyncService && window.serverSyncService.isConnected && window.serverSyncService.autoSync !== false) {
+        window.serverSyncService.syncReceivedSharedItems().catch(() => {});
+      }
+      if (window.googleDriveService && window.googleDriveService.isConnected && window.googleDriveService.autoSync !== false) {
+        window.googleDriveService.syncReceivedSharedItems().catch(() => {});
+      }
     }
 
     this.render();
@@ -5352,6 +5436,238 @@ const UIAccounts = {
       return `<span class="account-role-badge ${roleClass}" title="${escapeHTML(infoText)}"><i data-lucide="${roleIcon}" style="width: 12px; height: 12px;"></i></span>`;
     }
     return `<span class="account-role-badge ${roleClass}" title="${escapeHTML(infoText)}" data-role-info="${escapeHTML(infoText)}" onclick="event.stopPropagation(); if (window.showToast) window.showToast(this.getAttribute('data-role-info'), 'info');"><i data-lucide="${roleIcon}" style="width: 12px; height: 12px;"></i></span>`;
+  },
+
+  /* ==================== SAO CHÉP TÀI KHOẢN CHIA SẺ THÀNH CHÍNH CHỦ ==================== */
+  async copySharedAccountToPersonal(accId) {
+    if (!accId) return;
+    try {
+      const numId = Number(accId);
+      let acc = await db.accounts.get(numId);
+      if (!acc && String(accId) !== String(numId)) {
+        acc = await db.accounts.get(String(accId));
+      }
+      if (!acc) {
+        showToast('Không tìm thấy thông tin tài khoản.', 'error');
+        return;
+      }
+
+      if (acc._needsPassword) {
+        showToast('Tài khoản này đang bị khoá mã hoá. Vui lòng giải mã bằng mật khẩu trước khi sao chép!', 'warning');
+        this.promptItemShareKey('account', acc.id);
+        return;
+      }
+
+      const currentName = acc.name || 'Tài khoản';
+      const defaultName = `${currentName} (Cá nhân)`;
+
+      const newName = await showPrompt({
+        title: 'Sao Chép Thành Tài Khoản Chính Chủ',
+        message: `Hệ thống sẽ sao chép toàn bộ thông tin và lịch sử giao dịch của tài khoản <b>${escapeHTML(currentName)}</b> thành một tài khoản cá nhân độc lập của bạn.<br><br>Nhập tên tài khoản mới:`,
+        defaultValue: defaultName,
+        placeholder: 'Nhập tên tài khoản...',
+        confirmText: 'Sao chép ngay',
+        cancelText: 'Huỷ',
+        icon: 'copy'
+      });
+
+      if (newName === null) return;
+      const cleanName = newName.trim();
+      if (!cleanName) {
+        showToast('Tên tài khoản không được để trống.', 'warning');
+        return;
+      }
+
+      showToast('Đang sao chép tài khoản và lịch sử giao dịch...', 'info');
+
+      // 1. Tạo bản ghi tài khoản cá nhân mới
+      const newAccData = {
+        name: cleanName,
+        type: acc.type || 'cash',
+        color: acc.color || '#4f46e5',
+        icon: acc.icon || 'wallet',
+        currency: acc.currency || 'VND',
+        initialBalance: Number(acc.initialBalance || 0),
+        balance: Number(acc.balance || 0),
+        description: acc.description ? `(Bản sao từ ${acc.name}) ${acc.description}` : `Bản sao độc lập từ tài khoản chia sẻ: ${acc.name}`,
+        isShared: 0,
+        isDeleted: 0,
+        excludeFromReport: !!acc.excludeFromReport,
+        includeInBudget: acc.includeInBudget !== undefined ? acc.includeInBudget : 1,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+
+      const newAccountId = await db.accounts.add(newAccData);
+
+      // 2. Sao chép toàn bộ giao dịch liên quan
+      const allTxs = await db.transactions.toArray();
+      const shareId = acc._shareId;
+      const relatedTxs = allTxs.filter(t => 
+        !t.isDeleted && (
+          Number(t.accountId) === numId ||
+          Number(t.toAccountId) === numId ||
+          String(t.accountId) === String(accId) ||
+          String(t.toAccountId) === String(accId) ||
+          (shareId && String(t._shareId) === String(shareId))
+        )
+      );
+
+      let copiedTxCount = 0;
+      for (const tx of relatedTxs) {
+        const cloneTx = { ...tx };
+        delete cloneTx.id;
+        delete cloneTx._isSharedItem;
+        delete cloneTx._shareId;
+        delete cloneTx._sharedService;
+        delete cloneTx._remoteTxId;
+        delete cloneTx._remoteVaultId;
+        delete cloneTx.recordedByOther;
+        delete cloneTx._sharedRole;
+        delete cloneTx._sharedFrom;
+        delete cloneTx._remoteId;
+
+        if (Number(tx.accountId) === numId || String(tx.accountId) === String(accId) || (shareId && String(tx._shareId) === String(shareId) && !tx.toAccountId)) {
+          cloneTx.accountId = newAccountId;
+        }
+        if (Number(tx.toAccountId) === numId || String(tx.toAccountId) === String(accId)) {
+          cloneTx.toAccountId = newAccountId;
+        }
+
+        cloneTx.isDeleted = 0;
+        cloneTx.createdAt = tx.createdAt || Date.now();
+        cloneTx.updatedAt = Date.now();
+
+        await db.transactions.add(cloneTx);
+        copiedTxCount++;
+      }
+
+      // 3. Tính toán lại số dư tài khoản
+      if (typeof recalculateAccountBalances === 'function') {
+        await recalculateAccountBalances();
+      }
+
+      this.closeActionSheet();
+      showToast(`Đã sao chép thành công tài khoản "${cleanName}" (${copiedTxCount} giao dịch)!`, 'success');
+
+      await this.render();
+      if (window.app && typeof window.app.refreshAll === 'function') {
+        await window.app.refreshAll();
+      }
+      if (typeof triggerAutoSync === 'function') {
+        triggerAutoSync();
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Lỗi khi sao chép tài khoản: ' + err.message, 'error');
+    }
+  },
+
+  /* ==================== SAO CHÉP MỤC CHIA SẺ KHÁC (SỔ TIẾT KIỆM, SỔ VAY, TÍCH LUỸ, TÀI SẢN) ==================== */
+  async copySharedItemToPersonal(type, id) {
+    if (!id || !type) return;
+    try {
+      const numId = Number(id);
+      let item = null;
+      let tableName = '';
+      let typeLabel = '';
+
+      if (type === 'savings' && db.savings) {
+        item = await db.savings.get(numId);
+        tableName = 'savings';
+        typeLabel = 'Sổ tiết kiệm';
+      } else if (type === 'accumulation' && db.accumulations) {
+        item = await db.accumulations.get(numId);
+        tableName = 'accumulations';
+        typeLabel = 'Mục tích luỹ';
+      } else if (type === 'loan' && db.loans) {
+        item = await db.loans.get(numId);
+        tableName = 'loans';
+        typeLabel = 'Sổ vay';
+      } else if (type === 'asset' && db.assets) {
+        item = await db.assets.get(numId);
+        tableName = 'assets';
+        typeLabel = 'Tài sản';
+      }
+
+      if (!item) {
+        showToast('Không tìm thấy thông tin mục chia sẻ.', 'error');
+        return;
+      }
+
+      if (item._needsPassword) {
+        showToast('Mục này đang bị khoá mã hoá. Vui lòng giải mã bằng mật khẩu trước khi sao chép!', 'warning');
+        this.promptItemShareKey(type, item.id);
+        return;
+      }
+
+      const currentName = item.name || typeLabel;
+      const defaultName = `${currentName} (Cá nhân)`;
+
+      const newName = await showPrompt({
+        title: `Sao Chép Thành ${typeLabel} Chính Chủ`,
+        message: `Tạo bản sao độc lập từ <b>${escapeHTML(currentName)}</b> để sử dụng cá nhân.<br><br>Nhập tên mới:`,
+        defaultValue: defaultName,
+        placeholder: 'Nhập tên mới...',
+        confirmText: 'Sao chép ngay',
+        cancelText: 'Huỷ',
+        icon: 'copy'
+      });
+
+      if (newName === null) return;
+      const cleanName = newName.trim();
+      if (!cleanName) {
+        showToast('Tên không được để trống.', 'warning');
+        return;
+      }
+
+      const clone = { ...item };
+      delete clone.id;
+      delete clone._isSharedItem;
+      delete clone._shareId;
+      delete clone._sharedService;
+      delete clone._remoteId;
+      delete clone._remoteVaultId;
+      delete clone._sharedRole;
+      delete clone._sharedFrom;
+      delete clone._needsPassword;
+      delete clone._isEncrypted;
+
+      clone.name = cleanName;
+      clone.isShared = 0;
+      clone.isDeleted = 0;
+      clone.createdAt = Date.now();
+      clone.updatedAt = Date.now();
+
+      await db[tableName].add(clone);
+
+      this.closeItemActionSheet();
+      showToast(`Đã sao chép thành công ${typeLabel.toLowerCase()} "${cleanName}"!`, 'success');
+
+      if (typeof recalculateAccountBalances === 'function') {
+        await recalculateAccountBalances();
+      }
+
+      await this.render();
+      if (type === 'savings' && typeof this.renderSavings === 'function') {
+        await this.renderSavings();
+      } else if (type === 'accumulation' && typeof this.renderAccumulations === 'function') {
+        await this.renderAccumulations();
+      } else if (type === 'loan' && typeof this.renderLoans === 'function') {
+        await this.renderLoans();
+      } else if (type === 'asset' && typeof this.renderAssets === 'function') {
+        await this.renderAssets();
+      }
+      if (window.app && typeof window.app.refreshAll === 'function') {
+        await window.app.refreshAll();
+      }
+      if (typeof triggerAutoSync === 'function') {
+        triggerAutoSync();
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Lỗi khi sao chép mục chia sẻ: ' + err.message, 'error');
+    }
   },
 
   async leaveSharedItem(type, id) {
@@ -5807,19 +6123,37 @@ const UIAccounts = {
       if (window.lucide) lucide.createIcons();
     }
     try {
-      if (window.serverSyncService) {
-        let ownedChanged = false;
-        if (typeof window.serverSyncService.pullAndMergeOwnedSharedProjections === 'function') {
-          ownedChanged = await window.serverSyncService.pullAndMergeOwnedSharedProjections();
-        }
-        const changed = await window.serverSyncService.syncReceivedSharedItems();
-        const hasAnyChange = Boolean(ownedChanged || changed);
-        if (hasAnyChange) {
-          await this.render();
-        }
-        if (typeof showToast === 'function') {
-          showToast(hasAnyChange ? 'Đã tải thành công các mục chia sẻ mới!' : 'Đã kiểm tra xong: Dữ liệu chia sẻ đã mới nhất.', 'info');
-        }
+      let hasAnyChange = false;
+
+      // 1. Kiểm tra Máy Chủ Riêng
+      if (window.serverSyncService && window.serverSyncService.autoSync !== false) {
+        try {
+          let sOwnedChanged = false;
+          if (typeof window.serverSyncService.pullAndMergeOwnedSharedProjections === 'function') {
+            sOwnedChanged = await window.serverSyncService.pullAndMergeOwnedSharedProjections();
+          }
+          const sChanged = await window.serverSyncService.syncReceivedSharedItems();
+          if (sOwnedChanged || sChanged) hasAnyChange = true;
+        } catch (_) {}
+      }
+
+      // 2. Kiểm tra Google Drive
+      if (window.googleDriveService && window.googleDriveService.isConnected && window.googleDriveService.autoSync !== false) {
+        try {
+          let gOwnedChanged = false;
+          if (typeof window.googleDriveService.pullAndMergeOwnedSharedProjections === 'function') {
+            gOwnedChanged = await window.googleDriveService.pullAndMergeOwnedSharedProjections();
+          }
+          const gChanged = await window.googleDriveService.syncReceivedSharedItems();
+          if (gOwnedChanged || gChanged) hasAnyChange = true;
+        } catch (_) {}
+      }
+
+      if (hasAnyChange) {
+        await this.render();
+      }
+      if (typeof showToast === 'function') {
+        showToast(hasAnyChange ? 'Đã tải thành công các mục chia sẻ mới!' : 'Đã kiểm tra xong: Dữ liệu chia sẻ đã mới nhất.', 'info');
       }
     } catch (err) {
       if (typeof showToast === 'function') showToast('Lỗi đồng bộ: ' + err.message, 'error');

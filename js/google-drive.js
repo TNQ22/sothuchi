@@ -267,6 +267,52 @@ class GoogleDriveSync {
         }
       }
     }, 35 * 60 * 1000);
+
+    this.startAutoPolling();
+  }
+
+  startAutoPolling() {
+    if (this._pollingStarted) return;
+    this._pollingStarted = true;
+
+    // 1. Kiểm tra định kỳ mỗi 60 giây (khi tab đang active)
+    setInterval(async () => {
+      if (document.hidden) return;
+      if (this.autoSync === false || !this.isConnected) return;
+      try {
+        const p1 = this.syncReceivedSharedItems();
+        const p2 = this.pullAndMergeOwnedSharedProjections();
+        const [c1, c2] = await Promise.all([p1.catch(() => false), p2.catch(() => false)]);
+        if (c1 || c2) {
+          if (typeof window.recalculateAccountBalances === 'function') await window.recalculateAccountBalances();
+          if (window.app && typeof window.app.refreshAll === 'function') await window.app.refreshAll();
+        }
+      } catch (_) {}
+    }, 60000);
+
+    // 2. Kiểm tra ngay lập tức khi người dùng chuyển qua lại giữa các tab hoặc mở lại app
+    const onAppResume = async () => {
+      if (this.autoSync === false || !this.isConnected) return;
+      try {
+        const p1 = this.syncReceivedSharedItems();
+        const p2 = this.pullAndMergeOwnedSharedProjections();
+        const [c1, c2] = await Promise.all([p1.catch(() => false), p2.catch(() => false)]);
+        if (c1 || c2) {
+          if (typeof window.recalculateAccountBalances === 'function') await window.recalculateAccountBalances();
+          if (window.app && typeof window.app.refreshAll === 'function') await window.app.refreshAll();
+        }
+      } catch (_) {}
+    };
+
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible') {
+        await onAppResume();
+      }
+    });
+
+    window.addEventListener('focus', async () => {
+      await onAppResume();
+    });
   }
 
   getTargetLabel() {

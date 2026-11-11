@@ -5364,6 +5364,18 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
         </button>
 
+        <!-- Nút Sao chép thành tài khoản chính chủ (Người nhận - shared item) -->
+        <button type="button" class="action-sheet-item" id="action-sheet-copy-to-personal-btn" style="display: none;" onclick="UIAccounts.copySharedAccountToPersonal(UIAccounts.currentActionAccountId)">
+          <div class="action-sheet-item-icon" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
+            <i data-lucide="copy" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div class="action-sheet-item-text">
+            <span class="action-sheet-item-title">Sao chép thành tài khoản chính chủ</span>
+            <span class="action-sheet-item-desc">Tạo bản sao độc lập dùng cá nhân (kèm lịch sử giao dịch)</span>
+          </div>
+          <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+        </button>
+
         <!-- Nút Rời khỏi mục chia sẻ (Người nhận) -->
         <button type="button" class="action-sheet-item text-danger" id="action-sheet-leave-shared-btn" style="display: none;" onclick="UIAccounts.leaveSharedItem('account', UIAccounts.currentActionAccountId)">
           <div class="action-sheet-item-icon" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">
@@ -6812,6 +6824,20 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         <!-- Khung thông báo đám mây (Drive / Dropbox) -->
         <div id="universal-share-cloud-notice" style="display: none;">
           <!-- Dynamically populated notice -->
+        </div>
+
+        <!-- Khung tổng hợp các dịch vụ đang chia sẻ mục này (Multi-service Share Summary) -->
+        <div id="universal-share-summary-section" style="margin-top: 16px; padding: 12px 14px; background: rgba(15, 23, 42, 0.55); border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1)); border-radius: 12px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 7px; font-size: 0.82rem; font-weight: 700; color: var(--text-primary, #f8fafc);">
+              <i data-lucide="layers" style="width: 15px; height: 15px; color: var(--primary, #3b82f6);"></i>
+              <span>Tổng hợp chia sẻ đa dịch vụ</span>
+            </div>
+            <span id="universal-share-summary-total-badge" class="badge" style="font-size: 0.68rem; padding: 2px 8px; border-radius: 9999px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.25);">Đang tổng hợp...</span>
+          </div>
+          <div id="universal-share-summary-list" style="display: flex; flex-direction: column; gap: 8px;">
+            <!-- Dynamically populated per service -->
+          </div>
         </div>
       </div>
 

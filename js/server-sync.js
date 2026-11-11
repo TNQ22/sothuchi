@@ -1806,6 +1806,7 @@ class ServerSyncService {
 
     // 2. Kiểm tra ngay lập tức khi người dùng chuyển qua lại giữa các tab hoặc mở lại app
     const onAppResume = async () => {
+      if (this.autoSync === false) return;
       await this.checkRemoteVersionAndSync();
       if (this.serverUrl && this.token) {
         try {
@@ -3667,16 +3668,19 @@ class ServerSyncService {
                 acc.isShared = 1;
                 changed = true;
               }
-              if (!ownedList.some(x => x.itemType === 'account' && String(x.itemId) === String(acc.id))) {
-                ownedList.push({ itemType: 'account', itemId: String(acc.id) });
+              if (!ownedList.some(x => x.itemType === 'account' && String(x.itemId) === String(acc.id) && (!x.service || x.service === 'server'))) {
+                ownedList.push({ itemType: 'account', itemId: String(acc.id), service: 'server' });
                 changed = true;
               }
             } else if (acc.isShared) {
-              await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
-              acc.isShared = 0;
-              ownedList = ownedList.filter(x => !(x.itemType === 'account' && String(x.itemId) === String(acc.id)));
+              const sharedViaOther = ownedList.some(x => x.itemType === 'account' && String(x.itemId) === String(acc.id) && x.service === 'google-drive');
+              ownedList = ownedList.filter(x => !(x.itemType === 'account' && String(x.itemId) === String(acc.id) && (!x.service || x.service === 'server')));
+              if (!sharedViaOther) {
+                await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
+                acc.isShared = 0;
+                console.log(`[ServerSync] Tự động xóa cờ chia sẻ cho tài khoản không có người nhận: "${acc.name}"`);
+              }
               changed = true;
-              console.log(`[ServerSync] Tự động xóa cờ chia sẻ cho tài khoản không có người nhận: "${acc.name}"`);
             }
           }
         } catch (_) {
@@ -3714,6 +3718,7 @@ class ServerSyncService {
       if (ownedList.length === 0) return hasChanges;
 
       for (const share of ownedList) {
+        if (share.service && share.service !== 'server') continue;
         const { itemType, itemId } = share;
         const currentKey = share.shareKey || (await this.getItemShareKey(`${itemType}_${itemId}`));
         const vaultParam = this.activeVaultId ? `&vaultId=${encodeURIComponent(this.activeVaultId)}` : '';

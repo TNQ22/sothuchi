@@ -12088,24 +12088,27 @@ body.dark .account-role-badge.editor {
 
 /* Mini indicator icon on account avatar */
 .account-icon-bubble.with-share-badge {
-  position: relative;
+  position: relative !important;
+  overflow: visible !important;
 }
 
 .mini-share-indicator {
-  position: absolute;
-  bottom: -3px;
-  right: -3px;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background: #3b82f6;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1.5px solid var(--bg-card);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  pointer-events: none;
+  position: absolute !important;
+  bottom: -3px !important;
+  right: -3px !important;
+  width: 15px !important;
+  height: 15px !important;
+  border-radius: 50% !important;
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1.5px solid var(--bg-card, #1e293b) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35) !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
+  box-sizing: border-box !important;
 }
 
 .mini-share-indicator.owner {

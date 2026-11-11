@@ -640,39 +640,45 @@ async function addTransaction(data) {
   });
 
   // Cập nhật ngay bản chiếu chia sẻ nếu giao dịch thuộc tài khoản chia sẻ hoặc tài khoản sở hữu đang chia sẻ
-  if (window.serverSyncService) {
-    try {
-      if (sharedAcc && sharedAcc._shareId) {
+  try {
+    if (sharedAcc && sharedAcc._shareId) {
+      if (sharedAcc._sharedService === 'google-drive') {
+        if (window.googleDriveService && typeof window.googleDriveService.pushReceivedSharedItemTransactions === 'function' && window.googleDriveService.autoSync !== false) {
+          window.googleDriveService.pushReceivedSharedItemTransactions(sharedAcc._shareId).catch(err => {
+            console.warn('[addTransaction] Error pushing Drive shared item tx:', err);
+          });
+        }
+      } else if (window.serverSyncService && typeof window.serverSyncService.pushReceivedSharedItemTransactions === 'function' && window.serverSyncService.autoSync !== false) {
         window.serverSyncService.pushReceivedSharedItemTransactions(sharedAcc._shareId).catch(err => {
-          console.warn('[addTransaction] Error pushing shared item tx:', err);
+          console.warn('[addTransaction] Error pushing Server shared item tx:', err);
         });
-      } else {
-        const accId = tx.accountId;
-        const toAccId = tx.toAccountId;
-        const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
-        if (ownedSetting && Array.isArray(ownedSetting.value)) {
-          const relevant = ownedSetting.value.filter(s =>
-            s.itemType === 'account' && (String(s.itemId) === String(accId) || (toAccId && String(s.itemId) === String(toAccId)))
-          );
-          for (const s of relevant) {
-            if (s.service === 'google-drive' || (!s.service && window.googleDriveService?.isConnected)) {
-              if (window.googleDriveService && typeof window.googleDriveService.projectAndPushItem === 'function') {
-                const currentKey = s.shareKey || (await window.googleDriveService.getItemShareKey(`${s.itemType}_${s.itemId}`));
-                window.googleDriveService.projectAndPushItem(s.itemType, s.itemId, currentKey).catch(() => {});
-              }
+      }
+    } else {
+      const accId = tx.accountId;
+      const toAccId = tx.toAccountId;
+      const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
+      if (ownedSetting && Array.isArray(ownedSetting.value)) {
+        const relevant = ownedSetting.value.filter(s =>
+          s.itemType === 'account' && (String(s.itemId) === String(accId) || (toAccId && String(s.itemId) === String(toAccId)))
+        );
+        for (const s of relevant) {
+          if (s.service === 'google-drive' || (!s.service && window.googleDriveService?.isConnected)) {
+            if (window.googleDriveService && typeof window.googleDriveService.projectAndPushItem === 'function' && window.googleDriveService.autoSync !== false && window.googleDriveService.isConnected) {
+              const currentKey = s.shareKey || (await window.googleDriveService.getItemShareKey(`${s.itemType}_${s.itemId}`));
+              window.googleDriveService.projectAndPushItem(s.itemType, s.itemId, currentKey).catch(() => {});
             }
-            if (!s.service || s.service === 'server') {
-              if (window.serverSyncService && typeof window.serverSyncService.projectAndPushItem === 'function' && window.serverSyncService.isConnected) {
-                const currentKey = s.shareKey || (await window.serverSyncService.getItemShareKey(`${s.itemType}_${s.itemId}`));
-                window.serverSyncService.projectAndPushItem(s.itemType, s.itemId, currentKey).catch(() => {});
-              }
+          }
+          if (!s.service || s.service === 'server') {
+            if (window.serverSyncService && typeof window.serverSyncService.projectAndPushItem === 'function' && window.serverSyncService.isConnected && window.serverSyncService.autoSync !== false) {
+              const currentKey = s.shareKey || (await window.serverSyncService.getItemShareKey(`${s.itemType}_${s.itemId}`));
+              window.serverSyncService.projectAndPushItem(s.itemType, s.itemId, currentKey).catch(() => {});
             }
           }
         }
       }
-    } catch (e) {
-      console.warn('[addTransaction] Error pushing projection update:', e);
     }
+  } catch (syncProjErr) {
+    console.warn('[addTransaction] Error syncing projection:', syncProjErr);
   }
 
   // Trigger sync if enabled
@@ -734,10 +740,16 @@ async function deleteTransaction(txId, options = {}) {
   }
 
   // Cập nhật ngay bản chiếu chia sẻ nếu giao dịch thuộc tài khoản đang chia sẻ
-  if (deletedTx && window.serverSyncService) {
+  if (deletedTx) {
     try {
       if (deletedTx._isSharedItem && deletedTx._shareId) {
-        window.serverSyncService.pushReceivedSharedItemTransactions(deletedTx._shareId).catch(() => {});
+        if (deletedTx._sharedService === 'google-drive') {
+          if (window.googleDriveService && typeof window.googleDriveService.pushReceivedSharedItemTransactions === 'function' && window.googleDriveService.autoSync !== false) {
+            window.googleDriveService.pushReceivedSharedItemTransactions(deletedTx._shareId).catch(() => {});
+          }
+        } else if (window.serverSyncService && typeof window.serverSyncService.pushReceivedSharedItemTransactions === 'function' && window.serverSyncService.autoSync !== false) {
+          window.serverSyncService.pushReceivedSharedItemTransactions(deletedTx._shareId).catch(() => {});
+        }
       } else {
         const accId = deletedTx.accountId;
         const toAccId = deletedTx.toAccountId;
@@ -748,13 +760,13 @@ async function deleteTransaction(txId, options = {}) {
           );
           for (const s of relevant) {
             if (s.service === 'google-drive' || (!s.service && window.googleDriveService?.isConnected)) {
-              if (window.googleDriveService && typeof window.googleDriveService.projectAndPushItem === 'function') {
+              if (window.googleDriveService && typeof window.googleDriveService.projectAndPushItem === 'function' && window.googleDriveService.autoSync !== false && window.googleDriveService.isConnected) {
                 const currentKey = s.shareKey || (await window.googleDriveService.getItemShareKey(`${s.itemType}_${s.itemId}`));
                 window.googleDriveService.projectAndPushItem(s.itemType, s.itemId, currentKey).catch(() => {});
               }
             }
             if (!s.service || s.service === 'server') {
-              if (window.serverSyncService && typeof window.serverSyncService.projectAndPushItem === 'function' && window.serverSyncService.isConnected) {
+              if (window.serverSyncService && typeof window.serverSyncService.projectAndPushItem === 'function' && window.serverSyncService.isConnected && window.serverSyncService.autoSync !== false) {
                 const currentKey = s.shareKey || (await window.serverSyncService.getItemShareKey(`${s.itemType}_${s.itemId}`));
                 window.serverSyncService.projectAndPushItem(s.itemType, s.itemId, currentKey).catch(() => {});
               }

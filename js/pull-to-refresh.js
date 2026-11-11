@@ -314,8 +314,8 @@ class PullToRefresh {
   async triggerRefresh() {
     this.isRefreshing = true;
     try {
-      // 1. Cập nhật thông tin sổ & danh sách chia sẻ mới nhất từ máy chủ riêng
-      if (window.serverSyncService && window.serverSyncService.serverUrl && window.serverSyncService.token) {
+      // 1. Cập nhật thông tin sổ & danh sách chia sẻ mới nhất từ máy chủ riêng (nếu đang kích hoạt)
+      if (window.serverSyncService && window.serverSyncService.serverUrl && window.serverSyncService.token && window.serverSyncService.autoSync !== false) {
         try {
           await window.serverSyncService.fetchVaults();
           if (window.serverSyncService.activeVaultId) {
@@ -328,7 +328,21 @@ class PullToRefresh {
             await window.serverSyncService.auditOwnedShares();
           }
         } catch (serverInfoErr) {
-          console.warn('[PullToRefresh] Cập nhật thông tin sổ & chia sẻ:', serverInfoErr);
+          console.warn('[PullToRefresh] Cập nhật thông tin sổ & chia sẻ máy chủ:', serverInfoErr);
+        }
+      }
+
+      // 1.5 Cập nhật danh sách chia sẻ từ Google Drive (nếu đang kết nối)
+      if (window.googleDriveService && window.googleDriveService.isConnected && window.googleDriveService.autoSync !== false) {
+        try {
+          if (typeof window.googleDriveService.syncReceivedSharedItems === 'function') {
+            await window.googleDriveService.syncReceivedSharedItems();
+          }
+          if (typeof window.googleDriveService.pullAndMergeOwnedSharedProjections === 'function') {
+            await window.googleDriveService.pullAndMergeOwnedSharedProjections();
+          }
+        } catch (gDriveErr) {
+          console.warn('[PullToRefresh] Cập nhật chia sẻ Google Drive:', gDriveErr);
         }
       }
 
