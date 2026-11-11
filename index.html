@@ -2814,14 +2814,14 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <i data-lucide="trash-2" style="width: 18px; height: 18px; color: #ef4444;"></i>
-                    <span style="font-weight: 700; font-size: 0.95rem;">Thùng Rác Giao Dịch</span>
+                    <span style="font-weight: 700; font-size: 0.95rem;">Thùng Rác & Khôi Phục</span>
                   </div>
                   <span id="trash-total-count-pill" class="settings-status-pill pill-gray" style="font-size: 0.72rem;">0 mục</span>
                 </div>
                 <p class="settings-lead-text" style="margin-bottom: 12px;">
-                  Các giao dịch đã xóa trên máy này hoặc từ đồng bộ đa thiết bị được lưu trữ tại đây. Bạn có thể tra cứu chi tiết ngày giờ, nguồn gốc xóa và bấm <strong>Khôi phục</strong> để hoàn nguyên số dư tài khoản ngay lập tức.
+                  Các giao dịch và tài khoản/ví đã xóa trên máy này hoặc từ đồng bộ đa thiết bị được lưu trữ tại đây. Bạn có thể tra cứu chi tiết ngày giờ, nguồn gốc xóa và bấm <strong>Khôi phục</strong> để phục hồi dữ liệu ngay lập tức.
                 </p>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
                   <button type="button" id="btn-empty-trash" class="btn-danger-solid" style="flex: 1; min-width: 160px; font-size: 0.8rem; padding: 8px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="UISettings.emptyTrashConfirm()">
                     <i data-lucide="trash" style="width: 15px; height: 15px;"></i>
                     <span>Dọn Sạch Thùng Rác</span>
@@ -2831,9 +2831,15 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                     <span>Làm mới</span>
                   </button>
                 </div>
+
+                <!-- Tabs phân loại: Giao dịch & Tài khoản / Ví -->
+                <div class="admin-filter-row" style="display: flex; gap: 8px;">
+                  <button type="button" class="admin-filter-chip trash-tab-chip active" id="trash-tab-txs" onclick="UISettings.switchTrashTab('txs')">Giao dịch (<span id="trash-tab-txs-count">0</span>)</button>
+                  <button type="button" class="admin-filter-chip trash-tab-chip" id="trash-tab-accounts" onclick="UISettings.switchTrashTab('accounts')">Tài khoản / Ví (<span id="trash-tab-accounts-count">0</span>)</button>
+                </div>
               </div>
 
-              <!-- Danh sách giao dịch trong thùng rác -->
+              <!-- Danh sách hiển thị theo tab -->
               <div id="trash-items-container" class="trash-items-container">
                 <!-- Rendered dynamically -->
               </div>

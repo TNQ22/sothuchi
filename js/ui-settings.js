@@ -278,7 +278,9 @@ const UISettings = {
     const trashBadge = document.getElementById('hub-trash-badge');
     if (trashBadge) {
       try {
-        const deletedCount = await db.transactions.where('isDeleted').equals(1).count();
+        const txCount = await db.transactions.where('isDeleted').equals(1).count();
+        const accCount = await db.accounts.where('isDeleted').equals(1).count();
+        const deletedCount = txCount + accCount;
         trashBadge.textContent = `${deletedCount} mục`;
         trashBadge.className = deletedCount > 0 ? 'settings-status-pill pill-red' : 'settings-status-pill pill-gray';
       } catch (_) {
@@ -2662,6 +2664,17 @@ const UISettings = {
   // ==========================================
   // THÙNG RÁC & KHÔI PHỤC (RECYCLE BIN)
   // ==========================================
+  trashCurrentTab: 'txs',
+
+  switchTrashTab(tabName) {
+    this.trashCurrentTab = tabName || 'txs';
+    const txTab = document.getElementById('trash-tab-txs');
+    const accTab = document.getElementById('trash-tab-accounts');
+    if (txTab) txTab.classList.toggle('active', this.trashCurrentTab === 'txs');
+    if (accTab) accTab.classList.toggle('active', this.trashCurrentTab === 'accounts');
+    this.renderTrashPanel();
+  },
+
   async renderTrashPanel() {
     const container = document.getElementById('trash-items-container');
     const badgeEl = document.getElementById('trash-total-count-pill');
@@ -2671,26 +2684,132 @@ const UISettings = {
 
     try {
       const deletedTxs = await db.transactions.where('isDeleted').equals(1).toArray();
-      const count = deletedTxs.length;
+      const deletedAccounts = await db.accounts.where('isDeleted').equals(1).toArray();
+
+      const txCount = deletedTxs.length;
+      const accCount = deletedAccounts.length;
+      const totalCount = txCount + accCount;
+
+      const txTabCountEl = document.getElementById('trash-tab-txs-count');
+      const accTabCountEl = document.getElementById('trash-tab-accounts-count');
+      if (txTabCountEl) txTabCountEl.textContent = String(txCount);
+      if (accTabCountEl) accTabCountEl.textContent = String(accCount);
 
       if (badgeEl) {
-        badgeEl.textContent = `${count} mục`;
-        badgeEl.className = count > 0 ? 'settings-status-pill pill-red' : 'settings-status-pill pill-gray';
+        badgeEl.textContent = `${totalCount} mục`;
+        badgeEl.className = totalCount > 0 ? 'settings-status-pill pill-red' : 'settings-status-pill pill-gray';
       }
 
       const hubTrashBadge = document.getElementById('hub-trash-badge');
       if (hubTrashBadge) {
-        hubTrashBadge.textContent = `${count} mục`;
-        hubTrashBadge.className = count > 0 ? 'settings-status-pill pill-red' : 'settings-status-pill pill-gray';
+        hubTrashBadge.textContent = `${totalCount} mục`;
+        hubTrashBadge.className = totalCount > 0 ? 'settings-status-pill pill-red' : 'settings-status-pill pill-gray';
       }
 
-      if (count === 0) {
+      // 1. TAB TÀI KHOẢN / VÍ ĐÃ XÓA
+      if (this.trashCurrentTab === 'accounts') {
+        if (accCount === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 40px 16px; background: var(--bg-card); border: 1px dashed var(--border-color); border-radius: var(--radius-lg);">
+              <div style="width: 52px; height: 52px; border-radius: 50%; background: rgba(148, 163, 184, 0.12); color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                <i data-lucide="wallet" style="width: 26px; height: 26px;"></i>
+              </div>
+              <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); margin-bottom: 4px;">Không có tài khoản nào trong thùng rác</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); max-width: 320px; margin: 0 auto;">Tất cả các tài khoản và ví của bạn đều đang hoạt động an toàn.</div>
+            </div>
+          `;
+          if (window.lucide) lucide.createIcons();
+          return;
+        }
+
+        deletedAccounts.sort((a, b) => {
+          const timeA = a.deletedAt || (new Date(a.updatedAt || 0).getTime()) || 0;
+          const timeB = b.deletedAt || (new Date(b.updatedAt || 0).getTime()) || 0;
+          return timeB - timeA;
+        });
+
+        const accountTypeNames = {
+          cash: 'Tiền mặt',
+          bank: 'Tài khoản ngân hàng',
+          credit: 'Thẻ tín dụng',
+          ewallet: 'Ví điện tử',
+          other: 'Tài khoản khác'
+        };
+
+        let accHtml = `<div style="display: flex; flex-direction: column; gap: 10px;">`;
+
+        for (const acc of deletedAccounts) {
+          const typeName = accountTypeNames[acc.type] || 'Tài khoản';
+          const isSyncSource = acc.deletedSource === 'sync' || (acc.deletedReason && acc.deletedReason.includes('Đồng bộ'));
+          const sourceBadgeHtml = isSyncSource
+            ? `<span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: rgba(168, 85, 247, 0.15); color: #a855f7;"><i data-lucide="cloud" style="width: 11px; height: 11px;"></i> Đồng bộ từ máy chủ</span>`
+            : `<span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: rgba(239, 68, 68, 0.12); color: #ef4444;"><i data-lucide="smartphone" style="width: 11px; height: 11px;"></i> Xóa trên máy này</span>`;
+
+          const deletedTimeStr = acc.deletedAt
+            ? new Date(acc.deletedAt).toLocaleString('vi-VN')
+            : (acc.updatedAt ? new Date(acc.updatedAt).toLocaleString('vi-VN') : 'Gần đây');
+
+          const icon = acc.icon || (acc.type === 'bank' ? 'landmark' : (acc.type === 'credit' ? 'credit-card' : 'wallet'));
+
+          accHtml += `
+            <div class="settings-card-clean" style="margin-bottom: 0; padding: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+                  <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(99, 102, 241, 0.12); color: var(--primary); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <i data-lucide="${icon}" style="width: 20px; height: 20px;"></i>
+                  </div>
+                  <div style="min-width: 0; flex: 1;">
+                    <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                      ${esc(acc.name)}
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">
+                      ${typeName}
+                    </div>
+                  </div>
+                </div>
+
+                <div style="text-align: right; flex-shrink: 0;">
+                  <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">
+                    ${new Intl.NumberFormat('vi-VN').format(acc.balance || 0)}đ
+                  </div>
+                  <div style="font-size: 0.7rem; color: var(--text-muted);">Số dư</div>
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 6px; border-top: 1px dashed var(--border-color); font-size: 0.73rem; color: var(--text-muted); flex-wrap: wrap; gap: 6px;">
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  ${sourceBadgeHtml}
+                  <span>Xóa: ${deletedTimeStr}</span>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+                  <button type="button" class="btn-emerald btn-sm" onclick="UISettings.restoreAccountItem('${acc.id}')" style="padding: 3px 10px; font-size: 0.74rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px;">
+                    <i data-lucide="rotate-ccw" style="width: 12px; height: 12px;"></i>
+                    <span>Khôi phục ví</span>
+                  </button>
+                  <button type="button" class="btn-secondary btn-sm" onclick="UISettings.permanentlyDeleteAccountItem('${acc.id}')" title="Xóa vĩnh viễn không thể khôi phục" style="padding: 3px 8px; font-size: 0.74rem; color: #ef4444; border-radius: 6px;">
+                    <i data-lucide="trash" style="width: 12px; height: 12px;"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        accHtml += `</div>`;
+        container.innerHTML = accHtml;
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+
+      // 2. TAB GIAO DỊCH ĐÃ XÓA
+      if (txCount === 0) {
         container.innerHTML = `
           <div style="text-align: center; padding: 40px 16px; background: var(--bg-card); border: 1px dashed var(--border-color); border-radius: var(--radius-lg);">
             <div style="width: 52px; height: 52px; border-radius: 50%; background: rgba(148, 163, 184, 0.12); color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
               <i data-lucide="trash-2" style="width: 26px; height: 26px;"></i>
             </div>
-            <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); margin-bottom: 4px;">Thùng rác hoàn toàn trống</div>
+            <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); margin-bottom: 4px;">Thùng rác giao dịch trống</div>
             <div style="font-size: 0.8rem; color: var(--text-muted); max-width: 320px; margin: 0 auto;">Không có giao dịch nào bị xóa hoặc đang chờ khôi phục.</div>
           </div>
         `;
@@ -2751,6 +2870,11 @@ const UISettings = {
           ? `${fromAcc ? fromAcc.name : 'Tài khoản'} ➔ ${toAcc ? toAcc.name : 'Tài khoản'}`
           : (fromAcc ? fromAcc.name : 'Tài khoản');
 
+        const isAccDeleted = (fromAcc && fromAcc.isDeleted) || (toAcc && toAcc.isDeleted);
+        const accDeletedWarning = isAccDeleted
+          ? `<span title="Tài khoản của giao dịch này hiện đang nằm trong thùng rác" style="display: inline-flex; align-items: center; gap: 2px; color: #f59e0b; font-size: 0.7rem; font-weight: 600;"><i data-lucide="alert-triangle" style="width: 11px; height: 11px;"></i> Ví đã bị xóa</span>`
+          : '';
+
         html += `
           <div class="settings-card-clean" style="margin-bottom: 0; padding: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
@@ -2766,6 +2890,7 @@ const UISettings = {
                     <span>${tx.date || ''} ${tx.time || ''}</span>
                     <span>•</span>
                     <span>${esc(accInfo)}</span>
+                    ${accDeletedWarning}
                   </div>
                 </div>
               </div>
@@ -2814,13 +2939,13 @@ const UISettings = {
       }
       const restored = await window.restoreTransaction(txId);
       if (restored) {
-        if (typeof showToast === 'function') {
+        if (restored._accountRestored) {
+          showToast(`Đã khôi phục giao dịch & đồng thời phục hồi Tài khoản "${restored._accountName}"!`, 'success');
+        } else {
           showToast(`Đã khôi phục giao dịch "${restored.note || 'Giao dịch'}" & hoàn nguyên số dư`, 'success');
         }
       } else {
-        if (typeof showToast === 'function') {
-          showToast('Đã khôi phục giao dịch thành công!', 'success');
-        }
+        showToast('Đã khôi phục giao dịch thành công!', 'success');
       }
       await this.renderTrashPanel();
       await this.updateHubBadges();
@@ -2834,6 +2959,57 @@ const UISettings = {
       console.error('[restoreTrashItem] Error:', err);
       if (typeof showToast === 'function') {
         showToast(`Không thể khôi phục: ${err.message}`, 'error');
+      }
+    }
+  },
+
+  async restoreAccountItem(accId) {
+    try {
+      if (typeof window.restoreAccount !== 'function') {
+        throw new Error('Chức năng restoreAccount chưa sẵn sàng');
+      }
+      const restored = await window.restoreAccount(accId);
+      if (restored) {
+        showToast(`Đã khôi phục tài khoản "${restored.name}" thành công!`, 'success');
+      } else {
+        showToast('Đã khôi phục tài khoản thành công!', 'success');
+      }
+      await this.renderTrashPanel();
+      await this.updateHubBadges();
+      if (window.UIAccounts && typeof window.UIAccounts.render === 'function') {
+        window.UIAccounts.render();
+      }
+      if (window.UITransactions && typeof window.UITransactions.render === 'function') {
+        window.UITransactions.render();
+      }
+    } catch (err) {
+      console.error('[restoreAccountItem] Error:', err);
+      if (typeof showToast === 'function') {
+        showToast(`Không thể khôi phục tài khoản: ${err.message}`, 'error');
+      }
+    }
+  },
+
+  async permanentlyDeleteAccountItem(accId) {
+    if (!confirm('Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản này khỏi thùng rác? Thao tác này không thể hoàn tác!')) {
+      return;
+    }
+    try {
+      if (typeof window.permanentlyDeleteAccount === 'function') {
+        await window.permanentlyDeleteAccount(accId);
+      } else {
+        await db.accounts.delete(Number(accId) || accId);
+      }
+      showToast('Đã xóa vĩnh viễn tài khoản khỏi thùng rác', 'info');
+      await this.renderTrashPanel();
+      await this.updateHubBadges();
+      if (window.UIAccounts && typeof window.UIAccounts.render === 'function') {
+        window.UIAccounts.render();
+      }
+    } catch (err) {
+      console.error('[permanentlyDeleteAccountItem] Error:', err);
+      if (typeof showToast === 'function') {
+        showToast(`Lỗi khi xóa tài khoản: ${err.message}`, 'error');
       }
     }
   },
@@ -2866,12 +3042,15 @@ const UISettings = {
 
   async emptyTrashConfirm() {
     try {
-      const count = await db.transactions.where('isDeleted').equals(1).count();
-      if (count === 0) {
+      const txCount = await db.transactions.where('isDeleted').equals(1).count();
+      const accCount = await db.accounts.where('isDeleted').equals(1).count();
+      const totalCount = txCount + accCount;
+
+      if (totalCount === 0) {
         if (typeof showToast === 'function') showToast('Thùng rác hiện đang trống!', 'info');
         return;
       }
-      if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn toàn bộ ${count} giao dịch trong thùng rác?\n\nCảnh báo: Dữ liệu bị xóa vĩnh viễn sẽ không thể khôi phục lại được!`)) {
+      if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn toàn bộ ${totalCount} mục (${txCount} giao dịch, ${accCount} tài khoản) trong thùng rác?\n\nCảnh báo: Dữ liệu bị xóa vĩnh viễn sẽ không thể khôi phục lại được!`)) {
         return;
       }
       if (typeof window.emptyTrash === 'function') {
@@ -2879,14 +3058,19 @@ const UISettings = {
       } else {
         const deletedTxs = await db.transactions.where('isDeleted').equals(1).toArray();
         for (const t of deletedTxs) await db.transactions.delete(t.id);
+        const deletedAccounts = await db.accounts.where('isDeleted').equals(1).toArray();
+        for (const a of deletedAccounts) await db.accounts.delete(a.id);
       }
       if (typeof showToast === 'function') {
-        showToast(`Đã dọn sạch thùng rác (${count} giao dịch đã xóa)`, 'success');
+        showToast(`Đã dọn sạch thùng rác (${totalCount} mục đã xóa)`, 'success');
       }
       await this.renderTrashPanel();
       await this.updateHubBadges();
       if (window.UITransactions && typeof window.UITransactions.render === 'function') {
         window.UITransactions.render();
+      }
+      if (window.UIAccounts && typeof window.UIAccounts.render === 'function') {
+        window.UIAccounts.render();
       }
     } catch (err) {
       console.error('[emptyTrashConfirm] Error:', err);

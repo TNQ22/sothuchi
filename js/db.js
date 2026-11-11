@@ -786,22 +786,58 @@ async function restoreTransaction(txId) {
       tx = allTxs.find(t => String(t.id) === String(txId));
     }
     if (!tx || !tx.isDeleted) return;
-    restoredTx = tx;
+    restoredTx = { ...tx };
 
     const fee = Number(tx.fee) || 0;
 
-    // Phục hồi lại số dư tài khoản tương ứng
+    // Phục hồi lại số dư tài khoản tương ứng, tự động phục hồi tài khoản nếu tài khoản đang ở thùng rác
     if (tx.type === 'expense') {
       const acc = await db.accounts.get(Number(tx.accountId));
-      if (acc) await db.accounts.update(acc.id, { balance: acc.balance - (tx.amount + fee), updatedAt: now });
+      if (acc) {
+        const updates = { balance: acc.balance - (tx.amount + fee), updatedAt: now };
+        if (acc.isDeleted) {
+          updates.isDeleted = 0;
+          updates.deletedAt = null;
+          restoredTx._accountRestored = true;
+          restoredTx._accountName = acc.name;
+        }
+        await db.accounts.update(acc.id, updates);
+      }
     } else if (tx.type === 'income') {
       const acc = await db.accounts.get(Number(tx.accountId));
-      if (acc) await db.accounts.update(acc.id, { balance: acc.balance + (tx.amount - fee), updatedAt: now });
+      if (acc) {
+        const updates = { balance: acc.balance + (tx.amount - fee), updatedAt: now };
+        if (acc.isDeleted) {
+          updates.isDeleted = 0;
+          updates.deletedAt = null;
+          restoredTx._accountRestored = true;
+          restoredTx._accountName = acc.name;
+        }
+        await db.accounts.update(acc.id, updates);
+      }
     } else if (tx.type === 'transfer' && tx.toAccountId) {
       const fromAcc = await db.accounts.get(Number(tx.accountId));
       const toAcc = await db.accounts.get(Number(tx.toAccountId));
-      if (fromAcc) await db.accounts.update(fromAcc.id, { balance: fromAcc.balance - (tx.amount + fee), updatedAt: now });
-      if (toAcc) await db.accounts.update(toAcc.id, { balance: toAcc.balance + tx.amount, updatedAt: now });
+      if (fromAcc) {
+        const updates = { balance: fromAcc.balance - (tx.amount + fee), updatedAt: now };
+        if (fromAcc.isDeleted) {
+          updates.isDeleted = 0;
+          updates.deletedAt = null;
+          restoredTx._accountRestored = true;
+          restoredTx._accountName = fromAcc.name;
+        }
+        await db.accounts.update(fromAcc.id, updates);
+      }
+      if (toAcc) {
+        const updates = { balance: toAcc.balance + tx.amount, updatedAt: now };
+        if (toAcc.isDeleted) {
+          updates.isDeleted = 0;
+          updates.deletedAt = null;
+          restoredTx._accountRestored = true;
+          restoredTx._accountName = (restoredTx._accountName ? restoredTx._accountName + ', ' : '') + toAcc.name;
+        }
+        await db.accounts.update(toAcc.id, updates);
+      }
     }
 
     // Đánh dấu phục hồi
@@ -839,15 +875,64 @@ async function permanentlyDeleteTransaction(txId) {
 window.permanentlyDeleteTransaction = permanentlyDeleteTransaction;
 
 /**
- * Dọn sạch toàn bộ thùng rác
+ * Khôi phục tài khoản từ Thùng rác
+ */
+async function restoreAccount(accId) {
+  const now = getNowTimestamp();
+  let acc = null;
+  const numId = Number(accId);
+  if (!isNaN(numId)) acc = await db.accounts.get(numId);
+  if (!acc && typeof accId === 'string') acc = await db.accounts.get(accId);
+  if (!acc && accId !== undefined && accId !== null) {
+    const all = await db.accounts.toArray();
+    acc = all.find(a => String(a.id) === String(accId));
+  }
+  if (!acc || !acc.isDeleted) return null;
+
+  await db.accounts.update(acc.id, {
+    isDeleted: 0,
+    restoredAt: now,
+    deletedAt: null,
+    deletedReason: null,
+    deletedSource: null,
+    updatedAt: now
+  });
+
+  if (typeof recalculateAccountBalances === 'function') {
+    await recalculateAccountBalances();
+  }
+  if (typeof triggerAutoSync === 'function') {
+    triggerAutoSync();
+  }
+  return acc;
+}
+window.restoreAccount = restoreAccount;
+
+/**
+ * Xóa vĩnh viễn tài khoản khỏi Thùng rác
+ */
+async function permanentlyDeleteAccount(accId) {
+  const numId = Number(accId);
+  const targetId = isNaN(numId) ? accId : numId;
+  await db.accounts.delete(targetId);
+  if (typeof triggerAutoSync === 'function') triggerAutoSync();
+}
+window.permanentlyDeleteAccount = permanentlyDeleteAccount;
+
+/**
+ * Dọn sạch toàn bộ thùng rác (cả giao dịch và tài khoản)
  */
 async function emptyTrash() {
   const deletedTxs = await db.transactions.where('isDeleted').equals(1).toArray();
   for (const t of deletedTxs) {
     await db.transactions.delete(t.id);
   }
+  const deletedAccounts = await db.accounts.where('isDeleted').equals(1).toArray();
+  for (const a of deletedAccounts) {
+    await db.accounts.delete(a.id);
+  }
   if (typeof triggerAutoSync === 'function') triggerAutoSync();
-  return deletedTxs.length;
+  return deletedTxs.length + deletedAccounts.length;
 }
 window.emptyTrash = emptyTrash;
 
