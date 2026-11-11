@@ -2446,6 +2446,52 @@ function mergeEntityFields(olderItem, newerItem, tableName = '') {
   return merged;
 }
 
+function resolveDeletedStatus(itemA, itemB) {
+  const isA = Boolean(itemA && itemA.isDeleted);
+  const isB = Boolean(itemB && itemB.isDeleted);
+
+  if (isA && isB) {
+    const delAt = (itemA && itemA.deletedAt) || (itemB && itemB.deletedAt) || Math.max(
+      new Date((itemA && itemA.updatedAt) || 0).getTime() || 0,
+      new Date((itemB && itemB.updatedAt) || 0).getTime() || 0
+    );
+    const source = (itemA && itemA.deletedSource) || (itemB && itemB.deletedSource) || 'sync';
+    const reason = (itemA && itemA.deletedReason) || (itemB && itemB.deletedReason) || 'Đồng bộ từ máy chủ / thiết bị khác';
+    return { isDeleted: 1, deletedAt: delAt, deletedSource: source, deletedReason: reason };
+  }
+
+  if (!isA && !isB) {
+    return { isDeleted: 0, deletedAt: null, deletedSource: null, deletedReason: null };
+  }
+
+  // Một bên đã xóa, một bên đang hoạt động
+  const deletedItem = isA ? itemA : itemB;
+  const activeItem = isA ? itemB : itemA;
+
+  const deletedTime = new Date(deletedItem.deletedAt || deletedItem.updatedAt || 0).getTime() || 0;
+  const activeTime = new Date(activeItem.restoredAt || activeItem.updatedAt || 0).getTime() || 0;
+
+  // Nếu bên hoạt động có thời gian cập nhật/khôi phục MỚI HƠN thời điểm xóa:
+  // Hành động Khôi phục (Restore) thắng!
+  if (activeTime > deletedTime) {
+    return {
+      isDeleted: 0,
+      deletedAt: null,
+      deletedSource: null,
+      deletedReason: null,
+      restoredAt: activeItem.restoredAt || activeTime
+    };
+  }
+
+  // Ngược lại: Hành động Xóa xảy ra sau hoặc không có khôi phục mới -> Tombstone Priority thắng
+  return {
+    isDeleted: 1,
+    deletedAt: deletedItem.deletedAt || deletedTime,
+    deletedSource: deletedItem.deletedSource || 'sync',
+    deletedReason: deletedItem.deletedReason || 'Đồng bộ từ máy chủ / thiết bị khác'
+  };
+}
+
 function mergeTableData(serverItems = [], clientItems = [], isAccountTable = false, tableName = '', clientTransactions = []) {
   const map = new Map();
   const generateUniqueNumericId = () => Date.now() * 1000 + Math.floor(Math.random() * 1000);
@@ -2513,22 +2559,12 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
 
           const cTime = new Date(cItem.updatedAt || 0).getTime() || 0;
           const sTime = new Date(sItem.updatedAt || 0).getTime() || 0;
-          const isEitherDeleted = Boolean(sItem.isDeleted || cItem.isDeleted);
           const older = cTime >= sTime ? sItem : cItem;
           const newer = cTime >= sTime ? cItem : sItem;
           const merged = mergeEntityFields(older, newer, 'accounts');
           merged.id = sItem.id;
-          if (isEitherDeleted) {
-            // Tombstone Priority: Một khi tài khoản đã bị xóa ở bất kỳ thiết bị nào, giữ nguyên xóa
-            merged.isDeleted = 1;
-            merged.deletedAt = sItem.deletedAt || cItem.deletedAt || Math.max(sTime, cTime);
-            if (!merged.deletedSource) {
-              merged.deletedSource = (sItem.isDeleted && sItem.deletedSource) || (cItem.isDeleted && cItem.deletedSource) || 'sync';
-            }
-            if (!merged.deletedReason) {
-              merged.deletedReason = (sItem.isDeleted && sItem.deletedReason) || (cItem.isDeleted && cItem.deletedReason) || 'Đồng bộ từ máy chủ / thiết bị khác';
-            }
-          }
+          const delStatus = resolveDeletedStatus(sItem, cItem);
+          Object.assign(merged, delStatus);
           map.set(String(sItem.id), merged);
         }
         continue;
@@ -2556,22 +2592,12 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
           if (matchedTx) {
             const cTime = new Date(cItem.updatedAt || 0).getTime() || 0;
             const sTime = new Date(matchedTx.updatedAt || 0).getTime() || 0;
-            const isEitherDeleted = Boolean(matchedTx.isDeleted || cItem.isDeleted);
             const older = cTime >= sTime ? matchedTx : cItem;
             const newer = cTime >= sTime ? cItem : matchedTx;
             const merged = mergeEntityFields(older, newer, tableName);
             merged.id = matchedTx.id;
-            if (isEitherDeleted) {
-              // Tombstone Priority: Giữ nguyên cờ đã xóa, không cho Zombie Record tái xuất hiện
-              merged.isDeleted = 1;
-              merged.deletedAt = matchedTx.deletedAt || cItem.deletedAt || Math.max(sTime, cTime);
-              if (!merged.deletedSource) {
-                merged.deletedSource = (matchedTx.isDeleted && matchedTx.deletedSource) || (cItem.isDeleted && cItem.deletedSource) || 'sync';
-              }
-              if (!merged.deletedReason) {
-                merged.deletedReason = (matchedTx.isDeleted && matchedTx.deletedReason) || (cItem.isDeleted && cItem.deletedReason) || 'Đồng bộ từ máy chủ / thiết bị khác';
-              }
-            }
+            const delStatus = resolveDeletedStatus(matchedTx, cItem);
+            Object.assign(merged, delStatus);
             map.set(matchedKey, merged);
             continue;
           }
@@ -2595,25 +2621,15 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
         }
 
         if (isSameEntity) {
-          // Cùng một thực thể -> Hợp nhất thông minh kết hợp Tombstone Priority
+          // Cùng một thực thể -> Hợp nhất thông minh kết hợp Tombstone / Restore Priority
           const cTime = new Date(cItem.updatedAt || 0).getTime() || 0;
           const sTime = new Date(sItem.updatedAt || 0).getTime() || 0;
-          const isEitherDeleted = Boolean(sItem.isDeleted || cItem.isDeleted);
           const older = cTime >= sTime ? sItem : cItem;
           const newer = cTime >= sTime ? cItem : sItem;
           const merged = mergeEntityFields(older, newer, tableName);
           merged.id = sItem.id;
-          if (isEitherDeleted) {
-            // Tombstone Priority: Giữ nguyên trạng thái xóa
-            merged.isDeleted = 1;
-            merged.deletedAt = sItem.deletedAt || cItem.deletedAt || Math.max(sTime, cTime);
-            if (!merged.deletedSource) {
-              merged.deletedSource = (sItem.isDeleted && sItem.deletedSource) || (cItem.isDeleted && cItem.deletedSource) || 'sync';
-            }
-            if (!merged.deletedReason) {
-              merged.deletedReason = (sItem.isDeleted && sItem.deletedReason) || (cItem.isDeleted && cItem.deletedReason) || 'Đồng bộ từ máy chủ / thiết bị khác';
-            }
-          }
+          const delStatus = resolveDeletedStatus(sItem, cItem);
+          Object.assign(merged, delStatus);
           map.set(String(sItem.id), merged);
         } else {
           // Xung đột ID giữa 2 trình duyệt độc lập: Cấp ID mới cho cItem và giữ cả 2!

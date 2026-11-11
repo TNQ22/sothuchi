@@ -1100,6 +1100,48 @@ class GoogleDriveSync {
       return local;
     }
 
+    const resolveDeletedStatus = (itemA, itemB) => {
+      const isA = Boolean(itemA && itemA.isDeleted);
+      const isB = Boolean(itemB && itemB.isDeleted);
+
+      if (isA && isB) {
+        const delAt = (itemA && itemA.deletedAt) || (itemB && itemB.deletedAt) || Math.max(
+          new Date((itemA && itemA.updatedAt) || 0).getTime() || 0,
+          new Date((itemB && itemB.updatedAt) || 0).getTime() || 0
+        );
+        const source = (itemA && itemA.deletedSource) || (itemB && itemB.deletedSource) || 'sync';
+        const reason = (itemA && itemA.deletedReason) || (itemB && itemB.deletedReason) || 'Đồng bộ từ Google Drive / thiết bị khác';
+        return { isDeleted: 1, deletedAt: delAt, deletedSource: source, deletedReason: reason };
+      }
+
+      if (!isA && !isB) {
+        return { isDeleted: 0, deletedAt: null, deletedSource: null, deletedReason: null };
+      }
+
+      const deletedItem = isA ? itemA : itemB;
+      const activeItem = isA ? itemB : itemA;
+
+      const deletedTime = new Date(deletedItem.deletedAt || deletedItem.updatedAt || 0).getTime() || 0;
+      const activeTime = new Date(activeItem.restoredAt || activeItem.updatedAt || 0).getTime() || 0;
+
+      if (activeTime > deletedTime) {
+        return {
+          isDeleted: 0,
+          deletedAt: null,
+          deletedSource: null,
+          deletedReason: null,
+          restoredAt: activeItem.restoredAt || activeTime
+        };
+      }
+
+      return {
+        isDeleted: 1,
+        deletedAt: deletedItem.deletedAt || deletedTime,
+        deletedSource: deletedItem.deletedSource || 'sync',
+        deletedReason: deletedItem.deletedReason || 'Đồng bộ từ Google Drive / thiết bị khác'
+      };
+    };
+
     const mergeTable = async (table, localItems, remoteItems) => {
       if (!table) return [];
       const itemMap = new Map();
@@ -1151,23 +1193,23 @@ class GoogleDriveSync {
             const isBlank = (lItem.balance === 0 || lItem.balance === '0') && ((lItem.initialBalance || 0) === 0) && !lItem.isShared;
             const isUntouchedDef = isDef && isBlank && (Number(lItem.updatedAt || 0) <= 1);
 
-            if (table === db.accounts && isDef && isBlank && rItem.isDeleted) {
+            if (table === db.accounts && isUntouchedDef && rItem.isDeleted) {
               itemMap.set(String(lItem.id), { ...rItem, id: lItem.id, isDeleted: 1 });
             } else if (table === db.accounts && isUntouchedDef && (rItem.balance !== 0 || rItem.initialBalance !== 0) && !rItem.isDeleted) {
               const localOrder = (lItem && lItem.order !== undefined && lItem.order !== null) ? lItem.order : rItem.order;
               itemMap.set(String(lItem.id), { ...rItem, id: lItem.id, order: localOrder });
             } else {
-              // Giải quyết xung đột: lấy bản ghi có updatedAt mới hơn
+              // Giải quyết xung đột: lấy bản ghi có updatedAt mới hơn kết hợp Restore/Tombstone Priority
               const rTime = new Date(rItem.updatedAt || 0).getTime() || 0;
               const lTime = new Date(lItem.updatedAt || 0).getTime() || 0;
-              // Nếu local đã xóa và remote chưa cập nhật (hoặc lTime >= rTime): giữ nguyên xóa
-              if (lItem.isDeleted && !rItem.isDeleted && lTime >= rTime) {
-                continue;
-              }
-              if (rTime >= lTime) {
-                const localOrder = (table === db.accounts && lItem && lItem.order !== undefined && lItem.order !== null) ? lItem.order : rItem.order;
-                itemMap.set(String(lItem.id), { ...rItem, id: lItem.id, order: localOrder });
-              }
+              const older = rTime >= lTime ? lItem : rItem;
+              const newer = rTime >= lTime ? rItem : lItem;
+              const localOrder = (table === db.accounts && lItem && lItem.order !== undefined && lItem.order !== null) ? lItem.order : (older.order ?? newer.order);
+              const merged = { ...older, ...newer, id: lItem.id };
+              if (localOrder !== undefined && localOrder !== null) merged.order = localOrder;
+              const delStatus = resolveDeletedStatus(lItem, rItem);
+              Object.assign(merged, delStatus);
+              itemMap.set(String(lItem.id), merged);
             }
           }
         }
