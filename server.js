@@ -2399,8 +2399,53 @@ class DatabaseManager {
 const dbManager = new DatabaseManager();
 
 // ==============================================================================
-// 2. DATA MERGE ENGINE (Conflict-Free Last-Write-Wins Multi-Table)
+// 2. DATA MERGE ENGINE (Conflict-Free Last-Write-Wins & Field-Level Merge Multi-Table)
 // ==============================================================================
+function mergeEntityFields(olderItem, newerItem, tableName = '') {
+  if (!olderItem) return { ...newerItem };
+  if (!newerItem) return { ...olderItem };
+
+  const merged = { ...olderItem, ...newerItem };
+
+  // 1. Giữ nguyên mốc thời gian tạo ban đầu (cũ nhất)
+  if (olderItem.createdAt && newerItem.createdAt) {
+    const oC = new Date(olderItem.createdAt).getTime() || olderItem.createdAt;
+    const nC = new Date(newerItem.createdAt).getTime() || newerItem.createdAt;
+    merged.createdAt = Math.min(oC, nC);
+  } else if (olderItem.createdAt) {
+    merged.createdAt = olderItem.createdAt;
+  }
+
+  // 2. Gộp thông minh cấp độ trường (Field-level Retention):
+  // Nếu olderItem có giá trị khác rỗng/hợp lệ mà newerItem không cung cấp (undefined/null/''),
+  // bảo lưu giá trị từ olderItem để không làm mất thông tin khi sửa chéo trường.
+  const retainableFields = [
+    'note', 'description', 'categoryId', 'tags', 'payee', 'payer',
+    'fee', 'toAccountId', 'personName', 'dueDate', 'reminderTime',
+    'color', 'icon', 'order', 'budgetLimit', 'period', 'startDate', 'endDate',
+    'initialBalance', 'accountType'
+  ];
+  for (const field of retainableFields) {
+    if (
+      (merged[field] === undefined || merged[field] === null || merged[field] === '') &&
+      olderItem[field] !== undefined && olderItem[field] !== null && olderItem[field] !== ''
+    ) {
+      merged[field] = olderItem[field];
+    }
+  }
+
+  // Bảo lưu thứ tự hiển thị tùy biến
+  if (olderItem.order !== undefined && olderItem.order !== null && (newerItem.order === undefined || newerItem.order === null)) {
+    merged.order = olderItem.order;
+  }
+
+  const oTime = new Date(olderItem.updatedAt || 0).getTime() || 0;
+  const nTime = new Date(newerItem.updatedAt || 0).getTime() || 0;
+  merged.updatedAt = Math.max(oTime, nTime);
+
+  return merged;
+}
+
 function mergeTableData(serverItems = [], clientItems = [], isAccountTable = false, tableName = '', clientTransactions = []) {
   const map = new Map();
   const generateUniqueNumericId = () => Date.now() * 1000 + Math.floor(Math.random() * 1000);
@@ -2468,9 +2513,23 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
 
           const cTime = new Date(cItem.updatedAt || 0).getTime() || 0;
           const sTime = new Date(sItem.updatedAt || 0).getTime() || 0;
-          if (cTime >= sTime) {
-            map.set(String(sItem.id), { ...cItem, id: sItem.id });
+          const isEitherDeleted = Boolean(sItem.isDeleted || cItem.isDeleted);
+          const older = cTime >= sTime ? sItem : cItem;
+          const newer = cTime >= sTime ? cItem : sItem;
+          const merged = mergeEntityFields(older, newer, 'accounts');
+          merged.id = sItem.id;
+          if (isEitherDeleted) {
+            // Tombstone Priority: Một khi tài khoản đã bị xóa ở bất kỳ thiết bị nào, giữ nguyên xóa
+            merged.isDeleted = 1;
+            merged.deletedAt = sItem.deletedAt || cItem.deletedAt || Math.max(sTime, cTime);
+            if (!merged.deletedSource) {
+              merged.deletedSource = (sItem.isDeleted && sItem.deletedSource) || (cItem.isDeleted && cItem.deletedSource) || 'sync';
+            }
+            if (!merged.deletedReason) {
+              merged.deletedReason = (sItem.isDeleted && sItem.deletedReason) || (cItem.isDeleted && cItem.deletedReason) || 'Đồng bộ từ máy chủ / thiết bị khác';
+            }
           }
+          map.set(String(sItem.id), merged);
         }
         continue;
       }
@@ -2497,12 +2556,23 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
           if (matchedTx) {
             const cTime = new Date(cItem.updatedAt || 0).getTime() || 0;
             const sTime = new Date(matchedTx.updatedAt || 0).getTime() || 0;
-            if (matchedTx.isDeleted && !cItem.isDeleted && sTime >= cTime) {
-              continue;
+            const isEitherDeleted = Boolean(matchedTx.isDeleted || cItem.isDeleted);
+            const older = cTime >= sTime ? matchedTx : cItem;
+            const newer = cTime >= sTime ? cItem : matchedTx;
+            const merged = mergeEntityFields(older, newer, tableName);
+            merged.id = matchedTx.id;
+            if (isEitherDeleted) {
+              // Tombstone Priority: Giữ nguyên cờ đã xóa, không cho Zombie Record tái xuất hiện
+              merged.isDeleted = 1;
+              merged.deletedAt = matchedTx.deletedAt || cItem.deletedAt || Math.max(sTime, cTime);
+              if (!merged.deletedSource) {
+                merged.deletedSource = (matchedTx.isDeleted && matchedTx.deletedSource) || (cItem.isDeleted && cItem.deletedSource) || 'sync';
+              }
+              if (!merged.deletedReason) {
+                merged.deletedReason = (matchedTx.isDeleted && matchedTx.deletedReason) || (cItem.isDeleted && cItem.deletedReason) || 'Đồng bộ từ máy chủ / thiết bị khác';
+              }
             }
-            if (cTime >= sTime) {
-              map.set(matchedKey, { ...cItem, id: matchedTx.id });
-            }
+            map.set(matchedKey, merged);
             continue;
           }
         }
@@ -2525,15 +2595,26 @@ function mergeTableData(serverItems = [], clientItems = [], isAccountTable = fal
         }
 
         if (isSameEntity) {
-          // Cùng một thực thể -> Last-Write-Wins
+          // Cùng một thực thể -> Hợp nhất thông minh kết hợp Tombstone Priority
           const cTime = new Date(cItem.updatedAt || 0).getTime() || 0;
           const sTime = new Date(sItem.updatedAt || 0).getTime() || 0;
-          if (sItem.isDeleted && !cItem.isDeleted && sTime >= cTime) {
-            continue;
+          const isEitherDeleted = Boolean(sItem.isDeleted || cItem.isDeleted);
+          const older = cTime >= sTime ? sItem : cItem;
+          const newer = cTime >= sTime ? cItem : sItem;
+          const merged = mergeEntityFields(older, newer, tableName);
+          merged.id = sItem.id;
+          if (isEitherDeleted) {
+            // Tombstone Priority: Giữ nguyên trạng thái xóa
+            merged.isDeleted = 1;
+            merged.deletedAt = sItem.deletedAt || cItem.deletedAt || Math.max(sTime, cTime);
+            if (!merged.deletedSource) {
+              merged.deletedSource = (sItem.isDeleted && sItem.deletedSource) || (cItem.isDeleted && cItem.deletedSource) || 'sync';
+            }
+            if (!merged.deletedReason) {
+              merged.deletedReason = (sItem.isDeleted && sItem.deletedReason) || (cItem.isDeleted && cItem.deletedReason) || 'Đồng bộ từ máy chủ / thiết bị khác';
+            }
           }
-          if (cTime >= sTime) {
-            map.set(String(sItem.id), { ...cItem, id: sItem.id });
-          }
+          map.set(String(sItem.id), merged);
         } else {
           // Xung đột ID giữa 2 trình duyệt độc lập: Cấp ID mới cho cItem và giữ cả 2!
           const newId = generateUniqueNumericId();
@@ -2705,6 +2786,7 @@ function sendJson(res, statusCode, data) {
     'Access-Control-Allow-Origin': CORS_ORIGIN,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Expose-Headers': 'Date, Content-Type',
     'Cross-Origin-Opener-Policy': 'same-origin-allow-popups'
   });
   res.end(jsonStr);

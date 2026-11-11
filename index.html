@@ -1397,6 +1397,7 @@
             <button type="button" class="filter-pill tx-filter-pill" data-type="expense">Chi tiêu</button>
             <button type="button" class="filter-pill tx-filter-pill" data-type="income">Thu nhập</button>
             <button type="button" class="filter-pill tx-filter-pill" data-type="transfer">Chuyển khoản</button>
+            <button type="button" class="filter-pill tx-filter-pill tx-filter-trash" data-type="trash" title="Thùng rác giao dịch đã xóa"><i data-lucide="trash-2" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle; margin-right: 2px;"></i>Thùng rác</button>
           </div>
         </div>
 
@@ -1999,6 +2000,21 @@
                       <span class="settings-item-title">Sao Lưu & Khôi Phục File</span>
                     </div>
                     <div class="settings-item-desc">Xuất file dự phòng (.JSON / .STC) & khôi phục toàn bộ</div>
+                  </div>
+                  <i data-lucide="chevron-right" class="settings-item-arrow"></i>
+                </div>
+
+                <!-- Mục 5.1: Thùng Rác & Khôi Phục -->
+                <div class="settings-nav-item" onclick="UISettings.openSection('trash')">
+                  <div class="settings-item-icon-box" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">
+                    <i data-lucide="trash-2"></i>
+                  </div>
+                  <div class="settings-item-content">
+                    <div class="settings-item-title-row">
+                      <span class="settings-item-title">Thùng Rác & Khôi Phục</span>
+                      <span id="hub-trash-badge" class="settings-status-pill pill-gray">0 mục</span>
+                    </div>
+                    <div class="settings-item-desc">Xem giao dịch đã xóa, nguồn gốc xóa & khôi phục 1 chạm</div>
                   </div>
                   <i data-lucide="chevron-right" class="settings-item-arrow"></i>
                 </div>
@@ -2787,6 +2803,39 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                     <strong>Mã hóa tệp bằng mật khẩu:</strong> Khi bạn bấm <em>"Tải File Sao Lưu"</em>, hệ thống sẽ cho phép nhập mật khẩu bảo vệ. Nếu đặt mật khẩu, file tải về sẽ có đuôi <code>.stc</code> được mã hóa chuẩn quân sự AES-GCM 256-bit, tránh việc người khác mở file đọc trộm số dư tài chính của bạn.
                   </p>
                 </div>
+              </div>
+            </div>
+
+            <!-- ==========================================
+                 PANEL 5.1: THÙNG RÁC & KHÔI PHỤC (RECYCLE BIN)
+                 ========================================== -->
+            <div id="panel-trash" class="settings-detail-panel">
+              <div class="settings-card-clean" style="margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="trash-2" style="width: 18px; height: 18px; color: #ef4444;"></i>
+                    <span style="font-weight: 700; font-size: 0.95rem;">Thùng Rác Giao Dịch</span>
+                  </div>
+                  <span id="trash-total-count-pill" class="settings-status-pill pill-gray" style="font-size: 0.72rem;">0 mục</span>
+                </div>
+                <p class="settings-lead-text" style="margin-bottom: 12px;">
+                  Các giao dịch đã xóa trên máy này hoặc từ đồng bộ đa thiết bị được lưu trữ tại đây. Bạn có thể tra cứu chi tiết ngày giờ, nguồn gốc xóa và bấm <strong>Khôi phục</strong> để hoàn nguyên số dư tài khoản ngay lập tức.
+                </p>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <button type="button" id="btn-empty-trash" class="btn-danger-solid" style="flex: 1; min-width: 160px; font-size: 0.8rem; padding: 8px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="UISettings.emptyTrashConfirm()">
+                    <i data-lucide="trash" style="width: 15px; height: 15px;"></i>
+                    <span>Dọn Sạch Thùng Rác</span>
+                  </button>
+                  <button type="button" class="btn-secondary" style="font-size: 0.8rem; padding: 8px 14px; display: inline-flex; align-items: center; gap: 6px;" onclick="UISettings.renderTrashPanel()">
+                    <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                    <span>Làm mới</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Danh sách giao dịch trong thùng rác -->
+              <div id="trash-items-container" class="trash-items-container">
+                <!-- Rendered dynamically -->
               </div>
             </div>
 

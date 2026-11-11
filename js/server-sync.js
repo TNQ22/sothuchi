@@ -26,6 +26,38 @@ class ServerSyncService {
     this.lastVaultUpdatedAt = null;
     this.encryptionPassword = null;
     this._pollingStarted = false;
+    let savedOffset = 0;
+    try {
+      savedOffset = parseInt(localStorage.getItem('stc_server_clock_offset_ms'), 10) || 0;
+    } catch (_) {}
+    this.serverClockOffsetMs = savedOffset;
+  }
+
+  // Ghi nhận và tính toán bù trừ lệch giờ (Clock Skew Compensation) từ server
+  recordServerTime(res) {
+    if (!res) return;
+    try {
+      const dateHeader = res.headers && typeof res.headers.get === 'function' ? res.headers.get('date') : null;
+      if (dateHeader) {
+        const serverTimeMs = new Date(dateHeader).getTime();
+        if (!isNaN(serverTimeMs) && serverTimeMs > 0) {
+          this.serverClockOffsetMs = serverTimeMs - Date.now();
+          try { localStorage.setItem('stc_server_clock_offset_ms', String(this.serverClockOffsetMs)); } catch (_) {}
+        }
+      }
+    } catch (_) {}
+  }
+
+  // Lấy mốc thời gian chuẩn hóa theo đồng hồ máy chủ
+  getSyncedNow() {
+    return Date.now() + (this.serverClockOffsetMs || 0);
+  }
+
+  // Wrapper fetch tự động ghi nhận thời gian máy chủ sau mỗi phản hồi
+  async fetchWithSync(url, options = {}) {
+    const res = await fetch(url, options);
+    this.recordServerTime(res);
+    return res;
   }
 
   get isConnected() {
@@ -601,7 +633,7 @@ class ServerSyncService {
       ? `${this.serverUrl}/api/vaults/${targetVaultId}/overwrite`
       : `${this.serverUrl}/api/vaults/${targetVaultId}/sync`;
 
-    const pushRes = await fetch(endpoint, {
+    const pushRes = await this.fetchWithSync(endpoint, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.token}`,
@@ -1477,8 +1509,8 @@ class ServerSyncService {
       const currentVault = this.getActiveVault();
       const isViewer = currentVault && currentVault.role === 'viewer';
 
-      // 1. Tải dữ liệu Sổ từ Máy chủ
-      const pullRes = await fetch(`${this.serverUrl}/api/vaults/${this.activeVaultId}/data`, {
+      // 1. Tải dữ liệu Sổ từ Máy chủ (kèm tự động đồng bộ giờ server)
+      const pullRes = await this.fetchWithSync(`${this.serverUrl}/api/vaults/${this.activeVaultId}/data`, {
         headers: { Authorization: `Bearer ${this.token}` }
       });
 
@@ -1576,7 +1608,7 @@ class ServerSyncService {
         }
 
         // Gửi push & merge lên Server kèm baseVersion để kiểm soát xung đột đồng thời
-        let pushRes = await fetch(`${this.serverUrl}/api/vaults/${this.activeVaultId}/sync`, {
+        let pushRes = await this.fetchWithSync(`${this.serverUrl}/api/vaults/${this.activeVaultId}/sync`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${this.token}`,
@@ -1644,7 +1676,7 @@ class ServerSyncService {
           }
 
           // 3. Đẩy lại lần 2 lên server với baseVersion mới
-          pushRes = await fetch(`${this.serverUrl}/api/vaults/${this.activeVaultId}/sync`, {
+          pushRes = await this.fetchWithSync(`${this.serverUrl}/api/vaults/${this.activeVaultId}/sync`, {
             method: 'POST',
             headers: {
               Authorization: `Bearer ${this.token}`,
@@ -1859,6 +1891,48 @@ class ServerSyncService {
                                 !a.isShared;
       const isUntouchedDefAcc = (a) => isAccountTable && isDefAcc(a) && isBlankAcc(a) && !localTxAccIds.has(String(a.id)) && (Number(a.updatedAt || 0) <= 1);
 
+      const mergeEntityFields = (olderItem, newerItem, tblName = '') => {
+        if (!olderItem) return { ...newerItem };
+        if (!newerItem) return { ...olderItem };
+
+        const merged = { ...olderItem, ...newerItem };
+
+        // 1. Giữ nguyên mốc thời gian tạo ban đầu (cũ nhất)
+        if (olderItem.createdAt && newerItem.createdAt) {
+          const oC = new Date(olderItem.createdAt).getTime() || olderItem.createdAt;
+          const nC = new Date(newerItem.createdAt).getTime() || newerItem.createdAt;
+          merged.createdAt = Math.min(oC, nC);
+        } else if (olderItem.createdAt) {
+          merged.createdAt = olderItem.createdAt;
+        }
+
+        // 2. Gộp thông minh cấp độ trường: bảo lưu trường khác rỗng của olderItem nếu newerItem không cung cấp
+        const retainableFields = [
+          'note', 'description', 'categoryId', 'tags', 'payee', 'payer',
+          'fee', 'toAccountId', 'personName', 'dueDate', 'reminderTime',
+          'color', 'icon', 'order', 'budgetLimit', 'period', 'startDate', 'endDate',
+          'initialBalance', 'accountType'
+        ];
+        for (const field of retainableFields) {
+          if (
+            (merged[field] === undefined || merged[field] === null || merged[field] === '') &&
+            olderItem[field] !== undefined && olderItem[field] !== null && olderItem[field] !== ''
+          ) {
+            merged[field] = olderItem[field];
+          }
+        }
+
+        if (olderItem.order !== undefined && olderItem.order !== null && (newerItem.order === undefined || newerItem.order === null)) {
+          merged.order = olderItem.order;
+        }
+
+        const oTime = new Date(olderItem.updatedAt || 0).getTime() || 0;
+        const nTime = new Date(newerItem.updatedAt || 0).getTime() || 0;
+        merged.updatedAt = Math.max(oTime, nTime);
+
+        return merged;
+      };
+
       for (const lItem of localItems) {
         if (lItem && lItem.id !== undefined && lItem.id !== null) {
           itemMap.set(String(lItem.id), lItem);
@@ -1906,10 +1980,23 @@ class ServerSyncService {
 
             const rTime = new Date(rItem.updatedAt || 0).getTime() || 0;
             const lTime = new Date(lItem.updatedAt || 0).getTime() || 0;
-            if (rTime >= lTime) {
-              const localOrder = (lItem && lItem.order !== undefined && lItem.order !== null) ? lItem.order : rItem.order;
-              itemMap.set(String(lItem.id), { ...rItem, id: lItem.id, order: localOrder });
+            const isEitherDeleted = Boolean(lItem.isDeleted || rItem.isDeleted);
+            const older = rTime >= lTime ? lItem : rItem;
+            const newer = rTime >= lTime ? rItem : lItem;
+            const merged = mergeEntityFields(older, newer, 'accounts');
+            merged.id = lItem.id;
+            if (isEitherDeleted) {
+              // Tombstone Priority: Một khi tài khoản đã bị xóa ở bất kỳ thiết bị nào, giữ nguyên xóa
+              merged.isDeleted = 1;
+              merged.deletedAt = lItem.deletedAt || rItem.deletedAt || Math.max(lTime, rTime);
+              if (!merged.deletedSource) {
+                merged.deletedSource = (lItem.isDeleted && lItem.deletedSource) || (rItem.isDeleted && rItem.deletedSource) || 'sync';
+              }
+              if (!merged.deletedReason) {
+                merged.deletedReason = (lItem.isDeleted && lItem.deletedReason) || (rItem.isDeleted && rItem.deletedReason) || 'Đồng bộ từ máy chủ / thiết bị khác';
+              }
             }
+            itemMap.set(String(lItem.id), merged);
           }
           continue;
         }
@@ -1937,13 +2024,23 @@ class ServerSyncService {
           if (matchedTx) {
             const rTime = new Date(rItem.updatedAt || 0).getTime() || 0;
             const lTime = new Date(matchedTx.updatedAt || 0).getTime() || 0;
-            // Local đã xóa và timestamp local mới hơn hoặc bằng -> không phục hồi
-            if (matchedTx.isDeleted && !rItem.isDeleted && lTime >= rTime) {
-              continue;
+            const isEitherDeleted = Boolean(matchedTx.isDeleted || rItem.isDeleted);
+            const older = rTime >= lTime ? matchedTx : rItem;
+            const newer = rTime >= lTime ? rItem : matchedTx;
+            const merged = mergeEntityFields(older, newer, tableName);
+            merged.id = matchedTx.id;
+            if (isEitherDeleted) {
+              // Tombstone Priority: Giữ nguyên cờ đã xóa, không cho Zombie Record tái xuất hiện
+              merged.isDeleted = 1;
+              merged.deletedAt = matchedTx.deletedAt || rItem.deletedAt || Math.max(lTime, rTime);
+              if (!merged.deletedSource) {
+                merged.deletedSource = (matchedTx.isDeleted && matchedTx.deletedSource) || (rItem.isDeleted && rItem.deletedSource) || 'sync';
+              }
+              if (!merged.deletedReason) {
+                merged.deletedReason = (matchedTx.isDeleted && matchedTx.deletedReason) || (rItem.isDeleted && rItem.deletedReason) || 'Đồng bộ từ máy chủ / thiết bị khác';
+              }
             }
-            if (rTime >= lTime) {
-              itemMap.set(matchedKey, { ...rItem, id: matchedTx.id });
-            }
+            itemMap.set(matchedKey, merged);
             continue;
           }
 
@@ -1965,16 +2062,26 @@ class ServerSyncService {
           }
 
           if (isSameEntity) {
-            // Cùng một thực thể -> Last-Write-Wins
+            // Cùng một thực thể -> Hợp nhất thông minh kết hợp Tombstone Priority
             const rTime = new Date(rItem.updatedAt || 0).getTime() || 0;
             const lTime = new Date(lItem.updatedAt || 0).getTime() || 0;
-            // Nếu local đã đánh dấu xóa và remote chưa cập nhật (hoặc timestamp local mới hơn / bằng): giữ nguyên xóa
-            if (lItem.isDeleted && !rItem.isDeleted && lTime >= rTime) {
-              continue;
+            const isEitherDeleted = Boolean(lItem.isDeleted || rItem.isDeleted);
+            const older = rTime >= lTime ? lItem : rItem;
+            const newer = rTime >= lTime ? rItem : lItem;
+            const merged = mergeEntityFields(older, newer, tableName);
+            merged.id = lItem.id;
+            if (isEitherDeleted) {
+              // Tombstone Priority: Giữ nguyên trạng thái xóa
+              merged.isDeleted = 1;
+              merged.deletedAt = lItem.deletedAt || rItem.deletedAt || Math.max(lTime, rTime);
+              if (!merged.deletedSource) {
+                merged.deletedSource = (lItem.isDeleted && lItem.deletedSource) || (rItem.isDeleted && rItem.deletedSource) || 'sync';
+              }
+              if (!merged.deletedReason) {
+                merged.deletedReason = (lItem.isDeleted && lItem.deletedReason) || (rItem.isDeleted && rItem.deletedReason) || 'Đồng bộ từ máy chủ / thiết bị khác';
+              }
             }
-            if (rTime >= lTime) {
-              itemMap.set(String(lItem.id), { ...rItem, id: lItem.id });
-            }
+            itemMap.set(String(lItem.id), merged);
           } else {
             // Xung đột ID giữa 2 trình duyệt: Cấp ID mới cho rItem và giữ cả 2!
             const newId = generateUniqueNumericId();
@@ -3741,3 +3848,17 @@ class ServerSyncService {
 }
 
 window.serverSyncService = new ServerSyncService();
+
+if (typeof window !== 'undefined') {
+  window.getSyncedTimestamp = () => {
+    if (window.serverSyncService && typeof window.serverSyncService.getSyncedNow === 'function') {
+      return window.serverSyncService.getSyncedNow();
+    }
+    try {
+      const saved = parseInt(localStorage.getItem('stc_server_clock_offset_ms'), 10);
+      return Date.now() + (!isNaN(saved) ? saved : 0);
+    } catch (_) {
+      return Date.now();
+    }
+  };
+}

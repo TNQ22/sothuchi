@@ -87,6 +87,10 @@ const UISettings = {
       this.updateStorageUsage();
     }
 
+    if (sectionId === 'trash') {
+      this.renderTrashPanel();
+    }
+
     // Cập nhật tiêu đề trang con
     const titleMap = {
       'google-drive': '<svg viewBox="0 0 87.3 78" style="width: 20px; height: 18px; vertical-align: middle;"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg> Google Drive',
@@ -94,6 +98,7 @@ const UISettings = {
       'server': '<i data-lucide="server" style="color: #10b981; width: 20px; height: 20px;"></i> Máy Chủ Riêng',
       'local-folder': '<i data-lucide="folder-sync" style="color: #f59e0b; width: 20px; height: 20px;"></i> Sao Lưu Thư Mục PC',
       'backup-restore': '<i data-lucide="database" style="color: #ec4899; width: 20px; height: 20px;"></i> Sao Lưu & Khôi Phục File',
+      'trash': '<i data-lucide="trash-2" style="color: #ef4444; width: 20px; height: 20px;"></i> Thùng Rác & Khôi Phục',
       'export-csv': '<i data-lucide="file-spreadsheet" style="color: #10b981; width: 20px; height: 20px;"></i> Xuất Dữ Liệu Excel (CSV)',
       'appearance': '<i data-lucide="palette" style="color: #6366f1; width: 20px; height: 20px;"></i> Giao Diện & Hệ Thống',
       'server-admin': '<i data-lucide="shield-check" style="color: var(--primary); width: 20px; height: 20px;"></i> Quản Trị Máy Chủ'
@@ -267,6 +272,19 @@ const UISettings = {
       const themeVal = (themeSetting && themeSetting.value) || 'dark';
       const themeLabels = { dark: 'Tối', light: 'Sáng', system: 'Hệ thống' };
       tBadge.textContent = themeLabels[themeVal] || 'Tối';
+    }
+
+    // 5.1 Thùng Rác & Khôi Phục Badge
+    const trashBadge = document.getElementById('hub-trash-badge');
+    if (trashBadge) {
+      try {
+        const deletedCount = await db.transactions.where('isDeleted').equals(1).count();
+        trashBadge.textContent = `${deletedCount} mục`;
+        trashBadge.className = deletedCount > 0 ? 'settings-status-pill pill-red' : 'settings-status-pill pill-gray';
+      } catch (_) {
+        trashBadge.textContent = '0 mục';
+        trashBadge.className = 'settings-status-pill pill-gray';
+      }
     }
 
     // 6. Quản trị máy chủ (Đồng bộ hiển thị item trên Hub)
@@ -2639,7 +2657,245 @@ const UISettings = {
         this.updateHubBadges();
       });
     }
+  },
+
+  // ==========================================
+  // THÙNG RÁC & KHÔI PHỤC (RECYCLE BIN)
+  // ==========================================
+  async renderTrashPanel() {
+    const container = document.getElementById('trash-items-container');
+    const badgeEl = document.getElementById('trash-total-count-pill');
+    if (!container) return;
+
+    const esc = typeof escapeHTML === 'function' ? escapeHTML : (s => s || '');
+
+    try {
+      const deletedTxs = await db.transactions.where('isDeleted').equals(1).toArray();
+      const count = deletedTxs.length;
+
+      if (badgeEl) {
+        badgeEl.textContent = `${count} mục`;
+        badgeEl.className = count > 0 ? 'settings-status-pill pill-red' : 'settings-status-pill pill-gray';
+      }
+
+      const hubTrashBadge = document.getElementById('hub-trash-badge');
+      if (hubTrashBadge) {
+        hubTrashBadge.textContent = `${count} mục`;
+        hubTrashBadge.className = count > 0 ? 'settings-status-pill pill-red' : 'settings-status-pill pill-gray';
+      }
+
+      if (count === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px 16px; background: var(--bg-card); border: 1px dashed var(--border-color); border-radius: var(--radius-lg);">
+            <div style="width: 52px; height: 52px; border-radius: 50%; background: rgba(148, 163, 184, 0.12); color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+              <i data-lucide="trash-2" style="width: 26px; height: 26px;"></i>
+            </div>
+            <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); margin-bottom: 4px;">Thùng rác hoàn toàn trống</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); max-width: 320px; margin: 0 auto;">Không có giao dịch nào bị xóa hoặc đang chờ khôi phục.</div>
+          </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+
+      // Sắp xếp giảm dần theo thời gian xóa (hoặc updatedAt)
+      deletedTxs.sort((a, b) => {
+        const timeA = a.deletedAt || (new Date(a.updatedAt || 0).getTime()) || 0;
+        const timeB = b.deletedAt || (new Date(b.updatedAt || 0).getTime()) || 0;
+        return timeB - timeA;
+      });
+
+      const accounts = await db.accounts.toArray();
+      const accMap = new Map(accounts.map(a => [a.id, a]));
+      const categories = await db.categories.toArray();
+      const catMap = new Map(categories.map(c => [c.id, c]));
+
+      let html = `<div style="display: flex; flex-direction: column; gap: 10px;">`;
+
+      for (const tx of deletedTxs) {
+        const fromAcc = accMap.get(Number(tx.accountId));
+        const toAcc = tx.toAccountId ? accMap.get(Number(tx.toAccountId)) : null;
+        const cat = catMap.get(Number(tx.categoryId));
+
+        let amountPrefix = '-';
+        let amountClass = 'expense';
+        let typeName = 'Chi tiêu';
+        let badgeColor = 'rgba(244, 63, 94, 0.12)';
+        let badgeTextColor = '#f43f5e';
+
+        if (tx.type === 'income') {
+          amountPrefix = '+';
+          amountClass = 'income';
+          typeName = 'Thu nhập';
+          badgeColor = 'rgba(16, 185, 129, 0.12)';
+          badgeTextColor = '#10b981';
+        } else if (tx.type === 'transfer') {
+          amountPrefix = '↔ ';
+          amountClass = 'transfer';
+          typeName = 'Chuyển khoản';
+          badgeColor = 'rgba(14, 165, 233, 0.12)';
+          badgeTextColor = '#0ea5e9';
+        }
+
+        const isSyncSource = tx.deletedSource === 'sync' || (tx.deletedReason && tx.deletedReason.includes('Đồng bộ'));
+        const sourceBadgeHtml = isSyncSource
+          ? `<span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: rgba(168, 85, 247, 0.15); color: #a855f7;"><i data-lucide="cloud" style="width: 11px; height: 11px;"></i> Đồng bộ từ máy chủ</span>`
+          : `<span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: rgba(239, 68, 68, 0.12); color: #ef4444;"><i data-lucide="smartphone" style="width: 11px; height: 11px;"></i> Xóa trên máy này</span>`;
+
+        const deletedTimeStr = tx.deletedAt
+          ? new Date(tx.deletedAt).toLocaleString('vi-VN')
+          : (tx.updatedAt ? new Date(tx.updatedAt).toLocaleString('vi-VN') : 'Gần đây');
+
+        const title = tx.note || cat?.name || (tx.type === 'transfer' ? 'Chuyển tiền' : 'Giao dịch');
+        const accInfo = tx.type === 'transfer'
+          ? `${fromAcc ? fromAcc.name : 'Tài khoản'} ➔ ${toAcc ? toAcc.name : 'Tài khoản'}`
+          : (fromAcc ? fromAcc.name : 'Tài khoản');
+
+        html += `
+          <div class="settings-card-clean" style="margin-bottom: 0; padding: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: ${badgeColor}; color: ${badgeTextColor}; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                  <i data-lucide="${cat?.icon || (tx.type === 'transfer' ? 'arrow-right-left' : (tx.type === 'income' ? 'banknote' : 'shopping-bag'))}" style="width: 18px; height: 18px;"></i>
+                </div>
+                <div style="min-width: 0; flex: 1;">
+                  <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    ${esc(title)}
+                  </div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <span>${tx.date || ''} ${tx.time || ''}</span>
+                    <span>•</span>
+                    <span>${esc(accInfo)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="text-align: right; flex-shrink: 0;">
+                <div class="${amountClass}-text" style="font-weight: 700; font-size: 0.95rem;">
+                  ${amountPrefix}${new Intl.NumberFormat('vi-VN').format(tx.amount || 0)}đ
+                </div>
+                <div style="font-size: 0.7rem; color: var(--text-muted);">${typeName}</div>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 6px; border-top: 1px dashed var(--border-color); font-size: 0.73rem; color: var(--text-muted); flex-wrap: wrap; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                ${sourceBadgeHtml}
+                <span>Xóa: ${deletedTimeStr}</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+                <button type="button" class="btn-emerald btn-sm" onclick="UISettings.restoreTrashItem('${tx.id}')" style="padding: 3px 10px; font-size: 0.74rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px;">
+                  <i data-lucide="rotate-ccw" style="width: 12px; height: 12px;"></i>
+                  <span>Khôi phục</span>
+                </button>
+                <button type="button" class="btn-secondary btn-sm" onclick="UISettings.permanentlyDeleteTrashItem('${tx.id}')" title="Xóa vĩnh viễn không thể khôi phục" style="padding: 3px 8px; font-size: 0.74rem; color: #ef4444; border-radius: 6px;">
+                  <i data-lucide="trash" style="width: 12px; height: 12px;"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      html += `</div>`;
+      container.innerHTML = html;
+      if (window.lucide) lucide.createIcons();
+    } catch (err) {
+      console.error('[renderTrashPanel] Error:', err);
+      container.innerHTML = `<div style="color: #ef4444; font-size: 0.8rem; padding: 12px;">Lỗi khi tải thùng rác: ${esc(err.message)}</div>`;
+    }
+  },
+
+  async restoreTrashItem(txId) {
+    try {
+      if (typeof window.restoreTransaction !== 'function') {
+        throw new Error('Chức năng restoreTransaction chưa sẵn sàng');
+      }
+      const restored = await window.restoreTransaction(txId);
+      if (restored) {
+        if (typeof showToast === 'function') {
+          showToast(`Đã khôi phục giao dịch "${restored.note || 'Giao dịch'}" & hoàn nguyên số dư`, 'success');
+        }
+      } else {
+        if (typeof showToast === 'function') {
+          showToast('Đã khôi phục giao dịch thành công!', 'success');
+        }
+      }
+      await this.renderTrashPanel();
+      await this.updateHubBadges();
+      if (window.UITransactions && typeof window.UITransactions.render === 'function') {
+        window.UITransactions.render();
+      }
+      if (window.UIAccounts && typeof window.UIAccounts.render === 'function') {
+        window.UIAccounts.render();
+      }
+    } catch (err) {
+      console.error('[restoreTrashItem] Error:', err);
+      if (typeof showToast === 'function') {
+        showToast(`Không thể khôi phục: ${err.message}`, 'error');
+      }
+    }
+  },
+
+  async permanentlyDeleteTrashItem(txId) {
+    if (!confirm('Bạn có chắc chắn muốn xóa vĩnh viễn giao dịch này khỏi thùng rác? Thao tác này không thể hoàn tác!')) {
+      return;
+    }
+    try {
+      if (typeof window.permanentlyDeleteTransaction === 'function') {
+        await window.permanentlyDeleteTransaction(txId);
+      } else {
+        await db.transactions.delete(Number(txId) || txId);
+      }
+      if (typeof showToast === 'function') {
+        showToast('Đã xóa vĩnh viễn giao dịch khỏi thùng rác', 'info');
+      }
+      await this.renderTrashPanel();
+      await this.updateHubBadges();
+      if (window.UITransactions && typeof window.UITransactions.render === 'function') {
+        window.UITransactions.render();
+      }
+    } catch (err) {
+      console.error('[permanentlyDeleteTrashItem] Error:', err);
+      if (typeof showToast === 'function') {
+        showToast(`Lỗi khi xóa: ${err.message}`, 'error');
+      }
+    }
+  },
+
+  async emptyTrashConfirm() {
+    try {
+      const count = await db.transactions.where('isDeleted').equals(1).count();
+      if (count === 0) {
+        if (typeof showToast === 'function') showToast('Thùng rác hiện đang trống!', 'info');
+        return;
+      }
+      if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn toàn bộ ${count} giao dịch trong thùng rác?\n\nCảnh báo: Dữ liệu bị xóa vĩnh viễn sẽ không thể khôi phục lại được!`)) {
+        return;
+      }
+      if (typeof window.emptyTrash === 'function') {
+        await window.emptyTrash();
+      } else {
+        const deletedTxs = await db.transactions.where('isDeleted').equals(1).toArray();
+        for (const t of deletedTxs) await db.transactions.delete(t.id);
+      }
+      if (typeof showToast === 'function') {
+        showToast(`Đã dọn sạch thùng rác (${count} giao dịch đã xóa)`, 'success');
+      }
+      await this.renderTrashPanel();
+      await this.updateHubBadges();
+      if (window.UITransactions && typeof window.UITransactions.render === 'function') {
+        window.UITransactions.render();
+      }
+    } catch (err) {
+      console.error('[emptyTrashConfirm] Error:', err);
+      if (typeof showToast === 'function') {
+        showToast(`Lỗi khi dọn thùng rác: ${err.message}`, 'error');
+      }
+    }
   }
 };
 
 window.UISettings = UISettings;
+window.restoreTransactionFromUI = (txId) => UISettings.restoreTrashItem(txId);

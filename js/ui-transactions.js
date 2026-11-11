@@ -495,9 +495,10 @@ const UITransactions = {
     // Filter pills
     document.querySelectorAll('.tx-filter-pill').forEach(btn => {
       btn.addEventListener('click', (e) => {
+        const targetBtn = e.target.closest('.tx-filter-pill') || e.target;
         document.querySelectorAll('.tx-filter-pill').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        this.currentFilterType = e.target.dataset.type;
+        targetBtn.classList.add('active');
+        this.currentFilterType = targetBtn.dataset.type;
         this.render();
       });
     });
@@ -4973,6 +4974,39 @@ const UITransactions = {
       ? `${timeDisplay}${fromAcc ? escapeHTML(fromAcc.name) : 'Tài khoản'}${fromShareNote} ➔ ${toAcc ? escapeHTML(toAcc.name) : 'Tài khoản'}${toShareNote}${feeDisplay}`
       : `${timeDisplay}${fromAcc ? escapeHTML(fromAcc.name) : 'Tài khoản'}${fromShareNote}${catMeta}${feeDisplay}`;
 
+    if (t.isDeleted) {
+      const isSyncSource = t.deletedSource === 'sync' || (t.deletedReason && t.deletedReason.includes('Đồng bộ'));
+      const delBadge = isSyncSource
+        ? `<span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; padding: 1px 5px; border-radius: 4px; background: rgba(168, 85, 247, 0.15); color: #a855f7;"><i data-lucide="cloud" style="width: 10px; height: 10px;"></i> Đã xóa (Đồng bộ)</span>`
+        : `<span style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; padding: 1px 5px; border-radius: 4px; background: rgba(239, 68, 68, 0.12); color: #ef4444;"><i data-lucide="trash-2" style="width: 10px; height: 10px;"></i> Đã xóa</span>`;
+
+      return `
+        <div class="tx-card is-deleted" style="opacity: 0.82; background: rgba(239, 68, 68, 0.03); border: 1px dashed rgba(239, 68, 68, 0.3);">
+          <div class="tx-left">
+            <div class="tx-icon-box" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted);">
+              <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="tx-info">
+              <span class="tx-title" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span style="text-decoration: line-through; color: var(--text-muted);">${escapeHTML(title)}</span>
+                ${delBadge}
+              </span>
+              <span class="tx-meta">${accountDisplay}</span>
+            </div>
+          </div>
+          <div class="tx-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+            <span class="tx-amount" style="text-decoration: line-through; color: var(--text-muted);">
+              ${amountPrefix}${new Intl.NumberFormat('vi-VN').format(t.amount)}đ
+            </span>
+            <button type="button" class="btn-emerald btn-sm" onclick="event.stopPropagation(); window.restoreTransactionFromUI('${t.id}')" title="Khôi phục giao dịch này" style="padding: 2px 8px; font-size: 0.72rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 3px;">
+              <i data-lucide="rotate-ccw" style="width: 11px; height: 11px;"></i>
+              <span>Khôi phục</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
     return `
       <div class="tx-card" onclick="UITransactions.openEditModal(${t.id})">
         <div class="tx-left">
@@ -5002,7 +5036,12 @@ const UITransactions = {
 
     if (!fullContainer && !dashContainer) return;
 
-    let allTxs = await db.transactions.where('isDeleted').equals(0).toArray();
+    let allTxs = [];
+    if (this.currentFilterType === 'trash') {
+      allTxs = await db.transactions.where('isDeleted').equals(1).toArray();
+    } else {
+      allTxs = await db.transactions.where('isDeleted').equals(0).toArray();
+    }
 
     // 1. Lọc theo tài khoản (Hỗ trợ cả accountId và toAccountId)
     if (this.filterAccountId) {
@@ -5039,7 +5078,7 @@ const UITransactions = {
     }
 
     // Lọc theo loại giao dịch (Type filter)
-    if (this.currentFilterType !== 'all') {
+    if (this.currentFilterType !== 'all' && this.currentFilterType !== 'trash') {
       txs = txs.filter(t => t.type === this.currentFilterType);
     }
 
@@ -5117,19 +5156,21 @@ const UITransactions = {
     if (fullContainer) {
       if (txs.length === 0) {
         const isFiltered = this.currentFilterType !== 'all' || !!this.filterAccountId || !!this.searchKeyword;
-        const emptyMsg = this.searchKeyword 
-          ? 'Không tìm thấy giao dịch nào phù hợp với từ khóa' 
-          : (isFiltered ? 'Không có giao dịch nào phù hợp với bộ lọc hiện tại' : 'Chưa có ghi chép nào trong khoảng thời gian này');
+        const emptyMsg = this.currentFilterType === 'trash'
+          ? 'Thùng rác trống. Chưa có giao dịch nào bị xóa.'
+          : (this.searchKeyword 
+            ? 'Không tìm thấy giao dịch nào phù hợp với từ khóa' 
+            : (isFiltered ? 'Không có giao dịch nào phù hợp với bộ lọc hiện tại' : 'Chưa có ghi chép nào trong khoảng thời gian này'));
         const resetBtnHtml = isFiltered ? `
           <button type="button" class="btn-secondary" onclick="UITransactions.resetAllFilters(true)" style="margin: 14px auto 0; display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; font-size: 0.85rem; border-radius: 20px; cursor: pointer;">
             <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
-            Đặt lại bộ lọc
+            ${this.currentFilterType === 'trash' ? 'Quay lại sổ' : 'Đặt lại bộ lọc'}
           </button>
         ` : '';
         fullContainer.innerHTML = `
           <div style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
-            <i data-lucide="receipt" style="width: 48px; height: 48px; stroke-width: 1.5; margin-bottom: 12px; opacity: 0.5;"></i>
-            <p style="font-size: 1rem; font-weight: 500;">Chưa có giao dịch nào</p>
+            <i data-lucide="${this.currentFilterType === 'trash' ? 'trash-2' : 'receipt'}" style="width: 48px; height: 48px; stroke-width: 1.5; margin-bottom: 12px; opacity: 0.5;"></i>
+            <p style="font-size: 1rem; font-weight: 500;">${this.currentFilterType === 'trash' ? 'Thùng rác trống' : 'Chưa có giao dịch nào'}</p>
             <p style="font-size: 0.85rem; margin-top: 4px;">${escapeHTML(emptyMsg)}</p>
             ${resetBtnHtml}
           </div>
@@ -5143,6 +5184,24 @@ const UITransactions = {
         }
 
         let fullHtml = '';
+        if (this.currentFilterType === 'trash') {
+          fullHtml += `
+            <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="trash-2" style="width: 16px; height: 16px; color: #ef4444;"></i>
+                <span style="font-size: 0.82rem; font-weight: 600; color: #ef4444;">Đang xem Thùng rác (${txs.length} giao dịch đã xóa)</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <button type="button" class="btn-secondary btn-sm" onclick="UISettings.openSection('trash'); window.app.showView('settings');" style="font-size: 0.74rem; padding: 3px 10px; border-radius: 6px;">
+                  Quản lý thùng rác
+                </button>
+                <button type="button" class="btn-secondary btn-sm" onclick="UITransactions.resetAllFilters(true)" style="font-size: 0.74rem; padding: 3px 10px; border-radius: 6px;">
+                  Đóng
+                </button>
+              </div>
+            </div>
+          `;
+        }
         const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
         for (const dateStr of sortedDates) {
           const items = grouped[dateStr];
@@ -5329,8 +5388,8 @@ const UITransactions = {
     }
     const ok = await showConfirm({
       title: 'Xoá Giao Dịch',
-      message: 'Bạn có chắc muốn xóa giao dịch này không?<br><br><span style="color: var(--text-muted); font-size: 0.85rem;">Số dư tài khoản sẽ được hoàn lại.</span>',
-      confirmText: 'Xoá Giao Dịch',
+      message: 'Bạn có chắc muốn chuyển giao dịch này vào Thùng rác không?<br><br><span style="color: var(--text-muted); font-size: 0.85rem;">Số dư tài khoản sẽ được hoàn lại và bạn có thể khôi phục lại bất kỳ lúc nào từ Thùng rác.</span>',
+      confirmText: 'Chuyển Vào Thùng Rác',
       cancelText: 'Huỷ',
       danger: true,
       icon: 'trash-2'
@@ -5338,7 +5397,7 @@ const UITransactions = {
     if (!ok) return;
     try {
       await deleteTransaction(txId);
-      showToast('Đã xóa giao dịch', 'info');
+      showToast('Đã chuyển giao dịch vào Thùng rác', 'info');
       // Nếu đang mở form sửa thì đóng lại và trở về
       if (window.app && window.app.currentView === 'new-transaction') {
         window.app.goBack();

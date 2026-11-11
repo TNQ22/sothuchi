@@ -14,6 +14,16 @@ function getLocalDateStr(date = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * Trả về timestamp chuẩn hóa (bù trừ lệch giờ thiết bị nếu có đồng bộ với Server riêng)
+ */
+function getNowTimestamp() {
+  if (typeof window !== 'undefined' && typeof window.getSyncedTimestamp === 'function') {
+    return window.getSyncedTimestamp();
+  }
+  return Date.now();
+}
+
 const db = new Dexie('SoThuChiDB');
 
 // Define Schema Version 1
@@ -513,13 +523,13 @@ async function initDatabase() {
 
 // Sinh ID dạng số duy nhất toàn cầu dựa trên microsecond để chống xung đột ID giữa các trình duyệt/thiết bị
 function generateUniqueId() {
-  return Date.now() * 1000 + Math.floor(Math.random() * 1000);
+  return getNowTimestamp() * 1000 + Math.floor(Math.random() * 1000);
 }
 window.generateUniqueId = generateUniqueId;
 
 // Transaction operations with automatic balance recalculation
 async function addTransaction(data) {
-  const now = Date.now();
+  const now = getNowTimestamp();
   const currentTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
   const fee = Number(data.fee) || 0;
   const tx = {
@@ -669,8 +679,8 @@ async function addTransaction(data) {
   triggerAutoSync();
 }
 
-async function deleteTransaction(txId) {
-  const now = Date.now();
+async function deleteTransaction(txId, options = {}) {
+  const now = getNowTimestamp();
   let deletedTx = null;
   await db.transaction('rw', db.transactions, db.accounts, async () => {
     let tx = null;
@@ -709,8 +719,14 @@ async function deleteTransaction(txId) {
       if (toAcc) await db.accounts.update(toAcc.id, { balance: toAcc.balance - tx.amount, updatedAt: now });
     }
 
-    // Soft delete for sync capability
-    await db.transactions.update(tx.id, { isDeleted: 1, updatedAt: now });
+    // Soft delete for sync capability with audit annotations
+    await db.transactions.update(tx.id, {
+      isDeleted: 1,
+      deletedAt: now,
+      deletedSource: options.source || 'local',
+      deletedReason: options.reason || 'Xóa thủ công trên thiết bị này',
+      updatedAt: now
+    });
   });
 
   if (typeof recalculateAccountBalances === 'function') {
@@ -753,6 +769,87 @@ async function deleteTransaction(txId) {
 
   triggerAutoSync();
 }
+
+/**
+ * Khôi phục giao dịch từ Thùng rác (Recycle Bin)
+ */
+async function restoreTransaction(txId) {
+  const now = getNowTimestamp();
+  let restoredTx = null;
+  await db.transaction('rw', db.transactions, db.accounts, async () => {
+    let tx = null;
+    const numId = Number(txId);
+    if (!isNaN(numId)) tx = await db.transactions.get(numId);
+    if (!tx && typeof txId === 'string') tx = await db.transactions.get(txId);
+    if (!tx && txId !== undefined && txId !== null) {
+      const allTxs = await db.transactions.toArray();
+      tx = allTxs.find(t => String(t.id) === String(txId));
+    }
+    if (!tx || !tx.isDeleted) return;
+    restoredTx = tx;
+
+    const fee = Number(tx.fee) || 0;
+
+    // Phục hồi lại số dư tài khoản tương ứng
+    if (tx.type === 'expense') {
+      const acc = await db.accounts.get(Number(tx.accountId));
+      if (acc) await db.accounts.update(acc.id, { balance: acc.balance - (tx.amount + fee), updatedAt: now });
+    } else if (tx.type === 'income') {
+      const acc = await db.accounts.get(Number(tx.accountId));
+      if (acc) await db.accounts.update(acc.id, { balance: acc.balance + (tx.amount - fee), updatedAt: now });
+    } else if (tx.type === 'transfer' && tx.toAccountId) {
+      const fromAcc = await db.accounts.get(Number(tx.accountId));
+      const toAcc = await db.accounts.get(Number(tx.toAccountId));
+      if (fromAcc) await db.accounts.update(fromAcc.id, { balance: fromAcc.balance - (tx.amount + fee), updatedAt: now });
+      if (toAcc) await db.accounts.update(toAcc.id, { balance: toAcc.balance + tx.amount, updatedAt: now });
+    }
+
+    // Đánh dấu phục hồi
+    await db.transactions.update(tx.id, {
+      isDeleted: 0,
+      restoredAt: now,
+      deletedAt: null,
+      deletedReason: null,
+      deletedSource: null,
+      updatedAt: now
+    });
+  });
+
+  if (typeof recalculateAccountBalances === 'function') {
+    await recalculateAccountBalances();
+  }
+
+  if (typeof triggerAutoSync === 'function') {
+    triggerAutoSync();
+  }
+
+  return restoredTx;
+}
+window.restoreTransaction = restoreTransaction;
+
+/**
+ * Xóa vĩnh viễn 1 giao dịch khỏi Thùng rác
+ */
+async function permanentlyDeleteTransaction(txId) {
+  const numId = Number(txId);
+  const targetId = isNaN(numId) ? txId : numId;
+  await db.transactions.delete(targetId);
+  if (typeof triggerAutoSync === 'function') triggerAutoSync();
+}
+window.permanentlyDeleteTransaction = permanentlyDeleteTransaction;
+
+/**
+ * Dọn sạch toàn bộ thùng rác
+ */
+async function emptyTrash() {
+  const deletedTxs = await db.transactions.where('isDeleted').equals(1).toArray();
+  for (const t of deletedTxs) {
+    await db.transactions.delete(t.id);
+  }
+  if (typeof triggerAutoSync === 'function') triggerAutoSync();
+  return deletedTxs.length;
+}
+window.emptyTrash = emptyTrash;
 
 // Helper đảm bảo danh mục hệ thống cho sổ vay ngân hàng luôn tồn tại và được bảo vệ
 async function getLoanSystemCategories() {
