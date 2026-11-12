@@ -25,6 +25,7 @@ class GoogleDriveSync {
     this.refreshToken = null;
     this.encryptionPassword = null;
     this.clientId = '';
+    this.apiKey = '';
     this.storageLocation = 'appDataFolder'; // 'appDataFolder' | 'customFolder'
     this.customFolderName = 'Sổ Thu Chi';
     this.customFolderId = null;
@@ -43,6 +44,13 @@ class GoogleDriveSync {
         this.clientId = savedClientId.value;
       } else if (window.EnvConfig) {
         this.clientId = window.EnvConfig.get('GOOGLE_CLIENT_ID', '');
+      }
+
+      const savedApiKey = await db.settings.get('googleApiKey');
+      if (savedApiKey && savedApiKey.value) {
+        this.apiKey = savedApiKey.value.trim();
+      } else if (window.EnvConfig) {
+        this.apiKey = window.EnvConfig.get('GOOGLE_API_KEY', '').trim();
       }
 
       const autoSyncSetting = await db.settings.get('autoSyncEnabled');
@@ -148,6 +156,11 @@ class GoogleDriveSync {
   setClientId(id) {
     this.clientId = (id || '').trim();
     db.settings.put({ key: 'googleClientId', value: this.clientId });
+  }
+
+  setApiKey(key) {
+    this.apiKey = (key || '').trim();
+    db.settings.put({ key: 'googleApiKey', value: this.apiKey });
   }
 
   setStorageLocation(loc, folderName = null) {
@@ -347,7 +360,7 @@ class GoogleDriveSync {
         try {
           const codeClient = google.accounts.oauth2.initCodeClient({
             client_id: this.clientId,
-            scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+            scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
             ux_mode: 'popup',
             callback: async (resp) => {
               if (settled) return;
@@ -441,7 +454,7 @@ class GoogleDriveSync {
 
         const tokenClientConfig = {
           client_id: this.clientId,
-          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
           prompt: promptValue,
           callback: async (resp) => {
             if (settled) return;
@@ -1905,6 +1918,123 @@ class GoogleDriveSync {
       isEncrypted,
       service: 'google-drive'
     };
+  }
+
+  // Đảm bảo module Google Picker (api.js + gapi.load('picker')) được tải sẵn sàng
+  async ensurePickerLoaded() {
+    if (window.google?.picker) return true;
+
+    if (typeof gapi === 'undefined') {
+      await new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[src*="apis.google.com/js/api.js"]');
+        if (existing) {
+          existing.addEventListener('load', resolve);
+          existing.addEventListener('error', () => reject(new Error('Lỗi tải Google API Client Library')));
+          return;
+        }
+        const s = document.createElement('script');
+        s.src = 'https://apis.google.com/js/api.js';
+        s.async = true;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('Không thể tải Google API Client Library (api.js)'));
+        document.head.appendChild(s);
+      });
+    }
+
+    return new Promise((resolve, reject) => {
+      if (typeof gapi?.load !== 'function') {
+        return reject(new Error('Google Client Library gapi.load không khả dụng.'));
+      }
+      gapi.load('picker', {
+        callback: () => {
+          if (window.google?.picker) {
+            resolve(true);
+          } else {
+            reject(new Error('Google Picker chưa sẵn sàng sau khi tải module.'));
+          }
+        },
+        onerror: () => reject(new Error('Lỗi tải module Google Picker từ máy chủ Google.'))
+      });
+    });
+  }
+
+  // Mở hộp thoại Google Picker chính thức để duyệt và nhận tệp chia sẻ riêng qua email
+  async openPickerForSharedItems() {
+    await this.ensureToken(true);
+    if (!this.accessToken) {
+      throw new Error('Chưa kết nối Google Drive. Vui lòng kết nối tài khoản Google trước.');
+    }
+
+    if (!this.apiKey) {
+      const savedKey = await db.settings.get('googleApiKey');
+      if (savedKey?.value) this.apiKey = savedKey.value.trim();
+      else if (window.EnvConfig) this.apiKey = window.EnvConfig.get('GOOGLE_API_KEY', '').trim();
+    }
+
+    if (!this.apiKey) {
+      const input = await showPrompt({
+        title: 'Cần Google API Key (Google Picker)',
+        message: 'Google Picker yêu cầu API Key để duyệt các tệp chia sẻ riêng qua email theo chuẩn bảo mật <code>drive.file</code>.<br><br>Nhập Google API Key của bạn (hoặc cấu hình trong Cài đặt):',
+        placeholder: 'AIzaSy...',
+        confirmText: 'Lưu & Mở Picker',
+        cancelText: 'Huỷ',
+        icon: 'key'
+      });
+      if (!input || !input.trim()) return null;
+      this.setApiKey(input.trim());
+    }
+
+    await this.ensurePickerLoaded();
+
+    const projectNumber = this.clientId ? this.clientId.split('-')[0] : '';
+
+    return new Promise((resolve, reject) => {
+      try {
+        // Tab 1: Các tệp chia sẻ riêng với tôi (Shared with me)
+        const sharedView = new google.picker.DocsView(google.picker.ViewId.DOCS)
+          .setOwnedByMe(false)
+          .setLabel('Được chia sẻ với tôi')
+          .setMimeTypes('application/json');
+
+        // Tab 2: Toàn bộ Drive / Tìm kiếm stc_shared_
+        const allStcView = new google.picker.DocsView(google.picker.ViewId.DOCS)
+          .setLabel('Tất cả tệp Sổ Thu Chi')
+          .setQuery('stc_shared_');
+
+        const builder = new google.picker.PickerBuilder()
+          .addView(sharedView)
+          .addView(allStcView)
+          .setOAuthToken(this.accessToken)
+          .setDeveloperKey(this.apiKey)
+          .setTitle('Chọn Sổ / Ví Chia Sẻ Từ Google Drive')
+          .setLocale('vi')
+          .setCallback((data) => {
+            const action = data[google.picker.Response.ACTION];
+            if (action === google.picker.Action.PICKED) {
+              const doc = data[google.picker.Response.DOCUMENTS]?.[0];
+              if (doc) {
+                const fileId = doc[google.picker.Document.ID];
+                const fileName = doc[google.picker.Document.NAME];
+                resolve({ fileId, fileName, doc });
+              } else {
+                resolve(null);
+              }
+            } else if (action === google.picker.Action.CANCEL) {
+              resolve(null);
+            }
+          });
+
+        if (projectNumber) {
+          builder.setAppId(projectNumber);
+        }
+
+        const picker = builder.build();
+        picker.setVisible(true);
+      } catch (err) {
+        console.error('[GooglePicker] Lỗi hiển thị Picker:', err);
+        reject(err);
+      }
+    });
   }
 
   async acceptShareLink(token, key = null) {

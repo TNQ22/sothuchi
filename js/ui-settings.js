@@ -305,6 +305,17 @@ const UISettings = {
       }
     }
 
+    // 1.0b Load Google API Key (Developer Key cho Google Picker)
+    const apiKeySetting = await db.settings.get('googleApiKey');
+    const apiKeyInput = document.getElementById('settings-google-api-key');
+    if (apiKeyInput) {
+      if (apiKeySetting && apiKeySetting.value) {
+        apiKeyInput.value = apiKeySetting.value;
+      } else if (window.EnvConfig && window.EnvConfig.get('GOOGLE_API_KEY')) {
+        apiKeyInput.value = window.EnvConfig.get('GOOGLE_API_KEY');
+      }
+    }
+
     // 1.1 Load Cloudflare Worker URL & Secret
     const workerSetting = await db.settings.get('googleWorkerUrl');
     const workerInput = document.getElementById('settings-google-worker-url');
@@ -2171,6 +2182,27 @@ const UISettings = {
     if (helpBtn && helpBox) {
       helpBtn.addEventListener('click', () => {
         helpBox.style.display = helpBox.style.display === 'none' ? 'block' : 'none';
+      });
+    }
+
+    // 1b. Google API Key Save
+    const saveApiKeyBtn = document.getElementById('btn-save-api-key');
+    if (saveApiKeyBtn) {
+      saveApiKeyBtn.addEventListener('click', async () => {
+        const input = document.getElementById('settings-google-api-key');
+        const val = input.value.trim();
+        await db.settings.put({ key: 'googleApiKey', value: val });
+        if (window.googleDriveService) window.googleDriveService.setApiKey(val);
+        showToast('Đã lưu Google API Key (Developer Key)', 'success');
+      });
+    }
+
+    // Toggle API Key Help Box
+    const helpApiKeyBtn = document.getElementById('btn-toggle-api-key-help');
+    const helpApiKeyBox = document.getElementById('api-key-help-box');
+    if (helpApiKeyBtn && helpApiKeyBox) {
+      helpApiKeyBtn.addEventListener('click', () => {
+        helpApiKeyBox.style.display = helpApiKeyBox.style.display === 'none' ? 'block' : 'none';
       });
     }
 

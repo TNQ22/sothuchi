@@ -82,6 +82,8 @@
     })();
   </script>
 
+  <!-- Google API Client Library for Google Picker -->
+  <script src="https://apis.google.com/js/api.js" async defer></script>
   <!-- Google Identity Services (GIS) for Google Drive Auth -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style id="settings-redesign-styles">
@@ -1524,6 +1526,9 @@
               </div>
             </div>
             <div class="accounts-group-actions" style="display: flex; align-items: center; gap: 6px;">
+              <button type="button" class="btn-group-circle-add" style="color: #2563eb;" onclick="window.ReceiveShareModal && ReceiveShareModal.pickGoogleDrive()" title="Chọn tệp chia sẻ từ Google Drive (Google Picker)" aria-label="Google Picker">
+                <svg viewBox="0 0 87.3 78" style="width: 15px; height: 14px; display: inline-block; vertical-align: middle;"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg>
+              </button>
               <button type="button" class="btn-group-circle-add" style="color: #3b82f6;" onclick="UIAccounts.manualSyncSharedItems(this)" title="Kiểm tra & Đồng bộ" aria-label="Kiểm tra & Đồng bộ">
                 <i data-lucide="refresh-cw"></i>
               </button>
@@ -2413,6 +2418,24 @@
                     </div>
                     <div id="client-id-help-box" style="display: none; margin-top: 8px; padding: 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
                       <strong>Hướng dẫn:</strong> Truy cập <code>console.cloud.google.com</code> &rarr; Bật <strong>Google Drive API</strong> &rarr; Tạo <strong>OAuth Client ID</strong> (Web Application) &rarr; Thêm Authorized JavaScript origin &rarr; Dán Client ID vào ô trên.
+                    </div>
+                  </div>
+
+                  <!-- 3b. Tùy chỉnh Google API Key (Dành cho Google Picker nhận tệp chia sẻ) -->
+                  <div class="form-group" style="margin-bottom: 18px;">
+                    <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="font-weight: 600;">Google API Key (Google Picker API):</span>
+                      <button type="button" id="btn-toggle-api-key-help" class="btn-text" style="font-size: 0.76rem; color: var(--primary); background: none; border: none; cursor: pointer;">Hướng dẫn tạo Key</button>
+                    </label>
+                    <div style="display: flex; gap: 8px;">
+                      <input type="password" id="settings-google-api-key" class="form-control" placeholder="Nhập API Key để mở tệp chia sẻ riêng qua Google Picker">
+                      <button id="btn-save-api-key" class="btn-secondary" style="white-space: nowrap;">Lưu</button>
+                    </div>
+                    <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">
+                      * Bắt buộc khi dùng Google Picker để duyệt và nhận tệp chia sẻ riêng theo chuẩn bảo mật <code>drive.file</code>.
+                    </small>
+                    <div id="api-key-help-box" style="display: none; margin-top: 8px; padding: 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
+                      <strong>Hướng dẫn:</strong> Truy cập <code>console.cloud.google.com</code> &rarr; Chọn <strong>Credentials</strong> &rarr; <strong>Create Credentials</strong> &rarr; <strong>API key</strong> &rarr; Tìm mục <strong>Enabled APIs &amp; Services</strong> bật thêm <strong>Google Picker API</strong> &rarr; Dán API Key vào ô trên.
                     </div>
                   </div>
 

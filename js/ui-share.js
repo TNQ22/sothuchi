@@ -1166,7 +1166,28 @@ const ReceiveShareModal = {
       const match = token.match(/share_token=([^&]+)/);
       if (match) token = match[1];
     }
-    await this.promptWithToken(token);
+    const matchKey = input.match(/[#&?]key=([^&]+)/);
+    const key = matchKey ? decodeURIComponent(matchKey[1]) : null;
+    await this.promptWithToken(token, key);
+  },
+
+  // Mở hộp thoại Google Picker để chọn tệp chia sẻ riêng qua email
+  async pickGoogleDrive() {
+    if (!window.googleDriveService) {
+      if (typeof showToast === 'function') showToast('Dịch vụ Google Drive chưa được khởi tạo.', 'error');
+      return;
+    }
+    try {
+      if (typeof showToast === 'function') showToast('Đang mở hộp thoại Google Drive Picker...', 'info');
+      const picked = await window.googleDriveService.openPickerForSharedItems();
+      if (!picked || !picked.fileId) return;
+
+      if (typeof showToast === 'function') showToast(`Đã chọn "${picked.fileName || 'Tệp'}", đang kiểm tra...`, 'info');
+      await this.promptWithToken('gdrive_' + picked.fileId, this.currentKey);
+    } catch (err) {
+      console.warn('[ReceiveShareModal] pickGoogleDrive error:', err);
+      if (typeof showToast === 'function') showToast('Lỗi chọn tệp: ' + err.message, 'error');
+    }
   },
 
   async promptWithToken(token, key = null) {
@@ -1179,7 +1200,27 @@ const ReceiveShareModal = {
       const syncService = isGDrive ? window.googleDriveService : window.serverSyncService;
       if (!syncService) throw new Error('Dịch vụ đồng bộ chưa sẵn sàng.');
 
-      const info = await syncService.getShareLinkInfo(token);
+      let info;
+      try {
+        info = await syncService.getShareLinkInfo(token);
+      } catch (linkErr) {
+        // Nếu là Google Drive và lỗi 404/không có quyền truy cập, do Google Drive yêu cầu ủy quyền file qua Picker
+        if (isGDrive && window.googleDriveService && (linkErr.message?.includes('404') || linkErr.message?.includes('quyền truy cập') || linkErr.message?.includes('không tồn tại'))) {
+          const fileId = token.replace(/^gdrive_/, '');
+          const openPickerOk = await showConfirm({
+            title: 'Ủy Quyền Tệp Google Drive',
+            message: `Tệp này được chia sẻ riêng tư qua email cho tài khoản Google của bạn.<br><br>Theo quy định bảo mật của Google (chuẩn <code>drive.file</code>), bạn cần mở hộp thoại <b>Google Picker</b> để chọn xác nhận tệp một lần.`,
+            confirmText: 'Mở Google Picker',
+            cancelText: 'Huỷ',
+            icon: 'shield-check'
+          });
+          if (openPickerOk) {
+            await this.pickGoogleDrive();
+            return;
+          }
+        }
+        throw linkErr;
+      }
       this.shareData = info;
 
       const modal = document.getElementById('modal-receive-share');
