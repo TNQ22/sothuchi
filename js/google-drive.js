@@ -347,7 +347,7 @@ class GoogleDriveSync {
         try {
           const codeClient = google.accounts.oauth2.initCodeClient({
             client_id: this.clientId,
-            scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+            scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
             ux_mode: 'popup',
             callback: async (resp) => {
               if (settled) return;
@@ -441,7 +441,7 @@ class GoogleDriveSync {
 
         const tokenClientConfig = {
           client_id: this.clientId,
-          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
           prompt: promptValue,
           callback: async (resp) => {
             if (settled) return;
@@ -1936,16 +1936,24 @@ class GoogleDriveSync {
 
       // 1. Quét file từ SharedWithMe & Received via Link
       const fileMap = new Map();
-      const sharedQuery = encodeURIComponent("sharedWithMe = true and name contains 'stc_shared_' and trashed = false");
+      const sharedQuery = encodeURIComponent("sharedWithMe = true and trashed = false");
+      let swmSuccess = false;
       try {
-        const swmRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${sharedQuery}&fields=files(id,name,modifiedTime,owners,capabilities,shared)`, {
+        const swmRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${sharedQuery}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=100&fields=files(id,name,modifiedTime,owners,capabilities,shared)`, {
           headers: { Authorization: `Bearer ${this.accessToken}` }
         });
         if (swmRes.ok) {
+          swmSuccess = true;
           const swmData = await swmRes.json();
           if (Array.isArray(swmData.files)) {
-            for (const f of swmData.files) fileMap.set(f.id, f);
+            for (const f of swmData.files) {
+              if (f.name && f.name.startsWith('stc_shared_')) {
+                fileMap.set(f.id, f);
+              }
+            }
           }
+        } else {
+          console.warn('[GoogleDrive] Quét sharedWithMe status:', swmRes.status, await swmRes.text().catch(() => ''));
         }
       } catch (swmErr) {
         console.warn('[GoogleDrive] Quét sharedWithMe warning:', swmErr);
@@ -1956,7 +1964,7 @@ class GoogleDriveSync {
       for (const item of recList) {
         if (!fileMap.has(item.fileId)) {
           try {
-            const fRes = await fetch(`https://www.googleapis.com/drive/v3/files/${item.fileId}?fields=id,name,modifiedTime,owners,capabilities,shared`, {
+            const fRes = await fetch(`https://www.googleapis.com/drive/v3/files/${item.fileId}?supportsAllDrives=true&fields=id,name,modifiedTime,owners,capabilities,shared`, {
               headers: { Authorization: `Bearer ${this.accessToken}` }
             });
             if (fRes.ok) {
@@ -1972,18 +1980,32 @@ class GoogleDriveSync {
         return leftItems.some(x => (x.shareId && String(x.shareId) === String(shareId)) || (x.itemId && String(x.itemId) === String(remoteId)));
       };
 
-      // Xóa các mục Google Drive chia sẻ đã rời khỏi hoặc không còn tồn tại
-      const localAccs = await db.accounts.toArray();
-      for (const acc of localAccs) {
-        if (acc._isSharedItem && acc._sharedService === 'google-drive') {
-          const removed = !fileMap.has(acc._shareId) || isLeft(acc._shareId, acc._remoteId);
-          if (removed) {
-            hasChanges = true;
-            await db.accounts.delete(acc.id);
-            const relTxs = (await db.transactions.toArray()).filter(t =>
-              Number(t.accountId) === Number(acc.id) || Number(t.toAccountId) === Number(acc.id) || (acc._shareId && String(t._shareId) === String(acc._shareId))
-            );
-            for (const t of relTxs) await db.transactions.delete(t.id);
+      // Xóa các mục Google Drive chia sẻ đã rời khỏi hoặc đã bị xóa
+      if (swmSuccess) {
+        const localAccs = await db.accounts.toArray();
+        for (const acc of localAccs) {
+          if (acc._isSharedItem && acc._sharedService === 'google-drive') {
+            const explicitlyLeft = isLeft(acc._shareId, acc._remoteId);
+            let removed = explicitlyLeft;
+            if (!explicitlyLeft && !fileMap.has(acc._shareId)) {
+              // Kiểm tra xem file có thực sự bị xóa hay mất quyền không
+              try {
+                const checkRes = await fetch(`https://www.googleapis.com/drive/v3/files/${acc._shareId}?fields=id,trashed`, {
+                  headers: { Authorization: `Bearer ${this.accessToken}` }
+                });
+                if (!checkRes.ok || (await checkRes.json().catch(() => ({}))).trashed) {
+                  removed = true;
+                }
+              } catch (_) {}
+            }
+            if (removed) {
+              hasChanges = true;
+              await db.accounts.delete(acc.id);
+              const relTxs = (await db.transactions.toArray()).filter(t =>
+                Number(t.accountId) === Number(acc.id) || Number(t.toAccountId) === Number(acc.id) || (acc._shareId && String(t._shareId) === String(acc._shareId))
+              );
+              for (const t of relTxs) await db.transactions.delete(t.id);
+            }
           }
         }
       }
