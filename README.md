@@ -93,9 +93,18 @@ git push -u origin main
 1. Vẫn tại mục **APIs & Services** -> **Credentials**:
    - Bấm **Create Credentials** -> Chọn **API key**.
    - Sao chép chuỗi **API Key** (dạng `AIzaSy...`).
-   - *(Tùy chọn hạn chế API)*: Nhấp vào tên API Key để chỉnh sửa:
-     - Nếu chọn **API restrictions**: Bắt buộc phải tích chọn cả **Google Drive API** VÀ **Google Picker API** (hoặc để mặc định *Don't restrict key*).
 2. Dán Client ID và API Key vào ứng dụng Sổ Thu Chi (**Cài Đặt & Drive**) hoặc điền vào file `.env` / `docker-compose.yml`.
+
+> [!WARNING]
+> **CẢNH BÁO LỖI "KHÓA CỦA NHÀ PHÁT TRIỂN API LÀ KHÔNG HỢP LỆ":**
+> Google Picker khi hiển thị và duyệt các tệp trên Drive cần sự phối hợp chặt chẽ của **CẢ HAI API**:
+> 1. **Google Picker API**: Dùng để khởi tạo và điều khiển cửa sổ duyệt tệp.
+> 2. **Google Drive API**: Dùng để truy vấn danh sách và nội dung tệp từ Google Drive.
+> 
+> Vì vậy, nếu bạn bật tính năng **API restrictions (Hạn chế API)** trên Google Cloud Console:
+> - **BẮT BUỘC PHẢI TÍCH CHỌN ĐỦ CẢ HAI**: `Google Drive API` **VÀ** `Google Picker API`.
+> - Nếu **thiếu 1 trong 2 API** (ví dụ chỉ tích Picker API mà quên Drive API, hoặc chỉ tích Drive API mà quên Picker API), Google đều sẽ từ chối và báo lỗi: *Khóa của nhà phát triển API là không hợp lệ*.
+> - *Lưu ý về Hạn chế theo tên miền (HTTP Referrers)*: Nếu bạn giới hạn API Key theo Website, hãy đảm bảo đã thêm đúng URL đang sử dụng (vd: `https://tenban.github.io/*`, `http://localhost:8081/*`, `http://192.168.x.x:8081/*`).
 
 ---
 

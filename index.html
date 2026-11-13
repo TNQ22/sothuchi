@@ -2443,8 +2443,10 @@
                         <li><strong>Bước quan trọng nhất:</strong> Vào <strong>APIs &amp; Services</strong> &rarr; <strong>Library (Thư viện)</strong> &rarr; Tìm <a href="https://console.cloud.google.com/apis/library/picker.googleapis.com" target="_blank" rel="noopener" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Google Picker API</a> &rarr; Bấm <strong>ENABLE (Bật)</strong>. <em>(Nếu không bật dịch vụ này, Google sẽ báo lỗi "Khóa của nhà phát triển API là không hợp lệ")</em>.</li>
                         <li>Vào menu <strong>APIs &amp; Services</strong> &rarr; <strong>Credentials</strong> &rarr; Bấm <strong>Create Credentials</strong> &rarr; Chọn <strong>API key</strong>.</li>
                         <li>Sao chép mã API Key (bắt đầu bằng <code>AIzaSy...</code>) rồi dán vào ô trên (hoặc cấu hình vào biến <code>GOOGLE_API_KEY</code> trong <code>.env</code> / Docker).</li>
-                        <li><em>Lưu ý:</em> Nếu API Key có bật hạn chế (API Restrictions), hãy chắc chắn đã tích chọn cả <code>Google Drive API</code> và <code>Google Picker API</code>.</li>
                       </ol>
+                      <div style="margin-top: 8px; padding: 8px 10px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px; color: #f87171; font-size: 0.76rem; line-height: 1.45;">
+                        <strong>⚠️ Cảnh báo lỗi "Khóa không hợp lệ":</strong> Google Picker duyệt tệp cần phối hợp <strong>CẢ HAI API</strong>. Nếu bật <em>Hạn chế API (API restrictions)</em>, bắt buộc phải tích chọn đủ cả hai: <strong>Google Drive API</strong> VÀ <strong>Google Picker API</strong> (thiếu 1 trong 2 đều sẽ bị báo lỗi khóa không hợp lệ). Nếu giới hạn Website (HTTP referrers), hãy chắc chắn đã điền đúng URL/domain truy cập.
+                      </div>
                     </div>
                   </div>
 

@@ -1274,28 +1274,56 @@ class GoogleDriveSync {
         }
       }
 
-      // Nếu là bảng tài khoản và remote đã có danh sách tài khoản:
-      // Các sổ mặc định ban đầu không phát sinh ghi chép nào và không có trên remote sẽ bị loại bỏ
+      // Đảm bảo không bao giờ làm biến mất toàn bộ tài khoản cá nhân của người dùng:
+      // Chỉ loại bỏ tài khoản mặc định chưa dùng nếu remote ĐÃ CÓ tài khoản cá nhân khác đang hoạt động
       if (table === db.accounts && remoteItems && Array.isArray(remoteItems) && remoteItems.length > 0) {
-        const DEFAULT_ACCOUNT_NAMES = ['tiền mặt', 'ngân hàng', 'ví điện tử', 'momo / zalopay', 'tài khoản ngân hàng'];
-        const currentTxs = await db.transactions.toArray();
-        const txAccIds = new Set();
-        for (const t of currentTxs) {
-          if (!t.isDeleted) {
-            if (t.accountId) txAccIds.add(String(t.accountId));
-            if (t.toAccountId) txAccIds.add(String(t.toAccountId));
-          }
-        }
-        for (const [id, item] of itemMap.entries()) {
-          const isDef = item.name && DEFAULT_ACCOUNT_NAMES.includes(item.name.trim().toLowerCase());
-          const isBlank = (item.balance === 0 || item.balance === '0') && ((item.initialBalance || 0) === 0) && !item.isShared;
-          const hasTx = txAccIds.has(String(item.id));
-          if (isDef && isBlank && !hasTx) {
-            const inRemote = remoteItems.some(r => r && (String(r.id) === String(item.id) || (r.name && r.name.trim().toLowerCase() === item.name.trim().toLowerCase() && r.type === item.type)));
-            if (!inRemote) {
-              itemMap.delete(id);
+        const hasActiveRemotePersonal = remoteItems.some(r => r && !r.isDeleted && !r._isSharedItem);
+        if (hasActiveRemotePersonal) {
+          const DEFAULT_ACCOUNT_NAMES = ['tiền mặt', 'ngân hàng', 'ví điện tử', 'momo / zalopay', 'tài khoản ngân hàng'];
+          const currentTxs = await db.transactions.toArray();
+          const txAccIds = new Set();
+          for (const t of currentTxs) {
+            if (!t.isDeleted) {
+              if (t.accountId) txAccIds.add(String(t.accountId));
+              if (t.toAccountId) txAccIds.add(String(t.toAccountId));
             }
           }
+          for (const [id, item] of itemMap.entries()) {
+            const isDef = item.name && DEFAULT_ACCOUNT_NAMES.includes(item.name.trim().toLowerCase());
+            const isBlank = (item.balance === 0 || item.balance === '0') && ((item.initialBalance || 0) === 0) && !item.isShared && !item._isSharedItem;
+            const hasTx = txAccIds.has(String(item.id));
+            if (isDef && isBlank && !hasTx) {
+              const inRemote = remoteItems.some(r => r && (String(r.id) === String(item.id) || (r.name && r.name.trim().toLowerCase() === item.name.trim().toLowerCase() && r.type === item.type)));
+              if (!inRemote) {
+                itemMap.delete(id);
+              }
+            }
+          }
+        }
+      }
+
+      // Kiểm tra bảo hộ: nếu sau khi merge không còn tài khoản cá nhân nào hoạt động, tự động phục hồi các tài khoản mặc định
+      if (table === db.accounts) {
+        const hasActivePersonal = Array.from(itemMap.values()).some(a => a && !a.isDeleted && !a._isSharedItem);
+        if (!hasActivePersonal) {
+          const now = Date.now();
+          DEFAULT_ACCOUNTS.forEach((defAcc, idx) => {
+            const existing = Array.from(itemMap.values()).find(a => a && !a._isSharedItem && a.name && a.name.trim().toLowerCase() === defAcc.name.trim().toLowerCase());
+            if (existing) {
+              existing.isDeleted = 0;
+              existing.deletedAt = null;
+              existing.updatedAt = now;
+              existing.restoredAt = now;
+            } else {
+              itemMap.set(`def_${idx}`, {
+                ...defAcc,
+                order: defAcc.order ?? idx,
+                isDeleted: 0,
+                updatedAt: now,
+                restoredAt: now
+              });
+            }
+          });
         }
       }
 
@@ -1503,6 +1531,19 @@ class GoogleDriveSync {
       const list = Array.isArray(recSetting.value) ? recSetting.value.filter(x => x.fileId !== shareId) : [];
       await db.settings.put({ key: 'googleDriveReceivedFiles', value: list });
     } catch (_) {}
+
+    // Gỡ tệp khỏi danh sách Shared With Me trên Google Drive của chính mình
+    if (shareId && this.accessToken) {
+      try {
+        await fetch(`https://www.googleapis.com/drive/v3/files/${shareId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${this.accessToken}` }
+        });
+        console.log('[GoogleDrive] Đã gỡ tệp chia sẻ khỏi Drive:', shareId);
+      } catch (err) {
+        console.warn('[GoogleDrive] Không thể gỡ tệp chia sẻ khỏi Drive:', err);
+      }
+    }
   }
 
   async projectAndPushItem(itemType, itemId, shareKey = null) {
@@ -1975,7 +2016,9 @@ class GoogleDriveSync {
       const input = await showPrompt({
         title: 'Cần Google API Key (Google Picker)',
         message: `Google Picker yêu cầu API Key để duyệt các tệp chia sẻ riêng qua email theo chuẩn bảo mật <code>drive.file</code>.<br><br>
-        <strong>Lưu ý:</strong> Dự án Google Cloud của bạn cần <strong>BẬT Google Picker API</strong> trong Library trước khi tạo Key (để tránh lỗi "Khóa không hợp lệ").<br><br>
+        <strong>⚠️ Lưu ý tránh lỗi "Khóa không hợp lệ":</strong><br>
+        1. Cần <strong>BẬT Google Picker API</strong> trong Google Cloud Console Library.<br>
+        2. Nếu bật <em>Hạn chế API (API restrictions)</em>: <strong>Bắt buộc tích chọn cả Google Drive API VÀ Google Picker API</strong> (không được chỉ chọn mỗi Drive API).<br><br>
         Nhập Google API Key của bạn (dạng <code>AIzaSy...</code>):`,
         placeholder: 'AIzaSy...',
         confirmText: 'Lưu & Mở Picker',
@@ -2109,35 +2152,38 @@ class GoogleDriveSync {
 
       const leftItems = await this.getLeftSharedItems();
       const isLeft = (shareId, remoteId) => {
-        return leftItems.some(x => (x.shareId && String(x.shareId) === String(shareId)) || (x.itemId && String(x.itemId) === String(remoteId)));
+        return leftItems.some(x =>
+          (shareId && x.shareId && String(x.shareId) === String(shareId)) ||
+          (remoteId && x.itemId && String(x.itemId) === String(remoteId)) ||
+          (shareId && x.itemId && String(x.itemId) === String(shareId)) ||
+          (remoteId && x.shareId && String(x.shareId) === String(remoteId))
+        );
       };
 
       // Xóa các mục Google Drive chia sẻ đã rời khỏi hoặc đã bị xóa
-      if (swmSuccess) {
-        const localAccs = await db.accounts.toArray();
-        for (const acc of localAccs) {
-          if (acc._isSharedItem && acc._sharedService === 'google-drive') {
-            const explicitlyLeft = isLeft(acc._shareId, acc._remoteId);
-            let removed = explicitlyLeft;
-            if (!explicitlyLeft && !fileMap.has(acc._shareId)) {
-              // Kiểm tra xem file có thực sự bị xóa hay mất quyền không
-              try {
-                const checkRes = await fetch(`https://www.googleapis.com/drive/v3/files/${acc._shareId}?fields=id,trashed`, {
-                  headers: { Authorization: `Bearer ${this.accessToken}` }
-                });
-                if (!checkRes.ok || (await checkRes.json().catch(() => ({}))).trashed) {
-                  removed = true;
-                }
-              } catch (_) {}
-            }
-            if (removed) {
-              hasChanges = true;
-              await db.accounts.delete(acc.id);
-              const relTxs = (await db.transactions.toArray()).filter(t =>
-                Number(t.accountId) === Number(acc.id) || Number(t.toAccountId) === Number(acc.id) || (acc._shareId && String(t._shareId) === String(acc._shareId))
-              );
-              for (const t of relTxs) await db.transactions.delete(t.id);
-            }
+      const localAccs = await db.accounts.toArray();
+      for (const acc of localAccs) {
+        if (acc._isSharedItem && acc._sharedService === 'google-drive') {
+          const explicitlyLeft = isLeft(acc._shareId, acc._remoteId);
+          let removed = explicitlyLeft;
+          if (!explicitlyLeft && swmSuccess && !fileMap.has(acc._shareId)) {
+            // Kiểm tra xem file có thực sự bị xóa hay mất quyền không
+            try {
+              const checkRes = await fetch(`https://www.googleapis.com/drive/v3/files/${acc._shareId}?fields=id,trashed`, {
+                headers: { Authorization: `Bearer ${this.accessToken}` }
+              });
+              if (!checkRes.ok || (await checkRes.json().catch(() => ({}))).trashed) {
+                removed = true;
+              }
+            } catch (_) {}
+          }
+          if (removed) {
+            hasChanges = true;
+            await db.accounts.delete(acc.id);
+            const relTxs = (await db.transactions.toArray()).filter(t =>
+              Number(t.accountId) === Number(acc.id) || Number(t.toAccountId) === Number(acc.id) || (acc._shareId && String(t._shareId) === String(acc._shareId))
+            );
+            for (const t of relTxs) await db.transactions.delete(t.id);
           }
         }
       }
@@ -2170,7 +2216,18 @@ class GoogleDriveSync {
         const itemType = remoteJson.itemType || 'account';
         const remoteItemId = remoteJson.itemId || fileId;
 
-        if (isLeft(fileId, remoteItemId)) continue;
+        if (isLeft(fileId, remoteItemId)) {
+          const matchAcc = (await db.accounts.toArray()).find(a => a._isSharedItem && (a._shareId === fileId || String(a._remoteId) === String(remoteItemId)));
+          if (matchAcc) {
+            await db.accounts.delete(matchAcc.id);
+            const relTxs = (await db.transactions.toArray()).filter(t =>
+              Number(t.accountId) === Number(matchAcc.id) || Number(t.toAccountId) === Number(matchAcc.id) || (matchAcc._shareId && String(t._shareId) === String(matchAcc._shareId))
+            );
+            for (const t of relTxs) await db.transactions.delete(t.id);
+            hasChanges = true;
+          }
+          continue;
+        }
 
         let needsPassword = false;
         let isEncrypted = Boolean(remoteJson.encrypted);

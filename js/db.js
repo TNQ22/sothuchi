@@ -385,10 +385,18 @@ async function initDatabase() {
     }
   }
 
-  const accountCount = await db.accounts.count();
-  if (accountCount === 0) {
+  const activePersonalAccounts = (await db.accounts.toArray()).filter(a => !a.isDeleted && !a._isSharedItem);
+  if (activePersonalAccounts.length === 0) {
     const now = Date.now();
-    await db.accounts.bulkAdd(DEFAULT_ACCOUNTS.map((a, index) => ({ ...a, order: a.order ?? index, isDeleted: 0, updatedAt: 1 })));
+    for (let index = 0; index < DEFAULT_ACCOUNTS.length; index++) {
+      const def = DEFAULT_ACCOUNTS[index];
+      const existing = (await db.accounts.toArray()).find(a => !a._isSharedItem && a.name && a.name.trim().toLowerCase() === def.name.trim().toLowerCase());
+      if (existing) {
+        await db.accounts.update(existing.id, { isDeleted: 0, deletedAt: null, updatedAt: now, restoredAt: now });
+      } else {
+        await db.accounts.add({ ...def, order: def.order ?? index, isDeleted: 0, updatedAt: now, restoredAt: now });
+      }
+    }
   } else {
     // Tự động kiểm tra và khởi tạo order tuần tự nếu có tài khoản thiếu order
     try {
@@ -1927,25 +1935,28 @@ async function wipeAndResetLocalDatabase(options = {}) {
   if (db.loans) await db.loans.clear();
   if (db.loan_schedules) await db.loan_schedules.clear();
 
-  // Reset tài khoản về mặc định ban đầu
+  // Reset tài khoản về mặc định ban đầu với timestamp mới nhất để không bị các bản ghi đã xoá từ remote đè lên
+  const now = Date.now();
   await db.accounts.clear();
   await db.accounts.bulkAdd(DEFAULT_ACCOUNTS.map((a, index) => ({
     ...a,
     order: a.order ?? index,
     isDeleted: 0,
-    updatedAt: 1
+    updatedAt: now,
+    restoredAt: now
   })));
 
   // Nếu là khôi phục cài đặt gốc toàn diện
   if (options && (options.fullReset || options.wipeAllSettings)) {
     await db.settings.clear();
   } else {
-    // Xoá các mốc đồng bộ lưu trong settings
+    // Xoá các mốc đồng bộ lưu trong settings (BẢO LƯU syncLeftSharedItems để không bị nạp lại các mục chia sẻ đã rời khỏi)
     await db.settings.delete('syncServerLastSyncTime');
     await db.settings.delete('lastSyncTime');
     await db.settings.delete('syncServerActiveVaultId');
     await db.settings.delete('syncOwnedSharedProjections');
-    await db.settings.delete('syncLeftSharedItems');
+    await db.settings.delete('googleDriveReceivedFiles');
+    // KHÔNG xoá syncLeftSharedItems để ngăn các mục đã rời khỏi bị nạp lại
   }
 
   if (typeof recalculateAccountBalances === 'function') {
