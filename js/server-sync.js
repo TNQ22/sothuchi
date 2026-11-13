@@ -2148,20 +2148,32 @@ class ServerSyncService {
         }
       }
 
-      // Nếu là bảng tài khoản và remote đã có danh sách tài khoản:
-      // Các sổ mặc định ban đầu không phát sinh ghi chép nào và không có trên server (đã bị xoá trước đó trên server) sẽ bị loại bỏ
-      if (isAccountTable && Array.isArray(remoteItems) && remoteItems.length > 0) {
-        for (const [id, item] of itemMap.entries()) {
-          if (isUntouchedDefAcc(item)) {
-            const inRemote = remoteItems.some(r =>
-              r && (
-                String(r.id) === String(item.id) ||
-                (r.name && r.name.trim().toLowerCase() === item.name.trim().toLowerCase() && r.type === item.type)
-              )
-            );
-            if (!inRemote) {
-              itemMap.delete(id);
-            }
+      // Khôi phục và bảo vệ đầy đủ các tài khoản mặc định (như Ví tiền mặt, Ngân hàng, Ví điện tử)
+      if (isAccountTable) {
+        const activePersonal = Array.from(itemMap.values()).filter(a => a && !a._isSharedItem);
+        const now = Date.now();
+        for (let idx = 0; idx < DEFAULT_ACCOUNTS.length; idx++) {
+          const defAcc = DEFAULT_ACCOUNTS[idx];
+          const exists = activePersonal.find(a => 
+            a.name && (
+              a.name.trim().toLowerCase() === defAcc.name.trim().toLowerCase() ||
+              (defAcc.type === 'cash' && (a.type === 'cash' || a.name.trim().toLowerCase().includes('tiền mặt')))
+            )
+          );
+          if (!exists) {
+            itemMap.set(`def_${idx}`, {
+              ...defAcc,
+              order: defAcc.order ?? idx,
+              isDeleted: 0,
+              updatedAt: now,
+              restoredAt: now
+            });
+          } else if (exists.isDeleted === 1 && exists.deletedSource !== 'user') {
+            exists.isDeleted = 0;
+            exists.deletedAt = null;
+            exists.deletedReason = null;
+            exists.updatedAt = now;
+            exists.restoredAt = now;
           }
         }
       }
@@ -2580,7 +2592,18 @@ class ServerSyncService {
   async getLeftSharedItems() {
     try {
       const setting = await db.settings.get('syncLeftSharedItems');
-      return (setting && Array.isArray(setting.value)) ? setting.value : [];
+      const list = (setting && Array.isArray(setting.value)) ? setting.value : [];
+      const cleaned = list.filter(x => {
+        if (!x) return false;
+        if (x.shareId || x.vaultId) return true;
+        const idVal = Number(x.itemId || x.localId);
+        if (!isNaN(idVal) && idVal >= 0 && idVal <= 10) return false;
+        return true;
+      });
+      if (cleaned.length !== list.length) {
+        await db.settings.put({ key: 'syncLeftSharedItems', value: cleaned });
+      }
+      return cleaned;
     } catch (_) {
       return [];
     }

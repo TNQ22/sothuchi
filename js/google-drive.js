@@ -123,6 +123,7 @@ class GoogleDriveSync {
       if (refreshSetting && refreshSetting.value) this.refreshToken = refreshSetting.value.trim();
 
       this.setupTokenRefreshTimer();
+      this.setupGoogleIframeDismissWatcher();
 
       // Khôi phục Token nếu còn hiệu lực (tránh bắt đăng nhập lại hoặc treo khi reload)
       try {
@@ -252,6 +253,106 @@ class GoogleDriveSync {
     db.settings.put({ key: 'autoSyncEnabled', value: this.autoSync });
   }
 
+  // Kiểm tra xem môi trường hiện tại có bị chặn cookie bên thứ 3 trong iframe không (iOS Safari, iOS PWA, WebKit)
+  cannotSilentRefresh() {
+    // Nếu có Worker backend thì luôn refresh ngầm an toàn bằng HTTP POST
+    if (this.workerUrl && this.refreshToken) return false;
+
+    // Các môi trường chặn cookie bên thứ ba trong iframe: iOS Safari, PWA Standalone trên iPhone, Safari desktop
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isStandalone = Boolean(window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches));
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    return isIOS || isStandalone || isSafari;
+  }
+
+  // Dọn dẹp sạch các iframe / modal rác do Google Identity Services (GIS) tự chèn vào DOM bị kẹt
+  cleanupGoogleIframes() {
+    try {
+      const dismissBtn = document.getElementById('google-iframe-dismiss-btn');
+      if (dismissBtn) dismissBtn.remove();
+
+      const picker = document.getElementById('credential_picker_container');
+      if (picker) picker.remove();
+
+      const pickerIframe = document.getElementById('credential_picker_iframe');
+      if (pickerIframe) pickerIframe.remove();
+
+      const iframes = document.querySelectorAll('iframe[src*="accounts.google.com"]');
+      iframes.forEach(iframe => {
+        const parent = iframe.parentElement;
+        if (parent && parent !== document.body && (parent.style.position === 'fixed' || parent.style.position === 'absolute')) {
+          parent.remove();
+        } else {
+          iframe.remove();
+        }
+      });
+    } catch (_) {}
+  }
+
+  // Luôn gắn nút "✕" nổi thoát khẩn cấp nếu có bất kỳ iframe Google nào bị kẹt che toàn màn hình
+  setupGoogleIframeDismissWatcher() {
+    if (this._iframeDismissWatcherActive) return;
+    this._iframeDismissWatcherActive = true;
+
+    const checkAndAttachDismissBtn = () => {
+      const iframes = document.querySelectorAll('iframe[src*="accounts.google.com"]');
+      const hasVisibleIframe = Array.from(iframes).some(f => {
+        try {
+          const style = window.getComputedStyle(f);
+          return style.display !== 'none' && style.visibility !== 'hidden' && f.offsetHeight > 50;
+        } catch (_) {
+          return false;
+        }
+      });
+
+      let btn = document.getElementById('google-iframe-dismiss-btn');
+      if (hasVisibleIframe) {
+        if (!btn) {
+          btn = document.createElement('button');
+          btn.id = 'google-iframe-dismiss-btn';
+          btn.setAttribute('aria-label', 'Đóng cửa sổ Google');
+          btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+          Object.assign(btn.style, {
+            position: 'fixed',
+            top: '16px',
+            right: '16px',
+            zIndex: '2147483647',
+            background: 'rgba(15, 23, 42, 0.88)',
+            backdropFilter: 'blur(8px)',
+            webkitBackdropFilter: 'blur(8px)',
+            color: '#ffffff',
+            border: '1.5px solid rgba(255, 255, 255, 0.35)',
+            borderRadius: '50%',
+            width: '42px',
+            height: '42px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            transition: 'transform 0.15s ease'
+          });
+          btn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.cleanupGoogleIframes();
+          };
+          document.body.appendChild(btn);
+        }
+      } else if (btn) {
+        btn.remove();
+      }
+    };
+
+    try {
+      const observer = new MutationObserver(() => {
+        checkAndAttachDismissBtn();
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    } catch (_) {}
+  }
+
   isAutoSyncEnabled() {
     if (this.autoSync && this.clientId && this.hasValidToken()) {
       return true;
@@ -260,8 +361,8 @@ class GoogleDriveSync {
     if (this.autoSync && this.clientId && this.workerUrl && this.refreshToken) {
       return true;
     }
-    // Nếu có email và đã bật autoSync -> cho phép thử gia hạn ngầm khi có dữ liệu mới
-    if (this.autoSync && this.clientId && this.userProfile && this.userProfile.email) {
+    // Nếu có email và đã bật autoSync -> cho phép thử gia hạn ngầm khi có dữ liệu mới (chỉ khi không bị chặn bởi iOS/Safari)
+    if (this.autoSync && this.clientId && this.userProfile && this.userProfile.email && !this.cannotSilentRefresh()) {
       return true;
     }
     return false;
@@ -272,11 +373,18 @@ class GoogleDriveSync {
     // Mỗi 35 phút (trước khi token 60 phút hết hạn), tự động làm mới phiên ngầm
     this.refreshTimer = setInterval(async () => {
       if (this.clientId && this.userProfile?.email && this.autoSync) {
-        try {
-          await this.requestToken({ prompt: '', interactive: false });
-          console.log('[GoogleDrive] Đã tự động gia hạn phiên đăng nhập ngầm thành công!');
-        } catch (e) {
-          console.log('[GoogleDrive] Chưa thể gia hạn ngầm (sẽ gia hạn khi tương tác):', e.message);
+        if (this.workerUrl && this.refreshToken) {
+          try {
+            await this.refreshViaWorker();
+            console.log('[GoogleDrive] Đã tự động gia hạn token qua Worker!');
+          } catch (e) {}
+        } else if (!this.cannotSilentRefresh()) {
+          try {
+            await this.requestToken({ prompt: '', interactive: false });
+            console.log('[GoogleDrive] Đã tự động gia hạn phiên đăng nhập ngầm thành công!');
+          } catch (e) {
+            console.log('[GoogleDrive] Chưa thể gia hạn ngầm (sẽ gia hạn khi tương tác):', e.message);
+          }
         }
       }
     }, 35 * 60 * 1000);
@@ -431,6 +539,11 @@ class GoogleDriveSync {
     const promptValue = options.prompt !== undefined ? options.prompt : (options.forceSelect ? 'select_account' : '');
     const isInteractive = promptValue === 'select_account' || options.interactive;
 
+    // Chặn yêu cầu ngầm trên iOS/Safari/PWA để tránh lỗi kẹt iframe "Không thể truy cập vào Tài khoản Google của bạn"
+    if (!isInteractive && this.cannotSilentRefresh()) {
+      return Promise.reject(new Error('Môi trường iOS/Safari/PWA chặn cookie bên thứ 3 trong iframe, bỏ qua gia hạn ngầm. Hãy bấm vào Avatar để kết nối.'));
+    }
+
     return new Promise((resolve, reject) => {
       let settled = false;
       const startTime = Date.now();
@@ -439,6 +552,7 @@ class GoogleDriveSync {
       const timer = setTimeout(() => {
         if (!settled) {
           settled = true;
+          this.cleanupGoogleIframes();
           if (isInteractive) {
             reject(new Error('Hết thời gian chờ đăng nhập Google (120 giây)'));
           } else {
@@ -460,6 +574,7 @@ class GoogleDriveSync {
             if (settled) return;
             settled = true;
             clearTimeout(timer);
+            this.cleanupGoogleIframes();
 
             if (resp.error) {
               if (resp.error === 'popup_closed_by_user') {
@@ -515,6 +630,7 @@ class GoogleDriveSync {
             if (settled) return;
             settled = true;
             clearTimeout(timer);
+            this.cleanupGoogleIframes();
             const duration = Date.now() - startTime;
             if (err && err.type === 'popup_closed') {
               const errObj = new Error('Đã đóng cửa sổ đăng nhập');
@@ -545,6 +661,7 @@ class GoogleDriveSync {
         if (!settled) {
           settled = true;
           clearTimeout(timer);
+          this.cleanupGoogleIframes();
           reject(err);
         }
       }
@@ -1031,7 +1148,7 @@ class GoogleDriveSync {
         if (!refreshedViaWorker && !this.hasValidToken()) {
           if (options.interactive) {
             await this.requestToken({ interactive: true });
-          } else {
+          } else if (!this.cannotSilentRefresh()) {
             try {
               await this.requestToken({ prompt: '', interactive: false });
             } catch (tokErr) {
@@ -1040,6 +1157,10 @@ class GoogleDriveSync {
               console.warn('[GoogleDrive] Không thể lấy token ngầm:', tokErr.message);
               throw new Error('Phiên đăng nhập đã hết hạn. Bấm vào Avatar để kết nối lại.');
             }
+          } else {
+            this.accessToken = null;
+            this.tokenExpiresAt = 0;
+            throw new Error('Phiên đăng nhập đã hết hạn. Bấm vào Avatar để kết nối lại.');
           }
         }
       }
@@ -1143,14 +1264,14 @@ class GoogleDriveSync {
         if (sId && x.shareId && String(x.shareId) === sId) return true;
         if (rId && x.itemId && String(x.itemId) === rId) return true;
         if (lId && x.localId && String(x.localId) === lId) return true;
-        if (lId && x.itemId && String(x.itemId) === lId) return true;
         if (sId && x.itemId && String(x.itemId) === sId) return true;
         if (rId && x.shareId && String(x.shareId) === rId) return true;
         return false;
       });
     };
     const isLeftItem = (item) => {
-      if (!item) return false;
+      // TUYỆT ĐỐI CHỈ ÁP DỤNG CHO MỤC CHIA SẺ (_isSharedItem), KHÔNG BAO GIỜ ÁP DỤNG CHO DỮ LIỆU CÁ NHÂN!
+      if (!item || !item._isSharedItem) return false;
       return isLeft(
         item._shareId || item.shareId,
         item._remoteId !== undefined ? item._remoteId : item.itemId,
@@ -1161,22 +1282,22 @@ class GoogleDriveSync {
     // Làm sạch remoteData: loại bỏ hoàn toàn các mục chia sẻ nhận được (_isSharedItem) hoặc đã rời khỏi (blacklist)
     if (remoteData) {
       if (Array.isArray(remoteData.accounts)) {
-        remoteData.accounts = remoteData.accounts.filter(a => a && !a._isSharedItem && !isLeftItem(a));
+        remoteData.accounts = remoteData.accounts.filter(a => a && !a._isSharedItem);
       }
       if (Array.isArray(remoteData.transactions)) {
-        remoteData.transactions = remoteData.transactions.filter(t => t && !t._isSharedItem && !isLeftItem(t));
+        remoteData.transactions = remoteData.transactions.filter(t => t && !t._isSharedItem);
       }
       if (Array.isArray(remoteData.savings)) {
-        remoteData.savings = remoteData.savings.filter(s => s && !s._isSharedItem && !isLeftItem(s));
+        remoteData.savings = remoteData.savings.filter(s => s && !s._isSharedItem);
       }
       if (Array.isArray(remoteData.accumulations)) {
-        remoteData.accumulations = remoteData.accumulations.filter(a => a && !a._isSharedItem && !isLeftItem(a));
+        remoteData.accumulations = remoteData.accumulations.filter(a => a && !a._isSharedItem);
       }
       if (Array.isArray(remoteData.loans)) {
-        remoteData.loans = remoteData.loans.filter(l => l && !l._isSharedItem && !isLeftItem(l));
+        remoteData.loans = remoteData.loans.filter(l => l && !l._isSharedItem);
       }
       if (Array.isArray(remoteData.assets)) {
-        remoteData.assets = remoteData.assets.filter(a => a && !a._isSharedItem && !isLeftItem(a));
+        remoteData.assets = remoteData.assets.filter(a => a && !a._isSharedItem);
       }
     }
 
@@ -1192,16 +1313,16 @@ class GoogleDriveSync {
       const allAccs = await db.accounts.toArray();
       const allTxs = await db.transactions.toArray();
       const local = {
-        transactions: allTxs.filter(t => !t._isSharedItem && !isLeftItem(t)),
-        accounts: allAccs.filter(a => !a._isSharedItem && !isLeftItem(a)),
+        transactions: allTxs.filter(t => !t._isSharedItem),
+        accounts: allAccs.filter(a => !a._isSharedItem),
         categories: await db.categories.toArray(),
         debts: await db.debts.toArray(),
         budgets: await db.budgets.toArray(),
         recurring: await db.recurring.toArray(),
-        savings: db.savings ? (await db.savings.toArray()).filter(s => !s._isSharedItem && !isLeftItem(s)) : [],
-        accumulations: db.accumulations ? (await db.accumulations.toArray()).filter(a => !a._isSharedItem && !isLeftItem(a)) : [],
-        assets: db.assets ? (await db.assets.toArray()).filter(a => !a._isSharedItem && !isLeftItem(a)) : [],
-        loans: db.loans ? (await db.loans.toArray()).filter(l => !l._isSharedItem && !isLeftItem(l)) : [],
+        savings: db.savings ? (await db.savings.toArray()).filter(s => !s._isSharedItem) : [],
+        accumulations: db.accumulations ? (await db.accumulations.toArray()).filter(a => !a._isSharedItem) : [],
+        assets: db.assets ? (await db.assets.toArray()).filter(a => !a._isSharedItem) : [],
+        loans: db.loans ? (await db.loans.toArray()).filter(l => !l._isSharedItem) : [],
         settings: localSettings
       };
       return local;
@@ -1322,56 +1443,35 @@ class GoogleDriveSync {
         }
       }
 
-      // Đảm bảo không bao giờ làm biến mất toàn bộ tài khoản cá nhân của người dùng:
-      // Chỉ loại bỏ tài khoản mặc định chưa dùng nếu remote ĐÃ CÓ tài khoản cá nhân khác đang hoạt động
-      if (table === db.accounts && remoteItems && Array.isArray(remoteItems) && remoteItems.length > 0) {
-        const hasActiveRemotePersonal = remoteItems.some(r => r && !r.isDeleted && !r._isSharedItem);
-        if (hasActiveRemotePersonal) {
-          const DEFAULT_ACCOUNT_NAMES = ['tiền mặt', 'ngân hàng', 'ví điện tử', 'momo / zalopay', 'tài khoản ngân hàng'];
-          const currentTxs = await db.transactions.toArray();
-          const txAccIds = new Set();
-          for (const t of currentTxs) {
-            if (!t.isDeleted) {
-              if (t.accountId) txAccIds.add(String(t.accountId));
-              if (t.toAccountId) txAccIds.add(String(t.toAccountId));
-            }
-          }
-          for (const [id, item] of itemMap.entries()) {
-            const isDef = item.name && DEFAULT_ACCOUNT_NAMES.includes(item.name.trim().toLowerCase());
-            const isBlank = (item.balance === 0 || item.balance === '0') && ((item.initialBalance || 0) === 0) && !item.isShared && !item._isSharedItem;
-            const hasTx = txAccIds.has(String(item.id));
-            if (isDef && isBlank && !hasTx) {
-              const inRemote = remoteItems.some(r => r && (String(r.id) === String(item.id) || (r.name && r.name.trim().toLowerCase() === item.name.trim().toLowerCase() && r.type === item.type)));
-              if (!inRemote) {
-                itemMap.delete(id);
-              }
-            }
-          }
-        }
-      }
-
-      // Kiểm tra bảo hộ: nếu sau khi merge không còn tài khoản cá nhân nào hoạt động, tự động phục hồi các tài khoản mặc định
+      // Khôi phục và bảo vệ đầy đủ các tài khoản mặc định (như Ví tiền mặt, Ngân hàng, Ví điện tử)
       if (table === db.accounts) {
-        const hasActivePersonal = Array.from(itemMap.values()).some(a => a && !a.isDeleted && !a._isSharedItem);
-        if (!hasActivePersonal) {
-          const now = Date.now();
-          DEFAULT_ACCOUNTS.forEach((defAcc, idx) => {
-            const existing = Array.from(itemMap.values()).find(a => a && !a._isSharedItem && a.name && a.name.trim().toLowerCase() === defAcc.name.trim().toLowerCase());
-            if (existing) {
-              existing.isDeleted = 0;
-              existing.deletedAt = null;
-              existing.updatedAt = now;
-              existing.restoredAt = now;
-            } else {
-              itemMap.set(`def_${idx}`, {
-                ...defAcc,
-                order: defAcc.order ?? idx,
-                isDeleted: 0,
-                updatedAt: now,
-                restoredAt: now
-              });
-            }
-          });
+        const activePersonal = Array.from(itemMap.values()).filter(a => a && !a._isSharedItem);
+        const now = Date.now();
+        for (let idx = 0; idx < DEFAULT_ACCOUNTS.length; idx++) {
+          const defAcc = DEFAULT_ACCOUNTS[idx];
+          const exists = activePersonal.find(a => 
+            a.name && (
+              a.name.trim().toLowerCase() === defAcc.name.trim().toLowerCase() ||
+              (defAcc.type === 'cash' && (a.type === 'cash' || a.name.trim().toLowerCase().includes('tiền mặt')))
+            )
+          );
+          if (!exists) {
+            itemMap.set(`def_${idx}`, {
+              ...defAcc,
+              order: defAcc.order ?? idx,
+              isDeleted: 0,
+              updatedAt: now,
+              restoredAt: now
+            });
+            console.log(`[GoogleDrive] Tự động phục hồi ví mặc định bị thiếu: ${defAcc.name}`);
+          } else if (exists.isDeleted === 1 && exists.deletedSource !== 'user') {
+            exists.isDeleted = 0;
+            exists.deletedAt = null;
+            exists.deletedReason = null;
+            exists.updatedAt = now;
+            exists.restoredAt = now;
+            console.log(`[GoogleDrive] Phục hồi ví mặc định bị xóa nhầm do sync: ${exists.name}`);
+          }
         }
       }
 
@@ -1404,8 +1504,8 @@ class GoogleDriveSync {
     }
 
     // 2. Tách dữ liệu cá nhân (để gộp 2 chiều vào Drive) và dữ liệu chia sẻ hợp lệ
-    const personalLocalAccs = allLocalAccs.filter(a => !a._isSharedItem && !isLeftItem(a));
-    const personalLocalTxs = allLocalTxs.filter(t => !t._isSharedItem && !isLeftItem(t));
+    const personalLocalAccs = allLocalAccs.filter(a => !a._isSharedItem);
+    const personalLocalTxs = allLocalTxs.filter(t => !t._isSharedItem);
 
     const isServerConnected = Boolean(window.serverSyncService && window.serverSyncService.token);
     const validSharedAccs = allLocalAccs.filter(a => {
@@ -1429,10 +1529,10 @@ class GoogleDriveSync {
     const finalDebts = await mergeTable(db.debts, await db.debts.toArray(), remoteData.debts);
     const finalBudgets = await mergeTable(db.budgets, await db.budgets.toArray(), remoteData.budgets);
     const finalRecurring = await mergeTable(db.recurring, await db.recurring.toArray(), remoteData.recurring);
-    const finalSavings = db.savings ? await mergeTable(db.savings, (await db.savings.toArray()).filter(s => !s._isSharedItem && !isLeftItem(s)), remoteData.savings) : [];
-    const finalAccumulations = db.accumulations ? await mergeTable(db.accumulations, (await db.accumulations.toArray()).filter(a => !a._isSharedItem && !isLeftItem(a)), remoteData.accumulations) : [];
-    const finalAssets = db.assets ? await mergeTable(db.assets, (await db.assets.toArray()).filter(a => !a._isSharedItem && !isLeftItem(a)), remoteData.assets) : [];
-    const finalLoans = db.loans ? await mergeTable(db.loans, (await db.loans.toArray()).filter(l => !l._isSharedItem && !isLeftItem(l)), remoteData.loans) : [];
+    const finalSavings = db.savings ? await mergeTable(db.savings, (await db.savings.toArray()).filter(s => !s._isSharedItem), remoteData.savings) : [];
+    const finalAccumulations = db.accumulations ? await mergeTable(db.accumulations, (await db.accumulations.toArray()).filter(a => !a._isSharedItem), remoteData.accumulations) : [];
+    const finalAssets = db.assets ? await mergeTable(db.assets, (await db.assets.toArray()).filter(a => !a._isSharedItem), remoteData.assets) : [];
+    const finalLoans = db.loans ? await mergeTable(db.loans, (await db.loans.toArray()).filter(l => !l._isSharedItem), remoteData.loans) : [];
 
     // Phục hồi lại các mục chia sẻ hợp lệ vào IndexedDB sau khi mergeTable đã clear
     for (const sAcc of validSharedAccs) {
@@ -1577,7 +1677,19 @@ class GoogleDriveSync {
   async getLeftSharedItems() {
     try {
       const setting = await db.settings.get('syncLeftSharedItems');
-      return (setting && Array.isArray(setting.value)) ? setting.value : [];
+      const list = (setting && Array.isArray(setting.value)) ? setting.value : [];
+      // Làm sạch các mục lưu nhầm không có shareId/vaultId mà chỉ có id nhỏ của tài khoản cá nhân
+      const cleaned = list.filter(x => {
+        if (!x) return false;
+        if (x.shareId || x.vaultId) return true;
+        const idVal = Number(x.itemId || x.localId);
+        if (!isNaN(idVal) && idVal >= 0 && idVal <= 10) return false;
+        return true;
+      });
+      if (cleaned.length !== list.length) {
+        await db.settings.put({ key: 'syncLeftSharedItems', value: cleaned });
+      }
+      return cleaned;
     } catch (_) {
       return [];
     }
@@ -2139,6 +2251,122 @@ class GoogleDriveSync {
     });
   }
 
+  // Lấy danh sách các tệp chia sẻ từ Google Drive REST API (Không dùng iframe/cookies, an toàn tuyệt đối trên iOS/Safari/PWA)
+  async getSharedFilesFromDrive() {
+    await this.ensureToken(true);
+    if (!this.accessToken) {
+      throw new Error('Chưa kết nối Google Drive. Vui lòng kết nối tài khoản Google trước.');
+    }
+
+    const filesMap = new Map();
+
+    // 1. Quét tệp được chia sẻ với tôi (sharedWithMe)
+    try {
+      const q = encodeURIComponent("sharedWithMe = true and trashed = false");
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=100&fields=files(id,name,mimeType,modifiedTime,owners,sharingUser,capabilities,size,iconLink)`, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.files)) {
+          for (const f of data.files) {
+            if (f.name && (f.name.includes('stc_shared') || f.mimeType === 'application/json' || f.name.endsWith('.json'))) {
+              filesMap.set(f.id, f);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[GoogleDriveSync] Lỗi quét sharedWithMe:', e);
+    }
+
+    // 2. Quét thêm tệp stc_shared trong Drive cá nhân (nếu có)
+    try {
+      const q2 = encodeURIComponent("name contains 'stc_shared' and trashed = false");
+      const res2 = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q2}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=50&fields=files(id,name,mimeType,modifiedTime,owners,sharingUser,capabilities,size,iconLink)`, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (res2.ok) {
+        const data2 = await res2.json();
+        if (Array.isArray(data2.files)) {
+          for (const f of data2.files) {
+            if (!filesMap.has(f.id)) {
+              filesMap.set(f.id, f);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[GoogleDriveSync] Lỗi quét tệp stc_shared cá nhân:', e);
+    }
+
+    return Array.from(filesMap.values());
+  }
+
+  _showPickerCloseButton(onClose) {
+    this._removePickerCloseButton();
+    const btn = document.createElement('button');
+    btn.id = 'google-picker-close-btn';
+    btn.type = 'button';
+    btn.innerHTML = '✕';
+    btn.setAttribute('aria-label', 'Đóng hộp thoại Picker');
+    btn.setAttribute('title', 'Đóng hộp thoại');
+    btn.style.cssText = `
+      position: fixed !important;
+      top: 14px !important;
+      right: 14px !important;
+      z-index: 2147483647 !important;
+      width: 44px !important;
+      height: 44px !important;
+      border-radius: 50% !important;
+      background: #0f172a !important;
+      color: #ffffff !important;
+      border: 2px solid rgba(255, 255, 255, 0.4) !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7) !important;
+      font-size: 22px !important;
+      font-weight: 700 !important;
+      line-height: 1 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      user-select: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+      transition: all 0.2s ease !important;
+    `;
+    btn.onmouseover = () => { btn.style.background = '#ef4444'; };
+    btn.onmouseout = () => { btn.style.background = '#0f172a'; };
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this._removePickerCloseButton();
+      if (typeof onClose === 'function') onClose();
+    };
+    document.body.appendChild(btn);
+
+    // Bắt sự kiện click vào backdrop xám bên ngoài của Google Picker để đóng
+    const bgWatcher = setInterval(() => {
+      const bgs = document.querySelectorAll('.picker-dialog-bg');
+      if (bgs.length > 0) {
+        clearInterval(bgWatcher);
+        bgs.forEach(bg => {
+          bg.addEventListener('click', () => {
+            this._removePickerCloseButton();
+            if (typeof onClose === 'function') onClose();
+          }, { once: true });
+        });
+      }
+    }, 200);
+    setTimeout(() => clearInterval(bgWatcher), 6000);
+  }
+
+  _removePickerCloseButton() {
+    const btn = document.getElementById('google-picker-close-btn');
+    if (btn) btn.remove();
+    const dialogs = document.querySelectorAll('.picker-dialog, .picker-dialog-bg');
+    dialogs.forEach(d => d.remove());
+  }
+
   // Mở hộp thoại Google Picker chính thức để duyệt và nhận tệp chia sẻ riêng qua email
   async openPickerForSharedItems() {
     await this.ensureToken(true);
@@ -2196,6 +2424,7 @@ class GoogleDriveSync {
           .setCallback((data) => {
             const action = data[google.picker.Response.ACTION];
             if (action === google.picker.Action.PICKED) {
+              this._removePickerCloseButton();
               const doc = data[google.picker.Response.DOCUMENTS]?.[0];
               if (doc) {
                 const fileId = doc[google.picker.Document.ID];
@@ -2205,6 +2434,7 @@ class GoogleDriveSync {
                 resolve(null);
               }
             } else if (action === google.picker.Action.CANCEL) {
+              this._removePickerCloseButton();
               resolve(null);
             }
           });
@@ -2214,8 +2444,12 @@ class GoogleDriveSync {
         }
 
         const picker = builder.build();
+        this._showPickerCloseButton(() => {
+          resolve(null);
+        });
         picker.setVisible(true);
       } catch (err) {
+        this._removePickerCloseButton();
         console.error('[GooglePicker] Lỗi hiển thị Picker:', err);
         reject(err);
       }

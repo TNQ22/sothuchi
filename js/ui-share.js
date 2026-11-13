@@ -1171,22 +1171,148 @@ const ReceiveShareModal = {
     await this.promptWithToken(token, key);
   },
 
-  // Mở hộp thoại Google Picker để chọn tệp chia sẻ riêng qua email
+  // Mở hộp thoại chọn sổ chia sẻ Google Drive (Ưu tiên Native Chooser, không bao giờ bị kẹt cookie trên Safari/iOS)
   async pickGoogleDrive() {
     if (!window.googleDriveService) {
       if (typeof showToast === 'function') showToast('Dịch vụ Google Drive chưa được khởi tạo.', 'error');
       return;
     }
+    await this.showNativeDriveChooser();
+  },
+
+  async showNativeDriveChooser() {
+    const modal = document.getElementById('modal-native-drive-chooser');
+    if (!modal) return;
+
+    modal.classList.add('active');
+    const loadingEl = document.getElementById('native-drive-chooser-loading');
+    const listEl = document.getElementById('native-drive-chooser-list');
+    const emptyEl = document.getElementById('native-drive-chooser-empty');
+
+    if (loadingEl) loadingEl.style.display = 'block';
+    if (listEl) { listEl.style.display = 'none'; listEl.innerHTML = ''; }
+    if (emptyEl) emptyEl.style.display = 'none';
+
     try {
-      if (typeof showToast === 'function') showToast('Đang mở hộp thoại Google Drive Picker...', 'info');
+      if (!window.googleDriveService.accessToken) {
+        await window.googleDriveService.ensureToken(true);
+      }
+      if (!window.googleDriveService.accessToken) {
+        throw new Error('Chưa kết nối tài khoản Google Drive. Vui lòng kết nối tài khoản Google trong Cài đặt.');
+      }
+
+      const files = await window.googleDriveService.getSharedFilesFromDrive();
+
+      // Kiểm tra danh sách các file đã nhận trước đó để hiển thị nhãn
+      const recSetting = (await db.settings.get('googleDriveReceivedFiles')) || { value: [] };
+      const recList = Array.isArray(recSetting.value) ? recSetting.value : [];
+      const recFileIds = new Set(recList.map(r => r.fileId));
+
+      const existingAccounts = await db.accounts.toArray();
+      const existingShareIds = new Set(existingAccounts.filter(a => a._isSharedItem && a._shareId).map(a => a._shareId));
+
+      if (loadingEl) loadingEl.style.display = 'none';
+
+      if (!files || files.length === 0) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+      }
+
+      if (listEl) {
+        listEl.style.display = 'flex';
+        let html = '';
+
+        for (const file of files) {
+          const isAdded = recFileIds.has(file.id) || existingShareIds.has(file.id);
+          
+          // Trích xuất tên hiển thị sạch đẹp
+          let displayName = file.name || 'Sổ chi tiêu chia sẻ';
+          displayName = displayName.replace(/\s*\([^\)]*stc_shared[^\)]*\)/i, '')
+                                   .replace(/^stc_shared_[^_]+_[^_]+_?/, '')
+                                   .replace(/\.json$/i, '')
+                                   .trim();
+
+          const owner = file.sharingUser?.displayName || file.owners?.[0]?.displayName || file.owners?.[0]?.emailAddress || 'Chủ sở hữu';
+          const ownerEmail = file.sharingUser?.emailAddress || file.owners?.[0]?.emailAddress || '';
+          const modTime = file.modifiedTime ? new Date(file.modifiedTime).toLocaleDateString('vi-VN') : '';
+
+          html += `
+            <div class="share-member-row" style="padding: 12px 14px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
+                <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(37, 99, 235, 0.12); color: #2563eb; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                  <i data-lucide="wallet" style="width: 20px; height: 20px;"></i>
+                </div>
+                <div style="min-width: 0; flex: 1;">
+                  <div style="font-weight: 600; font-size: 0.92rem; color: var(--text-primary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(file.name)}">
+                    ${escapeHTML(displayName)}
+                  </div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <span><i data-lucide="user" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i> ${escapeHTML(owner)}</span>
+                    ${ownerEmail && ownerEmail !== owner ? `<span style="opacity: 0.8;">(${escapeHTML(ownerEmail)})</span>` : ''}
+                    ${modTime ? `<span>&bull; ${modTime}</span>` : ''}
+                  </div>
+                </div>
+              </div>
+              <div style="flex-shrink: 0; display: flex; align-items: center; gap: 8px;">
+                ${isAdded 
+                  ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; font-weight: 600;"><i data-lucide="check" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i> Đã Thêm</span>
+                     <button type="button" class="btn-secondary" style="font-size: 0.78rem; padding: 5px 10px;" onclick="ReceiveShareModal.selectDriveFile('${file.id}', '${escapeHTML(file.name).replace(/'/g, "\\'")}')" title="Đồng bộ / kiểm tra lại">Đồng bộ lại</button>`
+                  : `<button type="button" class="btn-primary" style="font-size: 0.82rem; padding: 7px 14px;" onclick="ReceiveShareModal.selectDriveFile('${file.id}', '${escapeHTML(file.name).replace(/'/g, "\\'")}')">
+                       <i data-lucide="download" style="width: 14px; height: 14px;"></i> Nhận Sổ
+                     </button>`
+                }
+              </div>
+            </div>
+          `;
+        }
+
+        listEl.innerHTML = html;
+        if (window.lucide) lucide.createIcons();
+      }
+    } catch (err) {
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (listEl) {
+        listEl.style.display = 'block';
+        listEl.innerHTML = `
+          <div style="text-align: center; padding: 24px 12px;">
+            <div style="color: #ef4444; margin-bottom: 8px;"><i data-lucide="alert-circle" style="width: 32px; height: 32px; margin: 0 auto;"></i></div>
+            <p style="font-size: 0.88rem; color: #ef4444; margin-bottom: 12px;">${escapeHTML(err.message)}</p>
+            <button type="button" class="btn-secondary" style="font-size: 0.82rem; margin: 0 auto;" onclick="ReceiveShareModal.refreshNativeDriveChooser()">Thử lại</button>
+          </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+  },
+
+  closeNativeDriveChooser() {
+    const modal = document.getElementById('modal-native-drive-chooser');
+    if (modal) modal.classList.remove('active');
+  },
+
+  async refreshNativeDriveChooser() {
+    await this.showNativeDriveChooser();
+  },
+
+  async selectDriveFile(fileId, fileName) {
+    this.closeNativeDriveChooser();
+    if (typeof showToast === 'function') showToast(`Đã chọn "${fileName || 'Tệp'}", đang kiểm tra...`, 'info');
+    await this.promptWithToken('gdrive_' + fileId, this.currentKey);
+  },
+
+  async openGooglePickerDirectly() {
+    this.closeNativeDriveChooser();
+    try {
+      if (typeof showToast === 'function') showToast('Đang mở Google Picker...', 'info');
       const picked = await window.googleDriveService.openPickerForSharedItems();
       if (!picked || !picked.fileId) return;
 
       if (typeof showToast === 'function') showToast(`Đã chọn "${picked.fileName || 'Tệp'}", đang kiểm tra...`, 'info');
       await this.promptWithToken('gdrive_' + picked.fileId, this.currentKey);
     } catch (err) {
-      console.warn('[ReceiveShareModal] pickGoogleDrive error:', err);
-      if (typeof showToast === 'function') showToast('Lỗi chọn tệp: ' + err.message, 'error');
+      console.warn('[ReceiveShareModal] openGooglePickerDirectly error:', err);
+      if (typeof showToast === 'function') showToast('Lỗi mở Google Picker: ' + err.message, 'error');
+      await this.showNativeDriveChooser();
     }
   },
 
