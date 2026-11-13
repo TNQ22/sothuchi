@@ -1239,44 +1239,56 @@ const ReceiveShareModal = {
         let html = '';
 
         for (const file of files) {
-          const isAdded = recFileIds.has(file.id) || existingShareIds.has(file.id);
-          
-          // Trích xuất tên hiển thị sạch đẹp
-          let displayName = file.name || 'Sổ chi tiêu chia sẻ';
-          displayName = displayName.replace(/\s*\([^\)]*stc_shared[^\)]*\)/i, '')
-                                   .replace(/^stc_shared_[^_]+_[^_]+_?/, '')
-                                   .replace(/\.json$/i, '')
-                                   .trim();
+          const existingAcc = existingAccounts.find(a => (a._isSharedItem && a._shareId === file.id) || String(a._remoteId) === String(file.id));
+          const isAdded = Boolean(existingAcc || recFileIds.has(file.id) || existingShareIds.has(file.id));
+          const displayName = this.extractSharedItemName(file, existingAcc);
 
           const owner = file.sharingUser?.displayName || file.owners?.[0]?.displayName || file.owners?.[0]?.emailAddress || 'Chủ sở hữu';
           const ownerEmail = file.sharingUser?.emailAddress || file.owners?.[0]?.emailAddress || '';
           const modTime = file.modifiedTime ? new Date(file.modifiedTime).toLocaleDateString('vi-VN') : '';
 
           html += `
-            <div class="share-member-row" style="padding: 12px 14px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-              <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
-                <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(37, 99, 235, 0.12); color: #2563eb; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                  <i data-lucide="wallet" style="width: 20px; height: 20px;"></i>
+            <div class="native-drive-card" style="padding: 12px 14px; background: rgba(30, 41, 59, 0.55); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px;">
+              <!-- Row 1: Icon + Tên Sổ + Badge trạng thái -->
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+                  <div style="width: 36px; height: 36px; border-radius: 9px; background: rgba(37, 99, 235, 0.15); color: #3b82f6; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <i data-lucide="wallet" style="width: 18px; height: 18px;"></i>
+                  </div>
+                  <div style="min-width: 0; flex: 1;">
+                    <div style="font-weight: 700; font-size: 0.95rem; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${esc(displayName)}">
+                      ${esc(displayName)}
+                    </div>
+                  </div>
                 </div>
-                <div style="min-width: 0; flex: 1;">
-                  <div style="font-weight: 600; font-size: 0.92rem; color: var(--text-primary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${esc(file.name)}">
-                    ${esc(displayName)}
-                  </div>
-                  <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                    <span><i data-lucide="user" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i> ${esc(owner)}</span>
-                    ${ownerEmail && ownerEmail !== owner ? `<span style="opacity: 0.8;">(${esc(ownerEmail)})</span>` : ''}
-                    ${modTime ? `<span>&bull; ${modTime}</span>` : ''}
-                  </div>
+                <div style="flex-shrink: 0;">
+                  ${isAdded ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.72rem; padding: 3px 8px; border-radius: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="check" style="width: 11px; height: 11px;"></i> Đã Thêm</span>` : ''}
                 </div>
               </div>
-              <div style="flex-shrink: 0; display: flex; align-items: center; gap: 8px;">
-                ${isAdded 
-                  ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; font-weight: 600;"><i data-lucide="check" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i> Đã Thêm</span>
-                     <button type="button" class="btn-secondary" style="font-size: 0.78rem; padding: 5px 10px;" onclick="ReceiveShareModal.selectDriveFile('${file.id}', '${esc(file.name).replace(/'/g, "\\'")}')" title="Đồng bộ / kiểm tra lại">Đồng bộ lại</button>`
-                  : `<button type="button" class="btn-primary" style="font-size: 0.82rem; padding: 7px 14px;" onclick="ReceiveShareModal.selectDriveFile('${file.id}', '${esc(file.name).replace(/'/g, "\\'")}')">
-                       <i data-lucide="download" style="width: 14px; height: 14px;"></i> Nhận Sổ
-                     </button>`
-                }
+
+              <!-- Row 2: Chi tiết người chia sẻ & Nút hành động -->
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 6px; border-top: 1px dashed rgba(255, 255, 255, 0.07); font-size: 0.78rem; color: #94a3b8;">
+                <div style="min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px;">
+                  <div style="display: flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    <i data-lucide="user" style="width: 12px; height: 12px; color: #64748b; flex-shrink: 0;"></i>
+                    <span style="color: #cbd5e1; font-weight: 500;">${esc(owner)}</span>
+                  </div>
+                  ${ownerEmail ? `
+                    <div style="color: #64748b; font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                      ${esc(ownerEmail)} ${modTime ? `&bull; ${esc(modTime)}` : ''}
+                    </div>
+                  ` : ''}
+                </div>
+                <div style="flex-shrink: 0;">
+                  ${isAdded
+                    ? `<button type="button" class="btn-secondary" style="font-size: 0.76rem; padding: 5px 12px; border-radius: 7px; display: inline-flex; align-items: center; gap: 4px;" onclick="ReceiveShareModal.selectDriveFile('${file.id}', '${esc(displayName).replace(/'/g, "\\'")}')" title="Đồng bộ / kiểm tra lại">
+                         <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i> Đồng bộ lại
+                       </button>`
+                    : `<button type="button" class="btn-primary" style="font-size: 0.8rem; padding: 6px 14px; border-radius: 7px; display: inline-flex; align-items: center; gap: 5px;" onclick="ReceiveShareModal.selectDriveFile('${file.id}', '${esc(displayName).replace(/'/g, "\\'")}')">
+                         <i data-lucide="download" style="width: 13px; height: 13px;"></i> Nhận Sổ
+                       </button>`
+                  }
+                </div>
               </div>
             </div>
           `;
@@ -1303,6 +1315,50 @@ const ReceiveShareModal = {
         }
       }
     }
+  },
+
+  extractSharedItemName(file, existingAcc) {
+    // 1. Nếu tài khoản đã tồn tại trên máy người dùng, ưu tiên lấy tên sổ cục bộ
+    if (existingAcc?.name && existingAcc.name.trim()) {
+      return existingAcc.name.trim();
+    }
+
+    // 2. Lấy từ properties / appProperties / description được lưu kèm trên Google Drive
+    if (file.properties?.itemName && file.properties.itemName.trim()) {
+      return file.properties.itemName.trim();
+    }
+    if (file.appProperties?.stcItemName && file.appProperties.stcItemName.trim()) {
+      return file.appProperties.stcItemName.trim();
+    }
+    if (file.description && file.description.trim()) {
+      return file.description.trim();
+    }
+
+    // 3. Bóc tách từ tên tệp Google Drive
+    let raw = (file.name || '').trim();
+    raw = raw.replace(/\.json$/i, '').trim();
+
+    // Bóc tách format: "Ví Tiền Mặt - email@gmail.com (stc_shared_account_123)"
+    if (raw.includes(' (stc_shared_')) {
+      raw = raw.split(' (stc_shared_')[0].trim();
+    } else if (raw.includes('(stc_shared_')) {
+      raw = raw.split('(stc_shared_')[0].trim();
+    }
+
+    // Tách bớt email chủ sổ nếu có: "Ví Tiền Mặt - email@gmail.com"
+    if (raw.includes(' - ') && raw.includes('@')) {
+      const parts = raw.split(' - ');
+      if (parts[0] && parts[0].trim()) {
+        raw = parts[0].trim();
+      }
+    }
+
+    // Nếu là dạng cũ: stc_shared_account_1
+    if (raw.startsWith('stc_shared_') || !raw) {
+      return 'Sổ / Ví chia sẻ';
+    }
+
+    return raw;
   },
 
   closeNativeDriveChooser() {

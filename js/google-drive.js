@@ -1931,11 +1931,18 @@ class GoogleDriveSync {
       const metadata = {
         name: sharedFileName,
         mimeType: 'application/json',
+        description: safeItemName,
+        properties: {
+          itemName: safeItemName,
+          itemType: itemType,
+          ownerEmail: ownerEmail || ''
+        },
         appProperties: {
           stcApp: 'so-thu-chi',
           stcItemType: itemType,
           stcItemId: String(itemId),
-          stcOwnerEmail: ownerEmail || ''
+          stcOwnerEmail: ownerEmail || '',
+          stcItemName: safeItemName
         }
       };
       if (folderId) {
@@ -1981,11 +1988,18 @@ class GoogleDriveSync {
         },
         body: JSON.stringify({
           name: sharedFileName,
+          description: safeItemName,
+          properties: {
+            itemName: safeItemName,
+            itemType: itemType,
+            ownerEmail: ownerEmail || ''
+          },
           appProperties: {
             stcApp: 'so-thu-chi',
             stcItemType: itemType,
             stcItemId: String(itemId),
-            stcOwnerEmail: ownerEmail || ''
+            stcOwnerEmail: ownerEmail || '',
+            stcItemName: safeItemName
           }
         })
       }).catch(() => {});
@@ -2263,7 +2277,7 @@ class GoogleDriveSync {
     // 1. Quét tệp được chia sẻ với tôi (sharedWithMe)
     try {
       const q = encodeURIComponent("sharedWithMe = true and trashed = false");
-      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=100&fields=files(id,name,mimeType,modifiedTime,owners,sharingUser,capabilities,size,iconLink)`, {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=100&fields=files(id,name,mimeType,description,properties,appProperties,modifiedTime,owners,sharingUser,capabilities,size,iconLink)`, {
         headers: { Authorization: `Bearer ${this.accessToken}` }
       });
       if (res.ok) {
@@ -2283,7 +2297,7 @@ class GoogleDriveSync {
     // 2. Quét thêm tệp stc_shared trong Drive cá nhân (nếu có)
     try {
       const q2 = encodeURIComponent("name contains 'stc_shared' and trashed = false");
-      const res2 = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q2}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=50&fields=files(id,name,mimeType,modifiedTime,owners,sharingUser,capabilities,size,iconLink)`, {
+      const res2 = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q2}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=50&fields=files(id,name,mimeType,description,properties,appProperties,modifiedTime,owners,sharingUser,capabilities,size,iconLink)`, {
         headers: { Authorization: `Bearer ${this.accessToken}` }
       });
       if (res2.ok) {
