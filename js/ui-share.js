@@ -1173,18 +1173,26 @@ const ReceiveShareModal = {
 
   // Mở hộp thoại chọn sổ chia sẻ Google Drive (Ưu tiên Native Chooser, không bao giờ bị kẹt cookie trên Safari/iOS)
   async pickGoogleDrive() {
-    if (!window.googleDriveService) {
-      if (typeof showToast === 'function') showToast('Dịch vụ Google Drive chưa được khởi tạo.', 'error');
-      return;
+    try {
+      if (!window.googleDriveService) {
+        if (typeof showToast === 'function') showToast('Dịch vụ Google Drive chưa được khởi tạo.', 'error');
+        return;
+      }
+      await this.showNativeDriveChooser();
+    } catch (err) {
+      console.error('[ReceiveShareModal] pickGoogleDrive error:', err);
+      if (typeof showToast === 'function') showToast('Lỗi: ' + err.message, 'error');
     }
-    await this.showNativeDriveChooser();
   },
 
   async showNativeDriveChooser() {
     const modal = document.getElementById('modal-native-drive-chooser');
-    if (!modal) return;
+    if (!modal) {
+      console.warn('[ReceiveShareModal] modal-native-drive-chooser element not found');
+      return;
+    }
 
-    modal.classList.add('active');
+    modal.classList.add('open');
     const loadingEl = document.getElementById('native-drive-chooser-loading');
     const listEl = document.getElementById('native-drive-chooser-list');
     const emptyEl = document.getElementById('native-drive-chooser-empty');
@@ -1192,6 +1200,8 @@ const ReceiveShareModal = {
     if (loadingEl) loadingEl.style.display = 'block';
     if (listEl) { listEl.style.display = 'none'; listEl.innerHTML = ''; }
     if (emptyEl) emptyEl.style.display = 'none';
+
+    const esc = (s) => (typeof escapeHTML === 'function' ? escapeHTML(String(s || '')) : String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
 
     try {
       if (!window.googleDriveService.accessToken) {
@@ -1204,11 +1214,17 @@ const ReceiveShareModal = {
       const files = await window.googleDriveService.getSharedFilesFromDrive();
 
       // Kiểm tra danh sách các file đã nhận trước đó để hiển thị nhãn
-      const recSetting = (await db.settings.get('googleDriveReceivedFiles')) || { value: [] };
-      const recList = Array.isArray(recSetting.value) ? recSetting.value : [];
+      let recList = [];
+      try {
+        const recSetting = await db.settings.get('googleDriveReceivedFiles');
+        recList = Array.isArray(recSetting?.value) ? recSetting.value : [];
+      } catch (_) {}
       const recFileIds = new Set(recList.map(r => r.fileId));
 
-      const existingAccounts = await db.accounts.toArray();
+      let existingAccounts = [];
+      try {
+        existingAccounts = await db.accounts.toArray();
+      } catch (_) {}
       const existingShareIds = new Set(existingAccounts.filter(a => a._isSharedItem && a._shareId).map(a => a._shareId));
 
       if (loadingEl) loadingEl.style.display = 'none';
@@ -1243,12 +1259,12 @@ const ReceiveShareModal = {
                   <i data-lucide="wallet" style="width: 20px; height: 20px;"></i>
                 </div>
                 <div style="min-width: 0; flex: 1;">
-                  <div style="font-weight: 600; font-size: 0.92rem; color: var(--text-primary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(file.name)}">
-                    ${escapeHTML(displayName)}
+                  <div style="font-weight: 600; font-size: 0.92rem; color: var(--text-primary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${esc(file.name)}">
+                    ${esc(displayName)}
                   </div>
                   <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                    <span><i data-lucide="user" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i> ${escapeHTML(owner)}</span>
-                    ${ownerEmail && ownerEmail !== owner ? `<span style="opacity: 0.8;">(${escapeHTML(ownerEmail)})</span>` : ''}
+                    <span><i data-lucide="user" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i> ${esc(owner)}</span>
+                    ${ownerEmail && ownerEmail !== owner ? `<span style="opacity: 0.8;">(${esc(ownerEmail)})</span>` : ''}
                     ${modTime ? `<span>&bull; ${modTime}</span>` : ''}
                   </div>
                 </div>
@@ -1256,8 +1272,8 @@ const ReceiveShareModal = {
               <div style="flex-shrink: 0; display: flex; align-items: center; gap: 8px;">
                 ${isAdded 
                   ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; font-weight: 600;"><i data-lucide="check" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i> Đã Thêm</span>
-                     <button type="button" class="btn-secondary" style="font-size: 0.78rem; padding: 5px 10px;" onclick="ReceiveShareModal.selectDriveFile('${file.id}', '${escapeHTML(file.name).replace(/'/g, "\\'")}')" title="Đồng bộ / kiểm tra lại">Đồng bộ lại</button>`
-                  : `<button type="button" class="btn-primary" style="font-size: 0.82rem; padding: 7px 14px;" onclick="ReceiveShareModal.selectDriveFile('${file.id}', '${escapeHTML(file.name).replace(/'/g, "\\'")}')">
+                     <button type="button" class="btn-secondary" style="font-size: 0.78rem; padding: 5px 10px;" onclick="ReceiveShareModal.selectDriveFile('${file.id}', '${esc(file.name).replace(/'/g, "\\'")}')" title="Đồng bộ / kiểm tra lại">Đồng bộ lại</button>`
+                  : `<button type="button" class="btn-primary" style="font-size: 0.82rem; padding: 7px 14px;" onclick="ReceiveShareModal.selectDriveFile('${file.id}', '${esc(file.name).replace(/'/g, "\\'")}')">
                        <i data-lucide="download" style="width: 14px; height: 14px;"></i> Nhận Sổ
                      </button>`
                 }
@@ -1267,7 +1283,9 @@ const ReceiveShareModal = {
         }
 
         listEl.innerHTML = html;
-        if (window.lucide) lucide.createIcons();
+        if (window.lucide) {
+          try { lucide.createIcons(); } catch(_) {}
+        }
       }
     } catch (err) {
       if (loadingEl) loadingEl.style.display = 'none';
@@ -1276,18 +1294,20 @@ const ReceiveShareModal = {
         listEl.innerHTML = `
           <div style="text-align: center; padding: 24px 12px;">
             <div style="color: #ef4444; margin-bottom: 8px;"><i data-lucide="alert-circle" style="width: 32px; height: 32px; margin: 0 auto;"></i></div>
-            <p style="font-size: 0.88rem; color: #ef4444; margin-bottom: 12px;">${escapeHTML(err.message)}</p>
+            <p style="font-size: 0.88rem; color: #ef4444; margin-bottom: 12px;">${esc(err.message)}</p>
             <button type="button" class="btn-secondary" style="font-size: 0.82rem; margin: 0 auto;" onclick="ReceiveShareModal.refreshNativeDriveChooser()">Thử lại</button>
           </div>
         `;
-        if (window.lucide) lucide.createIcons();
+        if (window.lucide) {
+          try { lucide.createIcons(); } catch(_) {}
+        }
       }
     }
   },
 
   closeNativeDriveChooser() {
     const modal = document.getElementById('modal-native-drive-chooser');
-    if (modal) modal.classList.remove('active');
+    if (modal) modal.classList.remove('open');
   },
 
   async refreshNativeDriveChooser() {
