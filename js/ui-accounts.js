@@ -6141,16 +6141,23 @@ const UIAccounts = {
         } catch (_) {}
       }
 
-      // 2. Kiểm tra Google Drive
-      if (window.googleDriveService && window.googleDriveService.isConnected && window.googleDriveService.autoSync !== false) {
+      // 2. Kiểm tra Google Drive (Tự động quét & nạp mọi sổ được chia sẻ qua email)
+      if (window.googleDriveService) {
         try {
-          let gOwnedChanged = false;
-          if (typeof window.googleDriveService.pullAndMergeOwnedSharedProjections === 'function') {
-            gOwnedChanged = await window.googleDriveService.pullAndMergeOwnedSharedProjections();
+          if (!window.googleDriveService.accessToken) {
+            await window.googleDriveService.ensureToken(false);
           }
-          const gChanged = await window.googleDriveService.syncReceivedSharedItems();
-          if (gOwnedChanged || gChanged) hasAnyChange = true;
-        } catch (_) {}
+          if (window.googleDriveService.accessToken) {
+            let gOwnedChanged = false;
+            if (typeof window.googleDriveService.pullAndMergeOwnedSharedProjections === 'function') {
+              gOwnedChanged = await window.googleDriveService.pullAndMergeOwnedSharedProjections();
+            }
+            const gChanged = await window.googleDriveService.syncReceivedSharedItems();
+            if (gOwnedChanged || gChanged) hasAnyChange = true;
+          }
+        } catch (gErr) {
+          console.warn('[manualSyncSharedItems] Google Drive sync error:', gErr);
+        }
       }
 
       if (hasAnyChange) {

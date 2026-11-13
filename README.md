@@ -69,42 +69,29 @@ git push -u origin main
 
 ---
 
-## 🔑 Hướng Dẫn Tạo Google Client ID & API Key (Để Đồng Bộ & Chia Sẻ Google Drive)
+## 🔑 Hướng Dẫn Cấu Hình Google Client ID (Để Đồng Bộ & Chia Sẻ Google Drive)
 
 > [!NOTE]
-> Tạo Google OAuth Client ID và API Key là hoàn toàn **MIỄN PHÍ** và chỉ mất khoảng 2-3 phút thực hiện trên Google Cloud Console.
+> Tạo Google OAuth Client ID là hoàn toàn **MIỄN PHÍ** và chỉ mất khoảng 1-2 phút thực hiện trên Google Cloud Console.
 
-### 1. Bật các API cần thiết:
+### 1. Bật Google Drive API:
 1. Truy cập [Google Cloud Console](https://console.cloud.google.com/) và tạo một dự án mới (ví dụ: `So-Thu-Chi`).
 2. Vào mục **APIs & Services (API & Dịch vụ)** -> **Library (Thư viện)**:
-   - Tìm kiếm và bấm **ENABLE (Bật)**: **Google Drive API** (để đồng bộ dữ liệu vào Drive cá nhân).
-   - Tìm kiếm và bấm **ENABLE (Bật)**: [**Google Picker API**](https://console.cloud.google.com/apis/library/picker.googleapis.com) *(Bắt buộc nếu sử dụng tính năng duyệt & mở tệp chia sẻ riêng qua email theo chuẩn an toàn `drive.file`)*.
-   > [!IMPORTANT]
-   > Nếu **chưa bật Google Picker API** trong Thư viện, khi mở hộp thoại duyệt file chia sẻ, Google sẽ báo lỗi: **`Khóa của nhà phát triển API là không hợp lệ`** (*The API developer key is invalid*).
+   - Tìm kiếm và bấm **ENABLE (Bật)**: **Google Drive API** (để đồng bộ dữ liệu vào Drive cá nhân và tự động quét sổ chia sẻ).
 
 ### 2. Tạo Google OAuth Client ID:
-1. Vào mục **APIs & Services** -> **Credentials**:
+1. Vào mục **APIs & Services** -> **Credentials (Thông tin xác thực)**:
    - Chọn **Create Credentials** -> **OAuth client ID**.
    - Chọn Application type: **Web application**.
    - Tại mục **Authorized JavaScript origins**: Thêm URL trang web của bạn (ví dụ: `https://tenban.github.io` hoặc `http://localhost:8081` nếu chạy Docker).
    - Bấm **Create**, sao chép chuỗi **Client ID** (dạng `xxxx.apps.googleusercontent.com`).
+2. Dán Client ID vào ứng dụng Sổ Thu Chi (**Cài Đặt & Drive**) hoặc điền vào biến `GOOGLE_CLIENT_ID` trong file `.env` / `docker-compose.yml`.
 
-### 3. Tạo Google API Key (Dành cho Google Picker):
-1. Vẫn tại mục **APIs & Services** -> **Credentials**:
-   - Bấm **Create Credentials** -> Chọn **API key**.
-   - Sao chép chuỗi **API Key** (dạng `AIzaSy...`).
-2. Dán Client ID và API Key vào ứng dụng Sổ Thu Chi (**Cài Đặt & Drive**) hoặc điền vào file `.env` / `docker-compose.yml`.
-
-> [!WARNING]
-> **CẢNH BÁO LỖI "KHÓA CỦA NHÀ PHÁT TRIỂN API LÀ KHÔNG HỢP LỆ":**
-> Google Picker khi hiển thị và duyệt các tệp trên Drive cần sự phối hợp chặt chẽ của **CẢ HAI API**:
-> 1. **Google Picker API**: Dùng để khởi tạo và điều khiển cửa sổ duyệt tệp.
-> 2. **Google Drive API**: Dùng để truy vấn danh sách và nội dung tệp từ Google Drive.
-> 
-> Vì vậy, nếu bạn bật tính năng **API restrictions (Hạn chế API)** trên Google Cloud Console:
-> - **BẮT BUỘC PHẢI TÍCH CHỌN ĐỦ CẢ HAI**: `Google Drive API` **VÀ** `Google Picker API`.
-> - Nếu **thiếu 1 trong 2 API** (ví dụ chỉ tích Picker API mà quên Drive API, hoặc chỉ tích Drive API mà quên Picker API), Google đều sẽ từ chối và báo lỗi: *Khóa của nhà phát triển API là không hợp lệ*.
-> - *Lưu ý về Hạn chế theo tên miền (HTTP Referrers)*: Nếu bạn giới hạn API Key theo Website, hãy đảm bảo đã thêm đúng URL đang sử dụng (vd: `https://tenban.github.io/*`, `http://localhost:8081/*`, `http://192.168.x.x:8081/*`).
+### 3. Chia Sẻ & Tự Động Nhận Sổ Qua Google Drive:
+- **Người chia sẻ:** Trong ứng dụng, mở tài khoản/sổ cần chia sẻ -> Chọn **Chia sẻ** -> Chọn dịch vụ **Google Drive** -> Nhập email Google của người nhận và phân quyền (Ghi chép / Chỉ xem) -> Bấm **Mời**.
+- **Người nhận:** Đăng nhập Google Drive trong ứng dụng.
+- **Tự động nhận sổ:** Mỗi khi ứng dụng đồng bộ định kỳ hoặc khi bạn bấm nút **"Kiểm tra & Đồng bộ"** (hoặc vuốt màn hình xuống để làm mới), ứng dụng sẽ **tự động quét và nạp ngay các sổ được chia sẻ** vào danh sách *"Mục được chia sẻ với bạn"*.
+- **Hoàn toàn an toàn & bảo mật:** Ứng dụng gọi trực tiếp qua Google Drive REST API chuẩn, **hoàn toàn KHÔNG cần Google Picker API, KHÔNG cần API Key**, chạy mượt 100% trên iPhone, iPad, Safari và PWA mà không lo bị chặn cookie hay lỗi iframe!
 
 ---
 
@@ -148,7 +135,6 @@ Sau khi chạy lệnh trên:
 | `DATA_DIR` | `/app/data` | Thư mục lưu file SQLite (`sothuchi.sqlite`) và bản sao lưu |
 | `JWT_SECRET` | Chuỗi ngẫu nhiên | Khóa bí mật bảo vệ phiên đăng nhập token của người dùng |
 | `GOOGLE_CLIENT_ID` / `VITE_GOOGLE_CLIENT_ID` | *(Tùy chọn)* | Client ID từ Google Cloud Console để máy chủ tự động cung cấp cho client |
-| `GOOGLE_API_KEY` / `VITE_GOOGLE_API_KEY` | *(Tùy chọn)* | Google API Key (đã bật Google Picker API) để mở & nhận tệp chia sẻ an toàn |
 | `CORS_ORIGIN` | `*` | Cho phép ứng dụng PWA từ bất kỳ domain nào (hoặc GitHub Pages) kết nối vào |
 
 ### 3. Đăng nhập và Chia sẻ Sổ qua Email Google
