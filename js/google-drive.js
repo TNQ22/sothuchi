@@ -1070,16 +1070,16 @@ class GoogleDriveSync {
       // 1. Luôn tự động sao lưu bản toàn bộ (cả tài khoản riêng tư) vào appDataFolder của bạn để tránh mất dữ liệu
       try {
         const fullLocalData = {
-          transactions: await db.transactions.toArray(),
-          accounts: await db.accounts.toArray(),
+          transactions: (await db.transactions.toArray()).filter(t => !t._isSharedItem),
+          accounts: (await db.accounts.toArray()).filter(a => !a._isSharedItem),
           categories: await db.categories.toArray(),
           debts: await db.debts.toArray(),
           budgets: await db.budgets.toArray(),
           recurring: await db.recurring.toArray(),
-          savings: db.savings ? await db.savings.toArray() : [],
-          accumulations: db.accumulations ? await db.accumulations.toArray() : [],
-          assets: db.assets ? await db.assets.toArray() : [],
-          loans: db.loans ? await db.loans.toArray() : []
+          savings: db.savings ? (await db.savings.toArray()).filter(s => !s._isSharedItem) : [],
+          accumulations: db.accumulations ? (await db.accumulations.toArray()).filter(a => !a._isSharedItem) : [],
+          assets: db.assets ? (await db.assets.toArray()).filter(a => !a._isSharedItem) : [],
+          loans: db.loans ? (await db.loans.toArray()).filter(l => !l._isSharedItem) : []
         };
         await this.saveFullPrivateBackup({
           version: '2.0.0',
@@ -1134,6 +1134,52 @@ class GoogleDriveSync {
       'privacyMode'
     ];
 
+    const leftItems = await this.getLeftSharedItems();
+    const isLeft = (shareId, remoteId, localId) => {
+      const sId = shareId ? String(shareId) : null;
+      const rId = remoteId !== undefined && remoteId !== null ? String(remoteId) : null;
+      const lId = localId !== undefined && localId !== null ? String(localId) : null;
+      return leftItems.some(x => {
+        if (sId && x.shareId && String(x.shareId) === sId) return true;
+        if (rId && x.itemId && String(x.itemId) === rId) return true;
+        if (lId && x.localId && String(x.localId) === lId) return true;
+        if (lId && x.itemId && String(x.itemId) === lId) return true;
+        if (sId && x.itemId && String(x.itemId) === sId) return true;
+        if (rId && x.shareId && String(x.shareId) === rId) return true;
+        return false;
+      });
+    };
+    const isLeftItem = (item) => {
+      if (!item) return false;
+      return isLeft(
+        item._shareId || item.shareId,
+        item._remoteId !== undefined ? item._remoteId : item.itemId,
+        item.id !== undefined ? item.id : item.localId
+      );
+    };
+
+    // Làm sạch remoteData: loại bỏ hoàn toàn các mục chia sẻ nhận được (_isSharedItem) hoặc đã rời khỏi (blacklist)
+    if (remoteData) {
+      if (Array.isArray(remoteData.accounts)) {
+        remoteData.accounts = remoteData.accounts.filter(a => a && !a._isSharedItem && !isLeftItem(a));
+      }
+      if (Array.isArray(remoteData.transactions)) {
+        remoteData.transactions = remoteData.transactions.filter(t => t && !t._isSharedItem && !isLeftItem(t));
+      }
+      if (Array.isArray(remoteData.savings)) {
+        remoteData.savings = remoteData.savings.filter(s => s && !s._isSharedItem && !isLeftItem(s));
+      }
+      if (Array.isArray(remoteData.accumulations)) {
+        remoteData.accumulations = remoteData.accumulations.filter(a => a && !a._isSharedItem && !isLeftItem(a));
+      }
+      if (Array.isArray(remoteData.loans)) {
+        remoteData.loans = remoteData.loans.filter(l => l && !l._isSharedItem && !isLeftItem(l));
+      }
+      if (Array.isArray(remoteData.assets)) {
+        remoteData.assets = remoteData.assets.filter(a => a && !a._isSharedItem && !isLeftItem(a));
+      }
+    }
+
     if (!remoteData) {
       // Lần đầu sync: dữ liệu máy trở thành master
       const localSettings = [];
@@ -1142,18 +1188,20 @@ class GoogleDriveSync {
         if (s) localSettings.push(s);
       }
 
-      // Đồng bộ toàn bộ tài khoản và giao dịch lên Drive cá nhân (giữ nguyên cờ isShared)
+      // Chỉ đồng bộ tài khoản và giao dịch cá nhân lên Drive (không bao gồm sổ được chia sẻ)
+      const allAccs = await db.accounts.toArray();
+      const allTxs = await db.transactions.toArray();
       const local = {
-        transactions: await db.transactions.toArray(),
-        accounts: await db.accounts.toArray(),
+        transactions: allTxs.filter(t => !t._isSharedItem && !isLeftItem(t)),
+        accounts: allAccs.filter(a => !a._isSharedItem && !isLeftItem(a)),
         categories: await db.categories.toArray(),
         debts: await db.debts.toArray(),
         budgets: await db.budgets.toArray(),
         recurring: await db.recurring.toArray(),
-        savings: db.savings ? await db.savings.toArray() : [],
-        accumulations: db.accumulations ? await db.accumulations.toArray() : [],
-        assets: db.assets ? await db.assets.toArray() : [],
-        loans: db.loans ? await db.loans.toArray() : [],
+        savings: db.savings ? (await db.savings.toArray()).filter(s => !s._isSharedItem && !isLeftItem(s)) : [],
+        accumulations: db.accumulations ? (await db.accumulations.toArray()).filter(a => !a._isSharedItem && !isLeftItem(a)) : [],
+        assets: db.assets ? (await db.assets.toArray()).filter(a => !a._isSharedItem && !isLeftItem(a)) : [],
+        loans: db.loans ? (await db.loans.toArray()).filter(l => !l._isSharedItem && !isLeftItem(l)) : [],
         settings: localSettings
       };
       return local;
@@ -1334,17 +1382,65 @@ class GoogleDriveSync {
       return mergedArray;
     };
 
-    // Gộp hai chiều tất cả tài khoản và giao dịch (bảo toàn trạng thái isShared)
-    const finalTransactions = await mergeTable(db.transactions, await db.transactions.toArray(), remoteData.transactions);
-    const finalAccounts = await mergeTable(db.accounts, await db.accounts.toArray(), remoteData.accounts);
+    // Thu thập và làm sạch dữ liệu địa phương
+    const allLocalAccs = await db.accounts.toArray();
+    const allLocalTxs = await db.transactions.toArray();
+
+    // 1. Xóa sạch các tài khoản chia sẻ đã rời khỏi (blacklist) khỏi IndexedDB
+    for (const a of allLocalAccs) {
+      if (a._isSharedItem && isLeftItem(a)) {
+        await db.accounts.delete(a.id);
+        if (a.id !== undefined && !isNaN(Number(a.id))) {
+          await db.accounts.delete(Number(a.id));
+        }
+        await db.accounts.delete(String(a.id));
+        const relTxs = allLocalTxs.filter(t =>
+          Number(t.accountId) === Number(a.id) || Number(t.toAccountId) === Number(a.id) ||
+          String(t.accountId) === String(a.id) || String(t.toAccountId) === String(a.id) ||
+          (a._shareId && String(t._shareId) === String(a._shareId))
+        );
+        for (const t of relTxs) await db.transactions.delete(t.id);
+      }
+    }
+
+    // 2. Tách dữ liệu cá nhân (để gộp 2 chiều vào Drive) và dữ liệu chia sẻ hợp lệ
+    const personalLocalAccs = allLocalAccs.filter(a => !a._isSharedItem && !isLeftItem(a));
+    const personalLocalTxs = allLocalTxs.filter(t => !t._isSharedItem && !isLeftItem(t));
+
+    const isServerConnected = Boolean(window.serverSyncService && window.serverSyncService.token);
+    const validSharedAccs = allLocalAccs.filter(a => {
+      if (!a._isSharedItem || isLeftItem(a)) return false;
+      if ((a._sharedService === 'server' || !a._sharedService) && !isServerConnected) {
+        return false; // Server đã ngắt kết nối / đăng xuất
+      }
+      return true;
+    });
+    const validSharedAccIds = new Set(validSharedAccs.map(a => String(a.id)));
+    const validSharedTxs = allLocalTxs.filter(t => {
+      if (!t._isSharedItem && !validSharedAccIds.has(String(t.accountId)) && !validSharedAccIds.has(String(t.toAccountId))) return false;
+      if (isLeftItem(t)) return false;
+      return true;
+    });
+
+    // Gộp hai chiều CHỈ dữ liệu cá nhân vào Drive
+    const finalTransactions = await mergeTable(db.transactions, personalLocalTxs, remoteData.transactions);
+    const finalAccounts = await mergeTable(db.accounts, personalLocalAccs, remoteData.accounts);
     const finalCategories = await mergeTable(db.categories, await db.categories.toArray(), remoteData.categories);
     const finalDebts = await mergeTable(db.debts, await db.debts.toArray(), remoteData.debts);
     const finalBudgets = await mergeTable(db.budgets, await db.budgets.toArray(), remoteData.budgets);
     const finalRecurring = await mergeTable(db.recurring, await db.recurring.toArray(), remoteData.recurring);
-    const finalSavings = db.savings ? await mergeTable(db.savings, await db.savings.toArray(), remoteData.savings) : [];
-    const finalAccumulations = db.accumulations ? await mergeTable(db.accumulations, await db.accumulations.toArray(), remoteData.accumulations) : [];
-    const finalAssets = db.assets ? await mergeTable(db.assets, await db.assets.toArray(), remoteData.assets) : [];
-    const finalLoans = db.loans ? await mergeTable(db.loans, await db.loans.toArray(), remoteData.loans) : [];
+    const finalSavings = db.savings ? await mergeTable(db.savings, (await db.savings.toArray()).filter(s => !s._isSharedItem && !isLeftItem(s)), remoteData.savings) : [];
+    const finalAccumulations = db.accumulations ? await mergeTable(db.accumulations, (await db.accumulations.toArray()).filter(a => !a._isSharedItem && !isLeftItem(a)), remoteData.accumulations) : [];
+    const finalAssets = db.assets ? await mergeTable(db.assets, (await db.assets.toArray()).filter(a => !a._isSharedItem && !isLeftItem(a)), remoteData.assets) : [];
+    const finalLoans = db.loans ? await mergeTable(db.loans, (await db.loans.toArray()).filter(l => !l._isSharedItem && !isLeftItem(l)), remoteData.loans) : [];
+
+    // Phục hồi lại các mục chia sẻ hợp lệ vào IndexedDB sau khi mergeTable đã clear
+    for (const sAcc of validSharedAccs) {
+      await db.accounts.put(sAcc);
+    }
+    for (const sTx of validSharedTxs) {
+      await db.transactions.put(sTx);
+    }
 
     // Hợp nhất cài đặt ứng dụng (Chế độ ngân sách, tài khoản áp dụng, theme...)
     const finalSettings = [];
@@ -1416,17 +1512,23 @@ class GoogleDriveSync {
     if (map[`${itemType}_${itemId}`]) return map[`${itemType}_${itemId}`];
     if (this.accessToken) {
       try {
-        const fileName = `stc_shared_${itemType}_${itemId}.json`;
-        const q = encodeURIComponent(`name = '${fileName}' and trashed = false`);
-        const res = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=drive&q=${q}&fields=files(id,name)&orderBy=modifiedTime desc`, {
+        const tag = `stc_shared_${itemType}_${itemId}`;
+        const oldFileName = `stc_shared_${itemType}_${itemId}.json`;
+        const q = encodeURIComponent(`(name contains 'stc_shared' or name contains '${itemId}') and trashed = false`);
+        const res = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=drive&q=${q}&fields=files(id,name,appProperties)&orderBy=modifiedTime desc&pageSize=50`, {
           headers: { Authorization: `Bearer ${this.accessToken}` }
         });
         if (res.ok) {
           const d = await res.json();
-          if (d.files && d.files.length > 0) {
-            const fid = d.files[0].id;
-            await this.setSharedFileId(itemType, itemId, fid);
-            return fid;
+          if (Array.isArray(d.files)) {
+            const match = d.files.find(f =>
+              (f.name && (f.name.includes(tag) || f.name === oldFileName || f.name.includes(String(itemId)))) ||
+              (f.appProperties?.stcItemId === String(itemId))
+            );
+            if (match) {
+              await this.setSharedFileId(itemType, itemId, match.id);
+              return match.id;
+            }
           }
         }
       } catch (_) {}
@@ -1481,19 +1583,21 @@ class GoogleDriveSync {
     }
   }
 
-  async recordLeftSharedItem({ shareId, vaultId, itemType, itemId }) {
+  async recordLeftSharedItem({ shareId, vaultId, itemType, itemId, localId }) {
     try {
       const list = await this.getLeftSharedItems();
       const sId = shareId ? String(shareId) : null;
       const vId = vaultId ? String(vaultId) : null;
-      const iId = itemId ? String(itemId) : null;
+      const iId = itemId !== undefined && itemId !== null ? String(itemId) : null;
+      const lId = localId !== undefined && localId !== null ? String(localId) : null;
       const exists = list.some(x => {
         if (sId && x.shareId && x.shareId === sId) return true;
         if (itemType && iId && x.itemType === itemType && String(x.itemId) === iId) return true;
+        if (lId && x.localId && String(x.localId) === lId) return true;
         return false;
       });
       if (!exists) {
-        list.push({ shareId: sId, vaultId: vId, itemType, itemId: iId, service: 'google-drive', leftAt: Date.now() });
+        list.push({ shareId: sId, vaultId: vId, itemType: itemType || 'account', itemId: iId, localId: lId, service: 'google-drive', leftAt: Date.now() });
         await db.settings.put({ key: 'syncLeftSharedItems', value: list });
       }
     } catch (e) {
@@ -1515,8 +1619,8 @@ class GoogleDriveSync {
     } catch (_) {}
   }
 
-  async leaveReceivedSharedItem({ shareId, vaultId, itemType, itemId }) {
-    await this.recordLeftSharedItem({ shareId, vaultId, itemType, itemId });
+  async leaveReceivedSharedItem({ shareId, vaultId, itemType, itemId, localId }) {
+    await this.recordLeftSharedItem({ shareId, vaultId, itemType, itemId, localId });
     try {
       const settings = (await db.settings.get('syncItemShareKeys')) || { key: 'syncItemShareKeys', value: {} };
       const map = settings.value || {};
@@ -1697,12 +1801,30 @@ class GoogleDriveSync {
       }, null, 2);
     }
 
+    // Đặt tên file thân thiện dễ đọc trên Google Drive / Google Picker: "[Tên sổ] - [Email chủ] (stc_shared_account_123).json"
+    const safeItemName = (projectedPayload.itemName || 'Sổ').replace(/[\\/:*?"<>|]/g, '').trim() || 'Sổ';
+    let ownerEmail = (this.userProfile?.email || projectedPayload.owner?.email || '').trim();
+    if (!ownerEmail && this.accessToken) {
+      try {
+        const profile = await this.fetchUserProfile();
+        if (profile?.email) ownerEmail = profile.email.trim();
+      } catch (_) {}
+    }
+    const ownerTag = ownerEmail ? ` - ${ownerEmail}` : '';
+    const sharedFileName = `${safeItemName}${ownerTag} (stc_shared_${itemType}_${itemId}).json`;
+
     if (!fileId) {
       // Bắt buộc lưu vào My Drive Custom Folder (Google Drive CẤM share file trong appDataFolder)
       const folderId = await this.ensureCustomFolder();
       const metadata = {
-        name: `stc_shared_${itemType}_${itemId}.json`,
-        mimeType: 'application/json'
+        name: sharedFileName,
+        mimeType: 'application/json',
+        appProperties: {
+          stcApp: 'so-thu-chi',
+          stcItemType: itemType,
+          stcItemId: String(itemId),
+          stcOwnerEmail: ownerEmail || ''
+        }
       };
       if (folderId) {
         metadata.parents = [folderId];
@@ -1737,6 +1859,24 @@ class GoogleDriveSync {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error?.message || 'Không thể cập nhật file chia sẻ trên Google Drive.');
       }
+
+      // Tự động đồng bộ/cập nhật tên hiển thị thân thiện trên Google Drive
+      fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: sharedFileName,
+          appProperties: {
+            stcApp: 'so-thu-chi',
+            stcItemType: itemType,
+            stcItemId: String(itemId),
+            stcOwnerEmail: ownerEmail || ''
+          }
+        })
+      }).catch(() => {});
     }
 
     try {
@@ -1941,7 +2081,7 @@ class GoogleDriveSync {
     let json = JSON.parse(rawText);
 
     const isEncrypted = Boolean(json.encrypted);
-    const itemName = json.itemName || json.item?.name || meta.name?.replace(/^stc_shared_[^_]+_[^_]+_?/, '').replace(/\.json$/, '') || 'Tài khoản chia sẻ';
+    const itemName = json.itemName || json.item?.name || meta.name?.replace(/\s*\([^\)]*stc_shared[^\)]*\)/i, '').replace(/^stc_shared_[^_]+_[^_]+_?/, '').replace(/\.json$/, '').trim() || 'Tài khoản chia sẻ';
     const itemType = json.itemType || 'account';
     const ownerName = json.owner?.name || meta.owners?.[0]?.displayName || 'Chủ sở hữu';
     const ownerEmail = json.owner?.email || meta.owners?.[0]?.emailAddress || '';
@@ -2122,7 +2262,7 @@ class GoogleDriveSync {
           const swmData = await swmRes.json();
           if (Array.isArray(swmData.files)) {
             for (const f of swmData.files) {
-              if (f.name && f.name.startsWith('stc_shared_')) {
+              if (f.name && (f.name.startsWith('stc_shared_') || f.name.includes('stc_shared'))) {
                 fileMap.set(f.id, f);
               }
             }
@@ -2151,39 +2291,96 @@ class GoogleDriveSync {
       }
 
       const leftItems = await this.getLeftSharedItems();
-      const isLeft = (shareId, remoteId) => {
-        return leftItems.some(x =>
-          (shareId && x.shareId && String(x.shareId) === String(shareId)) ||
-          (remoteId && x.itemId && String(x.itemId) === String(remoteId)) ||
-          (shareId && x.itemId && String(x.itemId) === String(shareId)) ||
-          (remoteId && x.shareId && String(x.shareId) === String(remoteId))
-        );
+      const isLeft = (shareId, remoteId, localId) => {
+        const sId = shareId ? String(shareId) : null;
+        const rId = remoteId !== undefined && remoteId !== null ? String(remoteId) : null;
+        const lId = localId !== undefined && localId !== null ? String(localId) : null;
+        return leftItems.some(x => {
+          if (sId && x.shareId && String(x.shareId) === sId) return true;
+          if (rId && x.itemId && String(x.itemId) === rId) return true;
+          if (lId && x.localId && String(x.localId) === lId) return true;
+          if (lId && x.itemId && String(x.itemId) === lId) return true;
+          if (sId && x.itemId && String(x.itemId) === sId) return true;
+          if (rId && x.shareId && String(x.shareId) === rId) return true;
+          return false;
+        });
       };
 
-      // Xóa các mục Google Drive chia sẻ đã rời khỏi hoặc đã bị xóa
+      // Xóa các mục chia sẻ đã rời khỏi hoặc đã bị xóa
       const localAccs = await db.accounts.toArray();
+      const isServerConnected = Boolean(window.serverSyncService && window.serverSyncService.token);
       for (const acc of localAccs) {
-        if (acc._isSharedItem && acc._sharedService === 'google-drive') {
-          const explicitlyLeft = isLeft(acc._shareId, acc._remoteId);
+        if (acc._isSharedItem) {
+          const explicitlyLeft = isLeft(acc._shareId, acc._remoteId, acc.id);
           let removed = explicitlyLeft;
-          if (!explicitlyLeft && swmSuccess && !fileMap.has(acc._shareId)) {
-            // Kiểm tra xem file có thực sự bị xóa hay mất quyền không
-            try {
-              const checkRes = await fetch(`https://www.googleapis.com/drive/v3/files/${acc._shareId}?fields=id,trashed`, {
-                headers: { Authorization: `Bearer ${this.accessToken}` }
-              });
-              if (!checkRes.ok || (await checkRes.json().catch(() => ({}))).trashed) {
-                removed = true;
-              }
-            } catch (_) {}
+          if (acc._sharedService === 'google-drive') {
+            if (!explicitlyLeft && swmSuccess && !fileMap.has(acc._shareId)) {
+              // Kiểm tra xem file có thực sự bị xóa hay mất quyền không
+              try {
+                const checkRes = await fetch(`https://www.googleapis.com/drive/v3/files/${acc._shareId}?fields=id,trashed`, {
+                  headers: { Authorization: `Bearer ${this.accessToken}` }
+                });
+                if (!checkRes.ok || (await checkRes.json().catch(() => ({}))).trashed) {
+                  removed = true;
+                }
+              } catch (_) {}
+            }
+          } else if (acc._sharedService === 'server' || !acc._sharedService) {
+            // Nếu là item từ Server riêng nhưng server đã đăng xuất/mất kết nối hoặc người dùng đã rời khỏi
+            if (!isServerConnected || explicitlyLeft) {
+              removed = true;
+            }
           }
           if (removed) {
             hasChanges = true;
             await db.accounts.delete(acc.id);
+            if (acc.id !== undefined && !isNaN(Number(acc.id))) {
+              await db.accounts.delete(Number(acc.id));
+            }
+            await db.accounts.delete(String(acc.id));
             const relTxs = (await db.transactions.toArray()).filter(t =>
-              Number(t.accountId) === Number(acc.id) || Number(t.toAccountId) === Number(acc.id) || (acc._shareId && String(t._shareId) === String(acc._shareId))
+              Number(t.accountId) === Number(acc.id) || Number(t.toAccountId) === Number(acc.id) ||
+              String(t.accountId) === String(acc.id) || String(t.toAccountId) === String(acc.id) ||
+              (acc._shareId && String(t._shareId) === String(acc._shareId))
             );
             for (const t of relTxs) await db.transactions.delete(t.id);
+          }
+        }
+      }
+
+      if (db.savings) {
+        const sList = await db.savings.toArray();
+        for (const s of sList) {
+          if (s._isSharedItem && (isLeft(s._shareId, s._remoteId, s.id) || ((s._sharedService === 'server' || !s._sharedService) && !isServerConnected))) {
+            hasChanges = true;
+            await db.savings.delete(s.id);
+          }
+        }
+      }
+      if (db.accumulations) {
+        const aList = await db.accumulations.toArray();
+        for (const a of aList) {
+          if (a._isSharedItem && (isLeft(a._shareId, a._remoteId, a.id) || ((a._sharedService === 'server' || !a._sharedService) && !isServerConnected))) {
+            hasChanges = true;
+            await db.accumulations.delete(a.id);
+          }
+        }
+      }
+      if (db.loans) {
+        const lList = await db.loans.toArray();
+        for (const l of lList) {
+          if (l._isSharedItem && (isLeft(l._shareId, l._remoteId, l.id) || ((l._sharedService === 'server' || !l._sharedService) && !isServerConnected))) {
+            hasChanges = true;
+            await db.loans.delete(l.id);
+          }
+        }
+      }
+      if (db.assets) {
+        const astList = await db.assets.toArray();
+        for (const ast of astList) {
+          if (ast._isSharedItem && (isLeft(ast._shareId, ast._remoteId, ast.id) || ((ast._sharedService === 'server' || !ast._sharedService) && !isServerConnected))) {
+            hasChanges = true;
+            await db.assets.delete(ast.id);
           }
         }
       }

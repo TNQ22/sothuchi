@@ -993,7 +993,8 @@ const UIAccounts = {
           shareId: acc._shareId,
           vaultId: acc._remoteVaultId,
           itemType: 'account',
-          itemId: acc._remoteId
+          itemId: acc._remoteId || acc.id,
+          localId: acc.id
         });
       }
       if (window.googleDriveService && typeof window.googleDriveService.leaveReceivedSharedItem === 'function') {
@@ -1001,7 +1002,8 @@ const UIAccounts = {
           shareId: acc._shareId,
           vaultId: acc._remoteVaultId,
           itemType: 'account',
-          itemId: acc._remoteId
+          itemId: acc._remoteId || acc.id,
+          localId: acc.id
         });
       }
       await db.accounts.delete(acc.id);
@@ -5705,7 +5707,8 @@ const UIAccounts = {
           shareId,
           vaultId: remoteVaultId,
           itemType: type,
-          itemId: remoteId || id
+          itemId: remoteId || id,
+          localId: id
         });
       }
       if (window.googleDriveService && typeof window.googleDriveService.leaveReceivedSharedItem === 'function') {
@@ -5713,7 +5716,8 @@ const UIAccounts = {
           shareId,
           vaultId: remoteVaultId,
           itemType: type,
-          itemId: remoteId || id
+          itemId: remoteId || id,
+          localId: id
         });
       }
 
@@ -6626,6 +6630,45 @@ const UIAccounts = {
     }
 
     let accounts = (await db.accounts.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0);
+
+    // Tự động dọn dẹp các tài khoản chia sẻ đã rời khỏi (blacklist) hoặc tài khoản từ máy chủ riêng khi đã ngắt kết nối/đăng xuất
+    try {
+      const leftSetting = await db.settings.get('syncLeftSharedItems');
+      const leftList = (leftSetting && Array.isArray(leftSetting.value)) ? leftSetting.value : [];
+      const isServerActive = Boolean(window.serverSyncService && window.serverSyncService.token);
+
+      let orphanedCleaned = false;
+      for (const a of accounts) {
+        if (a._isSharedItem) {
+          const isLeft = leftList.some(x =>
+            (a._shareId && x.shareId && String(x.shareId) === String(a._shareId)) ||
+            (a._remoteId && x.itemId && String(x.itemId) === String(a._remoteId)) ||
+            (x.localId && String(x.localId) === String(a.id)) ||
+            (x.itemId && String(x.itemId) === String(a.id))
+          );
+          const isOrphanedServer = (a._sharedService === 'server' || !a._sharedService) && !isServerActive;
+          if (isLeft || isOrphanedServer) {
+            orphanedCleaned = true;
+            await db.accounts.delete(a.id);
+            if (a.id !== undefined && !isNaN(Number(a.id))) {
+              await db.accounts.delete(Number(a.id));
+            }
+            await db.accounts.delete(String(a.id));
+            const relTxs = (await db.transactions.toArray()).filter(t =>
+              Number(t.accountId) === Number(a.id) || Number(t.toAccountId) === Number(a.id) ||
+              String(t.accountId) === String(a.id) || String(t.toAccountId) === String(a.id) ||
+              (a._shareId && String(t._shareId) === String(a._shareId))
+            );
+            for (const t of relTxs) await db.transactions.delete(t.id);
+          }
+        }
+      }
+      if (orphanedCleaned) {
+        accounts = (await db.accounts.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0);
+      }
+    } catch (errClean) {
+      console.warn('[UIAccounts] Lỗi tự động dọn dẹp sổ chia sẻ không hợp lệ:', errClean);
+    }
 
     // Tự động kiểm tra và làm sạch cờ isShared nếu tài khoản không còn ai được chia sẻ trên server
     if (!this._cleaningShares && window.serverSyncService && window.serverSyncService.token && window.serverSyncService.serverUrl) {
