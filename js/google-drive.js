@@ -1974,7 +1974,9 @@ class GoogleDriveSync {
     if (!this.apiKey) {
       const input = await showPrompt({
         title: 'Cần Google API Key (Google Picker)',
-        message: 'Google Picker yêu cầu API Key để duyệt các tệp chia sẻ riêng qua email theo chuẩn bảo mật <code>drive.file</code>.<br><br>Nhập Google API Key của bạn (hoặc cấu hình trong Cài đặt):',
+        message: `Google Picker yêu cầu API Key để duyệt các tệp chia sẻ riêng qua email theo chuẩn bảo mật <code>drive.file</code>.<br><br>
+        <strong>Lưu ý:</strong> Dự án Google Cloud của bạn cần <strong>BẬT Google Picker API</strong> trong Library trước khi tạo Key (để tránh lỗi "Khóa không hợp lệ").<br><br>
+        Nhập Google API Key của bạn (dạng <code>AIzaSy...</code>):`,
         placeholder: 'AIzaSy...',
         confirmText: 'Lưu & Mở Picker',
         cancelText: 'Huỷ',

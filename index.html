@@ -2428,14 +2428,23 @@
                       <button type="button" id="btn-toggle-api-key-help" class="btn-text" style="font-size: 0.76rem; color: var(--primary); background: none; border: none; cursor: pointer;">Hướng dẫn tạo Key</button>
                     </label>
                     <div style="display: flex; gap: 8px;">
-                      <input type="password" id="settings-google-api-key" class="form-control" placeholder="Nhập API Key để mở tệp chia sẻ riêng qua Google Picker">
+                      <input type="password" id="settings-google-api-key" class="form-control" placeholder="Nhập API Key (AIzaSy...) để mở tệp chia sẻ qua Google Picker">
                       <button id="btn-save-api-key" class="btn-secondary" style="white-space: nowrap;">Lưu</button>
                     </div>
-                    <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">
-                      * Bắt buộc khi dùng Google Picker để duyệt và nhận tệp chia sẻ riêng theo chuẩn bảo mật <code>drive.file</code>.
+                    <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block; line-height: 1.4;">
+                      * Bắt buộc khi dùng Google Picker duyệt &amp; mở tệp chia sẻ riêng qua email. Yêu cầu dự án Google Cloud phải <strong>bật Google Picker API</strong>.
                     </small>
-                    <div id="api-key-help-box" style="display: none; margin-top: 8px; padding: 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
-                      <strong>Hướng dẫn:</strong> Truy cập <code>console.cloud.google.com</code> &rarr; Chọn <strong>Credentials</strong> &rarr; <strong>Create Credentials</strong> &rarr; <strong>API key</strong> &rarr; Tìm mục <strong>Enabled APIs &amp; Services</strong> bật thêm <strong>Google Picker API</strong> &rarr; Dán API Key vào ô trên.
+                    <div id="api-key-help-box" style="display: none; margin-top: 8px; padding: 12px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-secondary); line-height: 1.55;">
+                      <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">
+                        <i data-lucide="help-circle" style="width: 14px; height: 14px; vertical-align: middle; color: var(--primary);"></i> Hướng dẫn tạo &amp; bật Google Picker API:
+                      </div>
+                      <ol style="margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px;">
+                        <li>Truy cập <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" style="color: var(--primary); text-decoration: underline;">Google Cloud Console</a> và chọn đúng Project chứa Google Client ID của bạn.</li>
+                        <li><strong>Bước quan trọng nhất:</strong> Vào <strong>APIs &amp; Services</strong> &rarr; <strong>Library (Thư viện)</strong> &rarr; Tìm <a href="https://console.cloud.google.com/apis/library/picker.googleapis.com" target="_blank" rel="noopener" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Google Picker API</a> &rarr; Bấm <strong>ENABLE (Bật)</strong>. <em>(Nếu không bật dịch vụ này, Google sẽ báo lỗi "Khóa của nhà phát triển API là không hợp lệ")</em>.</li>
+                        <li>Vào menu <strong>APIs &amp; Services</strong> &rarr; <strong>Credentials</strong> &rarr; Bấm <strong>Create Credentials</strong> &rarr; Chọn <strong>API key</strong>.</li>
+                        <li>Sao chép mã API Key (bắt đầu bằng <code>AIzaSy...</code>) rồi dán vào ô trên (hoặc cấu hình vào biến <code>GOOGLE_API_KEY</code> trong <code>.env</code> / Docker).</li>
+                        <li><em>Lưu ý:</em> Nếu API Key có bật hạn chế (API Restrictions), hãy chắc chắn đã tích chọn cả <code>Google Drive API</code> và <code>Google Picker API</code>.</li>
+                      </ol>
                     </div>
                   </div>
 
