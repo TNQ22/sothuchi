@@ -1329,7 +1329,9 @@ class GoogleDriveSync {
       'budget_auto_rollover',
       'theme',
       'currency',
-      'privacyMode'
+      'privacyMode',
+      'syncOwnedSharedProjections',
+      'googleDriveSharedFileMap'
     ];
 
     const leftItems = await this.getLeftSharedItems();
@@ -1648,6 +1650,26 @@ class GoogleDriveSync {
     if (typeof window.recalculateAccountBalances === 'function') {
       await window.recalculateAccountBalances();
     }
+
+    // Tự động khôi phục / cập nhật projection sở hữu cho các ví được chia sẻ (isShared: 1)
+    try {
+      const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
+      let ownedList = (ownedSetting && Array.isArray(ownedSetting.value)) ? [...ownedSetting.value] : [];
+      let ownedChanged = false;
+      const currentAccounts = await db.accounts.toArray();
+      for (const a of currentAccounts) {
+        if (!a._isSharedItem && (a.isShared === 1 || a.isShared === true)) {
+          const exists = ownedList.some(x => x && x.itemType === 'account' && String(x.itemId) === String(a.id));
+          if (!exists) {
+            ownedList.push({ itemType: 'account', itemId: String(a.id), service: 'google-drive' });
+            ownedChanged = true;
+          }
+        }
+      }
+      if (ownedChanged) {
+        await db.settings.put({ key: 'syncOwnedSharedProjections', value: ownedList });
+      }
+    } catch (_) {}
 
     // Đồng bộ đầy đủ tất cả tài khoản và giao dịch lên đám mây
     return {

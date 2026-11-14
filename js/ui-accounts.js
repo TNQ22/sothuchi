@@ -112,16 +112,9 @@ const UIAccounts = {
       const isServerActive = Boolean(sService && sService.token && sService.serverUrl && sService.userProfile && sService.autoSync !== false);
       const isDriveActive = Boolean(gService && gService.isConnected && gService.autoSync !== false);
 
+      // Chỉ tắt hiển thị badge nếu người dùng KHÔNG kết nối bất kỳ dịch vụ đồng bộ nào (cả Server và Drive đều ngắt)
       if (!isServerActive && !isDriveActive) {
-        // Cả Máy chủ và Drive đều không kết nối / đăng nhập
         isSharedByMe = false;
-      } else if (!isServerActive && isDriveActive) {
-        // Máy chủ Docker đã ngắt kết nối, chỉ bật Drive: chỉ hiện badge nếu mục này thực sự có projection / share trên Drive
-        const ownedList = this._cachedOwnedProjections || [];
-        const hasDriveShare = ownedList.some(x => x && x.itemType === 'account' && String(x.itemId) === String(a.id) && x.service === 'google-drive');
-        if (!hasDriveShare) {
-          isSharedByMe = false;
-        }
       }
     }
 
@@ -230,77 +223,23 @@ const UIAccounts = {
       this._cachedOwnedProjections = currentOwnedList;
 
       for (const acc of personalAccs) {
-        let serverActiveCount = 0;
-        let serverChecked = false;
-        let driveActiveCount = 0;
-        let driveChecked = false;
-
-        // 1. Kiểm tra Máy Chủ Riêng (nếu đang kết nối)
-        if (isServerAvailable && typeof sService.getItemShares === 'function') {
-          try {
-            const res = await sService.getItemShares('account', acc.id);
-            if (res && Array.isArray(res.shares) && Array.isArray(res.links)) {
-              serverActiveCount = res.shares.length + res.links.length;
-              serverChecked = true;
-            }
-          } catch (_) {}
+        // Đảm bảo ví đang có cờ chia sẻ (isShared: 1) được ghi nhận đầy đủ vào projection sở hữu
+        const exists = currentOwnedList.some(x => x.itemType === 'account' && String(x.itemId) === String(acc.id));
+        if (!exists) {
+          const svc = isServerAvailable ? 'server' : (isDriveAvailable ? 'google-drive' : 'google-drive');
+          currentOwnedList.push({ itemType: 'account', itemId: String(acc.id), service: svc });
+          changed = true;
         }
-
-        // 2. Kiểm tra Google Drive (nếu đang kết nối)
-        if (isDriveAvailable && typeof gService.getItemShares === 'function') {
-          try {
-            const res = await gService.getItemShares('account', acc.id);
-            if (res && Array.isArray(res.shares) && Array.isArray(res.links)) {
-              driveActiveCount = res.shares.length + res.links.length;
-              driveChecked = true;
-            }
-          } catch (_) {}
-        }
-
-        // Kiểm tra xem trong bộ nhớ đệm projection có ghi nhận dịch vụ nào ĐANG KẾT NỐI mà chưa kịp check xong không
-        const localProjections = currentOwnedList.filter(x => x.itemType === 'account' && String(x.itemId) === String(acc.id));
-        const hasUncheckedServiceProjection = localProjections.some(x => {
-          if (x.service === 'google-drive' && isDriveAvailable && !driveChecked) return true;
-          if ((!x.service || x.service === 'server') && isServerAvailable && !serverChecked) return true;
-          return false;
-        });
-
-        const totalActive = (isServerAvailable ? serverActiveCount : 0) + (isDriveAvailable ? driveActiveCount : 0);
-
-        if (totalActive > 0 || hasUncheckedServiceProjection) {
-          // Còn người nhận hoặc còn dịch vụ đang kết nối chưa kiểm tra được -> Giữ nguyên cờ chia sẻ
-          continue;
-        }
-
-        // Tắt cờ chia sẻ vì không còn dịch vụ đang kết nối nào có người nhận
-        await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
-        acc.isShared = 0;
-        currentOwnedList = currentOwnedList.filter(x => !(x.itemType === 'account' && String(x.itemId) === String(acc.id)));
-        changed = true;
-        console.log(`[UIAccounts] Đã tắt cờ chia sẻ cho tài khoản không còn dịch vụ nào chia sẻ: "${acc.name}"`);
       }
 
-      // Làm sạch cờ isShared cho Sổ Tiết Kiệm nếu có
+      // Đảm bảo cờ chia sẻ cho Sổ Tiết Kiệm nếu có
       if (db.savings) {
         const personalSavings = (await db.savings.toArray()).filter(s => !s.isDeleted && !s._isSharedItem && (s.isShared === 1 || s.isShared === true));
         for (const s of personalSavings) {
-          let sDriveCount = 0;
-          if (isDriveAvailable && typeof gService.getItemShares === 'function') {
-            try {
-              const res = await gService.getItemShares('savings', s.id);
-              if (res && Array.isArray(res.shares) && Array.isArray(res.links)) sDriveCount = res.shares.length + res.links.length;
-            } catch (_) {}
-          }
-          let sServerCount = 0;
-          if (isServerAvailable && typeof sService.getItemShares === 'function') {
-            try {
-              const res = await sService.getItemShares('savings', s.id);
-              if (res && Array.isArray(res.shares) && Array.isArray(res.links)) sServerCount = res.shares.length + res.links.length;
-            } catch (_) {}
-          }
-          if ((isServerAvailable ? sServerCount : 0) + (isDriveAvailable ? sDriveCount : 0) === 0) {
-            await db.savings.update(s.id, { isShared: 0, updatedAt: Date.now() });
-            currentOwnedList = currentOwnedList.filter(x => !(x.itemType === 'savings' && String(x.itemId) === String(s.id)));
+          const exists = currentOwnedList.some(x => x.itemType === 'savings' && String(x.itemId) === String(s.id));
+          if (!exists) {
+            const svc = isServerAvailable ? 'server' : (isDriveAvailable ? 'google-drive' : 'google-drive');
+            currentOwnedList.push({ itemType: 'savings', itemId: String(s.id), service: svc });
             changed = true;
           }
         }
