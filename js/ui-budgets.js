@@ -372,8 +372,9 @@ const UIBudgets = {
     }
 
     try {
-      await db.settings.put({ key: 'budget_mode', value: selectedMode });
-      await db.settings.put({ key: 'budget_rollover_enabled', value: rolloverVal });
+      const now = Date.now();
+      await db.settings.put({ key: 'budget_mode', value: selectedMode, updatedAt: now });
+      await db.settings.put({ key: 'budget_rollover_enabled', value: rolloverVal, updatedAt: now });
       showToast('Đã lưu cài đặt ngân sách', 'success');
     } catch (e) {
       console.warn('Error saving budget settings:', e);
@@ -639,6 +640,13 @@ const UIBudgets = {
 
   /* ==================== DATA QUERIES & RENDER ==================== */
   async render() {
+    try {
+      const savedMode = await db.settings.get('budget_mode');
+      if (savedMode && (savedMode.value === 'simple' || savedMode.value === 'detailed')) {
+        this.currentMode = savedMode.value;
+      }
+    } catch (_) {}
+
     await this.checkAndAutoRollover(this.currentMonth);
     this.updateMonthLabels();
 

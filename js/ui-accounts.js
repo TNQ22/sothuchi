@@ -1035,23 +1035,7 @@ const UIAccounts = {
       return;
     }
 
-    // Nếu là tài khoản của chủ sổ đang chia sẻ, xóa khỏi danh sách theo dõi chiếu và tự động hủy chia sẻ trên Cloud
-    try {
-      const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
-      if (ownedSetting && Array.isArray(ownedSetting.value)) {
-        const filtered = ownedSetting.value.filter(x => !(x.itemType === 'account' && String(x.itemId) === String(accId)));
-        await db.settings.put({ key: 'syncOwnedSharedProjections', value: filtered });
-      }
-    } catch (_) {}
-
-    // Hủy chia sẻ và xóa file chia sẻ trên Google Drive / Server nếu tài khoản này từng được chia sẻ
-    if (window.googleDriveService && typeof window.googleDriveService.unshareOwnedItem === 'function') {
-      window.googleDriveService.unshareOwnedItem('account', accId).catch(() => {});
-    }
-    if (window.serverSyncService && typeof window.serverSyncService.unshareOwnedItem === 'function') {
-      window.serverSyncService.unshareOwnedItem('account', accId).catch(() => {});
-    }
-
+    // Nếu là tài khoản đang được chia sẻ, giữ nguyên tệp chiếu trên Cloud với trạng thái đã xóa/ngừng chia sẻ
     await db.accounts.update(Number(accId), { isDeleted: 1, updatedAt: Date.now() });
     await window.app.refreshAll();
     showToast(`Đã xóa tài khoản "${acc.name}"`, 'info');

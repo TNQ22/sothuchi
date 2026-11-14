@@ -1567,7 +1567,8 @@ class GoogleDriveSync {
         if (SYNCABLE_SETTINGS_KEYS.includes(rSetting.key)) {
           const idx = finalSettings.findIndex(s => s.key === rSetting.key);
           const lSetting = idx >= 0 ? finalSettings[idx] : null;
-          if (!lSetting || (rSetting.updatedAt || 0) >= (lSetting.updatedAt || 0)) {
+          // Chỉ ghi đè cài đặt cục bộ nếu remote thực sự mới hơn (Last-Write-Wins nghiêm ngặt)
+          if (!lSetting || ((rSetting.updatedAt || 0) > (lSetting.updatedAt || 0))) {
             await db.settings.put(rSetting);
             if (idx >= 0) finalSettings[idx] = rSetting;
             else finalSettings.push(rSetting);
