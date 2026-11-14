@@ -268,6 +268,7 @@ const UIAccounts = {
     this._eventsBound = true;
 
     const triggerClean = () => {
+      this.updateSharedSyncButtonVisibility();
       this.cleanAllFalseSharedAccounts(false);
       if (this._sharedUpdateRenderTimer) clearTimeout(this._sharedUpdateRenderTimer);
       this._sharedUpdateRenderTimer = setTimeout(() => {
@@ -278,6 +279,8 @@ const UIAccounts = {
     window.addEventListener('shared-items-updated', triggerClean);
     window.addEventListener('server-auth-changed', triggerClean);
     window.addEventListener('server-connection-changed', triggerClean);
+    window.addEventListener('google-profile-updated', triggerClean);
+    window.addEventListener('google-auth-changed', triggerClean);
 
     const accForm = document.getElementById('account-form');
     if (accForm) {
@@ -5415,10 +5418,11 @@ const UIAccounts = {
     });
 
     if (tab === 'shared') {
-      if (window.serverSyncService && window.serverSyncService.isConnected && window.serverSyncService.autoSync !== false) {
+      const { isServerDockerActive, isGoogleDriveFullActive } = this.canAutoSyncSharedItems();
+      if (isServerDockerActive && window.serverSyncService) {
         window.serverSyncService.syncReceivedSharedItems().catch(() => {});
       }
-      if (window.googleDriveService && window.googleDriveService.isConnected && window.googleDriveService.autoSync !== false) {
+      if (isGoogleDriveFullActive && window.googleDriveService) {
         window.googleDriveService.syncReceivedSharedItems().catch(() => {});
       }
     }
@@ -6039,12 +6043,47 @@ const UIAccounts = {
     `;
   },
 
+  canAutoSyncSharedItems() {
+    const sService = window.serverSyncService;
+    const gService = window.googleDriveService;
+
+    // Máy chủ Docker chỉ được coi là sẵn sàng đồng bộ nếu:
+    // 1. Có URL máy chủ và đã đăng nhập (có token)
+    // 2. Không bị người dùng vô hiệu hoá trong Cài đặt (autoSync !== false)
+    const isServerDockerActive = Boolean(
+      sService &&
+      sService.serverUrl &&
+      sService.token &&
+      sService.autoSync !== false
+    );
+
+    // Google Drive chỉ có thể tự động quét tìm file chia sẻ ngầm nếu:
+    // 1. Được kích hoạt Toàn quyền truy cập Drive (fullDriveAccess === true)
+    // 2. Đã kết nối / đăng nhập (có accessToken, userProfile hoặc isConnected)
+    // 3. Không bị người dùng vô hiệu hoá trong Cài đặt (autoSync !== false)
+    const isGoogleDriveFullActive = Boolean(
+      gService &&
+      gService.fullDriveAccess === true &&
+      (gService.accessToken || gService.userProfile || gService.isConnected) &&
+      gService.autoSync !== false
+    );
+
+    return {
+      canSync: isServerDockerActive || isGoogleDriveFullActive,
+      isServerDockerActive,
+      isGoogleDriveFullActive
+    };
+  },
+
   updateSharedSyncButtonVisibility() {
     const syncSharedBtn = document.getElementById('btn-sync-shared-items');
     if (syncSharedBtn) {
-      const isServerDockerActive = Boolean(window.serverSyncService && (window.serverSyncService.isConnected || window.serverSyncService.token));
-      const isGoogleDriveFullActive = Boolean(window.googleDriveService && window.googleDriveService.fullDriveAccess);
-      syncSharedBtn.style.display = (isServerDockerActive || isGoogleDriveFullActive) ? 'inline-flex' : 'none';
+      const { canSync } = this.canAutoSyncSharedItems();
+      if (canSync) {
+        syncSharedBtn.style.setProperty('display', 'inline-flex', 'important');
+      } else {
+        syncSharedBtn.style.setProperty('display', 'none', 'important');
+      }
     }
   },
 
@@ -6135,12 +6174,11 @@ const UIAccounts = {
   },
 
   async manualSyncSharedItems(btn) {
-    const isServerDockerActive = Boolean(window.serverSyncService && (window.serverSyncService.isConnected || window.serverSyncService.token));
-    const isGoogleDriveFullActive = Boolean(window.googleDriveService && window.googleDriveService.fullDriveAccess);
-    if (!isServerDockerActive && !isGoogleDriveFullActive) {
+    const { canSync, isServerDockerActive, isGoogleDriveFullActive } = this.canAutoSyncSharedItems();
+    if (!canSync) {
       this.updateSharedSyncButtonVisibility();
       if (typeof showToast === 'function') {
-        showToast('Tính năng quét tự động cần Máy chủ riêng (Docker) hoặc bật Toàn quyền truy cập Drive. Vui lòng dùng Google Picker hoặc Nhập link.', 'info', 6000);
+        showToast('Tính năng quét tự động cần kích hoạt Máy chủ riêng (Docker) đã đăng nhập hoặc bật Toàn quyền truy cập Drive (Full Scope). Vui lòng dùng Google Picker hoặc Nhập link.', 'info', 6000);
       }
       return;
     }
@@ -6159,8 +6197,8 @@ const UIAccounts = {
     try {
       let hasAnyChange = false;
 
-      // 1. Kiểm tra Máy Chủ Riêng
-      if (window.serverSyncService && window.serverSyncService.autoSync !== false) {
+      // 1. Kiểm tra Máy Chủ Riêng (nếu đang kích hoạt & đã đăng nhập)
+      if (isServerDockerActive && window.serverSyncService) {
         try {
           let sOwnedChanged = false;
           if (typeof window.serverSyncService.pullAndMergeOwnedSharedProjections === 'function') {
@@ -6171,9 +6209,9 @@ const UIAccounts = {
         } catch (_) {}
       }
 
-      // 2. Kiểm tra Google Drive (Tự động quét & nạp mọi sổ được chia sẻ qua email)
+      // 2. Kiểm tra Google Drive (nếu đang bật Full Scope & kết nối)
       let gStats = null;
-      if (window.googleDriveService) {
+      if (isGoogleDriveFullActive && window.googleDriveService) {
         try {
           if (!window.googleDriveService.accessToken) {
             await window.googleDriveService.ensureToken(true);

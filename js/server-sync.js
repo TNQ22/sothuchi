@@ -1575,6 +1575,10 @@ class ServerSyncService {
   setAutoSync(enabled) {
     this.autoSync = !!enabled;
     db.settings.put({ key: 'syncServerAutoSync', value: this.autoSync });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('server-connection-changed', { detail: { autoSync: this.autoSync } }));
+      window.dispatchEvent(new CustomEvent('shared-items-updated', { detail: { autoSync: this.autoSync } }));
+    }
   }
 
   // Kiểm tra điều kiện tự động đồng bộ

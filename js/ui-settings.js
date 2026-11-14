@@ -1955,6 +1955,9 @@ const UISettings = {
         if (sService) {
           sService.setAutoSync(e.target.checked);
           this.updateHubBadges();
+          if (window.UIAccounts && typeof window.UIAccounts.updateSharedSyncButtonVisibility === 'function') {
+            window.UIAccounts.updateSharedSyncButtonVisibility();
+          }
           showToast(e.target.checked ? 'Đã kích hoạt đồng bộ Máy Chủ Riêng' : 'Đã vô hiệu hóa Máy Chủ Riêng', 'info');
         }
       });
@@ -2592,6 +2595,9 @@ const UISettings = {
           await db.settings.put({ key: 'autoSyncEnabled', value: e.target.checked });
         }
         this.updateHubBadges();
+        if (window.UIAccounts && typeof window.UIAccounts.updateSharedSyncButtonVisibility === 'function') {
+          window.UIAccounts.updateSharedSyncButtonVisibility();
+        }
         showToast(e.target.checked ? 'Đã kích hoạt đồng bộ Google Drive' : 'Đã vô hiệu hóa Google Drive', 'info');
       });
     }

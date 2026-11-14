@@ -300,6 +300,10 @@ class GoogleDriveSync {
   setAutoSync(enabled) {
     this.autoSync = !!enabled;
     db.settings.put({ key: 'autoSyncEnabled', value: this.autoSync });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('google-profile-updated', { detail: { autoSync: this.autoSync } }));
+      window.dispatchEvent(new CustomEvent('shared-items-updated', { detail: { autoSync: this.autoSync } }));
+    }
   }
 
   // Kiểm tra xem môi trường hiện tại có bị chặn cookie bên thứ 3 trong iframe không (iOS Safari, iOS PWA, WebKit)
