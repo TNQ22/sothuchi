@@ -633,6 +633,7 @@ class GoogleDriveSync {
               this.customFolderId = null;
               await db.settings.delete('googleDriveFileId');
               await db.settings.delete('googleDriveCustomFolderId');
+              await db.settings.delete('googleDriveSharedFileMap');
             }
 
             this.setupTokenRefreshTimer();
@@ -715,6 +716,7 @@ class GoogleDriveSync {
     await db.settings.delete('googleUserProfile');
     await db.settings.delete('googleDriveFileId');
     await db.settings.delete('googleDriveCustomFolderId');
+    await db.settings.delete('googleDriveSharedFileMap');
     await db.settings.put({ key: 'autoSyncEnabled', value: false });
 
     window.dispatchEvent(new CustomEvent('google-profile-updated', { detail: null }));
@@ -1616,7 +1618,17 @@ class GoogleDriveSync {
 
   async setSharedFileId(itemType, itemId, fileId) {
     const map = await this.getSharedFileMap();
-    map[`${itemType}_${itemId}`] = fileId;
+    if (!fileId) {
+      delete map[`${itemType}_${itemId}`];
+    } else {
+      map[`${itemType}_${itemId}`] = fileId;
+    }
+    await db.settings.put({ key: 'googleDriveSharedFileMap', value: map });
+  }
+
+  async removeSharedFileId(itemType, itemId) {
+    const map = await this.getSharedFileMap();
+    delete map[`${itemType}_${itemId}`];
     await db.settings.put({ key: 'googleDriveSharedFileMap', value: map });
   }
 
@@ -1809,7 +1821,11 @@ class GoogleDriveSync {
         const pullRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
           headers: { Authorization: `Bearer ${this.accessToken}` }
         });
-        if (pullRes.ok) {
+        if (pullRes.status === 404) {
+          console.warn(`[GoogleDrive] File ${fileId} không tồn tại trên Drive (404), xóa cache và tạo lại.`);
+          await this.removeSharedFileId(itemType, itemId);
+          fileId = null;
+        } else if (pullRes.ok) {
           const pullText = await pullRes.text();
           let remoteJson = JSON.parse(pullText);
           let remotePayload = remoteJson;
@@ -1938,6 +1954,51 @@ class GoogleDriveSync {
     const ownerTag = ownerEmail ? ` - ${ownerEmail}` : '';
     const sharedFileName = `${safeItemName}${ownerTag} (stc_shared_${itemType}_${itemId}).json`;
 
+    if (fileId) {
+      const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: fileContent
+      });
+
+      if (res.status === 404) {
+        console.warn(`[GoogleDrive] File ${fileId} không tồn tại trên Drive khi PATCH (404), xóa cache và tạo mới.`);
+        await this.removeSharedFileId(itemType, itemId);
+        fileId = null;
+      } else if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'Không thể cập nhật file chia sẻ trên Google Drive.');
+      } else {
+        // Tự động đồng bộ/cập nhật tên hiển thị thân thiện trên Google Drive
+        fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: sharedFileName,
+            description: safeItemName,
+            properties: {
+              itemName: safeItemName,
+              itemType: itemType,
+              ownerEmail: ownerEmail || ''
+            },
+            appProperties: {
+              stcApp: 'so-thu-chi',
+              stcItemType: itemType,
+              stcItemId: String(itemId),
+              stcOwnerEmail: ownerEmail || '',
+              stcItemName: safeItemName
+            }
+          })
+        }).catch(() => {});
+      }
+    }
+
     if (!fileId) {
       // Bắt buộc lưu vào My Drive Custom Folder (Google Drive CẤM share file trong appDataFolder)
       const folderId = await this.ensureCustomFolder();
@@ -1978,44 +2039,6 @@ class GoogleDriveSync {
       const created = await res.json();
       fileId = created.id;
       await this.setSharedFileId(itemType, itemId, fileId);
-    } else {
-      const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: fileContent
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error?.message || 'Không thể cập nhật file chia sẻ trên Google Drive.');
-      }
-
-      // Tự động đồng bộ/cập nhật tên hiển thị thân thiện trên Google Drive
-      fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: sharedFileName,
-          description: safeItemName,
-          properties: {
-            itemName: safeItemName,
-            itemType: itemType,
-            ownerEmail: ownerEmail || ''
-          },
-          appProperties: {
-            stcApp: 'so-thu-chi',
-            stcItemType: itemType,
-            stcItemId: String(itemId),
-            stcOwnerEmail: ownerEmail || '',
-            stcItemName: safeItemName
-          }
-        })
-      }).catch(() => {});
     }
 
     try {
@@ -2043,6 +2066,11 @@ class GoogleDriveSync {
       const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?fields=permissions(id,type,role,emailAddress,displayName,photoLink)`, {
         headers: { Authorization: `Bearer ${this.accessToken}` }
       });
+      if (res.status === 404) {
+        console.warn(`[GoogleDrive] File ${fileId} không tồn tại trên Drive (404), xóa cache fileId.`);
+        await this.removeSharedFileId(itemType, itemId);
+        return { shares: [], links: [] };
+      }
       if (!res.ok) return { shares: [], links: [] };
       const data = await res.json();
       const myEmail = (this.userProfile?.email || '').toLowerCase();
@@ -2084,9 +2112,9 @@ class GoogleDriveSync {
       shareKey = (await this.getItemShareKey(`${itemType}_${itemId}`)) || this.encryptionPassword;
     }
 
-    const { fileId } = await this.projectAndPushItem(itemType, itemId, shareKey);
+    let { fileId } = await this.projectAndPushItem(itemType, itemId, shareKey);
 
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?sendNotificationEmail=false`, {
+    let res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?sendNotificationEmail=false`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
@@ -2098,6 +2126,25 @@ class GoogleDriveSync {
         emailAddress: email.trim()
       })
     });
+
+    if (res.status === 404) {
+      console.warn(`[GoogleDrive] Permissions 404 cho file ${fileId}, xóa cache và tạo lại file chia sẻ.`);
+      await this.removeSharedFileId(itemType, itemId);
+      const repush = await this.projectAndPushItem(itemType, itemId, shareKey);
+      fileId = repush.fileId;
+      res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?sendNotificationEmail=false`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          role: role === 'editor' ? 'writer' : 'reader',
+          type: 'user',
+          emailAddress: email.trim()
+        })
+      });
+    }
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -2127,9 +2174,9 @@ class GoogleDriveSync {
       shareKey = (await this.getItemShareKey(`${itemType}_${itemId}`)) || this.encryptionPassword;
     }
 
-    const { fileId } = await this.projectAndPushItem(itemType, itemId, shareKey);
+    let { fileId } = await this.projectAndPushItem(itemType, itemId, shareKey);
 
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+    let res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
@@ -2140,6 +2187,24 @@ class GoogleDriveSync {
         type: 'anyone'
       })
     });
+
+    if (res.status === 404) {
+      console.warn(`[GoogleDrive] Link permissions 404 cho file ${fileId}, xóa cache và tạo lại file chia sẻ.`);
+      await this.removeSharedFileId(itemType, itemId);
+      const repush = await this.projectAndPushItem(itemType, itemId, shareKey);
+      fileId = repush.fileId;
+      res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          role: role === 'editor' ? 'writer' : 'reader',
+          type: 'anyone'
+        })
+      });
+    }
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

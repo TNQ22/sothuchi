@@ -97,7 +97,12 @@ const UniversalShareModal = {
     this.closeServiceDropdown();
     this.hideShareUserDropdown();
     const emailInput = document.getElementById('share-email-input');
-    if (emailInput) emailInput.value = '';
+    if (emailInput) {
+      emailInput.value = '';
+      emailInput.placeholder = this.currentService === 'google-drive'
+        ? 'Nhập Email Google của người nhận...'
+        : 'Email người dùng hoặc chọn từ máy chủ...';
+    }
 
     this.renderHeader();
     this.renderServices();
@@ -203,6 +208,12 @@ const UniversalShareModal = {
     this.currentService = serviceId;
     this.closeServiceDropdown();
     this.hideShareUserDropdown();
+    const emailInput = document.getElementById('share-email-input');
+    if (emailInput) {
+      emailInput.placeholder = serviceId === 'google-drive'
+        ? 'Nhập Email Google của người nhận...'
+        : 'Email người dùng hoặc chọn từ máy chủ...';
+    }
     this.renderServices();
     this.loadShareData();
     if (serviceId === 'server') {
@@ -1062,8 +1073,20 @@ const UniversalShareModal = {
     const dropdown = document.getElementById('universal-share-user-dropdown');
     if (!dropdown) return;
 
+    // Chỉ tìm kiếm danh sách người dùng khi đang chia sẻ qua Máy Chủ Riêng (Server)
+    if (this.currentService !== 'server') {
+      dropdown.style.display = 'none';
+      return;
+    }
+
+    const sService = window.serverSyncService;
+    if (!sService || !sService.serverUrl || !sService.token) {
+      dropdown.style.display = 'none';
+      return;
+    }
+
     // Nếu chưa có cache mà đang kết nối server, fetch ngay
-    if ((!this.serverUsersCache || this.serverUsersCache.length === 0) && window.serverSyncService?.serverUrl && window.serverSyncService?.token) {
+    if ((!this.serverUsersCache || this.serverUsersCache.length === 0) && sService.userProfile) {
       this.loadServerUsersForShare().then(() => {
         if (this.serverUsersCache && this.serverUsersCache.length > 0) {
           this.renderShareUserDropdown(filterText);
@@ -1071,7 +1094,6 @@ const UniversalShareModal = {
       });
     }
 
-    const sService = window.serverSyncService;
     const currentEmail = (sService?.userProfile?.email || '').toLowerCase();
     const query = (filterText || '').trim().toLowerCase();
 
@@ -1084,17 +1106,9 @@ const UniversalShareModal = {
       return uEmail.includes(query) || uName.includes(query);
     });
 
+    // Nếu không có user nào khớp thì ẩn luôn, không che nút bên dưới
     if (users.length === 0) {
-      if (!query) {
-        dropdown.style.display = 'none';
-        return;
-      }
-      dropdown.innerHTML = `
-        <div class="server-share-user-empty">
-          <span>Không tìm thấy tài khoản phù hợp trên máy chủ. Bạn có thể tiếp tục nhập đầy đủ email.</span>
-        </div>
-      `;
-      dropdown.style.display = 'block';
+      dropdown.style.display = 'none';
       return;
     }
 
