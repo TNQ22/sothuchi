@@ -125,8 +125,8 @@ class GoogleDriveSync {
       this.setupTokenRefreshTimer();
       this.setupGoogleIframeDismissWatcher();
 
-      // Kiểm tra scope version để đảm bảo token có quyền đọc file sharedWithMe qua REST API
-      const REQUIRED_SCOPE_VER = 'v3_full_drive';
+      // Đảm bảo scope an toàn drive.file (chỉ truy cập file do app tạo ra)
+      const REQUIRED_SCOPE_VER = 'v3_drive_file';
       try {
         const scopeVer = await db.settings.get('googleScopeVersion');
         if (!scopeVer || scopeVer.value !== REQUIRED_SCOPE_VER) {
@@ -135,7 +135,7 @@ class GoogleDriveSync {
           await db.settings.delete('googleAccessToken');
           await db.settings.delete('googleTokenExpiresAt');
           await db.settings.put({ key: 'googleScopeVersion', value: REQUIRED_SCOPE_VER });
-          console.log('[GoogleDrive] Nâng cấp scope sang full drive để đọc tệp chia sẻ, xóa token cũ.');
+          console.log('[GoogleDrive] Đặt lại scope an toàn drive.file.');
         }
       } catch (_) {}
 
@@ -482,7 +482,7 @@ class GoogleDriveSync {
         try {
           const codeClient = google.accounts.oauth2.initCodeClient({
             client_id: this.clientId,
-            scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+            scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
             ux_mode: 'popup',
             callback: async (resp) => {
               if (settled) return;
@@ -582,7 +582,7 @@ class GoogleDriveSync {
 
         const tokenClientConfig = {
           client_id: this.clientId,
-          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
           prompt: promptValue,
           callback: async (resp) => {
             if (settled) return;
