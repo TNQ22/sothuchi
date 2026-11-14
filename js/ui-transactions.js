@@ -2552,7 +2552,8 @@ const UITransactions = {
     const catSubtext = 'Chọn danh mục';
     if (subBox) {
       if (cat.type === 'expense' && window.UIBudgets && typeof window.UIBudgets.getCategoryBudgetInfo === 'function') {
-        window.UIBudgets.getCategoryBudgetInfo(cat.id).then(info => {
+        const txDate = document.getElementById('tx-date-input')?.dataset?.rawDate || document.getElementById('tx-date-input')?.value || null;
+        window.UIBudgets.getCategoryBudgetInfo(cat.id, txDate).then(info => {
           if (info && info.text) {
             subBox.textContent = info.text;
             subBox.style.color = info.isOver ? 'var(--expense)' : 'var(--income)';
@@ -3797,6 +3798,28 @@ const UITransactions = {
     if (dateEl) dateEl.textContent = formatted.dateText;
     if (timeEl) timeEl.textContent = formatted.timeText;
     if (fullEl) fullEl.textContent = formatted.fullText;
+    this.updateCategoryBudgetDisplay();
+  },
+
+  updateCategoryBudgetDisplay() {
+    if (!this.selectedCategory || this.selectedCategory.type !== 'expense') return;
+    const subBox = document.getElementById('tx-selected-cat-subtext');
+    if (!subBox) return;
+    if (window.UIBudgets && typeof window.UIBudgets.getCategoryBudgetInfo === 'function') {
+      const curDate = document.getElementById('tx-date-input')?.dataset?.rawDate || document.getElementById('tx-date-input')?.value || null;
+      window.UIBudgets.getCategoryBudgetInfo(this.selectedCategory.id, curDate).then(info => {
+        if (info && info.text) {
+          subBox.textContent = info.text;
+          subBox.style.color = info.isOver ? 'var(--expense)' : 'var(--income)';
+        } else {
+          subBox.textContent = 'Chọn danh mục';
+          subBox.style.color = 'var(--text-muted)';
+        }
+      }).catch(() => {
+        subBox.textContent = 'Chọn danh mục';
+        subBox.style.color = 'var(--text-muted)';
+      });
+    }
   },
 
   handleNativeDateTimeChange(val) {

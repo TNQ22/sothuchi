@@ -382,6 +382,9 @@ const UIBudgets = {
 
     this.closeSettingsModal();
     await this.render();
+    if (window.UITransactions && typeof window.UITransactions.updateCategoryBudgetDisplay === 'function') {
+      window.UITransactions.updateCategoryBudgetDisplay();
+    }
   },
 
     handlePrimaryAddAction() {
@@ -1362,30 +1365,96 @@ const UIBudgets = {
   },
 
   /* ==================== HELPER: REALTIME STATUS FOR TRANSACTION FORM ==================== */
-  async getCategoryBudgetInfo(catId) {
+  async getCategoryBudgetInfo(catId, targetDate = null) {
     if (!catId) return null;
     try {
-      const ym = new Date().toISOString().slice(0, 7);
-      const budget = await db.budgets.where({ categoryId: Number(catId), month: ym }).first();
-      if (!budget || !budget.limitAmount) return null;
+      // 1. Xác định chế độ ngân sách hiện tại (ưu tiên đọc từ DB)
+      let mode = this.currentMode;
+      try {
+        const savedMode = await db.settings.get('budget_mode');
+        if (savedMode && (savedMode.value === 'simple' || savedMode.value === 'detailed')) {
+          mode = savedMode.value;
+          this.currentMode = mode;
+        }
+      } catch (_) {}
 
-      const txs = await db.transactions
-        .where('date')
-        .between(`${ym}-01`, `${ym}-31`, true, true)
-        .and(t => t.type === 'expense' && Number(t.categoryId) === Number(catId) && t.isDeleted === 0)
-        .toArray();
+      // 2. Xác định tháng mục tiêu
+      let ym = '';
+      if (targetDate && typeof targetDate === 'string' && /^\d{4}-\d{2}/.test(targetDate)) {
+        ym = targetDate.slice(0, 7);
+      } else {
+        const dateInput = document.getElementById('tx-date-input');
+        const rawDate = dateInput?.dataset?.rawDate || dateInput?.value;
+        if (rawDate && /^\d{4}-\d{2}/.test(rawDate)) {
+          ym = rawDate.slice(0, 7);
+        } else {
+          ym = this.currentMonth || new Date().toISOString().slice(0, 7);
+        }
+      }
 
-      const spent = txs.reduce((sum, t) => sum + (t.amount || 0), 0);
-      const remaining = budget.limitAmount - spent;
-      return {
-        limit: budget.limitAmount,
-        spent,
-        remaining,
-        isOver: remaining < 0,
-        text: remaining >= 0
-          ? `Còn ${this.formatMoney(remaining)} ngân sách`
-          : `Đã vượt ${this.formatMoney(Math.abs(remaining))}`
-      };
+      // 3. Danh sách tài khoản tính vào ngân sách
+      const allAccounts = await db.accounts.where('isDeleted').equals(0).toArray();
+      const allowedAccountIds = new Set();
+      allAccounts.forEach(a => {
+        const isBudgetEnabled = typeof isAccountBudgetEnabled === 'function'
+          ? isAccountBudgetEnabled(a)
+          : (a.includeInBudget !== undefined ? (a.includeInBudget === 1 || a.includeInBudget === true) : (a._isSharedItem ? false : !a.excludeFromReport));
+        if (isBudgetEnabled && !a.isArchived) {
+          allowedAccountIds.add(Number(a.id));
+          allowedAccountIds.add(String(a.id));
+        }
+      });
+
+      if (mode === 'simple') {
+        // === CHẾ ĐỘ NGÂN SÁCH TỔNG ===
+        // Trong chế độ này, KHÔNG áp dụng hạn mức riêng cho từng danh mục
+        const rawBudgets = await db.budgets.where('month').equals(ym).toArray();
+        const overall = rawBudgets.find(b => b.categoryId === 'TOTAL' || b.categoryId === 0 || b.isOverall);
+        if (!overall || !overall.limitAmount) {
+          // Chưa thiết lập hạn mức ngân sách tổng cho tháng này -> không hiển thị gì cả
+          return null;
+        }
+
+        const txs = await db.transactions
+          .where('date')
+          .between(`${ym}-01`, `${ym}-31`, true, true)
+          .and(t => t.type === 'expense' && t.isDeleted === 0 && (allowedAccountIds.size === 0 || allowedAccountIds.has(t.accountId) || allowedAccountIds.has(Number(t.accountId))))
+          .toArray();
+
+        const spent = txs.reduce((sum, t) => sum + (t.amount || 0), 0);
+        const remaining = overall.limitAmount - spent;
+        return {
+          limit: overall.limitAmount,
+          spent,
+          remaining,
+          isOver: remaining < 0,
+          text: remaining >= 0
+            ? `Còn ${this.formatMoney(remaining)} NS tổng`
+            : `Đã vượt ${this.formatMoney(Math.abs(remaining))} NS tổng`
+        };
+      } else {
+        // === CHẾ ĐỘ BẢNG CHI TIẾT (DETAILED) ===
+        const budget = await db.budgets.where({ categoryId: Number(catId), month: ym }).first();
+        if (!budget || !budget.limitAmount) return null;
+
+        const txs = await db.transactions
+          .where('date')
+          .between(`${ym}-01`, `${ym}-31`, true, true)
+          .and(t => t.type === 'expense' && Number(t.categoryId) === Number(catId) && t.isDeleted === 0 && (allowedAccountIds.size === 0 || allowedAccountIds.has(t.accountId) || allowedAccountIds.has(Number(t.accountId))))
+          .toArray();
+
+        const spent = txs.reduce((sum, t) => sum + (t.amount || 0), 0);
+        const remaining = budget.limitAmount - spent;
+        return {
+          limit: budget.limitAmount,
+          spent,
+          remaining,
+          isOver: remaining < 0,
+          text: remaining >= 0
+            ? `Còn ${this.formatMoney(remaining)} ngân sách`
+            : `Đã vượt ${this.formatMoney(Math.abs(remaining))}`
+        };
+      }
     } catch (e) {
       return null;
     }
