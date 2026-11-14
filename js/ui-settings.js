@@ -2585,6 +2585,14 @@ const UISettings = {
       });
     }
 
+    // Nút Tìm lại bản sao lưu & lịch sử phiên bản trên Drive
+    const scanBackupsBtn = document.getElementById('btn-scan-drive-backups');
+    if (scanBackupsBtn) {
+      scanBackupsBtn.addEventListener('click', () => {
+        this.openDriveRecoveryModal();
+      });
+    }
+
     // 10. Auto Sync Toggle (Kích Hoạt Google Drive)
     const autoSyncToggle = document.getElementById('settings-auto-sync');
     if (autoSyncToggle) {
@@ -3170,6 +3178,124 @@ const UISettings = {
       if (typeof showToast === 'function') {
         showToast(`Lỗi khi dọn thùng rác: ${err.message}`, 'error');
       }
+    }
+  },
+
+  async openDriveRecoveryModal() {
+    const modal = document.getElementById('modal-drive-recovery');
+    if (modal) {
+      modal.classList.add('active');
+      await this.scanAndShowDriveRecovery();
+    }
+  },
+
+  closeDriveRecoveryModal() {
+    const modal = document.getElementById('modal-drive-recovery');
+    if (modal) modal.classList.remove('active');
+  },
+
+  async scanAndShowDriveRecovery() {
+    const loadingEl = document.getElementById('drive-recovery-loading');
+    const listEl = document.getElementById('drive-recovery-list');
+    if (!listEl) return;
+
+    if (loadingEl) loadingEl.style.display = 'block';
+    listEl.innerHTML = '';
+
+    try {
+      if (!window.googleDriveService) throw new Error('Dịch vụ Google Drive chưa sẵn sàng.');
+      if (!window.googleDriveService.hasValidToken()) {
+        await window.googleDriveService.ensureToken(true);
+      }
+
+      const backups = await window.googleDriveService.scanAllBackups();
+      if (loadingEl) loadingEl.style.display = 'none';
+
+      if (!backups || backups.length === 0) {
+        listEl.innerHTML = `
+          <div style="text-align: center; padding: 25px 15px; color: var(--text-muted); font-size: 0.85rem;">
+            <i data-lucide="folder-search" style="width: 32px; height: 32px; margin-bottom: 8px; opacity: 0.5;"></i>
+            <div>Không tìm thấy tệp sao lưu nào trên Google Drive của tài khoản hiện tại.</div>
+          </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+
+      listEl.innerHTML = backups.map((b, idx) => {
+        const timeStr = b.modifiedTime ? new Date(b.modifiedTime).toLocaleString('vi-VN') : 'Không rõ ngày';
+        const isCustom = b.locationType === 'customFolder';
+        const isPriv = b.locationType === 'privateVault';
+        const isRev = b.locationType === 'revision';
+        const badgeColor = isPriv ? '#8b5cf6' : (isCustom ? '#10b981' : (isRev ? '#f59e0b' : '#3b82f6'));
+        const badgeText = isPriv ? 'Bản sao lưu riêng tư' : (isCustom ? 'Thư mục Sổ Thu Chi' : (isRev ? 'Lịch sử phiên bản' : 'AppData ẩn'));
+
+        return `
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+            <div style="min-width: 0; flex: 1;">
+              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <span style="font-size: 0.7rem; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: ${badgeColor}20; color: ${badgeColor}; border: 1px solid ${badgeColor}40;">${badgeText}</span>
+                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${typeof escapeHTML === 'function' ? escapeHTML(b.name) : b.name}</span>
+              </div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
+                <span><i data-lucide="clock" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i> ${timeStr}</span>
+                ${b.size ? `<span>• ${(Number(b.size) / 1024).toFixed(1)} KB</span>` : ''}
+              </div>
+            </div>
+            <button type="button" class="btn-primary btn-sm btn-restore-backup-item" data-backup-idx="${idx}" style="white-space: nowrap; font-size: 0.78rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 4px;">
+              <i data-lucide="download-cloud" style="width: 13px; height: 13px;"></i> Khôi phục
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      if (window.lucide) lucide.createIcons();
+
+      // Gắn sự kiện khôi phục
+      listEl.querySelectorAll('.btn-restore-backup-item').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const idx = Number(btn.getAttribute('data-backup-idx'));
+          const selected = backups[idx];
+          if (!selected) return;
+
+          const ok = await showConfirm({
+            title: 'Khôi Phục Dữ Liệu Bản Này',
+            message: `Bạn có chắc chắn muốn khôi phục dữ liệu từ:<br><strong>${typeof escapeHTML === 'function' ? escapeHTML(selected.name) : selected.name}</strong><br><span style="color: var(--text-muted); font-size: 0.8rem;">Thời gian: ${selected.modifiedTime ? new Date(selected.modifiedTime).toLocaleString('vi-VN') : ''}</span><br><br><span style="color: #ef4444; font-size: 0.82rem;">Dữ liệu hiện tại trên máy sẽ được thay thế bằng bản sao lưu này.</span>`,
+            confirmText: 'Khôi Phục Ngay',
+            cancelText: 'Huỷ',
+            icon: 'download-cloud'
+          });
+          if (!ok) return;
+
+          btn.disabled = true;
+          btn.innerHTML = '<i data-lucide="loader-2" class="spin-animation" style="width: 13px; height: 13px;"></i> Đang tải...';
+          if (window.lucide) lucide.createIcons();
+
+          try {
+            await window.googleDriveService.restoreFromBackupItem(selected);
+            showToast('Khôi phục dữ liệu từ Google Drive thành công!', 'success');
+            this.closeDriveRecoveryModal();
+            await this.loadSettings();
+          } catch (err) {
+            console.error('Lỗi khôi phục:', err);
+            showToast('Lỗi: ' + err.message, 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="download-cloud" style="width: 13px; height: 13px;"></i> Khôi phục';
+            if (window.lucide) lucide.createIcons();
+          }
+        });
+      });
+
+    } catch (err) {
+      console.error(err);
+      if (loadingEl) loadingEl.style.display = 'none';
+      listEl.innerHTML = `
+        <div style="text-align: center; padding: 20px; color: #ef4444; font-size: 0.85rem;">
+          <i data-lucide="alert-circle" style="width: 28px; height: 28px; margin-bottom: 6px;"></i>
+          <div>Lỗi khi quét Google Drive: ${typeof escapeHTML === 'function' ? escapeHTML(err.message) : err.message}</div>
+        </div>
+      `;
+      if (window.lucide) lucide.createIcons();
     }
   }
 };

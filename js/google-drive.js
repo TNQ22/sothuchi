@@ -876,68 +876,63 @@ class GoogleDriveSync {
       console.warn('Kiểm tra file được chia sẻ warning:', sErr);
     }
 
-    // 2. Tìm file của chính mình
-    if (this.storageLocation === 'appDataFolder') {
-      const query = encodeURIComponent(`name = '${this.syncFileName}' and trashed = false`);
-      const url = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${query}&fields=files(id,name,modifiedTime)`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${this.accessToken}` }
-      });
+    // 2. Tìm file của chính mình:
+    // Kiểm tra thông minh cả appDataFolder và customFolder (My Drive) để luôn chọn file MỚI NHẤT
+    const query = encodeURIComponent(`name = '${this.syncFileName}' and trashed = false`);
 
-      if (!res.ok) {
-        if (res.status === 401) {
-          this.accessToken = null;
-          throw new Error('Phiên đăng nhập Google đã hết hạn. Vui lòng bấm Đăng nhập lại.');
-        }
-        throw new Error('Không thể tìm tệp trên Google Drive.');
+    let appDataFile = null;
+    try {
+      const urlApp = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${query}&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc`;
+      const resApp = await fetch(urlApp, { headers: { Authorization: `Bearer ${this.accessToken}` } });
+      if (resApp.ok) {
+        const dApp = await resApp.json();
+        if (dApp.files && dApp.files.length > 0) appDataFile = dApp.files[0];
       }
+    } catch (_) {}
 
-      const data = await res.json();
-      if (data.files && data.files.length > 0) {
-        this.driveFileId = data.files[0].id;
-        this.vaultRole = 'owner';
-        await db.settings.put({ key: 'googleDriveFileId', value: this.driveFileId });
-        await db.settings.put({ key: 'vaultRole', value: 'owner' });
-        return this.driveFileId;
+    let driveFile = null;
+    try {
+      const urlDrive = `https://www.googleapis.com/drive/v3/files?spaces=drive&q=${query}&fields=files(id,name,modifiedTime,parents)&orderBy=modifiedTime desc`;
+      const resDrive = await fetch(urlDrive, { headers: { Authorization: `Bearer ${this.accessToken}` } });
+      if (resDrive.ok) {
+        const dDrive = await resDrive.json();
+        if (dDrive.files && dDrive.files.length > 0) driveFile = dDrive.files[0];
       }
-      return null;
-    } else {
-      // VÙNG CUSTOM FOLDER:
-      // Tìm trực tiếp file sothuchi_vault.json trên Drive trước
-      // Tự động nhận diện được chính xác Folder chứa file mà không cần tạo mới
-      const query = encodeURIComponent(`name = '${this.syncFileName}' and trashed = false`);
-      const url = `https://www.googleapis.com/drive/v3/files?spaces=drive&q=${query}&fields=files(id,name,modifiedTime,parents)&orderBy=modifiedTime desc`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${this.accessToken}` }
-      });
+    } catch (_) {}
 
-      if (!res.ok) {
-        if (res.status === 401) {
-          this.accessToken = null;
-          throw new Error('Phiên đăng nhập Google đã hết hạn. Vui lòng bấm Đăng nhập lại.');
-        }
-        throw new Error('Không thể tìm tệp trên Google Drive.');
+    const appDataTime = appDataFile ? new Date(appDataFile.modifiedTime || 0).getTime() : 0;
+    const driveTime = driveFile ? new Date(driveFile.modifiedTime || 0).getTime() : 0;
+
+    // Ưu tiên file có modifiedTime mới hơn
+    if (driveFile && (driveTime > appDataTime || !appDataFile || this.storageLocation === 'customFolder')) {
+      if (driveTime > appDataTime && this.storageLocation === 'appDataFolder') {
+        console.log(`[GoogleDrive] Phát hiện file trên My Drive mới hơn appDataFolder (${driveFile.modifiedTime} > ${appDataFile?.modifiedTime || 'trống'}). Tự động chuyển sang customFolder.`);
+        this.storageLocation = 'customFolder';
+        await db.settings.put({ key: 'driveStorageLocation', value: 'customFolder' });
       }
-
-      const data = await res.json();
-      if (data.files && data.files.length > 0) {
-        const foundFile = data.files[0];
-        this.driveFileId = foundFile.id;
-        this.vaultRole = 'owner';
-        await db.settings.put({ key: 'googleDriveFileId', value: this.driveFileId });
-        await db.settings.put({ key: 'vaultRole', value: 'owner' });
-
-        if (foundFile.parents && foundFile.parents.length > 0) {
-          this.customFolderId = foundFile.parents[0];
-          await db.settings.put({ key: 'googleDriveCustomFolderId', value: this.customFolderId });
-        }
-        return this.driveFileId;
+      this.driveFileId = driveFile.id;
+      this.vaultRole = 'owner';
+      await db.settings.put({ key: 'googleDriveFileId', value: this.driveFileId });
+      await db.settings.put({ key: 'vaultRole', value: 'owner' });
+      if (driveFile.parents && driveFile.parents.length > 0) {
+        this.customFolderId = driveFile.parents[0];
+        await db.settings.put({ key: 'googleDriveCustomFolderId', value: this.customFolderId });
       }
-
-      // Nếu chưa có file nào trên Drive, lúc này mới cần đảm bảo có sẵn Folder để lưu
-      await this.ensureCustomFolder();
-      return null;
+      return this.driveFileId;
     }
+
+    if (appDataFile) {
+      this.driveFileId = appDataFile.id;
+      this.vaultRole = 'owner';
+      await db.settings.put({ key: 'googleDriveFileId', value: this.driveFileId });
+      await db.settings.put({ key: 'vaultRole', value: 'owner' });
+      return this.driveFileId;
+    }
+
+    if (this.storageLocation === 'customFolder') {
+      await this.ensureCustomFolder();
+    }
+    return null;
   }
 
   // Tải nội dung file từ Google Drive và giải mã nếu có mật khẩu
@@ -1072,6 +1067,231 @@ class GoogleDriveSync {
       console.log('[GoogleDrive] Đã sao lưu bản đầy đủ riêng tư (Full Private Vault) vào appDataFolder an toàn 100%.');
     } catch (err) {
       console.warn('Lưu Private Vault thất bại:', err);
+    }
+  }
+
+  // Lấy danh sách lịch sử các phiên bản (Revisions) của file trên Drive
+  async getFileRevisions(fileId) {
+    if (!this.accessToken || !fileId) return [];
+    try {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/revisions?fields=revisions(id,modifiedTime,size,keepForever)&pageSize=50`, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.revisions || [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // Tải nội dung của một Revision lịch sử
+  async downloadRevisionData(fileId, revisionId) {
+    if (!this.accessToken || !fileId || !revisionId) throw new Error('Thiếu thông tin phiên bản.');
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/revisions/${revisionId}?alt=media`, {
+      headers: { Authorization: `Bearer ${this.accessToken}` }
+    });
+    if (!res.ok) throw new Error('Không thể tải phiên bản lịch sử từ Google Drive.');
+    const text = await res.text();
+    let json = JSON.parse(text);
+    if (json.encrypted && json.payload) {
+      if (!this.encryptionPassword) {
+        throw new Error('Sổ này đã được mã hóa (E2EE). Vui lòng nhập Mật khẩu Sổ (Vault Password) trong Cài đặt.');
+      }
+      const decrypted = await window.CryptoService.decrypt(json.payload, this.encryptionPassword);
+      json = JSON.parse(decrypted);
+    }
+    return json;
+  }
+
+  // Quét toàn bộ các tệp sao lưu có trên Google Drive để người dùng khôi phục
+  async scanAllBackups() {
+    if (!this.accessToken) {
+      await this.ensureToken(true);
+    }
+    const results = [];
+
+    // 1. Quét file sothuchi_vault.json trên My Drive (customFolder)
+    try {
+      const q = encodeURIComponent(`name = '${this.syncFileName}' and trashed = false`);
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=drive&q=${q}&fields=files(id,name,modifiedTime,size,parents)&orderBy=modifiedTime desc`, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        for (const f of (data.files || [])) {
+          results.push({
+            id: f.id,
+            name: `${f.name} (Thư mục Google Drive)`,
+            location: 'Thư mục trên Drive (My Drive / Sổ Thu Chi)',
+            locationType: 'customFolder',
+            modifiedTime: f.modifiedTime,
+            size: f.size
+          });
+
+          // Lấy lịch sử phiên bản của tệp
+          const revs = await this.getFileRevisions(f.id);
+          for (const r of revs) {
+            results.push({
+              id: f.id,
+              revisionId: r.id,
+              name: `${f.name} - Bản ngày ${new Date(r.modifiedTime).toLocaleString('vi-VN')}`,
+              location: 'Lịch sử phiên bản (Revision)',
+              locationType: 'revision',
+              modifiedTime: r.modifiedTime,
+              size: r.size
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[scanAllBackups] My Drive error:', e);
+    }
+
+    // 2. Quét file sothuchi_private_vault.json trong appDataFolder
+    try {
+      const qPriv = encodeURIComponent(`name = 'sothuchi_private_vault.json' and trashed = false`);
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${qPriv}&fields=files(id,name,modifiedTime,size)&orderBy=modifiedTime desc`, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        for (const f of (data.files || [])) {
+          results.push({
+            id: f.id,
+            name: 'sothuchi_private_vault.json (Bản sao lưu riêng tư ngầm)',
+            location: 'Vùng ứng dụng ẩn (appDataFolder)',
+            locationType: 'privateVault',
+            modifiedTime: f.modifiedTime,
+            size: f.size
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('[scanAllBackups] privateVault error:', e);
+    }
+
+    // 3. Quét file sothuchi_vault.json trong appDataFolder
+    try {
+      const qApp = encodeURIComponent(`name = '${this.syncFileName}' and trashed = false`);
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${qApp}&fields=files(id,name,modifiedTime,size)&orderBy=modifiedTime desc`, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        for (const f of (data.files || [])) {
+          results.push({
+            id: f.id,
+            name: `${f.name} (Vùng ẩn appDataFolder)`,
+            location: 'Vùng ứng dụng ẩn (appDataFolder)',
+            locationType: 'appDataFolder',
+            modifiedTime: f.modifiedTime,
+            size: f.size
+          });
+
+          const revs = await this.getFileRevisions(f.id);
+          for (const r of revs) {
+            results.push({
+              id: f.id,
+              revisionId: r.id,
+              name: `${f.name} (appData) - Bản ngày ${new Date(r.modifiedTime).toLocaleString('vi-VN')}`,
+              location: 'Lịch sử phiên bản appData',
+              locationType: 'revision',
+              modifiedTime: r.modifiedTime,
+              size: r.size
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[scanAllBackups] appDataFolder error:', e);
+    }
+
+    results.sort((a, b) => new Date(b.modifiedTime || 0) - new Date(a.modifiedTime || 0));
+    return results;
+  }
+
+  // Khôi phục dữ liệu từ một mục sao lưu đã chọn
+  async restoreFromBackupItem(item) {
+    let json = null;
+    if (item.revisionId) {
+      json = await this.downloadRevisionData(item.id, item.revisionId);
+    } else {
+      json = await this.downloadRemoteData(item.id);
+    }
+
+    const payload = json.data || json;
+    if (!payload || (!payload.accounts && !payload.transactions)) {
+      throw new Error('Tệp sao lưu này không chứa danh sách tài khoản hoặc giao dịch hợp lệ.');
+    }
+
+    await this.applyRestoredData(payload);
+
+    if (item.locationType === 'customFolder') {
+      this.storageLocation = 'customFolder';
+      this.driveFileId = item.id;
+      await db.settings.put({ key: 'driveStorageLocation', value: 'customFolder' });
+      await db.settings.put({ key: 'googleDriveFileId', value: this.driveFileId });
+    } else if (item.locationType === 'appDataFolder') {
+      this.storageLocation = 'appDataFolder';
+      this.driveFileId = item.id;
+      await db.settings.put({ key: 'driveStorageLocation', value: 'appDataFolder' });
+      await db.settings.put({ key: 'googleDriveFileId', value: this.driveFileId });
+    }
+
+    return payload;
+  }
+
+  // Nạp toàn bộ dữ liệu vào IndexedDB
+  async applyRestoredData(payload) {
+    if (payload.accounts && Array.isArray(payload.accounts) && payload.accounts.length > 0) {
+      await db.accounts.clear();
+      await db.accounts.bulkAdd(payload.accounts);
+    }
+    if (payload.transactions && Array.isArray(payload.transactions)) {
+      await db.transactions.clear();
+      if (payload.transactions.length > 0) {
+        await db.transactions.bulkAdd(payload.transactions);
+      }
+    }
+    if (payload.categories && Array.isArray(payload.categories) && payload.categories.length > 0) {
+      await db.categories.clear();
+      await db.categories.bulkAdd(payload.categories);
+    }
+    if (payload.debts && Array.isArray(payload.debts)) {
+      await db.debts.clear();
+      if (payload.debts.length > 0) await db.debts.bulkAdd(payload.debts);
+    }
+    if (payload.budgets && Array.isArray(payload.budgets)) {
+      await db.budgets.clear();
+      if (payload.budgets.length > 0) await db.budgets.bulkAdd(payload.budgets);
+    }
+    if (payload.recurring && Array.isArray(payload.recurring)) {
+      await db.recurring.clear();
+      if (payload.recurring.length > 0) await db.recurring.bulkAdd(payload.recurring);
+    }
+    if (db.savings && payload.savings && Array.isArray(payload.savings)) {
+      await db.savings.clear();
+      if (payload.savings.length > 0) await db.savings.bulkAdd(payload.savings);
+    }
+    if (db.accumulations && payload.accumulations && Array.isArray(payload.accumulations)) {
+      await db.accumulations.clear();
+      if (payload.accumulations.length > 0) await db.accumulations.bulkAdd(payload.accumulations);
+    }
+    if (db.assets && payload.assets && Array.isArray(payload.assets)) {
+      await db.assets.clear();
+      if (payload.assets.length > 0) await db.assets.bulkAdd(payload.assets);
+    }
+    if (db.loans && payload.loans && Array.isArray(payload.loans)) {
+      await db.loans.clear();
+      if (payload.loans.length > 0) await db.loans.bulkAdd(payload.loans);
+    }
+
+    this.lastSyncTime = new Date().toISOString();
+    await db.settings.put({ key: 'lastSyncTime', value: this.lastSyncTime });
+
+    if (window.app && typeof window.app.refreshAll === 'function') {
+      await window.app.refreshAll();
     }
   }
 

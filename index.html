@@ -2127,7 +2127,7 @@
                   Lưu trữ và đồng bộ dữ liệu trực tiếp với tài khoản Google Drive cá nhân của bạn mà không cần máy chủ riêng.
                 </p>
 
-                <!-- Nút Đăng nhập & Đồng bộ ngay -->
+                <!-- Nút Đăng nhập & Đồng bộ ngay & Tìm lại bản sao lưu -->
                 <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
                   <button type="button" id="btn-google-login" class="btn-primary" style="flex: 1; min-width: 160px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
                     <i data-lucide="log-in" style="width: 16px; height: 16px;"></i>
@@ -2136,6 +2136,10 @@
                   <button type="button" id="btn-sync-now" class="btn-secondary" style="flex: 1; min-width: 150px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
                     <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
                     <span>Đồng Bộ Ngay</span>
+                  </button>
+                  <button type="button" id="btn-scan-drive-backups" class="btn-secondary" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-color: rgba(59, 130, 246, 0.4); color: #3b82f6;" title="Tìm lại tất cả các bản sao lưu và phiên bản lịch sử trên Google Drive">
+                    <i data-lucide="history" style="width: 16px; height: 16px;"></i>
+                    <span>Tìm Lại Bản Sao Lưu Trên Drive (Lịch Sử)</span>
                   </button>
                 </div>
 
@@ -7076,6 +7080,36 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         <button type="button" id="btn-confirm-login-sync" class="btn-primary" disabled onclick="ServerAuthModals.executeLoginSync()">
           <i data-lucide="check" style="width: 15px; height: 15px;"></i> Xác Nhận & Tiếp Tục
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Tìm lại & Khôi phục bản sao lưu Google Drive -->
+  <div id="modal-drive-recovery" class="modal-overlay" style="z-index: 100040;">
+    <div class="modal-dialog" style="max-width: 540px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="history" style="color: #3b82f6;"></i>
+          <span>Khôi Phục Bản Sao Lưu Google Drive</span>
+        </h3>
+        <button type="button" class="btn-icon" onclick="UISettings.closeDriveRecoveryModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body" style="padding: 16px 20px;">
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">
+          Hệ thống sẽ quét toàn bộ các tệp sao lưu, bản lưu riêng tư và lịch sử phiên bản (Revisions) trên Google Drive của bạn để bạn lựa chọn khôi phục.
+        </p>
+        <div id="drive-recovery-loading" style="text-align: center; padding: 30px 10px; display: none;">
+          <i data-lucide="loader-2" class="spin-animation" style="width: 28px; height: 28px; color: var(--primary); margin-bottom: 8px;"></i>
+          <div style="font-size: 0.85rem; color: var(--text-muted);">Đang quét các bản sao lưu trên Google Drive...</div>
+        </div>
+        <div id="drive-recovery-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto;">
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" class="btn-secondary btn-sm" onclick="UISettings.scanAndShowDriveRecovery()">
+          <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Quét lại
+        </button>
+        <button type="button" class="btn-secondary" onclick="UISettings.closeDriveRecoveryModal()">Đóng</button>
       </div>
     </div>
   </div>
