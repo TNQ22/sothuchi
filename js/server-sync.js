@@ -468,6 +468,7 @@ class ServerSyncService {
     this.activeVaultId = null;
     this.lastVaultVersion = null;
     this.lastVaultUpdatedAt = null;
+    this.connectionStatus = 'disconnected';
 
     await db.settings.delete('syncServerToken');
     await db.settings.delete('syncServerUserProfile');
@@ -523,9 +524,70 @@ class ServerSyncService {
       } catch (cleanErr) {
         console.warn('[ServerSync] Lỗi khi dọn dẹp các sổ chia sẻ máy chủ khi đăng xuất:', cleanErr);
       }
+
+      // Dọn dẹp projection chia sẻ của máy chủ riêng
+      try {
+        if (db.settings) {
+          const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
+          if (ownedSetting && Array.isArray(ownedSetting.value)) {
+            const remaining = ownedSetting.value.filter(x => x && x.service && x.service !== 'server');
+            await db.settings.put({ key: 'syncOwnedSharedProjections', value: remaining });
+          }
+        }
+      } catch (_) {}
+
+      // Tắt cờ isShared cho các mục cá nhân trước đó chỉ chia sẻ qua máy chủ
+      try {
+        const ownedSetting = db.settings ? await db.settings.get('syncOwnedSharedProjections') : null;
+        const activeProjections = (ownedSetting && Array.isArray(ownedSetting.value)) ? ownedSetting.value : [];
+
+        const personalAccs = (await db.accounts.toArray()).filter(a => !a._isSharedItem && (a.isShared === 1 || a.isShared === true));
+        for (const a of personalAccs) {
+          const stillShared = activeProjections.some(x => x.itemType === 'account' && String(x.itemId) === String(a.id));
+          if (!stillShared) {
+            await db.accounts.update(a.id, { isShared: 0, updatedAt: Date.now() });
+          }
+        }
+
+        if (db.savings) {
+          const sList = (await db.savings.toArray()).filter(s => !s._isSharedItem && (s.isShared === 1 || s.isShared === true));
+          for (const s of sList) {
+            const stillShared = activeProjections.some(x => x.itemType === 'savings' && String(x.itemId) === String(s.id));
+            if (!stillShared) await db.savings.update(s.id, { isShared: 0, updatedAt: Date.now() });
+          }
+        }
+
+        if (db.accumulations) {
+          const aList = (await db.accumulations.toArray()).filter(a => !a._isSharedItem && (a.isShared === 1 || a.isShared === true));
+          for (const a of aList) {
+            const stillShared = activeProjections.some(x => x.itemType === 'accumulation' && String(x.itemId) === String(a.id));
+            if (!stillShared) await db.accumulations.update(a.id, { isShared: 0, updatedAt: Date.now() });
+          }
+        }
+
+        if (db.loans) {
+          const lList = (await db.loans.toArray()).filter(l => !l._isSharedItem && (l.isShared === 1 || l.isShared === true));
+          for (const l of lList) {
+            const stillShared = activeProjections.some(x => x.itemType === 'loan' && String(x.itemId) === String(l.id));
+            if (!stillShared) await db.loans.update(l.id, { isShared: 0, updatedAt: Date.now() });
+          }
+        }
+
+        if (db.assets) {
+          const astList = (await db.assets.toArray()).filter(ast => !ast._isSharedItem && (ast.isShared === 1 || ast.isShared === true));
+          for (const ast of astList) {
+            const stillShared = activeProjections.some(x => x.itemType === 'asset' && String(x.itemId) === String(ast.id));
+            if (!stillShared) await db.assets.update(ast.id, { isShared: 0, updatedAt: Date.now() });
+          }
+        }
+      } catch (cleanSharesErr) {
+        console.warn('[ServerSync] Lỗi làm sạch cờ chia sẻ khi ngắt kết nối máy chủ:', cleanSharesErr);
+      }
     }
 
+    window.dispatchEvent(new CustomEvent('server-connection-changed', { detail: { status: 'disconnected' } }));
     window.dispatchEvent(new CustomEvent('server-auth-changed', { detail: null }));
+    window.dispatchEvent(new CustomEvent('shared-items-updated', { detail: { action: 'logout' } }));
   }
 
   // Lấy danh sách Sổ (Vaults)

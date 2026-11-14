@@ -21,6 +21,40 @@ const UniversalShareModal = {
   serverUsersCache: [],
   isLoading: false,
 
+  async getPreferredService(type, id) {
+    const sService = window.serverSyncService;
+    const gService = window.googleDriveService;
+
+    // 1. Kiểm tra trạng thái khả dụng thực tế của từng dịch vụ (đang kích hoạt / có thể chia sẻ):
+    // - Máy Chủ Riêng (Self-Hosted): Đang có URL kết nối, có token xác thực người dùng và autoSync !== false
+    const isServerActive = Boolean(sService && sService.serverUrl && sService.token && sService.userProfile && sService.autoSync !== false);
+    // - Google Drive: Đang kết nối OAuth với tài khoản Google (có accessToken) và autoSync !== false
+    const isDriveActive = Boolean(gService && gService.isConnected && gService.accessToken && gService.autoSync !== false);
+
+    // 2. Nếu mục này ĐÃ có liên kết / tệp chia sẻ trên Google Drive và Google Drive đang kích hoạt:
+    if (isDriveActive && gService && typeof gService.getSharedFileId === 'function') {
+      try {
+        const gDriveFileId = await gService.getSharedFileId(type, id);
+        if (gDriveFileId) {
+          return 'google-drive';
+        }
+      } catch (_) {}
+    }
+
+    // 3. Tự chọn dịch vụ đang khả dụng gần nhất theo thứ tự danh sách từ trên xuống dưới (đang kích hoạt):
+    // [1] Máy Chủ Riêng (Self-Hosted)
+    // [2] Google Drive
+    if (isServerActive) {
+      return 'server';
+    }
+    if (isDriveActive) {
+      return 'google-drive';
+    }
+
+    // Nếu không có dịch vụ nào đang kích hoạt: Mặc định chọn dịch vụ đầu danh sách ('server')
+    return 'server';
+  },
+
   getActiveService() {
     return this.currentService === 'google-drive' ? window.googleDriveService : window.serverSyncService;
   },
@@ -53,19 +87,8 @@ const UniversalShareModal = {
       return;
     }
 
-    // Tự động ưu tiên Google Drive nếu mục đã được chia sẻ qua Drive hoặc chỉ có Drive kết nối
-    let preferredService = 'server';
-    try {
-      const gDriveHasFile = window.googleDriveService && typeof window.googleDriveService.getSharedFileId === 'function'
-        ? await window.googleDriveService.getSharedFileId(type, this.currentId)
-        : null;
-      if (gDriveHasFile) {
-        preferredService = 'google-drive';
-      } else if (window.googleDriveService?.isConnected && (!window.serverSyncService || !window.serverSyncService.isConnected)) {
-        preferredService = 'google-drive';
-      }
-    } catch (_) {}
-    this.currentService = preferredService;
+    // Tự chọn tính năng share qua máy chủ hay drive đang khả dụng gần nhất theo danh sách từ trên xuống dưới
+    this.currentService = await this.getPreferredService(type, this.currentId);
 
     // 2. Hiển thị modal
     const modal = document.getElementById('modal-universal-share');
@@ -189,16 +212,19 @@ const UniversalShareModal = {
 
   renderServices() {
     const sService = window.serverSyncService;
-    const isServerReachable = Boolean(sService && (sService.connectionStatus === 'connected' || sService.serverUrl));
     const isServerLoggedIn = Boolean(sService && sService.token && sService.userProfile);
+    const isServerReachable = Boolean(sService && sService.connectionStatus === 'connected');
 
     let serverStatusText = 'Chưa kết nối';
     let serverStatusClass = 'not-connected';
     if (isServerLoggedIn && sService.autoSync !== false) {
       serverStatusText = 'Đã kết nối';
       serverStatusClass = 'connected';
-    } else if (isServerLoggedIn || isServerReachable) {
-      serverStatusText = 'Sẵn sàng';
+    } else if (isServerLoggedIn) {
+      serverStatusText = 'Đã tắt đồng bộ';
+      serverStatusClass = 'ready';
+    } else if (isServerReachable) {
+      serverStatusText = 'Chưa đăng nhập';
       serverStatusClass = 'ready';
     }
 

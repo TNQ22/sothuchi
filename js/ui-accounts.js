@@ -103,7 +103,28 @@ const UIAccounts = {
   getMiniShareIndicatorHtml(a) {
     if (!a) return '';
     const isSharedItem = !!a._isSharedItem;
-    const isSharedByMe = a.isShared === 1 || a.isShared === true;
+    let isSharedByMe = a.isShared === 1 || a.isShared === true;
+
+    // Kiểm tra tính khả dụng thực tế của cờ chia sẻ tài khoản cá nhân:
+    if (isSharedByMe && !isSharedItem) {
+      const sService = window.serverSyncService;
+      const gService = window.googleDriveService;
+      const isServerActive = Boolean(sService && sService.token && sService.serverUrl && sService.userProfile && sService.autoSync !== false);
+      const isDriveActive = Boolean(gService && gService.isConnected && gService.autoSync !== false);
+
+      if (!isServerActive && !isDriveActive) {
+        // Cả Máy chủ và Drive đều không kết nối / đăng nhập
+        isSharedByMe = false;
+      } else if (!isServerActive && isDriveActive) {
+        // Máy chủ Docker đã ngắt kết nối, chỉ bật Drive: chỉ hiện badge nếu mục này thực sự có projection / share trên Drive
+        const ownedList = this._cachedOwnedProjections || [];
+        const hasDriveShare = ownedList.some(x => x && x.itemType === 'account' && String(x.itemId) === String(a.id) && x.service === 'google-drive');
+        if (!hasDriveShare) {
+          isSharedByMe = false;
+        }
+      }
+    }
+
     const shareSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width: 8px; height: 8px; display: block;"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>';
     if (isSharedItem) {
       return `<div class="mini-share-indicator shared" title="Tài khoản được chia sẻ">${shareSvg}</div>`;
@@ -162,16 +183,23 @@ const UIAccounts = {
       const isServerAvailable = Boolean(sService && sService.token && sService.serverUrl && sService.autoSync !== false);
       const isDriveAvailable = Boolean(gService && gService.isConnected && gService.autoSync !== false);
 
-      // Nếu không có bất kỳ dịch vụ đồng bộ nào đang kết nối và kích hoạt, không tự ý dọn dẹp trạng thái cục bộ
-      if (!isServerAvailable && !isDriveAvailable) return;
-
       const personalAccs = (await db.accounts.toArray()).filter(a => !a.isDeleted && !a._isSharedItem && (a.isShared === 1 || a.isShared === true));
-      if (personalAccs.length === 0) return;
 
       const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
       let currentOwnedList = (ownedSetting && Array.isArray(ownedSetting.value)) ? [...ownedSetting.value] : [];
 
       let changed = false;
+
+      // 1. Nếu Máy Chủ Riêng đã ngắt kết nối: loại bỏ toàn bộ projection thuộc về server
+      if (!isServerAvailable) {
+        const prevLen = currentOwnedList.length;
+        currentOwnedList = currentOwnedList.filter(x => x && x.service && x.service !== 'server');
+        if (currentOwnedList.length !== prevLen) {
+          changed = true;
+        }
+      }
+
+      this._cachedOwnedProjections = currentOwnedList;
 
       for (const acc of personalAccs) {
         let serverActiveCount = 0;
@@ -179,7 +207,7 @@ const UIAccounts = {
         let driveActiveCount = 0;
         let driveChecked = false;
 
-        // 1. Kiểm tra Máy Chủ Riêng
+        // 1. Kiểm tra Máy Chủ Riêng (nếu đang kết nối)
         if (isServerAvailable && typeof sService.getItemShares === 'function') {
           try {
             const res = await sService.getItemShares('account', acc.id);
@@ -190,7 +218,7 @@ const UIAccounts = {
           } catch (_) {}
         }
 
-        // 2. Kiểm tra Google Drive
+        // 2. Kiểm tra Google Drive (nếu đang kết nối)
         if (isDriveAvailable && typeof gService.getItemShares === 'function') {
           try {
             const res = await gService.getItemShares('account', acc.id);
@@ -201,36 +229,62 @@ const UIAccounts = {
           } catch (_) {}
         }
 
-        // Kiểm tra xem trong bộ nhớ đệm projection có ghi nhận dịch vụ nào khác đang giữ share không
+        // Kiểm tra xem trong bộ nhớ đệm projection có ghi nhận dịch vụ nào ĐANG KẾT NỐI mà chưa kịp check xong không
         const localProjections = currentOwnedList.filter(x => x.itemType === 'account' && String(x.itemId) === String(acc.id));
         const hasUncheckedServiceProjection = localProjections.some(x => {
-          if (x.service === 'google-drive' && !driveChecked) return true;
-          if ((!x.service || x.service === 'server') && !serverChecked) return true;
+          if (x.service === 'google-drive' && isDriveAvailable && !driveChecked) return true;
+          if ((!x.service || x.service === 'server') && isServerAvailable && !serverChecked) return true;
           return false;
         });
 
-        const totalActive = serverActiveCount + driveActiveCount;
+        const totalActive = (isServerAvailable ? serverActiveCount : 0) + (isDriveAvailable ? driveActiveCount : 0);
 
         if (totalActive > 0 || hasUncheckedServiceProjection) {
-          // Còn người nhận hoặc còn dịch vụ chưa kiểm tra được -> Giữ nguyên cờ chia sẻ
+          // Còn người nhận hoặc còn dịch vụ đang kết nối chưa kiểm tra được -> Giữ nguyên cờ chia sẻ
           continue;
         }
 
-        // Chỉ khi TẤT CẢ các dịch vụ đang kết nối xác nhận 0 người nhận VÀ không còn dịch vụ chưa check
-        if ((serverChecked || !isServerAvailable) && (driveChecked || !isDriveAvailable)) {
-          await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
-          acc.isShared = 0;
-          currentOwnedList = currentOwnedList.filter(x => !(x.itemType === 'account' && String(x.itemId) === String(acc.id)));
-          changed = true;
-          console.log(`[UIAccounts] Đã tắt cờ chia sẻ cho tài khoản không còn dịch vụ nào chia sẻ: "${acc.name}"`);
+        // Tắt cờ chia sẻ vì không còn dịch vụ đang kết nối nào có người nhận
+        await db.accounts.update(acc.id, { isShared: 0, updatedAt: Date.now() });
+        acc.isShared = 0;
+        currentOwnedList = currentOwnedList.filter(x => !(x.itemType === 'account' && String(x.itemId) === String(acc.id)));
+        changed = true;
+        console.log(`[UIAccounts] Đã tắt cờ chia sẻ cho tài khoản không còn dịch vụ nào chia sẻ: "${acc.name}"`);
+      }
+
+      // Làm sạch cờ isShared cho Sổ Tiết Kiệm nếu có
+      if (db.savings) {
+        const personalSavings = (await db.savings.toArray()).filter(s => !s.isDeleted && !s._isSharedItem && (s.isShared === 1 || s.isShared === true));
+        for (const s of personalSavings) {
+          let sDriveCount = 0;
+          if (isDriveAvailable && typeof gService.getItemShares === 'function') {
+            try {
+              const res = await gService.getItemShares('savings', s.id);
+              if (res && Array.isArray(res.shares) && Array.isArray(res.links)) sDriveCount = res.shares.length + res.links.length;
+            } catch (_) {}
+          }
+          let sServerCount = 0;
+          if (isServerAvailable && typeof sService.getItemShares === 'function') {
+            try {
+              const res = await sService.getItemShares('savings', s.id);
+              if (res && Array.isArray(res.shares) && Array.isArray(res.links)) sServerCount = res.shares.length + res.links.length;
+            } catch (_) {}
+          }
+          if ((isServerAvailable ? sServerCount : 0) + (isDriveAvailable ? sDriveCount : 0) === 0) {
+            await db.savings.update(s.id, { isShared: 0, updatedAt: Date.now() });
+            currentOwnedList = currentOwnedList.filter(x => !(x.itemType === 'savings' && String(x.itemId) === String(s.id)));
+            changed = true;
+          }
         }
       }
+
+      this._cachedOwnedProjections = currentOwnedList;
 
       if (changed) {
         if (db.settings) {
           await db.settings.put({ key: 'syncOwnedSharedProjections', value: currentOwnedList });
         }
-        if (typeof this.render === 'function') {
+        if (autoRender && typeof this.render === 'function') {
           await this.render();
         }
         if (window.UITransactions && typeof window.UITransactions.updateHeaderAccountDisplay === 'function') {
@@ -246,20 +300,17 @@ const UIAccounts = {
     if (this._eventsBound) return;
     this._eventsBound = true;
 
-    window.addEventListener('shared-items-updated', () => {
+    const triggerClean = () => {
       this.cleanAllFalseSharedAccounts(false);
       if (this._sharedUpdateRenderTimer) clearTimeout(this._sharedUpdateRenderTimer);
       this._sharedUpdateRenderTimer = setTimeout(() => {
         this.render();
       }, 50);
-    });
-    window.addEventListener('server-auth-changed', () => {
-      this.cleanAllFalseSharedAccounts(false);
-      if (this._sharedUpdateRenderTimer) clearTimeout(this._sharedUpdateRenderTimer);
-      this._sharedUpdateRenderTimer = setTimeout(() => {
-        this.render();
-      }, 50);
-    });
+    };
+
+    window.addEventListener('shared-items-updated', triggerClean);
+    window.addEventListener('server-auth-changed', triggerClean);
+    window.addEventListener('server-connection-changed', triggerClean);
 
     const accForm = document.getElementById('account-form');
     if (accForm) {
@@ -6682,9 +6733,22 @@ const UIAccounts = {
       console.warn('[UIAccounts] Lỗi tự động dọn dẹp sổ chia sẻ không hợp lệ:', errClean);
     }
 
-    // Tự động kiểm tra và làm sạch cờ isShared nếu tài khoản không còn ai được chia sẻ trên server
-    if (!this._cleaningShares && window.serverSyncService && window.serverSyncService.token && window.serverSyncService.serverUrl) {
-      const hasSharedPersonal = accounts.some(a => !a._isSharedItem && (a.isShared === 1 || a.isShared === true));
+    // Tải và cache danh sách projections chia sẻ hiện tại
+    try {
+      const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
+      this._cachedOwnedProjections = (ownedSetting && Array.isArray(ownedSetting.value)) ? ownedSetting.value : [];
+    } catch (_) {
+      this._cachedOwnedProjections = [];
+    }
+
+    // Tự động kiểm tra và làm sạch cờ isShared nếu tài khoản không còn ai được chia sẻ trên server hoặc drive
+    const sService = window.serverSyncService;
+    const gService = window.googleDriveService;
+    const isServerActive = Boolean(sService && sService.token && sService.serverUrl && sService.autoSync !== false);
+    const isDriveActive = Boolean(gService && gService.isConnected && gService.autoSync !== false);
+
+    const hasSharedPersonal = accounts.some(a => !a._isSharedItem && (a.isShared === 1 || a.isShared === true));
+    if (!this._cleaningShares && (isServerActive || isDriveActive || hasSharedPersonal)) {
       if (hasSharedPersonal) {
         this._cleaningShares = true;
         this.cleanAllFalseSharedAccounts(false).catch(() => {}).finally(() => {
