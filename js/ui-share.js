@@ -1235,6 +1235,9 @@ const ReceiveShareModal = {
     if (token.includes('share_token=')) {
       const match = token.match(/share_token=([^&]+)/);
       if (match) token = match[1];
+    } else if (token.includes('drive.google.com')) {
+      const matchDrive = token.match(/\/d\/([a-zA-Z0-9_-]+)/) || token.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (matchDrive) token = `gdrive_${matchDrive[1]}`;
     }
     const matchKey = input.match(/[#&?]key=([^&]+)/);
     const key = matchKey ? decodeURIComponent(matchKey[1]) : null;
@@ -1283,6 +1286,64 @@ const ReceiveShareModal = {
 
       const info = await syncService.getShareLinkInfo(token);
       this.shareData = info;
+
+      // KIỂM TRA QUAN TRỌNG: Nếu người dùng hiện tại chính là chủ sở hữu tạo ra mục này
+      const fileId = token.replace(/^gdrive_/, '');
+      const remoteItemId = info.itemId || fileId;
+      const itemType = info.itemType || 'account';
+
+      const myEmail = (window.googleDriveService?.userProfile?.email || window.serverSyncService?.userProfile?.email || '').trim().toLowerCase();
+      const ownerEmail = (info.ownerEmail || '').trim().toLowerCase();
+      const isOwnerByEmail = ownerEmail && myEmail && ownerEmail === myEmail;
+
+      let isOriginalLocalItem = false;
+      if (itemType === 'account') {
+        const originAcc = await db.accounts.get(Number(remoteItemId) || remoteItemId);
+        if (originAcc && !originAcc._isSharedItem && !originAcc.isDeleted) {
+          isOriginalLocalItem = true;
+        }
+      } else if (itemType === 'savings' && db.savings) {
+        const originSav = await db.savings.get(Number(remoteItemId) || remoteItemId);
+        if (originSav && !originSav._isSharedItem && !originSav.isDeleted) {
+          isOriginalLocalItem = true;
+        }
+      } else if (itemType === 'accumulation' && db.accumulations) {
+        const originAcc = await db.accumulations.get(Number(remoteItemId) || remoteItemId);
+        if (originAcc && !originAcc._isSharedItem && !originAcc.isDeleted) {
+          isOriginalLocalItem = true;
+        }
+      } else if (itemType === 'loan' && db.loans) {
+        const originLoan = await db.loans.get(Number(remoteItemId) || remoteItemId);
+        if (originLoan && !originLoan._isSharedItem && !originLoan.isDeleted) {
+          isOriginalLocalItem = true;
+        }
+      } else if (itemType === 'asset' && db.assets) {
+        const originAst = await db.assets.get(Number(remoteItemId) || remoteItemId);
+        if (originAst && !originAst._isSharedItem && !originAst.isDeleted) {
+          isOriginalLocalItem = true;
+        }
+      }
+
+      const ownedSetting = (await db.settings.get('syncOwnedSharedProjections')) || { value: [] };
+      const isOwnedProjection = Array.isArray(ownedSetting.value) && ownedSetting.value.some(x =>
+        (x.fileId && String(x.fileId) === String(fileId)) ||
+        (x.itemType === itemType && String(x.itemId) === String(remoteItemId))
+      );
+
+      if (isOwnerByEmail || isOriginalLocalItem || isOwnedProjection) {
+        if (window.location.hash.includes('share_token=')) {
+          history.replaceState(null, '', window.location.pathname + window.location.search.replace(/[?&]share_token=[^&]+/, ''));
+        }
+        if (typeof showAlert === 'function') {
+          const typeName = UniversalShareModal.getTypeLabel ? UniversalShareModal.getTypeLabel(itemType) : 'Tài khoản';
+          await showAlert({
+            title: `${typeName} Của Chính Bạn`,
+            message: `Mục "<strong>${typeof escapeHTML === 'function' ? escapeHTML(info.itemName || 'Tài khoản') : (info.itemName || 'Tài khoản')}</strong>" do chính bạn tạo và sở hữu (đang nằm trong danh sách ${typeName} chính của bạn).<br><br>Bạn không cần nhận lại mục của chính mình vào danh sách chia sẻ. Hãy gửi liên kết này cho người nhận khác để cùng sử dụng nhé!`,
+            icon: 'info'
+          });
+        }
+        return;
+      }
 
       const modal = document.getElementById('modal-receive-share');
       if (!modal) return;
@@ -1347,6 +1408,68 @@ const ReceiveShareModal = {
     if (!this.currentToken) return;
 
     try {
+      const isGDrive = this.currentToken.startsWith('gdrive_');
+      const syncService = isGDrive ? window.googleDriveService : window.serverSyncService;
+      if (!syncService) throw new Error('Dịch vụ đồng bộ chưa sẵn sàng.');
+
+      // Kiểm tra an toàn: nếu chính người dùng là chủ sở hữu
+      const fileId = this.currentToken.replace(/^gdrive_/, '');
+      const remoteItemId = this.shareData?.itemId || fileId;
+      const itemType = this.shareData?.itemType || 'account';
+
+      const myEmail = (window.googleDriveService?.userProfile?.email || window.serverSyncService?.userProfile?.email || '').trim().toLowerCase();
+      const ownerEmail = (this.shareData?.ownerEmail || '').trim().toLowerCase();
+      const isOwnerByEmail = ownerEmail && myEmail && ownerEmail === myEmail;
+
+      let isOriginalLocalItem = false;
+      if (itemType === 'account') {
+        const originAcc = await db.accounts.get(Number(remoteItemId) || remoteItemId);
+        if (originAcc && !originAcc._isSharedItem && !originAcc.isDeleted) {
+          isOriginalLocalItem = true;
+        }
+      } else if (itemType === 'savings' && db.savings) {
+        const originSav = await db.savings.get(Number(remoteItemId) || remoteItemId);
+        if (originSav && !originSav._isSharedItem && !originSav.isDeleted) {
+          isOriginalLocalItem = true;
+        }
+      } else if (itemType === 'accumulation' && db.accumulations) {
+        const originAcc = await db.accumulations.get(Number(remoteItemId) || remoteItemId);
+        if (originAcc && !originAcc._isSharedItem && !originAcc.isDeleted) {
+          isOriginalLocalItem = true;
+        }
+      } else if (itemType === 'loan' && db.loans) {
+        const originLoan = await db.loans.get(Number(remoteItemId) || remoteItemId);
+        if (originLoan && !originLoan._isSharedItem && !originLoan.isDeleted) {
+          isOriginalLocalItem = true;
+        }
+      } else if (itemType === 'asset' && db.assets) {
+        const originAst = await db.assets.get(Number(remoteItemId) || remoteItemId);
+        if (originAst && !originAst._isSharedItem && !originAst.isDeleted) {
+          isOriginalLocalItem = true;
+        }
+      }
+
+      const ownedSetting = (await db.settings.get('syncOwnedSharedProjections')) || { value: [] };
+      const isOwnedProjection = Array.isArray(ownedSetting.value) && ownedSetting.value.some(x =>
+        (x.fileId && String(x.fileId) === String(fileId)) ||
+        (x.itemType === itemType && String(x.itemId) === String(remoteItemId))
+      );
+
+      if (isOwnerByEmail || isOriginalLocalItem || isOwnedProjection) {
+        this.close();
+        if (window.location.hash.includes('share_token=')) {
+          history.replaceState(null, '', window.location.pathname + window.location.search.replace(/[?&]share_token=[^&]+/, ''));
+        }
+        if (typeof showAlert === 'function') {
+          await showAlert({
+            title: 'Mục Của Chính Bạn',
+            message: `Mục "${this.shareData?.itemName || 'Tài khoản'}" do chính bạn tạo và sở hữu. Bạn không cần nhận lại mục của chính mình.`,
+            icon: 'info'
+          });
+        }
+        return;
+      }
+
       // Nếu có ô nhập mật khẩu
       const passInput = document.getElementById('receive-share-password-input');
       if (passInput && passInput.value.trim()) {
@@ -1354,9 +1477,6 @@ const ReceiveShareModal = {
       }
 
       if (typeof showToast === 'function') showToast('Đang nhận tài khoản vào sổ...', 'info');
-      const isGDrive = this.currentToken.startsWith('gdrive_');
-      const syncService = isGDrive ? window.googleDriveService : window.serverSyncService;
-      if (!syncService) throw new Error('Dịch vụ đồng bộ chưa sẵn sàng.');
 
       const result = await syncService.acceptShareLink(this.currentToken, this.currentKey);
 
@@ -1375,9 +1495,15 @@ const ReceiveShareModal = {
       // Đồng bộ ngay dữ liệu vào IndexedDB
       await syncService.syncReceivedSharedItems();
 
+      // Cập nhật lại UI đầy đủ
       if (typeof window.app?.refreshAll === 'function') {
         await window.app.refreshAll();
       }
+      if (window.UIAccounts && typeof window.UIAccounts.render === 'function') {
+        await window.UIAccounts.render();
+      }
+      window.dispatchEvent(new CustomEvent('accounts-updated'));
+      window.dispatchEvent(new CustomEvent('shared-items-updated'));
 
       this.close();
 
@@ -1386,8 +1512,48 @@ const ReceiveShareModal = {
         history.replaceState(null, '', window.location.pathname + window.location.search.replace(/[?&]share_token=[^&]+/, ''));
       }
 
-      if (typeof showToast === 'function') {
-        showToast(`Đã nhận "${this.shareData?.itemName || 'Tài khoản'}" thành công!`, 'success');
+      // Kiểm tra thực tế xem mục đã được thêm vào IndexedDB chưa
+      let addedItem = null;
+      if (itemType === 'account') {
+        const allAccs = await db.accounts.toArray();
+        addedItem = allAccs.find(a => a._isSharedItem && (
+          String(a._shareId) === String(fileId) ||
+          String(a._remoteId) === String(remoteItemId)
+        ));
+      } else if (itemType === 'savings' && db.savings) {
+        const allS = await db.savings.toArray();
+        addedItem = allS.find(s => s._isSharedItem && (
+          String(s._shareId) === String(fileId) ||
+          String(s._remoteId) === String(remoteItemId)
+        ));
+      } else if (itemType === 'accumulation' && db.accumulations) {
+        const allA = await db.accumulations.toArray();
+        addedItem = allA.find(a => a._isSharedItem && (
+          String(a._shareId) === String(fileId) ||
+          String(a._remoteId) === String(remoteItemId)
+        ));
+      } else if (itemType === 'loan' && db.loans) {
+        const allL = await db.loans.toArray();
+        addedItem = allL.find(l => l._isSharedItem && (
+          String(l._shareId) === String(fileId) ||
+          String(l._remoteId) === String(remoteItemId)
+        ));
+      } else if (itemType === 'asset' && db.assets) {
+        const allAst = await db.assets.toArray();
+        addedItem = allAst.find(a => a._isSharedItem && (
+          String(a._shareId) === String(fileId) ||
+          String(a._remoteId) === String(remoteItemId)
+        ));
+      }
+
+      if (addedItem) {
+        if (typeof showToast === 'function') {
+          showToast(`Đã nhận "${addedItem.name || this.shareData?.itemName || 'Tài khoản'}" thành công!`, 'success');
+        }
+      } else {
+        if (typeof showToast === 'function') {
+          showToast(`Đã lưu liên kết chia sẻ nhưng chưa thể tải dữ liệu ví. Hãy đảm bảo tệp trên Google Drive được chia sẻ đúng quyền hoặc kiểm tra API Key.`, 'warning', 6000);
+        }
       }
     } catch (err) {
       if (typeof showToast === 'function') showToast(err.message, 'error');

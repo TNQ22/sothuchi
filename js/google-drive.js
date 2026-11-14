@@ -2719,75 +2719,117 @@ class GoogleDriveSync {
   }
 
   async syncReceivedSharedItems() {
-    if (!this.accessToken) return false;
     if (this._isSyncingReceivedSharedItems) return false;
     this._isSyncingReceivedSharedItems = true;
     let hasChanges = false;
 
+    if (!this.accessToken) {
+      await this.ensureToken(false).catch(() => {});
+    }
+
+    if (!this.apiKey) {
+      const savedKey = await db.settings.get('googleApiKey');
+      if (savedKey?.value) {
+        this.apiKey = savedKey.value.trim();
+      } else if (window.EnvConfig) {
+        this.apiKey = (window.EnvConfig.get('GOOGLE_API_KEY', '') || window.EnvConfig.get('VITE_GOOGLE_API_KEY', '')).trim();
+      }
+    }
+
+    const recSetting = (await db.settings.get('googleDriveReceivedFiles')) || { value: [] };
+    const recList = Array.isArray(recSetting.value) ? recSetting.value : [];
+
+    if (!this.accessToken && recList.length === 0) {
+      this._isSyncingReceivedSharedItems = false;
+      return false;
+    }
+
     try {
-      // 0. Đẩy các giao dịch thành viên tạo lên Drive trước
-      await this.pushAllReceivedSharedItems();
+      // 0. Đẩy các giao dịch thành viên tạo lên Drive trước (nếu có accessToken)
+      if (this.accessToken) {
+        try {
+          await this.pushAllReceivedSharedItems();
+        } catch (pushErr) {
+          console.warn('[GoogleDrive] Lỗi đẩy giao dịch chia sẻ:', pushErr);
+        }
+      }
 
       // 1. Quét file từ SharedWithMe & Received via Link & Toàn bộ tệp có quyền đọc
       const fileMap = new Map();
       let swmSuccess = false;
 
-      // Truy vấn 1: sharedWithMe = true
-      try {
-        const q1 = encodeURIComponent("sharedWithMe = true and trashed = false");
-        const res1 = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q1}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=100&fields=files(id,name,mimeType,modifiedTime,owners,capabilities,shared)`, {
-          headers: { Authorization: `Bearer ${this.accessToken}` }
-        });
-        if (res1.ok) {
-          swmSuccess = true;
-          const data1 = await res1.json();
-          if (Array.isArray(data1.files)) {
-            for (const f of data1.files) {
-              if (f.name && (f.name.includes('stc_shared') || f.mimeType === 'application/json' || f.name.endsWith('.json'))) {
-                fileMap.set(f.id, f);
+      if (this.accessToken) {
+        // Truy vấn 1: sharedWithMe = true
+        try {
+          const q1 = encodeURIComponent("sharedWithMe = true and trashed = false");
+          const res1 = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q1}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=100&fields=files(id,name,mimeType,modifiedTime,owners,capabilities,shared)`, {
+            headers: { Authorization: `Bearer ${this.accessToken}` }
+          });
+          if (res1.ok) {
+            swmSuccess = true;
+            const data1 = await res1.json();
+            if (Array.isArray(data1.files)) {
+              for (const f of data1.files) {
+                if (f.name && (f.name.includes('stc_shared') || f.mimeType === 'application/json' || f.name.endsWith('.json'))) {
+                  fileMap.set(f.id, f);
+                }
+              }
+            }
+          } else {
+            console.warn('[GoogleDrive] Quét sharedWithMe status:', res1.status, await res1.text().catch(() => ''));
+          }
+        } catch (err1) {
+          console.warn('[GoogleDrive] Quét sharedWithMe warning:', err1);
+        }
+
+        // Truy vấn 2: Quét mọi tệp có tên chứa stc_shared mà tài khoản hiện tại có quyền đọc (kể cả tệp được share trong folder hoặc link)
+        try {
+          const q2 = encodeURIComponent("name contains 'stc_shared' and trashed = false");
+          const res2 = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q2}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=100&fields=files(id,name,mimeType,modifiedTime,owners,capabilities,shared)`, {
+            headers: { Authorization: `Bearer ${this.accessToken}` }
+          });
+          if (res2.ok) {
+            const data2 = await res2.json();
+            if (Array.isArray(data2.files)) {
+              for (const f of data2.files) {
+                if (!fileMap.has(f.id)) {
+                  fileMap.set(f.id, f);
+                }
               }
             }
           }
-        } else {
-          console.warn('[GoogleDrive] Quét sharedWithMe status:', res1.status, await res1.text().catch(() => ''));
+        } catch (err2) {
+          console.warn('[GoogleDrive] Quét name contains stc_shared warning:', err2);
         }
-      } catch (err1) {
-        console.warn('[GoogleDrive] Quét sharedWithMe warning:', err1);
       }
 
-      // Truy vấn 2: Quét mọi tệp có tên chứa stc_shared mà tài khoản hiện tại có quyền đọc (kể cả tệp được share trong folder hoặc link)
-      try {
-        const q2 = encodeURIComponent("name contains 'stc_shared' and trashed = false");
-        const res2 = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q2}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=100&fields=files(id,name,mimeType,modifiedTime,owners,capabilities,shared)`, {
-          headers: { Authorization: `Bearer ${this.accessToken}` }
-        });
-        if (res2.ok) {
-          const data2 = await res2.json();
-          if (Array.isArray(data2.files)) {
-            for (const f of data2.files) {
-              if (!fileMap.has(f.id)) {
-                fileMap.set(f.id, f);
-              }
-            }
-          }
-        }
-      } catch (err2) {
-        console.warn('[GoogleDrive] Quét name contains stc_shared warning:', err2);
-      }
-
-      const recSetting = (await db.settings.get('googleDriveReceivedFiles')) || { value: [] };
-      const recList = Array.isArray(recSetting.value) ? recSetting.value : [];
       for (const item of recList) {
         if (!fileMap.has(item.fileId)) {
-          try {
-            const fRes = await fetch(`https://www.googleapis.com/drive/v3/files/${item.fileId}?supportsAllDrives=true&fields=id,name,modifiedTime,owners,capabilities,shared`, {
-              headers: { Authorization: `Bearer ${this.accessToken}` }
-            });
-            if (fRes.ok) {
-              const fData = await fRes.json();
-              fileMap.set(fData.id, fData);
-            }
-          } catch (_) {}
+          let fData = null;
+          if (this.accessToken) {
+            try {
+              const fRes = await fetch(`https://www.googleapis.com/drive/v3/files/${item.fileId}?supportsAllDrives=true&fields=id,name,modifiedTime,owners,capabilities,shared`, {
+                headers: { Authorization: `Bearer ${this.accessToken}` }
+              });
+              if (fRes.ok) {
+                fData = await fRes.json();
+              }
+            } catch (_) {}
+          }
+          if (!fData && this.apiKey) {
+            try {
+              const fRes2 = await fetch(`https://www.googleapis.com/drive/v3/files/${item.fileId}?supportsAllDrives=true&fields=id,name,modifiedTime,owners,capabilities,shared&key=${this.apiKey}`);
+              if (fRes2.ok) {
+                fData = await fRes2.json();
+              }
+            } catch (_) {}
+          }
+          // Luôn đưa vào fileMap để vòng lặp tải nội dung (thông tin item/owner sẽ lấy trực tiếp từ JSON payload)
+          fileMap.set(item.fileId, fData || {
+            id: item.fileId,
+            name: item.fileName || 'stc_shared',
+            capabilities: { canEdit: true }
+          });
         }
       }
 
@@ -2888,30 +2930,61 @@ class GoogleDriveSync {
 
       // Xử lý từng file chia sẻ nhận được
       for (const [fileId, fileMeta] of fileMap.entries()) {
-        const canEdit = Boolean(fileMeta.capabilities?.canEdit);
-        const role = canEdit ? 'editor' : 'viewer';
-        const ownerEmail = (fileMeta.owners?.[0]?.emailAddress || '').trim().toLowerCase();
-        const ownerName = fileMeta.owners?.[0]?.displayName || ownerEmail || 'Chủ sở hữu';
-        const myEmail = (this.userProfile?.email || '').trim().toLowerCase();
-        const isOwnerMe = Boolean(fileMeta.owners?.[0]?.me) || (ownerEmail && myEmail && ownerEmail === myEmail);
+        let rawText = null;
 
-        let mediaRes;
-        try {
-          mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-            headers: { Authorization: `Bearer ${this.accessToken}` }
-          });
-        } catch (_) {
+        // 1. Tải bằng AccessToken (nếu có)
+        if (this.accessToken) {
+          try {
+            const mRes1 = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true&alt=media`, {
+              headers: { Authorization: `Bearer ${this.accessToken}` }
+            });
+            if (mRes1.ok) {
+              rawText = await mRes1.text();
+            }
+          } catch (_) {}
+        }
+
+        // 2. Tải bằng Google API Key (nếu chưa tải được và có apiKey)
+        if (!rawText && this.apiKey) {
+          try {
+            const mRes2 = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true&alt=media&key=${this.apiKey}`);
+            if (mRes2.ok) {
+              rawText = await mRes2.text();
+            }
+          } catch (_) {}
+        }
+
+        // 3. Fallback tải tệp public qua direct download endpoint của Google Drive
+        if (!rawText) {
+          try {
+            const ucRes = await fetch(`https://drive.google.com/uc?export=download&id=${fileId}`);
+            if (ucRes.ok) {
+              const t = await ucRes.text();
+              if (t && (t.includes('"itemType"') || t.includes('"encrypted"') || t.includes('"transactions"'))) {
+                rawText = t;
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (!rawText) {
+          console.warn(`[GoogleDriveSync] Không thể tải nội dung tệp chia sẻ ${fileId}`);
           continue;
         }
-        if (!mediaRes || !mediaRes.ok) continue;
 
-        const rawText = await mediaRes.text();
         let remoteJson;
         try {
           remoteJson = JSON.parse(rawText);
         } catch (_) {
           continue;
         }
+
+        const canEdit = Boolean(fileMeta.capabilities?.canEdit);
+        const role = canEdit ? 'editor' : (remoteJson.role || 'viewer');
+        const ownerEmail = (fileMeta.owners?.[0]?.emailAddress || remoteJson.owner?.email || '').trim().toLowerCase();
+        const ownerName = fileMeta.owners?.[0]?.displayName || remoteJson.owner?.name || ownerEmail || 'Chủ sở hữu';
+        const myEmail = (this.userProfile?.email || '').trim().toLowerCase();
+        const isOwnerMe = Boolean(fileMeta.owners?.[0]?.me) || (ownerEmail && myEmail && ownerEmail === myEmail);
 
         const itemType = remoteJson.itemType || 'account';
         const remoteItemId = remoteJson.itemId || fileId;
@@ -3171,7 +3244,7 @@ class GoogleDriveSync {
       const uEmail = uProfile?.email || '';
 
       // Tải bản chiếu hiện tại trên Drive
-      const mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${shareId}?alt=media`, {
+      const mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${shareId}?supportsAllDrives=true&alt=media`, {
         headers: { Authorization: `Bearer ${this.accessToken}` }
       });
       if (!mediaRes.ok) return false;
@@ -3293,7 +3366,7 @@ class GoogleDriveSync {
 
         let mediaRes;
         try {
-          mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+          mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true&alt=media`, {
             headers: { Authorization: `Bearer ${this.accessToken}` }
           });
         } catch (_) {
