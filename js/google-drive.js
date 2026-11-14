@@ -209,22 +209,27 @@ class GoogleDriveSync {
   }
 
   async ensureToken(interactive = false) {
-    if (this.hasValidToken()) return this.accessToken;
+    if (this.hasValidToken(180000)) return this.accessToken;
     if (this.workerUrl && this.refreshToken && this.clientId) {
       try {
         const refreshed = await this.refreshViaWorker();
-        if (refreshed && this.hasValidToken()) return this.accessToken;
+        if (refreshed && this.hasValidToken(60000)) return this.accessToken;
       } catch (_) {}
     }
     if (interactive) {
-      return await this.requestToken({ interactive: true, prompt: '' });
+      try {
+        return await this.requestToken({ interactive: true, prompt: '' });
+      } catch (err) {
+        console.warn('[GoogleDriveSync] Silent token refresh failed, prompting select_account:', err);
+        return await this.requestToken({ interactive: true, prompt: 'select_account' });
+      }
     }
-    if (this.accessToken) return this.accessToken;
+    if (this.accessToken && this.hasValidToken(0)) return this.accessToken;
     throw new Error('Chưa kết nối Google Drive hoặc phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.');
   }
 
-  hasValidToken() {
-    return !!(this.accessToken && (!this.tokenExpiresAt || Date.now() < this.tokenExpiresAt));
+  hasValidToken(bufferMs = 180000) {
+    return !!(this.accessToken && (!this.tokenExpiresAt || (Date.now() + bufferMs) < this.tokenExpiresAt));
   }
 
   async refreshViaWorker() {
@@ -2616,7 +2621,33 @@ class GoogleDriveSync {
 
   // Mở hộp thoại Google Picker chính thức để duyệt và nhận tệp chia sẻ riêng qua email
   async openPickerForSharedItems() {
-    await this.ensureToken(true);
+    // 1. Kiểm tra tính hợp lệ thực tế của Token trước khi nạp vào Google Picker iframe
+    let tokenIsLive = false;
+    if (this.accessToken && this.hasValidToken(180000)) {
+      try {
+        const ctrl = new AbortController();
+        const tId = setTimeout(() => ctrl.abort(), 2000);
+        const testRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${this.accessToken}` },
+          signal: ctrl.signal
+        });
+        clearTimeout(tId);
+        if (testRes.ok) {
+          tokenIsLive = true;
+        } else if (testRes.status === 401) {
+          console.warn('[GooglePicker] Access token đã hết hạn trên Google (401), làm mới lại.');
+          this.accessToken = null;
+          this.tokenExpiresAt = 0;
+        }
+      } catch (_) {
+        tokenIsLive = true;
+      }
+    }
+
+    if (!tokenIsLive) {
+      await this.ensureToken(true);
+    }
+
     if (!this.accessToken) {
       throw new Error('Chưa kết nối Google Drive. Vui lòng kết nối tài khoản Google trước.');
     }
@@ -2650,6 +2681,7 @@ class GoogleDriveSync {
     await this.ensurePickerLoaded();
 
     const projectNumber = this.clientId ? this.clientId.split('-')[0] : '';
+    const origin = window.location.protocol + '//' + window.location.host;
 
     return new Promise((resolve, reject) => {
       try {
@@ -2669,6 +2701,7 @@ class GoogleDriveSync {
           .addView(allStcView)
           .setOAuthToken(this.accessToken)
           .setDeveloperKey(this.apiKey)
+          .setOrigin(origin)
           .setTitle('Chọn Sổ / Ví Chia Sẻ Từ Google Drive')
           .setLocale('vi')
           .setCallback((data) => {

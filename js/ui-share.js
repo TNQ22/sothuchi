@@ -1257,7 +1257,7 @@ const ReceiveShareModal = {
       return;
     }
     try {
-      if (!window.googleDriveService.accessToken) {
+      if (!window.googleDriveService.hasValidToken(180000)) {
         await window.googleDriveService.ensureToken(true);
       }
       const picked = await window.googleDriveService.openPickerForSharedItems();
@@ -1269,10 +1269,155 @@ const ReceiveShareModal = {
       await this.promptWithToken(`gdrive_${picked.fileId}`);
     } catch (err) {
       console.warn('[ReceiveShareModal] Lỗi mở Google Picker:', err);
-      if (typeof showToast === 'function') {
+      const errMsg = err?.message || '';
+      // Nếu lỗi liên quan đến cookie/xác thực iframe Picker, gợi ý duyệt danh sách trực tiếp qua REST API
+      if (typeof showConfirm === 'function' && (errMsg.includes('cookie') || errMsg.includes('truy cập') || errMsg.includes('Picker') || errMsg.includes('Khóa') || errMsg.includes('popup') || errMsg.includes('Đã đóng'))) {
+        const tryList = await showConfirm({
+          title: 'Hỗ Trợ Mở Tệp Drive',
+          message: `Không thể mở Google Picker: <strong>${typeof escapeHTML === 'function' ? escapeHTML(errMsg) : errMsg}</strong>.<br><br>Trình duyệt có thể đang chặn cookie bên thứ ba trong iframe.<br><br>Bạn có muốn <strong>quét danh sách tệp được chia sẻ trực tiếp (REST API)</strong> không?`,
+          confirmText: 'Quét Tệp Trực Tiếp',
+          cancelText: 'Huỷ',
+          icon: 'cloud'
+        });
+        if (tryList) {
+          await this.pickGoogleDriveFromList();
+          return;
+        }
+      } else if (typeof showToast === 'function') {
         showToast(err.message || 'Lỗi khi mở Google Picker', 'error');
       }
     }
+  },
+
+  // Quét và hiển thị danh sách các tệp chia sẻ trực tiếp từ Google Drive REST API (Không dùng iframe Picker)
+  async pickGoogleDriveFromList() {
+    if (!window.googleDriveService) return;
+    if (typeof showToast === 'function') showToast('Đang quét tệp chia sẻ từ Google Drive...', 'info');
+
+    try {
+      const files = await window.googleDriveService.getSharedFilesFromDrive();
+      if (!files || files.length === 0) {
+        if (typeof showAlert === 'function') {
+          await showAlert({
+            title: 'Chưa Tìm Thấy Tệp Chia Sẻ',
+            message: 'Không tìm thấy tệp sổ/ví nào được chia sẻ với email Google của bạn.<br><br>Nếu bạn được chia sẻ qua Liên kết (Link), hãy dùng nút <strong>"Nhập link nhận chia sẻ"</strong> để dán link vào nhé!',
+            icon: 'info'
+          });
+        } else if (typeof showToast === 'function') {
+          showToast('Chưa có tệp nào được chia sẻ với bạn trên Drive', 'info');
+        }
+        return;
+      }
+
+      this.renderSharedFilesListModal(files);
+    } catch (err) {
+      console.warn('[ReceiveShareModal] Lỗi quét tệp Drive trực tiếp:', err);
+      if (typeof showToast === 'function') {
+        showToast(err.message || 'Lỗi khi quét tệp Google Drive', 'error');
+      }
+    }
+  },
+
+  renderSharedFilesListModal(files) {
+    let modal = document.getElementById('modal-drive-shared-files');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'modal-drive-shared-files';
+      modal.className = 'modal-overlay';
+      modal.setAttribute('style', 'z-index: 100060; display: flex; align-items: center; justify-content: center; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);');
+      document.body.appendChild(modal);
+    }
+
+    const esc = typeof escapeHTML === 'function' ? escapeHTML : (s => s || '');
+
+    const renderItems = (filteredFiles) => {
+      if (filteredFiles.length === 0) {
+        return '<div style="text-align: center; padding: 24px 12px; color: var(--text-muted); font-size: 0.88rem;">Không tìm thấy tệp nào khớp</div>';
+      }
+      return filteredFiles.map(f => {
+        const cleanName = (f.name || 'Tệp chia sẻ')
+          .replace(/\s*\([^)]*stc_shared[^)]*\)/i, '')
+          .replace(/^stc_shared_[^_]+_[^_]+_?/, '')
+          .replace(/\.json$/, '')
+          .trim();
+        const ownerName = f.owners?.[0]?.displayName || f.sharingUser?.displayName || 'Chủ sở hữu';
+        const ownerEmail = f.owners?.[0]?.emailAddress || f.sharingUser?.emailAddress || '';
+        const modDate = f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+        const canEdit = f.capabilities?.canEdit;
+        const roleLabel = canEdit ? 'Chỉnh sửa' : 'Chỉ xem';
+
+        return `
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); margin-bottom: 8px;">
+            <div style="min-width: 0; flex: 1;">
+              <div style="font-weight: 600; font-size: 0.92rem; color: var(--text-primary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${esc(cleanName)}">
+                ${esc(cleanName)}
+              </div>
+              <div style="font-size: 0.76rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span>Chia sẻ bởi: <strong style="color: var(--text-secondary);">${esc(ownerName || ownerEmail)}</strong></span>
+                ${modDate ? `<span>• ${modDate}</span>` : ''}
+                <span style="padding: 1px 6px; border-radius: 4px; font-size: 0.68rem; background: rgba(59, 130, 246, 0.12); color: #3b82f6;">${roleLabel}</span>
+              </div>
+            </div>
+            <button type="button" class="btn-primary btn-sm" onclick="ReceiveShareModal.selectDriveFileFromList('${f.id}', '${esc(cleanName)}')" style="padding: 6px 12px; font-size: 0.8rem; white-space: nowrap; flex-shrink: 0;">
+              Nhận Ví
+            </button>
+          </div>
+        `;
+      }).join('');
+    };
+
+    modal.innerHTML = `
+      <div class="modal-dialog" style="max-width: 480px; width: 92%; max-height: 85vh; display: flex; flex-direction: column; background: var(--bg-surface); border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;">
+        <div class="modal-header" style="padding: 14px 18px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: rgba(37, 99, 235, 0.12); display: flex; align-items: center; justify-content: center; color: #2563eb;">
+              <svg viewBox="0 0 87.3 78" style="width: 16px; height: 15px;"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg>
+            </div>
+            <h3 style="margin: 0; font-size: 1rem; font-weight: 700; color: var(--text-primary);">Tệp Chia Sẻ Với Tôi (${files.length})</h3>
+          </div>
+          <button type="button" class="btn-icon" onclick="document.getElementById('modal-drive-shared-files')?.remove()" title="Đóng">
+            ✕
+          </button>
+        </div>
+        <div style="padding: 10px 18px 6px; border-bottom: 1px solid var(--border-color);">
+          <input type="text" id="drive-files-search-input" placeholder="Tìm kiếm tên sổ, ví hoặc email..." style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); font-size: 0.85rem; box-sizing: border-box;" />
+        </div>
+        <div id="drive-files-container" style="padding: 14px 18px; overflow-y: auto; max-height: 50vh; flex: 1;">
+          ${renderItems(files)}
+        </div>
+        <div class="modal-footer" style="padding: 10px 18px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-card);">
+          <button type="button" class="btn-secondary btn-sm" onclick="document.getElementById('modal-drive-shared-files')?.remove(); ReceiveShareModal.pickGoogleDriveDirectly();">
+            Mở Google Picker
+          </button>
+          <button type="button" class="btn-secondary btn-sm" onclick="document.getElementById('modal-drive-shared-files')?.remove()">
+            Đóng
+          </button>
+        </div>
+      </div>
+    `;
+
+    const searchInput = document.getElementById('drive-files-search-input');
+    const container = document.getElementById('drive-files-container');
+    if (searchInput && container) {
+      searchInput.oninput = (e) => {
+        const q = (e.target.value || '').trim().toLowerCase();
+        const filtered = files.filter(f => {
+          const name = (f.name || '').toLowerCase();
+          const owner = (f.owners?.[0]?.displayName || f.owners?.[0]?.emailAddress || '').toLowerCase();
+          return !q || name.includes(q) || owner.includes(q);
+        });
+        container.innerHTML = renderItems(filtered);
+      };
+    }
+  },
+
+  async selectDriveFileFromList(fileId, fileName) {
+    const modal = document.getElementById('modal-drive-shared-files');
+    if (modal) modal.remove();
+    if (typeof showToast === 'function') {
+      showToast(`Đã chọn: ${fileName || fileId}`, 'info');
+    }
+    await this.promptWithToken(`gdrive_${fileId}`);
   },
 
   // Chọn tệp chia sẻ từ Google Picker
