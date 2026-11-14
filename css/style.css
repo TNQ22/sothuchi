@@ -11744,11 +11744,13 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 .share-role-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 3px 8px;
+  padding: 5px 6px;
   border-radius: 6px;
+  min-width: 26px;
+  height: 26px;
 }
 
 .share-role-badge.editor {
@@ -11765,14 +11767,16 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
   border: 1px solid rgba(239, 68, 68, 0.2);
-  padding: 4px 8px;
+  padding: 5px 6px;
   border-radius: 6px;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
   transition: all 0.2s ease;
 }
 

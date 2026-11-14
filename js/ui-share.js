@@ -581,8 +581,8 @@ const UniversalShareModal = {
     this.shares.forEach(s => {
       const isEditor = s.role === 'editor';
       const roleBadge = isEditor
-        ? '<span class="share-role-badge editor"><i data-lucide="edit-3" style="width:12px;height:12px;"></i> Chỉnh sửa</span>'
-        : '<span class="share-role-badge viewer"><i data-lucide="eye" style="width:12px;height:12px;"></i> Chỉ xem</span>';
+        ? '<span class="share-role-badge editor" title="Quyền Chỉnh sửa (Editor)"><i data-lucide="edit-3" style="width:14px;height:14px;"></i></span>'
+        : '<span class="share-role-badge viewer" title="Quyền Chỉ xem (Viewer)"><i data-lucide="eye" style="width:14px;height:14px;"></i></span>';
 
       const avatarHtml = s.user_picture
         ? `<img src="${escapeHTML(s.user_picture)}" class="share-member-avatar" alt="avatar" />`
@@ -599,8 +599,8 @@ const UniversalShareModal = {
           </div>
           <div class="share-member-right">
             ${roleBadge}
-            <button type="button" class="btn-revoke-share" title="Thu hồi quyền" onclick="UniversalShareModal.handleRevokeEmailShare('${s.id}')">
-              <i data-lucide="user-x" style="width: 15px; height: 15px;"></i> Thu hồi
+            <button type="button" class="btn-revoke-share" title="Thu hồi quyền" aria-label="Thu hồi quyền" onclick="UniversalShareModal.handleRevokeEmailShare('${s.id}')">
+              <i data-lucide="user-x" style="width: 15px; height: 15px;"></i>
             </button>
           </div>
         </div>

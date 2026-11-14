@@ -125,6 +125,20 @@ class GoogleDriveSync {
       this.setupTokenRefreshTimer();
       this.setupGoogleIframeDismissWatcher();
 
+      // Kiểm tra scope version để đảm bảo token có quyền đọc file sharedWithMe qua REST API
+      const REQUIRED_SCOPE_VER = 'v3_full_drive';
+      try {
+        const scopeVer = await db.settings.get('googleScopeVersion');
+        if (!scopeVer || scopeVer.value !== REQUIRED_SCOPE_VER) {
+          sessionStorage.removeItem('sothuchi_google_access_token');
+          sessionStorage.removeItem('sothuchi_google_token_expires_at');
+          await db.settings.delete('googleAccessToken');
+          await db.settings.delete('googleTokenExpiresAt');
+          await db.settings.put({ key: 'googleScopeVersion', value: REQUIRED_SCOPE_VER });
+          console.log('[GoogleDrive] Nâng cấp scope sang full drive để đọc tệp chia sẻ, xóa token cũ.');
+        }
+      } catch (_) {}
+
       // Khôi phục Token nếu còn hiệu lực (tránh bắt đăng nhập lại hoặc treo khi reload)
       try {
         let savedToken = sessionStorage.getItem('sothuchi_google_access_token');
@@ -468,7 +482,7 @@ class GoogleDriveSync {
         try {
           const codeClient = google.accounts.oauth2.initCodeClient({
             client_id: this.clientId,
-            scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+            scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
             ux_mode: 'popup',
             callback: async (resp) => {
               if (settled) return;
@@ -568,7 +582,7 @@ class GoogleDriveSync {
 
         const tokenClientConfig = {
           client_id: this.clientId,
-          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
           prompt: promptValue,
           callback: async (resp) => {
             if (settled) return;
@@ -2183,6 +2197,33 @@ class GoogleDriveSync {
     }
     await this.deleteItemShareKey(`gdrive_${fileId}`);
     return { success: true };
+  }
+
+  // Khi chủ sở hữu xóa sổ/tài khoản, tự động hủy chia sẻ và xóa tệp chia sẻ trên Google Drive
+  async unshareOwnedItem(itemType, itemId) {
+    try {
+      await this.ensureToken(false);
+      if (!this.accessToken) return { success: true };
+
+      const fileId = await this.getSharedFileId(itemType, itemId);
+      if (fileId) {
+        try {
+          await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${this.accessToken}` }
+          });
+          console.log(`[GoogleDrive] Đã hủy chia sẻ và xóa file ${fileId} của ${itemType} #${itemId} trên Drive.`);
+        } catch (e) {
+          console.warn('[GoogleDrive] Lỗi khi xóa file chia sẻ trên Drive:', e);
+        }
+        await this.setSharedFileId(itemType, itemId, null);
+      }
+      await this.deleteItemShareKey(`${itemType}_${itemId}`);
+      return { success: true };
+    } catch (err) {
+      console.warn('[GoogleDrive] unshareOwnedItem warning:', err);
+      return { success: false, error: err.message };
+    }
   }
 
   async getShareLinkInfo(token) {
