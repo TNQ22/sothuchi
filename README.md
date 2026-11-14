@@ -79,6 +79,10 @@ git push -u origin main
 2. Vào mục **APIs & Services (API & Dịch vụ)** -> **Library (Thư viện)**:
    - Tìm kiếm và bấm **ENABLE (Bật)**: **Google Drive API** (để đồng bộ dữ liệu vào Drive cá nhân và tự động quét sổ chia sẻ).
 
+> [!TIP]
+> **Về Google API Key & Google Picker API:**  
+> Nếu trước đây bạn từng tạo **API Key** (`AIzaSy...`) hoặc bật **Google Picker API**, bạn **HOÀN TOÀN CÓ THỂ XOÁ API Key này** và **TẮT Google Picker API** trong Google Cloud Console. Ứng dụng hiện tại chỉ dùng duy nhất **Google Drive API** và **OAuth 2.0 Client ID**.
+
 ### 2. Tạo Google OAuth Client ID:
 1. Vào mục **APIs & Services** -> **Credentials (Thông tin xác thực)**:
    - Chọn **Create Credentials** -> **OAuth client ID**.
