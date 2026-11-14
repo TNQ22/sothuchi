@@ -2368,29 +2368,78 @@ class GoogleDriveSync {
     const fileId = token.replace(/^gdrive_/, '');
     await this.ensureToken(true);
 
-    const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,owners,capabilities,shared`, {
-      headers: { Authorization: `Bearer ${this.accessToken}` }
-    });
-    if (!metaRes.ok) {
+    if (!this.apiKey) {
+      const savedKey = await db.settings.get('googleApiKey');
+      if (savedKey?.value) {
+        this.apiKey = savedKey.value.trim();
+      } else if (window.EnvConfig) {
+        this.apiKey = (window.EnvConfig.get('GOOGLE_API_KEY', '') || window.EnvConfig.get('VITE_GOOGLE_API_KEY', '')).trim();
+      }
+    }
+
+    let meta = null;
+    let rawText = null;
+
+    // 1. Thử gọi trực tiếp với OAuth Bearer Token (kèm supportsAllDrives=true)
+    try {
+      const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true&fields=id,name,owners,capabilities,shared`, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (metaRes.ok) {
+        meta = await metaRes.json();
+        const mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true&alt=media`, {
+          headers: { Authorization: `Bearer ${this.accessToken}` }
+        });
+        if (mediaRes.ok) {
+          rawText = await mediaRes.text();
+        }
+      }
+    } catch (_) {}
+
+    // 2. Nếu file public ("anyone") hoặc token chưa có quyền trực tiếp: Thử đọc với API Key
+    if (!rawText && this.apiKey) {
+      try {
+        const metaRes2 = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true&fields=id,name,owners,capabilities,shared&key=${this.apiKey}`);
+        if (metaRes2.ok) {
+          if (!meta) meta = await metaRes2.json();
+          const mediaRes2 = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true&alt=media&key=${this.apiKey}`);
+          if (mediaRes2.ok) {
+            rawText = await mediaRes2.text();
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 3. Fallback tải tệp public qua direct download endpoint của Google Drive
+    if (!rawText) {
+      try {
+        const ucRes = await fetch(`https://drive.google.com/uc?export=download&id=${fileId}`);
+        if (ucRes.ok) {
+          const t = await ucRes.text();
+          if (t && (t.includes('"itemType"') || t.includes('"encrypted"') || t.includes('"transactions"'))) {
+            rawText = t;
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (!rawText) {
       throw new Error('Liên kết chia sẻ không tồn tại hoặc bạn không có quyền truy cập file này.');
     }
-    const meta = await metaRes.json();
 
-    const mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-      headers: { Authorization: `Bearer ${this.accessToken}` }
-    });
-    if (!mediaRes.ok) {
-      throw new Error('Không thể đọc dữ liệu mục chia sẻ từ Google Drive.');
+    let json;
+    try {
+      json = JSON.parse(rawText);
+    } catch (e) {
+      throw new Error('Dữ liệu mục chia sẻ trên Google Drive không đúng định dạng JSON.');
     }
-    const rawText = await mediaRes.text();
-    let json = JSON.parse(rawText);
 
     const isEncrypted = Boolean(json.encrypted);
-    const itemName = json.itemName || json.item?.name || meta.name?.replace(/\s*\([^\)]*stc_shared[^\)]*\)/i, '').replace(/^stc_shared_[^_]+_[^_]+_?/, '').replace(/\.json$/, '').trim() || 'Tài khoản chia sẻ';
+    const itemName = json.itemName || json.item?.name || meta?.name?.replace(/\s*\([^\)]*stc_shared[^\)]*\)/i, '').replace(/^stc_shared_[^_]+_[^_]+_?/, '').replace(/\.json$/, '').trim() || 'Tài khoản chia sẻ';
     const itemType = json.itemType || 'account';
-    const ownerName = json.owner?.name || meta.owners?.[0]?.displayName || 'Chủ sở hữu';
-    const ownerEmail = json.owner?.email || meta.owners?.[0]?.emailAddress || '';
-    const role = meta.capabilities?.canEdit ? 'editor' : 'viewer';
+    const ownerName = json.owner?.name || meta?.owners?.[0]?.displayName || 'Chủ sở hữu';
+    const ownerEmail = json.owner?.email || meta?.owners?.[0]?.emailAddress || '';
+    const role = meta?.capabilities?.canEdit ? 'editor' : 'viewer';
 
     return {
       token,

@@ -1281,28 +1281,7 @@ const ReceiveShareModal = {
       const syncService = isGDrive ? window.googleDriveService : window.serverSyncService;
       if (!syncService) throw new Error('Dịch vụ đồng bộ chưa sẵn sàng.');
 
-      let info;
-      try {
-        info = await syncService.getShareLinkInfo(token);
-      } catch (linkErr) {
-        if (isGDrive && window.googleDriveService && (linkErr.message?.includes('404') || linkErr.message?.includes('quyền truy cập') || linkErr.message?.includes('không tồn tại'))) {
-          const tryPicker = typeof showConfirm === 'function' ? await showConfirm({
-            title: 'Cần Mở Google Picker',
-            message: `Tệp chia sẻ này chưa được ủy quyền vào ứng dụng theo chính sách bảo mật <code>drive.file</code> của Google.<br><br>
-            Bạn có muốn <strong>Mở Google Picker</strong> để chọn và ủy quyền tệp này ngay không?`,
-            confirmText: 'Mở Google Picker',
-            cancelText: 'Huỷ',
-            icon: 'folder-search'
-          }) : false;
-
-          if (tryPicker) {
-            await this.pickGoogleDriveDirectly();
-            return;
-          }
-          throw new Error('Không thể truy cập tệp chia sẻ này trực tiếp. Vui lòng bấm vào biểu tượng Google Drive trên danh sách tài khoản để duyệt qua Google Picker.');
-        }
-        throw linkErr;
-      }
+      const info = await syncService.getShareLinkInfo(token);
       this.shareData = info;
 
       const modal = document.getElementById('modal-receive-share');
