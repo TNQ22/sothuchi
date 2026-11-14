@@ -968,7 +968,10 @@ const UniversalShareModal = {
         if (typeof showPrompt === 'function') {
           await showPrompt({
             title: `Đã Cấp Quyền Cho ${successCount} Email`,
-            message: `Chỉ các email vừa được mời mới có quyền truy cập vào mục này.<br><br>Sao chép liên kết bên dưới để gửi cho họ:`,
+            message: `Đã cấp quyền truy cập trên Google Drive cho <strong>${successCount} email</strong>.<br><br>
+            • Người nhận có thể mở trực tiếp bằng <strong>liên kết bên dưới</strong>.<br>
+            • Hoặc người nhận chỉ cần mở ứng dụng và bấm biểu tượng Google Drive (Picker) trong mục <em>Sổ / Ví Chia Sẻ</em> để nhận ví.<br><br>
+            Sao chép liên kết bên dưới để gửi cho họ:`,
             defaultValue: fullUrl,
             confirmText: 'Sao Chép & Đóng',
             cancelText: 'Đóng',
@@ -1546,6 +1549,33 @@ const ReceiveShareModal = {
       modal.classList.add('open');
       if (window.lucide) lucide.createIcons();
     } catch (err) {
+      console.warn('[ReceiveShareModal] Lỗi kiểm tra liên kết chia sẻ:', err);
+      const isGDrive = token.startsWith('gdrive_');
+      if (isGDrive && window.googleDriveService && typeof showConfirm === 'function') {
+        const tryPicker = await showConfirm({
+          title: 'Xác Nhận Quyền Mở Tệp Google Drive',
+          message: `Không thể đọc trực tiếp tệp chia sẻ này: <strong>${typeof escapeHTML === 'function' ? escapeHTML(err.message) : err.message}</strong>.<br><br>
+          Nếu tệp được chia sẻ riêng qua email, theo chuẩn bảo mật <code>drive.file</code> của Google, bạn cần <strong>chọn tệp trong Google Picker hoặc danh sách chia sẻ 1 lần</strong> để Google cấp quyền cho ứng dụng.<br><br>
+          Bạn có muốn mở Google Drive để chọn tệp không?`,
+          confirmText: 'Mở Google Drive',
+          cancelText: 'Huỷ',
+          icon: 'shield-check'
+        });
+        if (tryPicker) {
+          try {
+            const picked = await window.googleDriveService.openPickerForSharedItems();
+            if (picked && picked.fileId) {
+              await this.promptWithToken(`gdrive_${picked.fileId}`, key);
+              return;
+            }
+          } catch (pickerErr) {
+            console.warn('[ReceiveShareModal] Mở Picker thất bại, chuyển sang quét REST:', pickerErr);
+            await this.pickGoogleDriveFromList();
+            return;
+          }
+        }
+        return;
+      }
       if (typeof showToast === 'function') showToast(err.message, 'error');
     }
   },
@@ -1560,6 +1590,9 @@ const ReceiveShareModal = {
 
     try {
       const isGDrive = this.currentToken.startsWith('gdrive_');
+      if (isGDrive && window.googleDriveService && !window.googleDriveService.hasValidToken(60000)) {
+        await window.googleDriveService.ensureToken(true).catch(() => {});
+      }
       const syncService = isGDrive ? window.googleDriveService : window.serverSyncService;
       if (!syncService) throw new Error('Dịch vụ đồng bộ chưa sẵn sàng.');
 

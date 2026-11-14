@@ -2222,6 +2222,25 @@ class GoogleDriveSync {
       throw new Error(errors.join('; ') || 'Không thể chia sẻ tới danh sách email này trên Google Drive.');
     }
 
+    // Đồng thời kích hoạt quyền đọc qua liên kết (role: reader, type: anyone) trên file chia sẻ
+    // Điều này cho phép người nhận mở trực tiếp liên kết do hệ thống tạo mà không bị Google chặn bởi phạm vi drive.file
+    try {
+      await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          role: 'reader',
+          type: 'anyone'
+        })
+      });
+      console.log(`[GoogleDrive] Đã kích hoạt link reader cho file ${fileId} để hỗ trợ truy cập trực tiếp qua link.`);
+    } catch (e) {
+      console.warn('[GoogleDrive] Kích hoạt link reader cho file chia sẻ warning:', e);
+    }
+
     const token = `gdrive_${fileId}`;
     if (shareKey) {
       await this.saveItemShareKey(token, shareKey);
@@ -2376,7 +2395,11 @@ class GoogleDriveSync {
 
   async getShareLinkInfo(token) {
     const fileId = token.replace(/^gdrive_/, '');
-    await this.ensureToken(true);
+    if (this.hasValidToken(180000)) {
+      // Đã có token hợp lệ
+    } else {
+      await this.ensureToken(false).catch(() => {});
+    }
 
     if (!this.apiKey) {
       const savedKey = await db.settings.get('googleApiKey');
@@ -2390,21 +2413,23 @@ class GoogleDriveSync {
     let meta = null;
     let rawText = null;
 
-    // 1. Thử gọi trực tiếp với OAuth Bearer Token (kèm supportsAllDrives=true)
-    try {
-      const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true&fields=id,name,owners,capabilities,shared`, {
-        headers: { Authorization: `Bearer ${this.accessToken}` }
-      });
-      if (metaRes.ok) {
-        meta = await metaRes.json();
-        const mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true&alt=media`, {
+    // 1. Thử gọi trực tiếp với OAuth Bearer Token nếu có (kèm supportsAllDrives=true)
+    if (this.accessToken) {
+      try {
+        const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true&fields=id,name,owners,capabilities,shared`, {
           headers: { Authorization: `Bearer ${this.accessToken}` }
         });
-        if (mediaRes.ok) {
-          rawText = await mediaRes.text();
+        if (metaRes.ok) {
+          meta = await metaRes.json();
+          const mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true&alt=media`, {
+            headers: { Authorization: `Bearer ${this.accessToken}` }
+          });
+          if (mediaRes.ok) {
+            rawText = await mediaRes.text();
+          }
         }
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
 
     // 2. Nếu file public ("anyone") hoặc token chưa có quyền trực tiếp: Thử đọc với API Key
     if (!rawText && this.apiKey) {
