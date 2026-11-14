@@ -431,7 +431,7 @@ const UniversalShareModal = {
         this.shares = res.shares || [];
         const rawLinks = res.links || [];
         for (const l of rawLinks) {
-          l.shareKey = await window.serverSyncService.getItemShareKey(l.token) || await window.serverSyncService.getItemShareKey(`${this.currentType}_${this.currentId}`);
+          l.shareKey = (await window.serverSyncService.getItemShareKey(l.token)) || l.share_key || null;
         }
         this.links = rawLinks;
 
@@ -523,7 +523,7 @@ const UniversalShareModal = {
         this.shares = res.shares || [];
         const rawLinks = res.links || [];
         for (const l of rawLinks) {
-          l.shareKey = await window.googleDriveService.getItemShareKey(l.token) || await window.googleDriveService.getItemShareKey(`${this.currentType}_${this.currentId}`);
+          l.shareKey = (await window.googleDriveService.getItemShareKey(l.token)) || null;
         }
         this.links = rawLinks;
 
@@ -680,14 +680,20 @@ const UniversalShareModal = {
         : `${origin}${pathname}#share_token=${l.token}`;
       const dateStr = l.created_at ? new Date(l.created_at).toLocaleDateString('vi-VN') : '';
 
+      const encBadge = shareKey
+        ? `<span class="badge" style="font-size: 0.68rem; background: rgba(16, 185, 129, 0.12); color: #10b981; border-radius: 999px; padding: 1px 7px;">
+             <i data-lucide="shield-check" style="width: 11px; height: 11px; display: inline-block; vertical-align: middle;"></i> E2EE AES-256
+           </span>`
+        : `<span class="badge" style="font-size: 0.68rem; background: rgba(148, 163, 184, 0.12); color: #94a3b8; border-radius: 999px; padding: 1px 7px;">
+             <i data-lucide="globe" style="width: 11px; height: 11px; display: inline-block; vertical-align: middle;"></i> Công khai
+           </span>`;
+
       html += `
         <div class="share-link-row">
           <div class="share-link-header-row">
             <div style="display:flex; align-items:center; gap: 8px;">
               ${roleBadge}
-              <span class="badge" style="font-size: 0.68rem; background: rgba(16, 185, 129, 0.12); color: #10b981; border-radius: 999px; padding: 1px 7px;">
-                <i data-lucide="shield-check" style="width: 11px; height: 11px; display: inline-block; vertical-align: middle;"></i> E2EE AES-256
-              </span>
+              ${encBadge}
               <span class="share-link-date">Tạo ngày ${dateStr}</span>
             </div>
             <button type="button" class="btn-revoke-share" title="Thu hồi liên kết" onclick="UniversalShareModal.handleRevokeLink('${l.id}')">
@@ -1050,7 +1056,7 @@ const UniversalShareModal = {
 
   async copyLink(token) {
     const syncService = this.getActiveService();
-    const key = (await syncService.getItemShareKey(token)) || (await syncService.getItemShareKey(`${this.currentType}_${this.currentId}`));
+    const key = await syncService.getItemShareKey(token);
     const fullUrl = key
       ? `${window.location.origin}${window.location.pathname}#share_token=${token}&key=${encodeURIComponent(key)}`
       : `${window.location.origin}${window.location.pathname}#share_token=${token}`;

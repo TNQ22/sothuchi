@@ -1968,6 +1968,7 @@ class GoogleDriveSync {
         ...projectedPayload,
         updatedAt: new Date().toISOString()
       }, null, 2);
+      await this.deleteItemShareKey(`${itemType}_${itemId}`);
     }
 
     // Đặt tên file thân thiện dễ đọc trên Google Drive / Google Picker: "[Tên sổ] - [Email chủ] (stc_shared_account_123).json"
@@ -2290,6 +2291,10 @@ class GoogleDriveSync {
     if (shareKey) {
       await this.saveItemShareKey(token, shareKey);
       await this.saveItemShareKey(fileId, shareKey);
+    } else {
+      await this.deleteItemShareKey(token);
+      await this.deleteItemShareKey(fileId);
+      await this.deleteItemShareKey(`${itemType}_${itemId}`);
     }
 
     return {
