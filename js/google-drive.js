@@ -123,8 +123,8 @@ class GoogleDriveSync {
       this.setupTokenRefreshTimer();
       this.setupGoogleIframeDismissWatcher();
 
-      // Đảm bảo scope an toàn drive.file (chỉ truy cập file do app tạo ra)
-      const REQUIRED_SCOPE_VER = 'v3_drive_file';
+      // Kiểm tra scope version để đảm bảo token có quyền đọc file sharedWithMe qua REST API
+      const REQUIRED_SCOPE_VER = 'v3_full_drive';
       try {
         const scopeVer = await db.settings.get('googleScopeVersion');
         if (!scopeVer || scopeVer.value !== REQUIRED_SCOPE_VER) {
@@ -133,7 +133,7 @@ class GoogleDriveSync {
           await db.settings.delete('googleAccessToken');
           await db.settings.delete('googleTokenExpiresAt');
           await db.settings.put({ key: 'googleScopeVersion', value: REQUIRED_SCOPE_VER });
-          console.log('[GoogleDrive] Đặt lại scope an toàn drive.file.');
+          console.log('[GoogleDrive] Nâng cấp scope sang full drive để đọc tệp chia sẻ, xóa token cũ.');
         }
       } catch (_) {}
 
@@ -480,7 +480,7 @@ class GoogleDriveSync {
         try {
           const codeClient = google.accounts.oauth2.initCodeClient({
             client_id: this.clientId,
-            scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+            scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
             ux_mode: 'popup',
             callback: async (resp) => {
               if (settled) return;
@@ -580,7 +580,7 @@ class GoogleDriveSync {
 
         const tokenClientConfig = {
           client_id: this.clientId,
-          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
           prompt: promptValue,
           callback: async (resp) => {
             if (settled) return;
@@ -2763,8 +2763,10 @@ class GoogleDriveSync {
       for (const [fileId, fileMeta] of fileMap.entries()) {
         const canEdit = Boolean(fileMeta.capabilities?.canEdit);
         const role = canEdit ? 'editor' : 'viewer';
-        const ownerEmail = fileMeta.owners?.[0]?.emailAddress || '';
+        const ownerEmail = (fileMeta.owners?.[0]?.emailAddress || '').trim().toLowerCase();
         const ownerName = fileMeta.owners?.[0]?.displayName || ownerEmail || 'Chủ sở hữu';
+        const myEmail = (this.userProfile?.email || '').trim().toLowerCase();
+        const isOwnerMe = Boolean(fileMeta.owners?.[0]?.me) || (ownerEmail && myEmail && ownerEmail === myEmail);
 
         let mediaRes;
         try {
@@ -2786,6 +2788,51 @@ class GoogleDriveSync {
 
         const itemType = remoteJson.itemType || 'account';
         const remoteItemId = remoteJson.itemId || fileId;
+
+        // KIỂM TRA QUAN TRỌNG: Đây có phải là tệp do chính chủ sở hữu tạo ra và chia sẻ đi?
+        const ownedSharesSetting = (await db.settings.get('syncOwnedSharedProjections')) || { value: [] };
+        const ownedList = Array.isArray(ownedSharesSetting.value) ? ownedSharesSetting.value : [];
+        const isOwnedProjection = ownedList.some(x =>
+          (x.fileId && String(x.fileId) === String(fileId)) ||
+          (x.itemType === itemType && String(x.itemId) === String(remoteItemId))
+        );
+
+        let isOriginalLocalItem = false;
+        if (itemType === 'account') {
+          const originAcc = await db.accounts.get(Number(remoteItemId) || remoteItemId);
+          if (originAcc && !originAcc._isSharedItem && !originAcc.isDeleted) {
+            isOriginalLocalItem = true;
+          }
+        }
+
+        const isOwnerOfFile = isOwnerMe || isOwnedProjection || isOriginalLocalItem;
+
+        if (isOwnerOfFile) {
+          // Chủ sở hữu: Tuyệt đối KHÔNG tự nhận lại tệp chia sẻ của chính mình!
+          // Nếu trước đó do lỗi đã lỡ tạo một account trùng lặp (_isSharedItem: true), lập tức xóa sạch
+          if (itemType === 'account') {
+            const allAccs = await db.accounts.toArray();
+            const selfDupAccs = allAccs.filter(a =>
+              a._isSharedItem &&
+              (a._shareId === fileId || String(a._remoteId) === String(remoteItemId))
+            );
+            for (const dup of selfDupAccs) {
+              console.log(`[GoogleDrive] Xóa tài khoản trùng lặp do chủ sổ tự nhận (${dup.name} #${dup.id})`);
+              await db.accounts.delete(dup.id);
+              if (dup.id !== undefined && !isNaN(Number(dup.id))) {
+                await db.accounts.delete(Number(dup.id));
+              }
+              const relTxs = (await db.transactions.toArray()).filter(t =>
+                Number(t.accountId) === Number(dup.id) || Number(t.toAccountId) === Number(dup.id) ||
+                String(t.accountId) === String(dup.id) || String(t.toAccountId) === String(dup.id) ||
+                (dup._shareId && String(t._shareId) === String(dup._shareId))
+              );
+              for (const t of relTxs) await db.transactions.delete(t.id);
+              hasChanges = true;
+            }
+          }
+          continue; // Bỏ qua tệp này, không tự nhận!
+        }
 
         if (isLeft(fileId, remoteItemId)) {
           const matchAcc = (await db.accounts.toArray()).find(a => a._isSharedItem && (a._shareId === fileId || String(a._remoteId) === String(remoteItemId)));

@@ -183,12 +183,39 @@ const UIAccounts = {
       const isServerAvailable = Boolean(sService && sService.token && sService.serverUrl && sService.autoSync !== false);
       const isDriveAvailable = Boolean(gService && gService.isConnected && gService.autoSync !== false);
 
-      const personalAccs = (await db.accounts.toArray()).filter(a => !a.isDeleted && !a._isSharedItem && (a.isShared === 1 || a.isShared === true));
+      const allAccs = await db.accounts.toArray();
+      const personalAccs = allAccs.filter(a => !a.isDeleted && !a._isSharedItem && (a.isShared === 1 || a.isShared === true));
+      const personalAccIds = new Set(allAccs.filter(a => !a.isDeleted && !a._isSharedItem).map(a => String(a.id)));
 
       const ownedSetting = await db.settings.get('syncOwnedSharedProjections');
       let currentOwnedList = (ownedSetting && Array.isArray(ownedSetting.value)) ? [...ownedSetting.value] : [];
 
       let changed = false;
+
+      // 0. Dọn dẹp tài khoản chia sẻ ảo do chủ sổ vô tình tự nhận chính tài khoản của mình
+      const ownedFileIds = new Set(currentOwnedList.map(x => x.fileId).filter(Boolean));
+      const selfDups = allAccs.filter(a =>
+        a._isSharedItem && (
+          personalAccIds.has(String(a._remoteId)) ||
+          (a._shareId && ownedFileIds.has(String(a._shareId)))
+        )
+      );
+      if (selfDups.length > 0) {
+        for (const dup of selfDups) {
+          console.log('[UIAccounts] Xóa tài khoản trùng lặp do chủ sổ tự nhận:', dup.name, dup.id);
+          await db.accounts.delete(dup.id);
+          if (dup.id !== undefined && !isNaN(Number(dup.id))) {
+            await db.accounts.delete(Number(dup.id));
+          }
+          const relTxs = (await db.transactions.toArray()).filter(t =>
+            Number(t.accountId) === Number(dup.id) || Number(t.toAccountId) === Number(dup.id) ||
+            String(t.accountId) === String(dup.id) || String(t.toAccountId) === String(dup.id) ||
+            (dup._shareId && String(t._shareId) === String(dup._shareId))
+          );
+          for (const t of relTxs) await db.transactions.delete(t.id);
+        }
+        changed = true;
+      }
 
       // 1. Nếu Máy Chủ Riêng đã ngắt kết nối: loại bỏ toàn bộ projection thuộc về server
       if (!isServerAvailable) {
