@@ -586,7 +586,7 @@ class DropboxSync {
         if (isAccounts) {
           const isDef = local.name && DEFAULT_ACCOUNT_NAMES.includes(local.name.trim().toLowerCase());
           const isBlank = (local.balance === 0 || local.balance === '0') && ((local.initialBalance || 0) === 0) && !local.isShared;
-          const isUntouchedDef = isDef && isBlank && (Number(local.updatedAt || 0) <= 1);
+          const isUntouchedDef = isDef && isBlank && (Number(local.updatedAt || 0) <= 1 || (remote.balance !== 0 || remote.initialBalance !== 0));
           if (isDef && isBlank && remote.isDeleted) {
             map.set(key, { ...remote, id: local.id, isDeleted: 1 });
             continue;

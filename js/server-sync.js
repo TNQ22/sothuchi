@@ -1997,7 +1997,7 @@ class ServerSyncService {
       const isBlankAcc = (a) => (a.balance === 0 || a.balance === '0') &&
                                 ((a.initialBalance || 0) === 0) &&
                                 !a.isShared;
-      const isUntouchedDefAcc = (a) => isAccountTable && isDefAcc(a) && isBlankAcc(a) && !localTxAccIds.has(String(a.id)) && (Number(a.updatedAt || 0) <= 1);
+      const isUntouchedDefAcc = (a) => isAccountTable && isDefAcc(a) && isBlankAcc(a) && (!localTxAccIds.has(String(a.id)) || Number(a.updatedAt || 0) <= 1);
 
       const mergeEntityFields = (olderItem, newerItem, tblName = '') => {
         if (!olderItem) return { ...newerItem };

@@ -1807,7 +1807,7 @@ class GoogleDriveSync {
             const DEFAULT_ACCOUNT_NAMES = ['tiền mặt', 'ngân hàng', 'ví điện tử', 'momo / zalopay', 'tài khoản ngân hàng'];
             const isDef = lItem.name && DEFAULT_ACCOUNT_NAMES.includes(lItem.name.trim().toLowerCase());
             const isBlank = (lItem.balance === 0 || lItem.balance === '0') && ((lItem.initialBalance || 0) === 0) && !lItem.isShared;
-            const isUntouchedDef = isDef && isBlank && (Number(lItem.updatedAt || 0) <= 1);
+            const isUntouchedDef = isDef && isBlank && (Number(lItem.updatedAt || 0) <= 1 || (rItem.balance !== 0 || rItem.initialBalance !== 0));
 
             if (table === db.accounts && isUntouchedDef && rItem.isDeleted) {
               itemMap.set(String(lItem.id), { ...rItem, id: lItem.id, isDeleted: 1 });

@@ -392,9 +392,9 @@ async function initDatabase() {
       const def = DEFAULT_ACCOUNTS[index];
       const existing = (await db.accounts.toArray()).find(a => !a._isSharedItem && a.name && a.name.trim().toLowerCase() === def.name.trim().toLowerCase());
       if (existing) {
-        await db.accounts.update(existing.id, { isDeleted: 0, deletedAt: null, updatedAt: now, restoredAt: now });
+        await db.accounts.update(existing.id, { isDeleted: 0, deletedAt: null, updatedAt: 1, restoredAt: 0 });
       } else {
-        await db.accounts.add({ ...def, order: def.order ?? index, isDeleted: 0, updatedAt: now, restoredAt: now });
+        await db.accounts.add({ ...def, order: def.order ?? index, isDeleted: 0, updatedAt: 1, restoredAt: 0 });
       }
     }
   } else {
@@ -1935,15 +1935,14 @@ async function wipeAndResetLocalDatabase(options = {}) {
   if (db.loans) await db.loans.clear();
   if (db.loan_schedules) await db.loan_schedules.clear();
 
-  // Reset tài khoản về mặc định ban đầu với timestamp mới nhất để không bị các bản ghi đã xoá từ remote đè lên
-  const now = Date.now();
+  // Reset tài khoản về mặc định ban đầu với timestamp = 1 (untouched) để không đè lên bản sao lưu từ remote khi đồng bộ
   await db.accounts.clear();
   await db.accounts.bulkAdd(DEFAULT_ACCOUNTS.map((a, index) => ({
     ...a,
     order: a.order ?? index,
     isDeleted: 0,
-    updatedAt: now,
-    restoredAt: now
+    updatedAt: 1,
+    restoredAt: 0
   })));
 
   // Nếu là khôi phục cài đặt gốc toàn diện
