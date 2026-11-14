@@ -171,6 +171,7 @@ const UIAccounts = {
       localStorage.removeItem('sothuchi_shared_view_mode');
     } catch (_) {}
 
+    this.updateSharedSyncButtonVisibility();
     this.bindEvents();
   },
 
@@ -6099,7 +6100,17 @@ const UIAccounts = {
     `;
   },
 
+  updateSharedSyncButtonVisibility() {
+    const syncSharedBtn = document.getElementById('btn-sync-shared-items');
+    if (syncSharedBtn) {
+      const isServerDockerActive = Boolean(window.serverSyncService && (window.serverSyncService.isConnected || window.serverSyncService.token));
+      const isGoogleDriveFullActive = Boolean(window.googleDriveService && window.googleDriveService.fullDriveAccess);
+      syncSharedBtn.style.display = (isServerDockerActive || isGoogleDriveFullActive) ? 'inline-flex' : 'none';
+    }
+  },
+
   async renderSharedDedicatedSection(sharedAccounts, sharedSavings, sharedAccums, sharedLoans, sharedAssets) {
+    this.updateSharedSyncButtonVisibility();
     const container = document.getElementById('shared-items-list-container');
     const totalCountBadge = document.getElementById('badge-shared-items-count');
     const totalCountSeg = document.getElementById('badge-total-shared-count');
@@ -6185,6 +6196,16 @@ const UIAccounts = {
   },
 
   async manualSyncSharedItems(btn) {
+    const isServerDockerActive = Boolean(window.serverSyncService && (window.serverSyncService.isConnected || window.serverSyncService.token));
+    const isGoogleDriveFullActive = Boolean(window.googleDriveService && window.googleDriveService.fullDriveAccess);
+    if (!isServerDockerActive && !isGoogleDriveFullActive) {
+      this.updateSharedSyncButtonVisibility();
+      if (typeof showToast === 'function') {
+        showToast('Tính năng quét tự động cần Máy chủ riêng (Docker) hoặc bật Toàn quyền truy cập Drive. Vui lòng dùng Google Picker hoặc Nhập link.', 'info', 6000);
+      }
+      return;
+    }
+
     const isIconOnly = btn && btn.classList.contains('btn-group-circle-add');
     const originalHtml = btn ? btn.innerHTML : '';
     if (btn) {

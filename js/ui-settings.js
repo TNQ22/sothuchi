@@ -2427,6 +2427,9 @@ const UISettings = {
           'info',
           6000
         );
+        if (window.UIAccounts && typeof window.UIAccounts.updateSharedSyncButtonVisibility === 'function') {
+          window.UIAccounts.updateSharedSyncButtonVisibility();
+        }
         await this.loadSettings();
       });
     }

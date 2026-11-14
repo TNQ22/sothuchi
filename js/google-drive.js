@@ -2252,42 +2252,16 @@ class GoogleDriveSync {
       throw new Error(errors.join('; ') || 'Không thể chia sẻ tới danh sách email này trên Google Drive.');
     }
 
-    // Đồng thời kích hoạt quyền đọc qua liên kết (role: reader, type: anyone) trên file chia sẻ
-    // Điều này cho phép người nhận mở trực tiếp liên kết do hệ thống tạo mà không bị Google chặn bởi phạm vi drive.file
-    try {
-      await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          role: 'reader',
-          type: 'anyone'
-        })
-      });
-      console.log(`[GoogleDrive] Đã kích hoạt link reader cho file ${fileId} để hỗ trợ truy cập trực tiếp qua link.`);
-    } catch (e) {
-      console.warn('[GoogleDrive] Kích hoạt link reader cho file chia sẻ warning:', e);
-    }
-
     const token = `gdrive_${fileId}`;
     if (shareKey) {
       await this.saveItemShareKey(token, shareKey);
       await this.saveItemShareKey(fileId, shareKey);
     }
 
-    const origin = window.location.origin;
-    const pathname = window.location.pathname;
-    const shareLink = shareKey
-      ? `${origin}${pathname}#share_token=${token}&key=${encodeURIComponent(shareKey)}`
-      : `${origin}${pathname}#share_token=${token}`;
-
     return {
       success: true,
       fileId,
       token,
-      shareLink,
       count: createdShares.length,
       emails: createdShares.map(s => s.user_email),
       errors,

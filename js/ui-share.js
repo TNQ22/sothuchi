@@ -961,27 +961,6 @@ const UniversalShareModal = {
         showToast(successCount > 1 ? `Đã chia sẻ thành công với ${successCount} email!` : `Đã chia sẻ thành công với ${emailList[0]}`, 'success');
       }
       await this.loadShareData();
-
-      // Nếu có liên kết chia sẻ (cho các email này), hiển thị prompt để chủ sở hữu sao chép link gửi trực tiếp
-      if (res?.shareLink || res?.token) {
-        const fullUrl = res.shareLink || `${window.location.origin}${window.location.pathname}#share_token=${res.token}`;
-        if (typeof showPrompt === 'function') {
-          await showPrompt({
-            title: `Đã Cấp Quyền Cho ${successCount} Email`,
-            message: `Đã cấp quyền truy cập trên Google Drive cho <strong>${successCount} email</strong>.<br><br>
-            • Người nhận có thể mở trực tiếp bằng <strong>liên kết bên dưới</strong>.<br>
-            • Hoặc người nhận chỉ cần mở ứng dụng và bấm biểu tượng Google Drive (Picker) trong mục <em>Sổ / Ví Chia Sẻ</em> để nhận ví.<br><br>
-            Sao chép liên kết bên dưới để gửi cho họ:`,
-            defaultValue: fullUrl,
-            confirmText: 'Sao Chép & Đóng',
-            cancelText: 'Đóng',
-            icon: 'link'
-          });
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(fullUrl).catch(() => {});
-          }
-        }
-      }
     } catch (err) {
       if (typeof showToast === 'function') showToast(err.message, 'error');
     }
