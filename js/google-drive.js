@@ -33,6 +33,14 @@ class GoogleDriveSync {
     this.vaultRole = 'owner'; // 'owner' | 'editor' | 'viewer'
     this.autoMirror = false; // Tự động lưu 1 bản dự phòng vào Drive cá nhân
     this.mirrorFileId = null;
+    this.fullDriveAccess = false; // false = drive.file (an toàn), true = drive (toàn quyền)
+  }
+
+  getScope() {
+    const driveScope = this.fullDriveAccess
+      ? 'https://www.googleapis.com/auth/drive'
+      : 'https://www.googleapis.com/auth/drive.file';
+    return `${driveScope} https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile`;
   }
 
   // Load saved configuration from DB & EnvConfig
@@ -122,11 +130,19 @@ class GoogleDriveSync {
       const refreshSetting = await db.settings.get('googleRefreshToken');
       if (refreshSetting && refreshSetting.value) this.refreshToken = refreshSetting.value.trim();
 
+      const fullDriveSetting = await db.settings.get('googleDriveFullAccess');
+      if (fullDriveSetting !== undefined && fullDriveSetting.value !== undefined) {
+        this.fullDriveAccess = !!fullDriveSetting.value;
+      } else if (window.EnvConfig) {
+        const envVal = window.EnvConfig.get('GOOGLE_DRIVE_FULL_ACCESS') ?? window.EnvConfig.get('VITE_GOOGLE_DRIVE_FULL_ACCESS');
+        this.fullDriveAccess = envVal === true || envVal === 'true';
+      }
+
       this.setupTokenRefreshTimer();
       this.setupGoogleIframeDismissWatcher();
 
-      // Kiểm tra scope version để đảm bảo token có quyền đọc file an toàn drive.file
-      const REQUIRED_SCOPE_VER = 'v3_drive_file';
+      // Kiểm tra scope version để đảm bảo token có đúng quyền tương ứng (drive.file hoặc drive full)
+      const REQUIRED_SCOPE_VER = this.fullDriveAccess ? 'v4_drive_full' : 'v4_drive_file';
       try {
         const scopeVer = await db.settings.get('googleScopeVersion');
         if (!scopeVer || scopeVer.value !== REQUIRED_SCOPE_VER) {
@@ -135,7 +151,7 @@ class GoogleDriveSync {
           await db.settings.delete('googleAccessToken');
           await db.settings.delete('googleTokenExpiresAt');
           await db.settings.put({ key: 'googleScopeVersion', value: REQUIRED_SCOPE_VER });
-          console.log('[GoogleDrive] Cập nhật scope sang drive.file an toàn tối đa, xóa token cũ.');
+          console.log(`[GoogleDrive] Cập nhật scope sang ${this.fullDriveAccess ? 'drive (toàn quyền)' : 'drive.file'}, xóa token cũ.`);
         }
       } catch (_) {}
 
@@ -198,6 +214,20 @@ class GoogleDriveSync {
   setAutoMirror(enabled) {
     this.autoMirror = !!enabled;
     db.settings.put({ key: 'autoMirrorToPersonalDrive', value: this.autoMirror });
+  }
+
+  async setFullDriveAccess(enabled) {
+    this.fullDriveAccess = !!enabled;
+    await db.settings.put({ key: 'googleDriveFullAccess', value: this.fullDriveAccess });
+    const targetScopeVer = this.fullDriveAccess ? 'v4_drive_full' : 'v4_drive_file';
+    await db.settings.put({ key: 'googleScopeVersion', value: targetScopeVer });
+    // Invalidate tokens so GIS prompts re-consent with the new scope
+    sessionStorage.removeItem('sothuchi_google_access_token');
+    sessionStorage.removeItem('sothuchi_google_token_expires_at');
+    await db.settings.delete('googleAccessToken');
+    await db.settings.delete('googleTokenExpiresAt');
+    this.accessToken = null;
+    this.tokenExpiresAt = 0;
   }
 
   get isConnected() {
@@ -487,7 +517,7 @@ class GoogleDriveSync {
         try {
           const codeClient = google.accounts.oauth2.initCodeClient({
             client_id: this.clientId,
-            scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+            scope: this.getScope(),
             ux_mode: 'popup',
             callback: async (resp) => {
               if (settled) return;
@@ -587,7 +617,7 @@ class GoogleDriveSync {
 
         const tokenClientConfig = {
           client_id: this.clientId,
-          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+          scope: this.getScope(),
           prompt: promptValue,
           callback: async (resp) => {
             if (settled) return;

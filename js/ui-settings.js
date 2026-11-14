@@ -316,6 +316,28 @@ const UISettings = {
       }
     }
 
+    // 1.0c Load Google Drive Full Access Scope Setting
+    const fullAccessToggle = document.getElementById('settings-drive-full-access');
+    const fullAccessDesc = document.getElementById('settings-drive-scope-desc');
+    if (fullAccessToggle) {
+      let isFullAccess = false;
+      const fullAccessDb = await db.settings.get('googleDriveFullAccess');
+      if (fullAccessDb !== undefined && fullAccessDb.value !== undefined) {
+        isFullAccess = !!fullAccessDb.value;
+      } else if (window.googleDriveService && window.googleDriveService.fullDriveAccess !== undefined) {
+        isFullAccess = !!window.googleDriveService.fullDriveAccess;
+      } else if (window.EnvConfig) {
+        const envVal = window.EnvConfig.get('GOOGLE_DRIVE_FULL_ACCESS') ?? window.EnvConfig.get('VITE_GOOGLE_DRIVE_FULL_ACCESS');
+        isFullAccess = envVal === true || envVal === 'true';
+      }
+      fullAccessToggle.checked = isFullAccess;
+      if (fullAccessDesc) {
+        fullAccessDesc.innerHTML = isFullAccess
+          ? 'Đang dùng: <code>drive</code> (Toàn quyền, tự động đọc mọi file chia sẻ ngầm)'
+          : 'Đang dùng: <code>drive.file</code> (An toàn, chỉ xem file do app tạo hoặc chọn qua Picker)';
+      }
+    }
+
     // 1.1 Load Cloudflare Worker URL & Secret
     const workerSetting = await db.settings.get('googleWorkerUrl');
     const workerInput = document.getElementById('settings-google-worker-url');
@@ -2378,6 +2400,34 @@ const UISettings = {
           window.googleDriveService.setAutoMirror(e.target.checked);
         }
         showToast(e.target.checked ? 'Đã bật tự động sao lưu dự phòng Mirror Backup' : 'Đã tắt Mirror Backup', 'info');
+      });
+    }
+
+    // 5b. Google Drive Full Access Scope Toggle
+    const fullAccessToggle = document.getElementById('settings-drive-full-access');
+    const fullAccessDesc = document.getElementById('settings-drive-scope-desc');
+    if (fullAccessToggle) {
+      fullAccessToggle.addEventListener('change', async (e) => {
+        const enabled = e.target.checked;
+        if (window.googleDriveService) {
+          await window.googleDriveService.setFullDriveAccess(enabled);
+        } else {
+          await db.settings.put({ key: 'googleDriveFullAccess', value: enabled });
+          await db.settings.put({ key: 'googleScopeVersion', value: enabled ? 'v4_drive_full' : 'v4_drive_file' });
+        }
+        if (fullAccessDesc) {
+          fullAccessDesc.innerHTML = enabled
+            ? 'Đang dùng: <code>drive</code> (Toàn quyền, tự động đọc mọi file chia sẻ ngầm)'
+            : 'Đang dùng: <code>drive.file</code> (An toàn, chỉ xem file do app tạo hoặc chọn qua Picker)';
+        }
+        showToast(
+          enabled
+            ? 'Đã bật toàn quyền Drive (scope: drive). Vui lòng bấm Đăng nhập lại Google để cấp quyền.'
+            : 'Đã chuyển về quyền an toàn (scope: drive.file). Vui lòng bấm Đăng nhập lại Google.',
+          'info',
+          6000
+        );
+        await this.loadSettings();
       });
     }
 

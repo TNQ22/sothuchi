@@ -2298,6 +2298,25 @@
                     </div>
                   </div>
 
+                  <!-- 3c. Quyền truy cập toàn bộ Drive (Scope drive vs drive.file) -->
+                  <div class="form-group" style="margin-bottom: 18px; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                      <div>
+                        <div style="font-weight: 600; font-size: 0.88rem;">Toàn quyền truy cập Drive (Full Scope)</div>
+                        <div style="font-size: 0.76rem; color: var(--text-muted);" id="settings-drive-scope-desc">
+                          Đang dùng: <code>drive.file</code> (An toàn, chỉ xem file do app tạo hoặc chọn qua Picker)
+                        </div>
+                      </div>
+                      <label class="app-switch switch switch-sm" title="Bật/Tắt quyền truy cập toàn bộ Drive" style="margin: 0; flex-shrink: 0;">
+                        <input type="checkbox" id="settings-drive-full-access">
+                        <span class="app-switch-slider slider round"></span>
+                      </label>
+                    </div>
+                    <small style="color: var(--text-muted); font-size: 0.75rem; line-height: 1.4; display: block;">
+                      * Khi bật: Sử dụng scope <code>drive</code>, tự động đọc trực tiếp mọi file chia sẻ ngầm mà <strong>không cần mở Google Picker</strong>. Lưu ý: Google sẽ hiện cảnh báo khi đăng nhập lần đầu nếu Client ID chưa qua xác minh. Cần bấm Đăng nhập lại Google sau khi đổi.
+                    </small>
+                  </div>
+
                   <!-- 4. Cloudflare Worker Bridge -->
                   <div style="border-top: 1px dashed var(--border-color); padding-top: 12px;">
                     <button type="button" id="btn-toggle-google-advanced" class="btn-text" style="font-size: 0.8rem; color: var(--primary); display: flex; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 0;">

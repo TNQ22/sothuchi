@@ -3133,6 +3133,7 @@ async function handleApiRequest(req, res, pathname, url) {
       VITE_GOOGLE_API_KEY: process.env.VITE_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || '',
       VITE_GOOGLE_STORAGE_LOCATION: process.env.VITE_GOOGLE_STORAGE_LOCATION || 'appDataFolder',
       VITE_GOOGLE_CUSTOM_FOLDER_NAME: process.env.VITE_GOOGLE_CUSTOM_FOLDER_NAME || 'Sổ Thu Chi',
+      VITE_GOOGLE_DRIVE_FULL_ACCESS: process.env.VITE_GOOGLE_DRIVE_FULL_ACCESS === 'true' || process.env.GOOGLE_DRIVE_FULL_ACCESS === 'true',
       VITE_GOOGLE_WORKER_URL: process.env.VITE_GOOGLE_WORKER_URL || process.env.GOOGLE_WORKER_URL || '',
       VITE_GOOGLE_CLIENT_SECRET: process.env.VITE_GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '',
       VITE_DROPBOX_APP_KEY: process.env.VITE_DROPBOX_APP_KEY || process.env.DROPBOX_APP_KEY || '',
