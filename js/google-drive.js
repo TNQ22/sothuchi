@@ -123,8 +123,8 @@ class GoogleDriveSync {
       this.setupTokenRefreshTimer();
       this.setupGoogleIframeDismissWatcher();
 
-      // Kiểm tra scope version để đảm bảo token có quyền đọc file sharedWithMe qua REST API
-      const REQUIRED_SCOPE_VER = 'v3_full_drive';
+      // Kiểm tra scope version để đảm bảo token có quyền đọc file an toàn drive.file
+      const REQUIRED_SCOPE_VER = 'v3_drive_file';
       try {
         const scopeVer = await db.settings.get('googleScopeVersion');
         if (!scopeVer || scopeVer.value !== REQUIRED_SCOPE_VER) {
@@ -133,7 +133,7 @@ class GoogleDriveSync {
           await db.settings.delete('googleAccessToken');
           await db.settings.delete('googleTokenExpiresAt');
           await db.settings.put({ key: 'googleScopeVersion', value: REQUIRED_SCOPE_VER });
-          console.log('[GoogleDrive] Nâng cấp scope sang full drive để đọc tệp chia sẻ, xóa token cũ.');
+          console.log('[GoogleDrive] Cập nhật scope sang drive.file an toàn tối đa, xóa token cũ.');
         }
       } catch (_) {}
 
@@ -480,7 +480,7 @@ class GoogleDriveSync {
         try {
           const codeClient = google.accounts.oauth2.initCodeClient({
             client_id: this.clientId,
-            scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+            scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
             ux_mode: 'popup',
             callback: async (resp) => {
               if (settled) return;
@@ -580,7 +580,7 @@ class GoogleDriveSync {
 
         const tokenClientConfig = {
           client_id: this.clientId,
-          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
           prompt: promptValue,
           callback: async (resp) => {
             if (settled) return;
@@ -1104,7 +1104,7 @@ class GoogleDriveSync {
     return await this.sync();
   }
 
-  // Chia sẻ quyền truy cập sổ cho email Google (Owner mời thành viên)
+  // Chia sẻ quyền truy cập sổ cho email Google (Owner mời thành viên, hỗ trợ nhiều email)
   async shareVaultWithEmail(email, role = 'writer') {
     if (!this.accessToken) {
       await this.requestToken();
@@ -1124,25 +1124,51 @@ class GoogleDriveSync {
       throw new Error('Chưa tìm thấy file dữ liệu trên Drive để chia sẻ. Hãy bấm Đồng bộ trước.');
     }
 
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${this.driveFileId}/permissions?sendNotificationEmail=false`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        role: role, // 'writer' (Editor) | 'reader' (Viewer)
-        type: 'user',
-        emailAddress: email.trim()
-      })
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error?.message || 'Không thể cấp quyền chia sẻ cho email này.');
+    let emails = [];
+    if (Array.isArray(email)) {
+      emails = email;
+    } else if (typeof email === 'string') {
+      emails = email.split(/[\s,;]+/);
+    }
+    const cleanEmails = [...new Set(emails.map(e => (e || '').trim().toLowerCase()).filter(e => e && e.includes('@')))];
+    if (cleanEmails.length === 0) {
+      throw new Error('Vui lòng cung cấp ít nhất một địa chỉ email Google hợp lệ.');
     }
 
-    return await res.json();
+    const results = [];
+    const errors = [];
+    for (const em of cleanEmails) {
+      try {
+        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${this.driveFileId}/permissions?sendNotificationEmail=false`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            role: role, // 'writer' (Editor) | 'reader' (Viewer)
+            type: 'user',
+            emailAddress: em
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          errors.push(`${em}: ${err.error?.message || 'Lỗi cấp quyền'}`);
+          continue;
+        }
+
+        results.push(await res.json());
+      } catch (e) {
+        errors.push(`${em}: ${e.message}`);
+      }
+    }
+
+    if (results.length === 0) {
+      throw new Error(errors.join('; ') || 'Không thể cấp quyền chia sẻ cho các email này.');
+    }
+
+    return { success: true, count: results.length, emails: cleanEmails, errors, results };
   }
 
   // Đồng bộ hai chiều với thuật toán Last-Write-Wins theo từng bản ghi
@@ -2112,58 +2138,104 @@ class GoogleDriveSync {
       shareKey = (await this.getItemShareKey(`${itemType}_${itemId}`)) || this.encryptionPassword;
     }
 
+    // Hỗ trợ truyền 1 email hoặc nhiều email (phân tách bởi dấu phẩy, chấm phẩy, khoảng trắng, xuống dòng)
+    let emails = [];
+    if (Array.isArray(email)) {
+      emails = email;
+    } else if (typeof email === 'string') {
+      emails = email.split(/[\s,;]+/);
+    }
+    const cleanEmails = [...new Set(emails.map(e => (e || '').trim().toLowerCase()).filter(e => e && e.includes('@')))];
+    if (cleanEmails.length === 0) {
+      throw new Error('Vui lòng cung cấp ít nhất một địa chỉ email hợp lệ.');
+    }
+
     let { fileId } = await this.projectAndPushItem(itemType, itemId, shareKey);
 
-    let res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?sendNotificationEmail=false`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        role: role === 'editor' ? 'writer' : 'reader',
-        type: 'user',
-        emailAddress: email.trim()
-      })
-    });
+    const createdShares = [];
+    const errors = [];
 
-    if (res.status === 404) {
-      console.warn(`[GoogleDrive] Permissions 404 cho file ${fileId}, xóa cache và tạo lại file chia sẻ.`);
-      await this.removeSharedFileId(itemType, itemId);
-      const repush = await this.projectAndPushItem(itemType, itemId, shareKey);
-      fileId = repush.fileId;
-      res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?sendNotificationEmail=false`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          role: role === 'editor' ? 'writer' : 'reader',
-          type: 'user',
-          emailAddress: email.trim()
-        })
-      });
+    for (const em of cleanEmails) {
+      try {
+        let res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?sendNotificationEmail=false`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            role: role === 'editor' ? 'writer' : 'reader',
+            type: 'user',
+            emailAddress: em
+          })
+        });
+
+        if (res.status === 404) {
+          console.warn(`[GoogleDrive] Permissions 404 cho file ${fileId}, xóa cache và tạo lại file chia sẻ.`);
+          await this.removeSharedFileId(itemType, itemId);
+          const repush = await this.projectAndPushItem(itemType, itemId, shareKey);
+          fileId = repush.fileId;
+          res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?sendNotificationEmail=false`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${this.accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              role: role === 'editor' ? 'writer' : 'reader',
+              type: 'user',
+              emailAddress: em
+            })
+          });
+        }
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          errors.push(`${em}: ${err.error?.message || 'Lỗi cấp quyền'}`);
+          continue;
+        }
+
+        const perm = await res.json();
+        if (shareKey) {
+          await this.saveItemShareKey(perm.id, shareKey);
+        }
+        createdShares.push({
+          id: perm.id,
+          user_email: em,
+          role,
+          shareKey
+        });
+      } catch (e) {
+        errors.push(`${em}: ${e.message}`);
+      }
     }
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || 'Không thể chia sẻ tới email này trên Google Drive.');
+    if (createdShares.length === 0) {
+      throw new Error(errors.join('; ') || 'Không thể chia sẻ tới danh sách email này trên Google Drive.');
     }
 
-    const perm = await res.json();
+    const token = `gdrive_${fileId}`;
     if (shareKey) {
-      await this.saveItemShareKey(perm.id, shareKey);
+      await this.saveItemShareKey(token, shareKey);
+      await this.saveItemShareKey(fileId, shareKey);
     }
+
+    const origin = window.location.origin;
+    const pathname = window.location.pathname;
+    const shareLink = shareKey
+      ? `${origin}${pathname}#share_token=${token}&key=${encodeURIComponent(shareKey)}`
+      : `${origin}${pathname}#share_token=${token}`;
 
     return {
       success: true,
-      share: {
-        id: perm.id,
-        user_email: email.trim(),
-        role,
-        shareKey
-      }
+      fileId,
+      token,
+      shareLink,
+      count: createdShares.length,
+      emails: createdShares.map(s => s.user_email),
+      errors,
+      shares: createdShares,
+      share: createdShares[0]
     };
   }
 

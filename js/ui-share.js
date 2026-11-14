@@ -919,30 +919,60 @@ const UniversalShareModal = {
   async handleAddEmailShare() {
     const input = document.getElementById('share-email-input');
     const roleSelect = document.getElementById('share-email-role');
-    const email = (input?.value || '').trim();
+    const rawVal = (input?.value || '').trim();
     const role = roleSelect?.value || 'viewer';
 
-    if (!email || !email.includes('@')) {
-      if (typeof showToast === 'function') showToast('Vui lòng nhập email Google hợp lệ.', 'error');
+    if (!rawVal) {
+      if (typeof showToast === 'function') showToast('Vui lòng nhập ít nhất một email Google.', 'error');
+      return;
+    }
+
+    const emailList = [...new Set(rawVal.split(/[\s,;]+/).map(e => (e || '').trim().toLowerCase()).filter(e => e && e.includes('@')))];
+    if (emailList.length === 0) {
+      if (typeof showToast === 'function') showToast('Vui lòng nhập địa chỉ email hợp lệ.', 'error');
       return;
     }
 
     try {
-      if (typeof showToast === 'function') showToast('Đang cấp quyền chia sẻ...', 'info');
+      if (typeof showToast === 'function') {
+        showToast(emailList.length > 1 ? `Đang cấp quyền chia sẻ cho ${emailList.length} email...` : 'Đang cấp quyền chia sẻ...', 'info');
+      }
       const syncService = this.getActiveService();
-      await syncService.shareItemWithEmail(
+      const res = await syncService.shareItemWithEmail(
         this.currentType,
         this.currentId,
         this.currentItem.name,
-        email,
+        emailList,
         role
       );
 
       if (input) input.value = '';
       this.hideShareUserDropdown();
       await this.updateItemSharedState(1);
-      if (typeof showToast === 'function') showToast(`Đã chia sẻ thành công với ${email}`, 'success');
+
+      const successCount = res?.count || emailList.length;
+      if (typeof showToast === 'function') {
+        showToast(successCount > 1 ? `Đã chia sẻ thành công với ${successCount} email!` : `Đã chia sẻ thành công với ${emailList[0]}`, 'success');
+      }
       await this.loadShareData();
+
+      // Nếu có liên kết chia sẻ (cho các email này), hiển thị prompt để chủ sở hữu sao chép link gửi trực tiếp
+      if (res?.shareLink || res?.token) {
+        const fullUrl = res.shareLink || `${window.location.origin}${window.location.pathname}#share_token=${res.token}`;
+        if (typeof showPrompt === 'function') {
+          await showPrompt({
+            title: `Đã Cấp Quyền Cho ${successCount} Email`,
+            message: `Chỉ các email vừa được mời mới có quyền truy cập vào mục này.<br><br>Sao chép liên kết bên dưới để gửi cho họ:`,
+            defaultValue: fullUrl,
+            confirmText: 'Sao Chép & Đóng',
+            cancelText: 'Đóng',
+            icon: 'link'
+          });
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(fullUrl).catch(() => {});
+          }
+        }
+      }
     } catch (err) {
       if (typeof showToast === 'function') showToast(err.message, 'error');
     }
@@ -1211,12 +1241,34 @@ const ReceiveShareModal = {
     await this.promptWithToken(token, key);
   },
 
-  // Đồng bộ và tự động nhận các sổ được chia sẻ từ Google Drive & Server
-  async pickGoogleDrive() {
-    if (typeof showToast === 'function') showToast('Đang quét và đồng bộ các sổ được chia sẻ...', 'info');
-    if (window.UIAccounts && typeof UIAccounts.manualSyncSharedItems === 'function') {
-      await UIAccounts.manualSyncSharedItems();
+  // Mở hộp thoại Google Picker để người dùng duyệt và nhận tệp chia sẻ riêng qua email
+  async pickGoogleDriveDirectly() {
+    if (!window.googleDriveService) {
+      if (typeof showToast === 'function') showToast('Dịch vụ Google Drive chưa sẵn sàng', 'error');
+      return;
     }
+    try {
+      if (!window.googleDriveService.accessToken) {
+        await window.googleDriveService.ensureToken(true);
+      }
+      const picked = await window.googleDriveService.openPickerForSharedItems();
+      if (!picked || !picked.fileId) return;
+
+      if (typeof showToast === 'function') {
+        showToast(`Đã chọn: ${picked.fileName || picked.fileId}`, 'info');
+      }
+      await this.promptWithToken(`gdrive_${picked.fileId}`);
+    } catch (err) {
+      console.warn('[ReceiveShareModal] Lỗi mở Google Picker:', err);
+      if (typeof showToast === 'function') {
+        showToast(err.message || 'Lỗi khi mở Google Picker', 'error');
+      }
+    }
+  },
+
+  // Chọn tệp chia sẻ từ Google Picker
+  async pickGoogleDrive() {
+    await this.pickGoogleDriveDirectly();
   },
 
   async promptWithToken(token, key = null) {
@@ -1234,7 +1286,20 @@ const ReceiveShareModal = {
         info = await syncService.getShareLinkInfo(token);
       } catch (linkErr) {
         if (isGDrive && window.googleDriveService && (linkErr.message?.includes('404') || linkErr.message?.includes('quyền truy cập') || linkErr.message?.includes('không tồn tại'))) {
-          throw new Error('Không thể tìm thấy hoặc truy cập tệp chia sẻ này trên Google Drive. Vui lòng đảm bảo chủ sở hữu đã chia sẻ đúng tài khoản Google của bạn, hoặc bấm nút "Kiểm tra & Đồng bộ" để tự động nhận sổ.');
+          const tryPicker = typeof showConfirm === 'function' ? await showConfirm({
+            title: 'Cần Mở Google Picker',
+            message: `Tệp chia sẻ này chưa được ủy quyền vào ứng dụng theo chính sách bảo mật <code>drive.file</code> của Google.<br><br>
+            Bạn có muốn <strong>Mở Google Picker</strong> để chọn và ủy quyền tệp này ngay không?`,
+            confirmText: 'Mở Google Picker',
+            cancelText: 'Huỷ',
+            icon: 'folder-search'
+          }) : false;
+
+          if (tryPicker) {
+            await this.pickGoogleDriveDirectly();
+            return;
+          }
+          throw new Error('Không thể truy cập tệp chia sẻ này trực tiếp. Vui lòng bấm vào biểu tượng Google Drive trên danh sách tài khoản để duyệt qua Google Picker.');
         }
         throw linkErr;
       }

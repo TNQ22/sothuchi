@@ -2416,27 +2416,29 @@ const UISettings = {
       shareBtn.addEventListener('click', async () => {
         const emailInput = document.getElementById('settings-share-email');
         const roleSelect = document.getElementById('settings-share-role');
-        const email = emailInput ? emailInput.value : '';
+        const raw = emailInput ? emailInput.value : '';
         const role = roleSelect ? roleSelect.value : 'writer';
 
-        if (!email || !email.includes('@')) {
-          showToast('Vui lòng nhập địa chỉ email Google hợp lệ', 'error');
+        const emailList = [...new Set(raw.split(/[\s,;]+/).map(e => (e || '').trim().toLowerCase()).filter(e => e && e.includes('@')))];
+        if (emailList.length === 0) {
+          showToast('Vui lòng nhập ít nhất một địa chỉ email Google hợp lệ', 'error');
           return;
         }
 
         try {
           shareBtn.disabled = true;
-          shareBtn.innerHTML = '<i data-lucide="loader-2" class="spin-animation"></i> Đang cấp quyền...';
+          shareBtn.innerHTML = '<i data-lucide=\"loader-2\" class=\"spin-animation\"></i> Đang cấp quyền...';
           if (window.lucide) lucide.createIcons();
 
-          await window.googleDriveService.shareVaultWithEmail(email.trim(), role);
-          showToast(`Đã cấp quyền chia sẻ cho ${email}!`, 'success');
+          const res = await window.googleDriveService.shareVaultWithEmail(emailList, role);
+          const count = res?.count || emailList.length;
+          showToast(count > 1 ? `Đã cấp quyền chia sẻ cho ${count} email!` : `Đã cấp quyền chia sẻ cho ${emailList[0]}!`, 'success');
           if (emailInput) emailInput.value = '';
         } catch (err) {
           showToast('Lỗi khi chia sẻ: ' + err.message, 'error');
         } finally {
           shareBtn.disabled = false;
-          shareBtn.innerHTML = '<i data-lucide="user-plus" style="width: 15px; height: 15px;"></i> <span>Cấp quyền</span>';
+          shareBtn.innerHTML = '<i data-lucide=\"user-plus\" style=\"width: 15px; height: 15px;\"></i> <span>Cấp quyền</span>';
           if (window.lucide) lucide.createIcons();
         }
       });

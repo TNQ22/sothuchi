@@ -2496,26 +2496,54 @@ class ServerSyncService {
       shareKey = (await this.getItemShareKey(`${itemType}_${itemId}`)) || this.encryptionPassword;
     }
 
+    // Hỗ trợ truyền 1 email hoặc nhiều email (phân tách bởi dấu phẩy, chấm phẩy, khoảng trắng, xuống dòng)
+    let emails = [];
+    if (Array.isArray(email)) {
+      emails = email;
+    } else if (typeof email === 'string') {
+      emails = email.split(/[\s,;]+/);
+    }
+    const cleanEmails = [...new Set(emails.map(e => (e || '').trim().toLowerCase()).filter(e => e && e.includes('@')))];
+    if (cleanEmails.length === 0) {
+      throw new Error('Vui lòng cung cấp ít nhất một địa chỉ email hợp lệ.');
+    }
+
     // Tự động bóc tách bản chiếu (chỉ mã hóa nếu có shareKey) trước khi mời email
     await this.projectAndPushItem(itemType, itemId, shareKey);
 
-    const res = await fetch(`${this.serverUrl}/api/shares/item/email`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ itemType, itemId, itemName, email, role, shareKey, vaultId: this.activeVaultId })
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Cấp quyền chia sẻ thất bại.');
+    const createdShares = [];
+    const errors = [];
+
+    for (const em of cleanEmails) {
+      try {
+        const res = await fetch(`${this.serverUrl}/api/shares/item/email`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ itemType, itemId, itemName, email: em, role, shareKey, vaultId: this.activeVaultId })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          errors.push(`${em}: ${err.error || 'Cấp quyền thất bại'}`);
+          continue;
+        }
+        const result = await res.json();
+        if (result.share && result.share.id && shareKey) {
+          await this.saveItemShareKey(result.share.id, shareKey);
+          result.share.shareKey = shareKey;
+        }
+        createdShares.push(result.share);
+      } catch (e) {
+        errors.push(`${em}: ${e.message}`);
+      }
     }
-    const result = await res.json();
-    if (result.share && result.share.id && shareKey) {
-      await this.saveItemShareKey(result.share.id, shareKey);
-      result.share.shareKey = shareKey;
+
+    if (createdShares.length === 0) {
+      throw new Error(errors.join('; ') || 'Cấp quyền chia sẻ thất bại.');
     }
+
     try {
       const owned = (await db.settings.get('syncOwnedSharedProjections')) || { key: 'syncOwnedSharedProjections', value: [] };
       const arr = Array.isArray(owned.value) ? owned.value : [];
@@ -2531,7 +2559,15 @@ class ServerSyncService {
       }
       await db.settings.put({ key: 'syncOwnedSharedProjections', value: arr });
     } catch (_) {}
-    return result;
+
+    return {
+      success: true,
+      count: createdShares.length,
+      emails: cleanEmails,
+      errors,
+      shares: createdShares,
+      share: createdShares[0]
+    };
   }
 
   async revokeItemEmailShare(shareId) {
