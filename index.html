@@ -2137,7 +2137,7 @@
                     <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
                     <span>Đồng Bộ Ngay</span>
                   </button>
-                  <button type="button" id="btn-scan-drive-backups" class="btn-secondary" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-color: rgba(59, 130, 246, 0.4); color: #3b82f6;" title="Tìm lại tất cả các bản sao lưu và phiên bản lịch sử trên Google Drive">
+                  <button type="button" id="btn-scan-drive-backups" class="btn-secondary" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-color: rgba(59, 130, 246, 0.4); color: #3b82f6;" title="Tìm lại tất cả các bản sao lưu và phiên bản lịch sử trên Google Drive" onclick="UISettings.openDriveRecoveryModal()">
                     <i data-lucide="history" style="width: 16px; height: 16px;"></i>
                     <span>Tìm Lại Bản Sao Lưu Trên Drive (Lịch Sử)</span>
                   </button>
@@ -7085,7 +7085,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   </div>
 
   <!-- Modal: Tìm lại & Khôi phục bản sao lưu Google Drive -->
-  <div id="modal-drive-recovery" class="modal-overlay" style="z-index: 100040;">
+  <div id="modal-drive-recovery" class="modal-overlay" style="z-index: 100040;" onclick="if (event.target === this) UISettings.closeDriveRecoveryModal()">
     <div class="modal-dialog" style="max-width: 540px;">
       <div class="modal-header">
         <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">

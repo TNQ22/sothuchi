@@ -946,6 +946,20 @@ class GoogleDriveSync {
     let json = JSON.parse(text);
 
     if (json.encrypted && json.payload) {
+      if (!this.encryptionPassword && typeof window !== 'undefined' && typeof window.showPrompt === 'function') {
+        const pass = await window.showPrompt({
+          title: 'Mật Khẩu Giải Mã Sổ (E2EE)',
+          message: 'Bản dữ liệu này đã được mã hóa đầu cuối (E2EE). Vui lòng nhập mật khẩu để giải mã:',
+          inputType: 'password',
+          placeholder: 'Nhập mật khẩu sổ...',
+          confirmText: 'Mở khóa',
+          cancelText: 'Huỷ'
+        });
+        if (pass) {
+          this.encryptionPassword = pass.trim();
+          await db.settings.put({ key: 'googleDriveEncryptionPassword', value: this.encryptionPassword });
+        }
+      }
       if (!this.encryptionPassword) {
         throw new Error('Sổ này đã được mã hóa (E2EE). Vui lòng nhập Mật khẩu Sổ (Vault Password) trong mục Cài đặt.');
       }
@@ -1095,6 +1109,20 @@ class GoogleDriveSync {
     const text = await res.text();
     let json = JSON.parse(text);
     if (json.encrypted && json.payload) {
+      if (!this.encryptionPassword && typeof window !== 'undefined' && typeof window.showPrompt === 'function') {
+        const pass = await window.showPrompt({
+          title: 'Mật Khẩu Giải Mã Sổ (E2EE)',
+          message: 'Bản phiên bản lịch sử này đã được mã hóa đầu cuối (E2EE). Vui lòng nhập mật khẩu để giải mã:',
+          inputType: 'password',
+          placeholder: 'Nhập mật khẩu sổ...',
+          confirmText: 'Mở khóa',
+          cancelText: 'Huỷ'
+        });
+        if (pass) {
+          this.encryptionPassword = pass.trim();
+          await db.settings.put({ key: 'googleDriveEncryptionPassword', value: this.encryptionPassword });
+        }
+      }
       if (!this.encryptionPassword) {
         throw new Error('Sổ này đã được mã hóa (E2EE). Vui lòng nhập Mật khẩu Sổ (Vault Password) trong Cài đặt.');
       }
@@ -1106,20 +1134,22 @@ class GoogleDriveSync {
 
   // Quét toàn bộ các tệp sao lưu có trên Google Drive để người dùng khôi phục
   async scanAllBackups() {
-    if (!this.accessToken) {
+    if (!this.hasValidToken(0)) {
       await this.ensureToken(true);
     }
     const results = [];
+    const seenIds = new Set();
 
-    // 1. Quét file sothuchi_vault.json trên My Drive (customFolder)
+    // 1. Quét tệp trên My Drive (customFolder)
     try {
-      const q = encodeURIComponent(`name = '${this.syncFileName}' and trashed = false`);
+      const q = encodeURIComponent(`(name = '${this.syncFileName}' or name contains 'sothuchi' or name contains 'stc_shared' or name = 'SoThuChi_Mirror_Backup.stc') and trashed = false`);
       const res = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=drive&q=${q}&fields=files(id,name,modifiedTime,size,parents)&orderBy=modifiedTime desc`, {
         headers: { Authorization: `Bearer ${this.accessToken}` }
       });
       if (res.ok) {
         const data = await res.json();
         for (const f of (data.files || [])) {
+          seenIds.add(f.id);
           results.push({
             id: f.id,
             name: `${f.name} (Thư mục Google Drive)`,
@@ -1148,7 +1178,34 @@ class GoogleDriveSync {
       console.warn('[scanAllBackups] My Drive error:', e);
     }
 
-    // 2. Quét file sothuchi_private_vault.json trong appDataFolder
+    // 2. Quét file Shared With Me
+    try {
+      const qShared = encodeURIComponent(`sharedWithMe = true and trashed = false and (name = '${this.syncFileName}' or name contains 'sothuchi' or name contains 'stc_shared')`);
+      const resShared = await fetch(`https://www.googleapis.com/drive/v3/files?q=${qShared}&fields=files(id,name,modifiedTime,size,owners)&orderBy=modifiedTime desc`, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (resShared.ok) {
+        const dShared = await resShared.json();
+        for (const f of (dShared.files || [])) {
+          if (!seenIds.has(f.id)) {
+            seenIds.add(f.id);
+            const owner = f.owners?.[0]?.emailAddress || 'Thành viên';
+            results.push({
+              id: f.id,
+              name: `${f.name} (Được chia sẻ bởi: ${owner})`,
+              location: 'Mục được chia sẻ (Shared With Me)',
+              locationType: 'sharedWithMe',
+              modifiedTime: f.modifiedTime,
+              size: f.size
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[scanAllBackups] Shared with me error:', e);
+    }
+
+    // 3. Quét file sothuchi_private_vault.json trong appDataFolder
     try {
       const qPriv = encodeURIComponent(`name = 'sothuchi_private_vault.json' and trashed = false`);
       const res = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${qPriv}&fields=files(id,name,modifiedTime,size)&orderBy=modifiedTime desc`, {
@@ -1157,6 +1214,7 @@ class GoogleDriveSync {
       if (res.ok) {
         const data = await res.json();
         for (const f of (data.files || [])) {
+          seenIds.add(f.id);
           results.push({
             id: f.id,
             name: 'sothuchi_private_vault.json (Bản sao lưu riêng tư ngầm)',
@@ -1171,7 +1229,7 @@ class GoogleDriveSync {
       console.warn('[scanAllBackups] privateVault error:', e);
     }
 
-    // 3. Quét file sothuchi_vault.json trong appDataFolder
+    // 4. Quét file sothuchi_vault.json trong appDataFolder
     try {
       const qApp = encodeURIComponent(`name = '${this.syncFileName}' and trashed = false`);
       const res = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${qApp}&fields=files(id,name,modifiedTime,size)&orderBy=modifiedTime desc`, {
@@ -1180,6 +1238,7 @@ class GoogleDriveSync {
       if (res.ok) {
         const data = await res.json();
         for (const f of (data.files || [])) {
+          seenIds.add(f.id);
           results.push({
             id: f.id,
             name: `${f.name} (Vùng ẩn appDataFolder)`,
@@ -1205,6 +1264,32 @@ class GoogleDriveSync {
       }
     } catch (e) {
       console.warn('[scanAllBackups] appDataFolder error:', e);
+    }
+
+    // 5. Quét file SoThuChi_Mirror_Backup.stc trong appDataFolder
+    try {
+      const qMirror = encodeURIComponent(`name = 'SoThuChi_Mirror_Backup.stc' and trashed = false`);
+      const resMirror = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${qMirror}&fields=files(id,name,modifiedTime,size)&orderBy=modifiedTime desc`, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (resMirror.ok) {
+        const dMirror = await resMirror.json();
+        for (const f of (dMirror.files || [])) {
+          if (!seenIds.has(f.id)) {
+            seenIds.add(f.id);
+            results.push({
+              id: f.id,
+              name: 'SoThuChi_Mirror_Backup.stc (Bản sao lưu dự phòng)',
+              location: 'Vùng ứng dụng ẩn (appDataFolder)',
+              locationType: 'mirror',
+              modifiedTime: f.modifiedTime,
+              size: f.size
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[scanAllBackups] Mirror error:', e);
     }
 
     results.sort((a, b) => new Date(b.modifiedTime || 0) - new Date(a.modifiedTime || 0));

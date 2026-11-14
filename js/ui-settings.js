@@ -3184,14 +3184,19 @@ const UISettings = {
   async openDriveRecoveryModal() {
     const modal = document.getElementById('modal-drive-recovery');
     if (modal) {
+      modal.classList.add('open');
       modal.classList.add('active');
-      await this.scanAndShowDriveRecovery();
+      if (window.lucide) lucide.createIcons();
+      this.scanAndShowDriveRecovery();
     }
   },
 
   closeDriveRecoveryModal() {
     const modal = document.getElementById('modal-drive-recovery');
-    if (modal) modal.classList.remove('active');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.classList.remove('active');
+    }
   },
 
   async scanAndShowDriveRecovery() {
@@ -3201,10 +3206,11 @@ const UISettings = {
 
     if (loadingEl) loadingEl.style.display = 'block';
     listEl.innerHTML = '';
+    if (window.lucide) lucide.createIcons();
 
     try {
       if (!window.googleDriveService) throw new Error('Dịch vụ Google Drive chưa sẵn sàng.');
-      if (!window.googleDriveService.hasValidToken()) {
+      if (!window.googleDriveService.hasValidToken(0)) {
         await window.googleDriveService.ensureToken(true);
       }
 
@@ -3293,6 +3299,11 @@ const UISettings = {
         <div style="text-align: center; padding: 20px; color: #ef4444; font-size: 0.85rem;">
           <i data-lucide="alert-circle" style="width: 28px; height: 28px; margin-bottom: 6px;"></i>
           <div>Lỗi khi quét Google Drive: ${typeof escapeHTML === 'function' ? escapeHTML(err.message) : err.message}</div>
+          <div style="margin-top: 12px;">
+            <button type="button" class="btn-primary btn-sm" onclick="UISettings.scanAndShowDriveRecovery()" style="display: inline-flex; align-items: center; gap: 4px; margin: 0 auto;">
+              <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Đăng nhập lại & Quét lại
+            </button>
+          </div>
         </div>
       `;
       if (window.lucide) lucide.createIcons();
