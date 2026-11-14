@@ -25,13 +25,10 @@ services:
       - ADMIN_EMAILS=${ADMIN_EMAILS:-${ADMIN_EMAIL:-}}
       # Google Client ID cho Backend Máy chủ
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-${VITE_GOOGLE_CLIENT_ID:-}}
-      # Google API Key cho Google Picker API (Duyệt file chia sẻ theo scope drive.file)
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-${VITE_GOOGLE_API_KEY:-}}
       # Tên miền cho phép kết nối CORS (Đọc CORS_ORIGIN từ .env nếu có, mặc định *)
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
       # --- CẤU HÌNH CẤP SẴN CHO CLIENT PWA (NGƯỜI DÙNG TỰ DO CHỌN DRIVE / DROPBOX) ---
       - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID:-${GOOGLE_CLIENT_ID:-}}
-      - VITE_GOOGLE_API_KEY=${VITE_GOOGLE_API_KEY:-${GOOGLE_API_KEY:-}}
       - VITE_GOOGLE_STORAGE_LOCATION=${VITE_GOOGLE_STORAGE_LOCATION:-appDataFolder}
       - VITE_GOOGLE_CUSTOM_FOLDER_NAME=${VITE_GOOGLE_CUSTOM_FOLDER_NAME:-Sổ Thu Chi}
       - VITE_GOOGLE_WORKER_URL=${VITE_GOOGLE_WORKER_URL:-${GOOGLE_WORKER_URL:-}}

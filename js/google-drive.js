@@ -49,8 +49,6 @@ class GoogleDriveSync {
       const savedApiKey = await db.settings.get('googleApiKey');
       if (savedApiKey && savedApiKey.value) {
         this.apiKey = savedApiKey.value.trim();
-      } else if (window.EnvConfig) {
-        this.apiKey = window.EnvConfig.get('GOOGLE_API_KEY', '').trim();
       }
 
       const autoSyncSetting = await db.settings.get('autoSyncEnabled');
@@ -2433,7 +2431,6 @@ class GoogleDriveSync {
     if (!this.apiKey) {
       const savedKey = await db.settings.get('googleApiKey');
       if (savedKey?.value) this.apiKey = savedKey.value.trim();
-      else if (window.EnvConfig) this.apiKey = window.EnvConfig.get('GOOGLE_API_KEY', '').trim();
     }
 
     if (!this.apiKey) {

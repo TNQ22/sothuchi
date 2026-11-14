@@ -3130,7 +3130,6 @@ async function handleApiRequest(req, res, pathname, url) {
   if (req.method === 'GET' && pathname === '/api/config') {
     return sendJson(res, 200, {
       VITE_GOOGLE_CLIENT_ID: process.env.VITE_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '',
-      VITE_GOOGLE_API_KEY: process.env.VITE_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || '',
       VITE_GOOGLE_STORAGE_LOCATION: process.env.VITE_GOOGLE_STORAGE_LOCATION || 'appDataFolder',
       VITE_GOOGLE_CUSTOM_FOLDER_NAME: process.env.VITE_GOOGLE_CUSTOM_FOLDER_NAME || 'Sổ Thu Chi',
       VITE_GOOGLE_WORKER_URL: process.env.VITE_GOOGLE_WORKER_URL || process.env.GOOGLE_WORKER_URL || '',
