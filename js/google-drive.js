@@ -2539,29 +2539,51 @@ class GoogleDriveSync {
       // 0. Đẩy các giao dịch thành viên tạo lên Drive trước
       await this.pushAllReceivedSharedItems();
 
-      // 1. Quét file từ SharedWithMe & Received via Link
+      // 1. Quét file từ SharedWithMe & Received via Link & Toàn bộ tệp có quyền đọc
       const fileMap = new Map();
-      const sharedQuery = encodeURIComponent("sharedWithMe = true and trashed = false");
       let swmSuccess = false;
+
+      // Truy vấn 1: sharedWithMe = true
       try {
-        const swmRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${sharedQuery}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=100&fields=files(id,name,modifiedTime,owners,capabilities,shared)`, {
+        const q1 = encodeURIComponent("sharedWithMe = true and trashed = false");
+        const res1 = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q1}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=100&fields=files(id,name,mimeType,modifiedTime,owners,capabilities,shared)`, {
           headers: { Authorization: `Bearer ${this.accessToken}` }
         });
-        if (swmRes.ok) {
+        if (res1.ok) {
           swmSuccess = true;
-          const swmData = await swmRes.json();
-          if (Array.isArray(swmData.files)) {
-            for (const f of swmData.files) {
-              if (f.name && (f.name.startsWith('stc_shared_') || f.name.includes('stc_shared'))) {
+          const data1 = await res1.json();
+          if (Array.isArray(data1.files)) {
+            for (const f of data1.files) {
+              if (f.name && (f.name.includes('stc_shared') || f.mimeType === 'application/json' || f.name.endsWith('.json'))) {
                 fileMap.set(f.id, f);
               }
             }
           }
         } else {
-          console.warn('[GoogleDrive] Quét sharedWithMe status:', swmRes.status, await swmRes.text().catch(() => ''));
+          console.warn('[GoogleDrive] Quét sharedWithMe status:', res1.status, await res1.text().catch(() => ''));
         }
-      } catch (swmErr) {
-        console.warn('[GoogleDrive] Quét sharedWithMe warning:', swmErr);
+      } catch (err1) {
+        console.warn('[GoogleDrive] Quét sharedWithMe warning:', err1);
+      }
+
+      // Truy vấn 2: Quét mọi tệp có tên chứa stc_shared mà tài khoản hiện tại có quyền đọc (kể cả tệp được share trong folder hoặc link)
+      try {
+        const q2 = encodeURIComponent("name contains 'stc_shared' and trashed = false");
+        const res2 = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q2}&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=100&fields=files(id,name,mimeType,modifiedTime,owners,capabilities,shared)`, {
+          headers: { Authorization: `Bearer ${this.accessToken}` }
+        });
+        if (res2.ok) {
+          const data2 = await res2.json();
+          if (Array.isArray(data2.files)) {
+            for (const f of data2.files) {
+              if (!fileMap.has(f.id)) {
+                fileMap.set(f.id, f);
+              }
+            }
+          }
+        }
+      } catch (err2) {
+        console.warn('[GoogleDrive] Quét name contains stc_shared warning:', err2);
       }
 
       const recSetting = (await db.settings.get('googleDriveReceivedFiles')) || { value: [] };

@@ -6134,10 +6134,11 @@ const UIAccounts = {
       }
 
       // 2. Kiểm tra Google Drive (Tự động quét & nạp mọi sổ được chia sẻ qua email)
+      let gStats = null;
       if (window.googleDriveService) {
         try {
           if (!window.googleDriveService.accessToken) {
-            await window.googleDriveService.ensureToken(false);
+            await window.googleDriveService.ensureToken(true);
           }
           if (window.googleDriveService.accessToken) {
             let gOwnedChanged = false;
@@ -6146,9 +6147,15 @@ const UIAccounts = {
             }
             const gChanged = await window.googleDriveService.syncReceivedSharedItems();
             if (gOwnedChanged || gChanged) hasAnyChange = true;
+
+            const recAccs = (await db.accounts.toArray()).filter(a => a._isSharedItem && a._sharedService === 'google-drive');
+            gStats = { count: recAccs.length, changed: gChanged };
           }
         } catch (gErr) {
           console.warn('[manualSyncSharedItems] Google Drive sync error:', gErr);
+          if (typeof showToast === 'function' && gErr.message) {
+            showToast('Google Drive: ' + gErr.message, 'warning');
+          }
         }
       }
 
@@ -6156,7 +6163,13 @@ const UIAccounts = {
         await this.render();
       }
       if (typeof showToast === 'function') {
-        showToast(hasAnyChange ? 'Đã tải thành công các mục chia sẻ mới!' : 'Đã kiểm tra xong: Dữ liệu chia sẻ đã mới nhất.', 'info');
+        if (hasAnyChange) {
+          showToast('Đã tải thành công các mục chia sẻ mới!', 'success');
+        } else if (gStats && gStats.count > 0) {
+          showToast(`Đã đồng bộ ${gStats.count} tài khoản chia sẻ từ Google Drive.`, 'info');
+        } else {
+          showToast('Chưa tìm thấy sổ nào được chia sẻ với email Google của bạn.', 'info');
+        }
       }
     } catch (err) {
       if (typeof showToast === 'function') showToast('Lỗi đồng bộ: ' + err.message, 'error');
