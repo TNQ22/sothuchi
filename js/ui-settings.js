@@ -311,6 +311,8 @@ const UISettings = {
     if (apiKeyInput) {
       if (apiKeySetting && apiKeySetting.value) {
         apiKeyInput.value = apiKeySetting.value;
+      } else if (window.EnvConfig && (window.EnvConfig.get('GOOGLE_API_KEY') || window.EnvConfig.get('VITE_GOOGLE_API_KEY'))) {
+        apiKeyInput.value = window.EnvConfig.get('GOOGLE_API_KEY') || window.EnvConfig.get('VITE_GOOGLE_API_KEY');
       }
     }
 
