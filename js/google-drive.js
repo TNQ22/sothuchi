@@ -3081,47 +3081,7 @@ class GoogleDriveSync {
       }
     };
 
-    // Nút 2: Quét Tệp Trực Tiếp (REST API - Miễn nhiễm hoàn toàn với lỗi cookie iframe)
-    const scanBtn = document.createElement('button');
-    scanBtn.type = 'button';
-    scanBtn.id = 'btn-picker-scan-direct';
-    scanBtn.title = 'Quét tệp chia sẻ trực tiếp qua REST API (Dùng Cloudflare Worker, không cần cookie)';
-    scanBtn.innerHTML = `
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-      <span>Quét Trực Tiếp</span>
-    `;
-    scanBtn.style.cssText = `
-      display: inline-flex !important;
-      align-items: center !important;
-      gap: 4px !important;
-      padding: 6px 11px !important;
-      background: rgba(15, 23, 42, 0.94) !important;
-      backdrop-filter: blur(8px) !important;
-      -webkit-backdrop-filter: blur(8px) !important;
-      color: #34d399 !important;
-      border: 1.5px solid rgba(52, 211, 153, 0.45) !important;
-      border-radius: 20px !important;
-      font-size: 11.5px !important;
-      font-weight: 600 !important;
-      cursor: pointer !important;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.5) !important;
-      -webkit-tap-highlight-color: transparent !important;
-      white-space: nowrap !important;
-    `;
-    scanBtn.onclick = (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      this._removePickerCloseButton();
-      if (typeof onClose === 'function') onClose();
-      setTimeout(() => {
-        if (window.ReceiveShareModal && typeof window.ReceiveShareModal.pickGoogleDriveFromList === 'function') {
-          window.ReceiveShareModal.pickGoogleDriveFromList();
-        }
-      }, 150);
-    };
-
     leftActions.appendChild(reauthBtn);
-    leftActions.appendChild(scanBtn);
 
     // Nút 3: Nút ✕ Đóng
     const btn = document.createElement('button');
