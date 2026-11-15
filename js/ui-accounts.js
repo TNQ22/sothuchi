@@ -6077,12 +6077,23 @@ const UIAccounts = {
 
   updateSharedSyncButtonVisibility() {
     const syncSharedBtn = document.getElementById('btn-sync-shared-items');
+    const pickerBtn = document.getElementById('btn-picker-shared-items');
+    const { canSync } = this.canAutoSyncSharedItems();
+
     if (syncSharedBtn) {
-      const { canSync } = this.canAutoSyncSharedItems();
       if (canSync) {
         syncSharedBtn.style.setProperty('display', 'inline-flex', 'important');
       } else {
         syncSharedBtn.style.setProperty('display', 'none', 'important');
+      }
+    }
+
+    // Nếu đã bật Full Drive hoặc Máy chủ Docker (đã có đồng bộ tự động) thì ẩn nút Picker đi
+    if (pickerBtn) {
+      if (canSync) {
+        pickerBtn.style.setProperty('display', 'none', 'important');
+      } else {
+        pickerBtn.style.removeProperty('display');
       }
     }
   },

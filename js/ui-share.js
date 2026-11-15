@@ -1404,27 +1404,9 @@ const ReceiveShareModal = {
     await this.promptWithToken(`gdrive_${fileId}`);
   },
 
-  // Chọn tệp chia sẻ từ Google Drive
+  // Chọn tệp chia sẻ từ Google Picker
   async pickGoogleDrive() {
-    const isIOSorSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
-      Boolean(window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) ||
-      /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-
-    if (isIOSorSafari) {
-      // Trên iPhone / iPad / Safari / PWA:
-      // Apple WebKit chặn cookie bên thứ 3 trong iframe, khiến Google Picker iframe luôn bị lỗi:
-      // "Không thể truy cập vào Tài khoản Google của bạn".
-      // Quét trực tiếp bằng Google Drive REST API siêu nhanh, không dùng iframe và không bao giờ lỗi cookie!
-      return await this.pickGoogleDriveFromList();
-    }
-
-    // Trên các trình duyệt PC khác (Chrome desktop...):
-    try {
-      await this.pickGoogleDriveDirectly();
-    } catch (_) {
-      await this.pickGoogleDriveFromList();
-    }
+    await this.pickGoogleDriveDirectly();
   },
 
   async promptWithToken(token, key = null) {
