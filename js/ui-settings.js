@@ -3416,19 +3416,20 @@ const UISettings = {
   // Tự động truy vấn Google API để tìm mô hình Flash khả dụng mới nhất (không lo lỗi khi Google ra bản mới)
   async resolveActiveGeminiModel(apiKey, forceRefresh = false) {
     if (!apiKey) apiKey = await this.getGeminiApiKey();
-    if (!apiKey) return 'gemini-3.8-flash';
+    const fallbacks = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+    if (!apiKey) return fallbacks[0];
 
     const preferredModel = await this.getGeminiModel();
     if (preferredModel && preferredModel !== 'auto' && !forceRefresh) {
       return preferredModel;
     }
 
-    // Kiểm tra cache đã phát hiện gần đây (trong 12 tiếng)
+    // Kiểm tra cache đã phát hiện gần đây (trong 12 tiếng), loại bỏ ngay nếu cache chứa model omni/audio không có free tier
     if (!forceRefresh) {
       try {
         const cached = localStorage.getItem('gemini_discovered_model');
         const ts = Number(localStorage.getItem('gemini_discovered_ts') || 0);
-        if (cached && (Date.now() - ts < 12 * 3600 * 1000)) {
+        if (cached && !cached.includes('omni') && !cached.includes('audio') && (Date.now() - ts < 12 * 3600 * 1000)) {
           return cached;
         }
       } catch (_) {}
@@ -3442,24 +3443,37 @@ const UISettings = {
         const data = await res.json();
         const models = Array.isArray(data?.models) ? data.models : [];
 
-        // Lọc các model có hỗ trợ generateContent và thuộc dòng Flash
+        // Lọc các model thuộc dòng Gemini Flash chuẩn
+        // LOẠI BỎ omni, audio, live, realtime vì Google đặt limit = 0 trên Free Tier (chỉ dành cho tài khoản trả phí)
+        const excludedKeywords = ['omni', 'audio', 'live', 'realtime', 'tts', 'embedding', 'search', 'retrieval', 'imagen', 'learnlm'];
         const flashModels = models
           .filter(m => {
             const methods = m.supportedGenerationMethods || [];
             const hasGenerate = methods.includes('generateContent');
             const name = (m.name || '').toLowerCase();
-            return hasGenerate && name.includes('flash') && !name.includes('embedding');
+            const isFlash = name.includes('flash');
+            const isExcluded = excludedKeywords.some(kw => name.includes(kw));
+            return hasGenerate && isFlash && !isExcluded;
           })
           .map(m => m.name.replace(/^models\//, ''));
 
         if (flashModels.length > 0) {
-          // Sắp xếp số phiên bản giảm dần (3.8 > 2.5 > 2.0 > 1.5)
-          flashModels.sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
-          const bestModel = flashModels[0];
+          // Sắp xếp theo số phiên bản số học giảm dần (ví dụ: 2.5 > 1.5, tránh so sánh chuỗi bị chữ 'omni' lên đầu)
+          flashModels.sort((a, b) => {
+            const matchA = a.match(/gemini-(\d+(?:\.\d+)?)/i);
+            const matchB = b.match(/gemini-(\d+(?:\.\d+)?)/i);
+            const verA = matchA ? parseFloat(matchA[1]) : 0;
+            const verB = matchB ? parseFloat(matchB[1]) : 0;
+            if (verB !== verA) return verB - verA;
+            return a.length - b.length;
+          });
+
+          const candidates = Array.from(new Set([...flashModels, ...fallbacks]));
+          const bestModel = candidates[0];
           try {
             localStorage.setItem('gemini_discovered_model', bestModel);
             localStorage.setItem('gemini_discovered_ts', String(Date.now()));
-            localStorage.setItem('gemini_discovered_list', JSON.stringify(flashModels));
+            localStorage.setItem('gemini_discovered_list', JSON.stringify(candidates));
           } catch (_) {}
           return bestModel;
         }
@@ -3468,8 +3482,6 @@ const UISettings = {
       console.warn('[Gemini] Không thể truy vấn /models:', e);
     }
 
-    // Dự phòng mặc định các bản phổ biến theo thứ tự ưu tiên
-    const fallbacks = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
     return fallbacks[0];
   },
 
@@ -3663,28 +3675,67 @@ const UISettings = {
       return;
     }
 
-    showToast('Đang kết nối & tự động dò tìm mô hình mới nhất...', 'info');
+    showToast('Đang kết nối & tự động dò tìm mô hình Free Tier khả dụng...', 'info');
+
+    // Xoá cache lỗi nếu có lưu model omni/audio
+    try {
+      const cached = localStorage.getItem('gemini_discovered_model');
+      if (cached && (cached.includes('omni') || cached.includes('audio'))) {
+        localStorage.removeItem('gemini_discovered_model');
+      }
+    } catch (_) {}
 
     try {
-      // 1. Tự động truy vấn danh sách model hiện khả dụng cho API Key này
-      const resolvedModel = await this.resolveActiveGeminiModel(apiKey, true);
+      // 1. Dò tìm danh sách các model khả dụng
+      await this.resolveActiveGeminiModel(apiKey, true);
 
-      // 2. Kiểm tra thực tế bằng một lệnh tạo nội dung ngắn gọn
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${resolvedModel}:generateContent?key=${apiKey}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Ping: OK' }] }]
-        })
-      });
+      let candidateList = [];
+      try {
+        const rawList = localStorage.getItem('gemini_discovered_list');
+        if (rawList) candidateList = JSON.parse(rawList);
+      } catch (_) {}
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData?.error?.message || `Mã phản hồi HTTP ${res.status}`);
+      const fallbacks = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+      const testQueue = Array.from(new Set([...(Array.isArray(candidateList) ? candidateList : []), ...fallbacks]))
+        .filter(m => !m.includes('omni') && !m.includes('audio') && !m.includes('live'));
+
+      let workingModel = null;
+      let lastErrorMsg = '';
+
+      // Thử từng model ứng viên để tìm model hoạt động tốt nhất trên Free Tier
+      for (const modelToTest of testQueue) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToTest}:generateContent?key=${apiKey}`;
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: 'Ping: OK' }] }]
+            })
+          });
+
+          if (res.ok) {
+            workingModel = modelToTest;
+            break;
+          } else {
+            const errData = await res.json().catch(() => ({}));
+            lastErrorMsg = errData?.error?.message || `Mã HTTP ${res.status}`;
+            console.warn(`[Gemini Test] Model ${modelToTest} không khả dụng (${lastErrorMsg}), thử model kế tiếp...`);
+          }
+        } catch (callErr) {
+          lastErrorMsg = callErr.message || String(callErr);
+        }
       }
 
-      showToast(`✨ Kết nối thành công! Tự động sử dụng mô hình mới nhất: ${resolvedModel}`, 'success');
+      if (!workingModel) {
+        throw new Error(lastErrorMsg || 'Không tìm thấy model nào khả dụng với API Key này');
+      }
+
+      // Lưu model đã ping thành công
+      localStorage.setItem('gemini_discovered_model', workingModel);
+      localStorage.setItem('gemini_discovered_ts', String(Date.now()));
+
+      showToast(`✨ Kết nối thành công! Tự động sử dụng: ${workingModel}`, 'success');
       await this.saveGeminiSettings(false);
       await this.loadGeminiSettings();
       await this.updateHubBadges();

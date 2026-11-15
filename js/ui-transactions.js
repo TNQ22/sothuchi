@@ -5957,18 +5957,27 @@ Hãy đọc hoá đơn / biên lai thanh toán trong ảnh và trả về DUY NH
       try {
         data = await requestGemini(model);
       } catch (callErr) {
-        // Tự động phát hiện lỗi model cũ không còn tồn tại -> tự dò model mới và retry
-        const isDeprecated = callErr.status === 404 || /no longer available|not found|deprecated/i.test(callErr.message || '');
-        if (isDeprecated && window.UISettings) {
-          console.warn(`[Gemini Auto-Heal] Model ${model} không còn khả dụng, đang tự động dò tìm model mới nhất từ Google...`);
-          const freshModel = await window.UISettings.resolveActiveGeminiModel(apiKey, true);
-          if (freshModel && freshModel !== model) {
-            console.log(`[Gemini Auto-Heal] Đã chuyển sang model: ${freshModel}`);
-            model = freshModel;
-            data = await requestGemini(freshModel);
-          } else {
-            throw callErr;
+        // Tự động phát hiện lỗi model cũ không còn tồn tại hoặc limit = 0 -> tự thử các model Flash Free Tier khác
+        const isUnavailable = callErr.status === 404 || 
+          /no longer available|not found|deprecated|quota.*limit:\s*0|exceeded your current quota/i.test(callErr.message || '');
+        if (isUnavailable && window.UISettings) {
+          console.warn(`[Gemini Auto-Heal] Model ${model} không khả dụng trên Free Tier (${callErr.message}), đang tự động chuyển model...`);
+          const fallbacks = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'].filter(m => m !== model);
+          let recovered = false;
+          for (const nextModel of fallbacks) {
+            try {
+              console.log(`[Gemini Auto-Heal] Đang chuyển sang model: ${nextModel}`);
+              data = await requestGemini(nextModel);
+              model = nextModel;
+              localStorage.setItem('gemini_discovered_model', nextModel);
+              localStorage.setItem('gemini_discovered_ts', String(Date.now()));
+              recovered = true;
+              break;
+            } catch (retryErr) {
+              console.warn(`[Gemini Auto-Heal] Thử model ${nextModel} thất bại:`, retryErr.message);
+            }
           }
+          if (!recovered) throw callErr;
         } else {
           throw callErr;
         }

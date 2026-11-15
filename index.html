@@ -3113,11 +3113,10 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Phiên bản Flash siêu tốc độ, nhận diện tiếng Việt cực tốt</div>
                   </div>
                   <select id="settings-gemini-model" class="form-control" style="width: 180px; font-size: 0.82rem;" onchange="UISettings.saveGeminiSettings(false)">
-                    <option value="auto">⚡ Tự động (Luôn dùng bản mới nhất)</option>
-                    <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+                    <option value="auto">⚡ Tự động (Free Tier tối ưu)</option>
                     <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                    <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
                     <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                    <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B</option>
                   </select>
                 </div>
 
@@ -7419,13 +7418,13 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=3.0.44"></script>
-  <script src="./js/ui-transactions.js?v=3.0.59"></script>
+  <script src="./js/ui-transactions.js?v=3.0.60"></script>
   <script src="./js/ui-debts.js?v=3.0.44"></script>
   <script src="./js/ui-accounts.js?v=3.0.59"></script>
   <script src="./js/ui-share.js?v=3.0.63"></script>
   <script src="./js/ui-budgets.js?v=3.0.57"></script>
   <script src="./js/ui-analytics.js?v=3.0.44"></script>
-  <script src="./js/ui-settings.js?v=3.0.63"></script>
+  <script src="./js/ui-settings.js?v=3.0.64"></script>
   <script src="./js/server-auth-modals.js?v=3.0.44"></script>
 
   <!-- Main Entry Coordinator -->
