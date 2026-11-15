@@ -3235,40 +3235,22 @@ const UISettings = {
           : 'Không rõ ngày';
         const sizeStr = b.size ? `${(Number(b.size) / 1024).toFixed(1)} KB` : '';
 
-        let iconName = 'folder';
-        let iconBg = 'rgba(16, 185, 129, 0.12)';
-        let iconColor = '#10b981';
         let badgeColor = '#10b981';
         let badgeText = 'Thư mục Drive';
 
         if (b.locationType === 'privateVault') {
-          iconName = 'shield-check';
-          iconBg = 'rgba(139, 92, 246, 0.12)';
-          iconColor = '#8b5cf6';
           badgeColor = '#8b5cf6';
           badgeText = 'Bản sao riêng tư';
         } else if (b.locationType === 'revision') {
-          iconName = 'history';
-          iconBg = 'rgba(245, 158, 11, 0.12)';
-          iconColor = '#f59e0b';
           badgeColor = '#f59e0b';
           badgeText = 'Bản lịch sử';
         } else if (b.locationType === 'sharedWithMe') {
-          iconName = 'users';
-          iconBg = 'rgba(59, 130, 246, 0.12)';
-          iconColor = '#3b82f6';
           badgeColor = '#3b82f6';
           badgeText = b.ownerEmail ? `Từ ${b.ownerEmail.split('@')[0]}` : 'Được chia sẻ';
         } else if (b.locationType === 'mirror') {
-          iconName = 'archive';
-          iconBg = 'rgba(99, 102, 241, 0.12)';
-          iconColor = '#6366f1';
           badgeColor = '#6366f1';
           badgeText = 'Bản Mirror';
         } else if (b.locationType === 'appDataFolder') {
-          iconName = 'database';
-          iconBg = 'rgba(14, 165, 233, 0.12)';
-          iconColor = '#0ea5e9';
           badgeColor = '#0ea5e9';
           badgeText = 'AppData ẩn';
         }
@@ -3278,14 +3260,11 @@ const UISettings = {
 
         return `
           <div class="drive-recovery-card">
-            <div class="drive-recovery-icon-wrap" style="background: ${iconBg}; color: ${iconColor};">
-              <i data-lucide="${iconName}" style="width: 18px; height: 18px;"></i>
+            <div class="drive-recovery-title" title="${safeTitle}">
+              ${safeTitle}
             </div>
-            <div class="drive-recovery-content">
-              <div class="drive-recovery-title" title="${safeTitle}">
-                ${safeTitle}
-              </div>
-              <div class="drive-recovery-meta-row">
+            <div class="drive-recovery-bottom-row">
+              <div class="drive-recovery-meta-left">
                 <span class="drive-recovery-badge" style="background: ${badgeColor}18; color: ${badgeColor}; border: 1px solid ${badgeColor}35;">
                   ${badgeText}
                 </span>
@@ -3295,11 +3274,10 @@ const UISettings = {
                 </span>
                 ${sizeStr ? `<span class="drive-recovery-meta-item">• ${sizeStr}</span>` : ''}
               </div>
+              <button type="button" class="btn-primary drive-recovery-icon-btn btn-restore-backup-item" data-backup-idx="${idx}" title="Khôi phục bản này" aria-label="Khôi phục bản này">
+                <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
+              </button>
             </div>
-            <button type="button" class="btn-primary drive-recovery-btn btn-restore-backup-item" data-backup-idx="${idx}" title="Khôi phục bản này">
-              <i data-lucide="rotate-ccw" style="width: 13px; height: 13px;"></i>
-              <span>Khôi phục</span>
-            </button>
           </div>
         `;
       }).join('');
@@ -3324,7 +3302,7 @@ const UISettings = {
           if (!ok) return;
 
           btn.disabled = true;
-          btn.innerHTML = '<i data-lucide="loader-2" class="spin-animation" style="width: 13px; height: 13px;"></i> <span>Đang tải...</span>';
+          btn.innerHTML = '<i data-lucide="loader-2" class="spin-animation" style="width: 14px; height: 14px;"></i>';
           if (window.lucide) lucide.createIcons();
 
           try {
@@ -3336,7 +3314,7 @@ const UISettings = {
             console.error('Lỗi khôi phục:', err);
             showToast('Lỗi: ' + err.message, 'error');
             btn.disabled = false;
-            btn.innerHTML = '<i data-lucide="rotate-ccw" style="width: 13px; height: 13px;"></i> <span>Khôi phục</span>';
+            btn.innerHTML = '<i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>';
             if (window.lucide) lucide.createIcons();
           }
         });

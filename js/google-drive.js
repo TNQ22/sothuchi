@@ -1153,7 +1153,7 @@ class GoogleDriveSync {
           results.push({
             id: f.id,
             name: f.name,
-            displayName: f.name === this.syncFileName ? 'Sổ chính (sothuchi_vault.json)' : f.name,
+            displayName: f.name,
             location: 'Thư mục Drive (My Drive)',
             locationType: 'customFolder',
             modifiedTime: f.modifiedTime,
@@ -1167,7 +1167,7 @@ class GoogleDriveSync {
               id: f.id,
               revisionId: r.id,
               name: f.name,
-              displayName: `Bản lịch sử: ${f.name}`,
+              displayName: f.name,
               location: 'Lịch sử phiên bản (Revision)',
               locationType: 'revision',
               modifiedTime: r.modifiedTime,
@@ -1222,7 +1222,7 @@ class GoogleDriveSync {
           results.push({
             id: f.id,
             name: f.name,
-            displayName: 'Bản sao lưu riêng tư ngầm',
+            displayName: f.name,
             location: 'Vùng ẩn AppData',
             locationType: 'privateVault',
             modifiedTime: f.modifiedTime,
@@ -1247,7 +1247,7 @@ class GoogleDriveSync {
           results.push({
             id: f.id,
             name: f.name,
-            displayName: 'Sổ chính (AppData ẩn)',
+            displayName: f.name,
             location: 'Vùng ẩn AppData',
             locationType: 'appDataFolder',
             modifiedTime: f.modifiedTime,
@@ -1260,7 +1260,7 @@ class GoogleDriveSync {
               id: f.id,
               revisionId: r.id,
               name: f.name,
-              displayName: `Bản lịch sử: ${f.name}`,
+              displayName: f.name,
               location: 'Lịch sử phiên bản AppData',
               locationType: 'revision',
               modifiedTime: r.modifiedTime,
@@ -1287,7 +1287,7 @@ class GoogleDriveSync {
             results.push({
               id: f.id,
               name: f.name,
-              displayName: 'Bản sao lưu dự phòng (.stc)',
+              displayName: f.name,
               location: 'Vùng ẩn AppData',
               locationType: 'mirror',
               modifiedTime: f.modifiedTime,

@@ -48,6 +48,13 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
 - Đường viền siêu mảnh tạo khối sang trọng (`1px solid rgba(255, 255, 255, 0.08)` trên Dark mode).
 - Typography hiển thị số tiền lớn, rõ ràng, định dạng chuẩn Việt Nam (`100.000 đ`).
 
+### 2.5. Bố cục Modal & Danh sách Thẻ (Cards / Lists) trên Mobile (BẮT BUỘC)
+- **Sát viền màn hình (Edge-to-Edge):** Modal overlay trên mobile chỉ để lề tối thiểu (`padding: 4px - 6px`), modal dialog mở rộng tối đa `width: calc(100% - 8px)` hoặc `100%`, tận dụng tối đa diện tích hiển thị trên điện thoại.
+- **Bỏ icon trang trí thừa bên trái:** Trong các thẻ danh sách (như danh sách tệp, bản sao lưu, mục chọn), không chèn icon khối vuông lớn bên trái nếu không cần thiết, để nhường toàn bộ bề ngang cho tiêu đề và tên dữ liệu.
+- **Không lặp tiền tố dư thừa (No Redundant Prefixes):** Khi thẻ đã có Badge/Tag phân loại (như `[Bản lịch sử]`, `[Drive]`), tuyệt đối không lặp lại tiền tố vào tên dữ liệu (như "Bản lịch sử: ...", "Sổ chính: ...") làm che khuất tên tệp thật.
+- **Tên dữ liệu trải dài 100% dòng trên:** Tên dữ liệu/tệp phải nằm trọn vẹn ở dòng trên cùng, kéo dài hết bề ngang của thẻ (`width: 100%`, `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`), không bị nút hay icon bên cạnh chèn ép.
+- **Nút thao tác chuyển xuống cạnh dưới (Bottom Action):** Nút hành động (như Khôi phục, Tải về, Xoá) chuyển xuống hàng dưới cùng hàng với Tag + Thời gian. Ưu tiên nút icon gọn gàng (`icon button`), bỏ chữ rườm rà để tiết kiệm diện tích tối đa.
+
 ---
 
 ## 3. NGUYÊN TẮC VIẾT CODE & BẢO TRÌ
