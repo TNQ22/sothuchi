@@ -14757,14 +14757,63 @@ body.light .ptr-circle-badge,
 .crop-handle[data-handle="l"]::after { left: 9px; }
 .crop-handle[data-handle="r"]::after { right: 9px; }
 
-/* Crop Toolbar Panel (Tilt + Rotate) */
+/* Crop Toolbar Panel (Tilt + Perspective + Rotate) */
 .crop-toolbar-panel {
   padding: 10px 14px;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(15, 23, 42, 0.92);
   border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* Perspective mode tabs (Góc xoay | Dọc | Ngang - Style iOS Photos) */
+.crop-perspective-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-perspective-tab {
+  flex: 1;
+  max-width: 110px;
+  height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 2px 6px;
+}
+.btn-perspective-tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.btn-perspective-tab.active {
+  background: rgba(13, 148, 136, 0.2);
+  border-color: #14b8a6;
+  color: #2dd4bf;
+  box-shadow: 0 0 10px rgba(20, 184, 166, 0.2);
+}
+.persp-tab-svg {
+  width: 18px;
+  height: 18px;
+}
+.persp-tab-icon {
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 18px;
+}
+.persp-tab-label {
+  font-size: 0.68rem;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .crop-tilt-control {
@@ -14778,7 +14827,7 @@ body.light .ptr-circle-badge,
   gap: 5px;
   font-size: 0.78rem;
   color: var(--text-secondary, #94a3b8);
-  width: 105px;
+  width: 115px;
   flex-shrink: 0;
 }
 .crop-tilt-label strong {
@@ -14792,12 +14841,12 @@ body.light .ptr-circle-badge,
   cursor: pointer;
 }
 .btn-tilt-reset {
-  padding: 2px 8px;
+  padding: 2px 10px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-muted, #94a3b8);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;

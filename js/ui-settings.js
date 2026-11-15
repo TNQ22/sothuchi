@@ -3508,6 +3508,16 @@ const UISettings = {
     return fallbacks[0];
   },
 
+  async getGeminiAutoCrop() {
+    try {
+      const setting = await db.settings.get('geminiAutoCrop');
+      if (setting && setting.value !== undefined) return !!setting.value;
+      const ls = localStorage.getItem('gemini_auto_crop');
+      if (ls !== null) return ls === 'true';
+    } catch (_) {}
+    return true;
+  },
+
   async getGeminiAutoAmount() {
     try {
       const setting = await db.settings.get('geminiAutoAmount');

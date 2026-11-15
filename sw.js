@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v3.0.87';
+const CACHE_NAME = 'sothuchi-pwa-v3.0.88';
 
 const PRECACHE_ASSETS = [
   './',
@@ -9,6 +9,7 @@ const PRECACHE_ASSETS = [
   './vendor/dexie.min.js',
   './vendor/chart.umd.min.js',
   './vendor/lucide.min.js',
+  './vendor/tesseract.min.js',
   './js/config.js',
   './js/custom-dialog.js',
   './js/crypto.js',
@@ -181,6 +182,9 @@ self.addEventListener('fetch', (event) => {
           networkResponse &&
           networkResponse.status === 200 &&
           (event.request.url.includes('lucide') ||
+           event.request.url.includes('tesseract') ||
+           event.request.url.includes('tessdata') ||
+           event.request.url.includes('unpkg.com') ||
            event.request.url.includes('fonts.gstatic.com') ||
            event.request.url.includes('fonts.googleapis.com'))
         ) {

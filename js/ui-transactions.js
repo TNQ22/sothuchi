@@ -5704,7 +5704,7 @@ const UITransactions = {
     }
   },
 
-  /* ==================== MANUAL CROP, ROTATE & TILT TOOL ==================== */
+  /* ==================== MANUAL CROP, ROTATE & PERSPECTIVE TOOL ==================== */
   openCropModal(index) {
     if (index < 0 || index >= this.attachedImages.length) return;
     const dataUrl = this.attachedImages[index];
@@ -5713,6 +5713,9 @@ const UITransactions = {
       targetIndex: index,
       rotation90: 0,
       tiltAngle: 0,
+      perspectiveV: 0,
+      perspectiveH: 0,
+      activeAdjustMode: 'tilt',
       cropNorm: { x: 0.04, y: 0.04, w: 0.92, h: 0.92 },
       sourceImg: new Image(),
       isDragging: false,
@@ -5723,11 +5726,14 @@ const UITransactions = {
     };
 
     const modal = document.getElementById('modal-crop-image');
-    const tiltSlider = document.getElementById('crop-slider-tilt');
-    const tiltValueText = document.getElementById('crop-tilt-value');
+    this.setCropAdjustMode('tilt');
 
-    if (tiltSlider) tiltSlider.value = 0;
-    if (tiltValueText) tiltValueText.textContent = '0°';
+    const tiltVal = document.getElementById('persp-tab-tilt-val');
+    const vertVal = document.getElementById('persp-tab-vert-val');
+    const horizVal = document.getElementById('persp-tab-horiz-val');
+    if (tiltVal) tiltVal.textContent = '0°';
+    if (vertVal) vertVal.textContent = 'Dọc (0)';
+    if (horizVal) horizVal.textContent = 'Ngang (0)';
 
     this.cropState.sourceImg.onload = () => {
       this.initCropTouchHandlers();
@@ -5736,7 +5742,6 @@ const UITransactions = {
         modal.style.display = 'flex';
         modal.classList.add('open', 'active');
       }
-      // Khởi tạo lại kích thước khi modal hiển thị đầy đủ
       setTimeout(() => {
         this.drawCropCanvas();
         if (window.lucide) lucide.createIcons();
@@ -5754,6 +5759,85 @@ const UITransactions = {
     if (this.cropState) {
       this.cropState.isDragging = false;
     }
+  },
+
+  setCropAdjustMode(mode) {
+    if (!this.cropState) return;
+    this.cropState.activeAdjustMode = mode;
+
+    ['tilt', 'vert', 'horiz'].forEach(m => {
+      const btn = document.getElementById(`btn-persp-${m}`);
+      if (btn) btn.classList.toggle('active', m === mode);
+    });
+
+    const slider = document.getElementById('crop-slider-adjust');
+    const label = document.getElementById('crop-active-mode-label');
+
+    let curVal = 0;
+    if (mode === 'tilt') {
+      curVal = this.cropState.tiltAngle || 0;
+      if (label) label.innerHTML = `Góc xoay: <strong id="crop-tilt-value">${curVal}°</strong>`;
+    } else if (mode === 'vert') {
+      curVal = this.cropState.perspectiveV || 0;
+      if (label) label.innerHTML = `Nghiêng dọc: <strong id="crop-tilt-value">${curVal > 0 ? '+' : ''}${curVal}</strong>`;
+    } else if (mode === 'horiz') {
+      curVal = this.cropState.perspectiveH || 0;
+      if (label) label.innerHTML = `Nghiêng ngang: <strong id="crop-tilt-value">${curVal > 0 ? '+' : ''}${curVal}</strong>`;
+    }
+
+    if (slider) slider.value = curVal;
+  },
+
+  handleCropSliderAdjust(val) {
+    if (!this.cropState) return;
+    const num = Number(val);
+    const mode = this.cropState.activeAdjustMode || 'tilt';
+
+    const valueEl = document.getElementById('crop-tilt-value');
+    if (mode === 'tilt') {
+      this.cropState.tiltAngle = num;
+      if (valueEl) valueEl.textContent = `${num}°`;
+      const tabVal = document.getElementById('persp-tab-tilt-val');
+      if (tabVal) tabVal.textContent = `${num}°`;
+    } else if (mode === 'vert') {
+      this.cropState.perspectiveV = num;
+      if (valueEl) valueEl.textContent = `${num > 0 ? '+' : ''}${num}`;
+      const tabVal = document.getElementById('persp-tab-vert-val');
+      if (tabVal) tabVal.textContent = `Dọc (${num > 0 ? '+' : ''}${num})`;
+    } else if (mode === 'horiz') {
+      this.cropState.perspectiveH = num;
+      if (valueEl) valueEl.textContent = `${num > 0 ? '+' : ''}${num}`;
+      const tabVal = document.getElementById('persp-tab-horiz-val');
+      if (tabVal) tabVal.textContent = `Ngang (${num > 0 ? '+' : ''}${num})`;
+    }
+
+    this.drawCropCanvas();
+  },
+
+  resetActiveCropAdjust() {
+    const slider = document.getElementById('crop-slider-adjust');
+    if (slider) slider.value = 0;
+    this.handleCropSliderAdjust(0);
+  },
+
+  resetAllCropPerspective() {
+    if (!this.cropState) return;
+    this.cropState.tiltAngle = 0;
+    this.cropState.perspectiveV = 0;
+    this.cropState.perspectiveH = 0;
+    this.cropState.rotation90 = 0;
+    this.cropState.cropNorm = { x: 0.04, y: 0.04, w: 0.92, h: 0.92 };
+
+    const tiltVal = document.getElementById('persp-tab-tilt-val');
+    const vertVal = document.getElementById('persp-tab-vert-val');
+    const horizVal = document.getElementById('persp-tab-horiz-val');
+    if (tiltVal) tiltVal.textContent = '0°';
+    if (vertVal) vertVal.textContent = 'Dọc (0)';
+    if (horizVal) horizVal.textContent = 'Ngang (0)';
+
+    this.setCropAdjustMode(this.cropState.activeAdjustMode || 'tilt');
+    this.drawCropCanvas();
+    showToast('Đã đặt lại toàn bộ góc xoay & phối cảnh về 0', 'info');
   },
 
   initCropTouchHandlers() {
@@ -5870,17 +5954,11 @@ const UITransactions = {
   },
 
   handleCropTilt(val) {
-    if (!this.cropState) return;
-    this.cropState.tiltAngle = Number(val);
-    const textEl = document.getElementById('crop-tilt-value');
-    if (textEl) textEl.textContent = `${val}°`;
-    this.drawCropCanvas();
+    this.handleCropSliderAdjust(val);
   },
 
   resetCropTilt() {
-    const slider = document.getElementById('crop-slider-tilt');
-    if (slider) slider.value = 0;
-    this.handleCropTilt(0);
+    this.resetActiveCropAdjust();
   },
 
   rotateCropLeft() {
@@ -5918,25 +5996,98 @@ const UITransactions = {
     const boundW = Math.round(origW * absCos + origH * absSin);
     const boundH = Math.round(origW * absSin + origH * absCos);
 
-    canvas.width = boundW;
-    canvas.height = boundH;
+    // 1. Tạo canvas xoay
+    let workCanvas = document.createElement('canvas');
+    workCanvas.width = boundW;
+    workCanvas.height = boundH;
+    let wCtx = workCanvas.getContext('2d');
+    wCtx.fillStyle = '#ffffff';
+    wCtx.fillRect(0, 0, boundW, boundH);
+    wCtx.save();
+    wCtx.translate(boundW / 2, boundH / 2);
+    wCtx.rotate(rad);
+    wCtx.drawImage(img, -origW / 2, -origH / 2);
+    wCtx.restore();
+
+    // 2. Phối cảnh dọc (Vertical Perspective: trên to dưới nhỏ / trên nhỏ dưới to)
+    const pV = this.cropState.perspectiveV || 0;
+    if (pV !== 0) {
+      const k = pV / 45;
+      const srcW = workCanvas.width;
+      const srcH = workCanvas.height;
+      const maxScale = Math.max(1 + 0.5 * k, 1 - 0.5 * k);
+      const outW = Math.round(srcW * maxScale);
+      const outH = srcH;
+
+      const vCanvas = document.createElement('canvas');
+      vCanvas.width = outW;
+      vCanvas.height = outH;
+      const vCtx = vCanvas.getContext('2d');
+      vCtx.fillStyle = '#ffffff';
+      vCtx.fillRect(0, 0, outW, outH);
+
+      const N = 120;
+      const sliceH = srcH / N;
+      for (let i = 0; i < N; i++) {
+        const t = (i + 0.5) / N;
+        const scaleX = Math.max(0.1, 1 + k * (0.5 - t));
+        const dw = srcW * scaleX;
+        const dx = (outW - dw) / 2;
+        const sy = i * sliceH;
+        const sh = sliceH + 0.6;
+        vCtx.drawImage(workCanvas, 0, sy, srcW, sh, dx, sy, dw, sh);
+      }
+      workCanvas = vCanvas;
+    }
+
+    // 3. Phối cảnh ngang (Horizontal Perspective: trái to phải nhỏ / trái nhỏ phải to)
+    const pH = this.cropState.perspectiveH || 0;
+    if (pH !== 0) {
+      const m = pH / 45;
+      const srcW = workCanvas.width;
+      const srcH = workCanvas.height;
+      const maxScale = Math.max(1 + 0.5 * m, 1 - 0.5 * m);
+      const outW = srcW;
+      const outH = Math.round(srcH * maxScale);
+
+      const hCanvas = document.createElement('canvas');
+      hCanvas.width = outW;
+      hCanvas.height = outH;
+      const hCtx = hCanvas.getContext('2d');
+      hCtx.fillStyle = '#ffffff';
+      hCtx.fillRect(0, 0, outW, outH);
+
+      const N = 120;
+      const sliceW = srcW / N;
+      for (let j = 0; j < N; j++) {
+        const t = (j + 0.5) / N;
+        const scaleY = Math.max(0.1, 1 + m * (0.5 - t));
+        const dh = srcH * scaleY;
+        const dy = (outH - dh) / 2;
+        const sx = j * sliceW;
+        const sw = sliceW + 0.6;
+        hCtx.drawImage(workCanvas, sx, 0, sw, srcH, sx, dy, sw, dh);
+      }
+      workCanvas = hCanvas;
+    }
+
+    // 4. Đưa hình ảnh lên canvas hiển thị
+    const finalW = workCanvas.width;
+    const finalH = workCanvas.height;
+    canvas.width = finalW;
+    canvas.height = finalH;
 
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, boundW, boundH);
-    ctx.save();
-    ctx.translate(boundW / 2, boundH / 2);
-    ctx.rotate(rad);
-    ctx.drawImage(img, -origW / 2, -origH / 2);
-    ctx.restore();
+    ctx.clearRect(0, 0, finalW, finalH);
+    ctx.drawImage(workCanvas, 0, 0);
 
-    // Tính kích thước hiển thị CSS để toàn bộ hoá đơn (kể cả bill dọc siêu dài) nằm gọn 100% trong khung
+    // Tính kích thước hiển thị CSS để toàn bộ hoá đơn nằm gọn trong khung
     const contW = Math.max(80, container.clientWidth - 20);
     const contH = Math.max(80, container.clientHeight - 20);
-    const scale = Math.min(contW / boundW, contH / boundH, 1);
+    const scale = Math.min(contW / finalW, contH / finalH, 1);
 
-    const dispW = Math.max(40, Math.round(boundW * scale));
-    const dispH = Math.max(40, Math.round(boundH * scale));
+    const dispW = Math.max(40, Math.round(finalW * scale));
+    const dispH = Math.max(40, Math.round(finalH * scale));
 
     canvas.style.width = `${dispW}px`;
     canvas.style.height = `${dispH}px`;
@@ -5993,7 +6144,7 @@ const UITransactions = {
     this.attachedImages[this.cropState.targetIndex] = croppedDataUrl;
     this.renderAttachedImages();
     this.closeCropModal();
-    showToast('Đã cắt và xoay hoá đơn thành công!', 'success');
+    showToast('Đã cắt và chỉnh phối cảnh hoá đơn thành công!', 'success');
   },
 
   /* ==================== OFFLINE QR BILL & AMOUNT PARSER ==================== */
@@ -6022,7 +6173,6 @@ const UITransactions = {
       let parsedAmount = null;
       let parsedNote = '';
 
-      // 1. Phân tích mã VietQR chuẩn EMVCo (Tag 54 là Số tiền giao dịch)
       if (rawValue.includes('000201')) {
         const emvStr = rawValue.substring(rawValue.indexOf('000201'));
         let i = 0;
@@ -6051,7 +6201,6 @@ const UITransactions = {
         }
       }
 
-      // 2. Phân tích JSON hoặc chuỗi Hoá đơn điện tử
       if (!parsedAmount) {
         try {
           const jsonObj = JSON.parse(rawValue);
@@ -6060,7 +6209,6 @@ const UITransactions = {
         } catch (_) {}
       }
 
-      // 3. Regex tìm số tiền trong chuỗi QR hoá đơn
       if (!parsedAmount) {
         const match = rawValue.match(/(?:tongtien|amount|tien|total)[^\d]*([0-9.,]{4,12})/i);
         if (match && match[1]) {
@@ -6081,8 +6229,143 @@ const UITransactions = {
     }
   },
 
+  /* ==================== OFFLINE OCR RECEIPT SCANNER ==================== */
+  async scanReceiptWithOfflineOCR(dataUrl) {
+    if (typeof Tesseract === 'undefined') {
+      throw new Error('Thư viện OCR chưa sẵn sàng');
+    }
+
+    this.setAIScanningState(true, 'Đang chuẩn bị bộ quét chữ offline...');
+
+    // 1. Tiền xử lý ảnh (tăng tương phản để làm rõ nét chữ in nhiệt)
+    const preprocessCanvas = await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+        const maxDim = 1200;
+        if (w > maxDim || h > maxDim) {
+          if (w >= h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+
+        try {
+          const imgData = ctx.getImageData(0, 0, w, h);
+          const d = imgData.data;
+          for (let i = 0; i < d.length; i += 4) {
+            const gray = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114);
+            const contrast = 1.35;
+            const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+            const cGray = Math.max(0, Math.min(255, factor * (gray - 128) + 128));
+            d[i] = cGray;
+            d[i + 1] = cGray;
+            d[i + 2] = cGray;
+          }
+          ctx.putImageData(imgData, 0, 0);
+        } catch (_) {}
+
+        resolve(canvas);
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+
+    // 2. Nhận diện chữ bằng Tesseract.js
+    const result = await Tesseract.recognize(
+      preprocessCanvas,
+      'vie+eng',
+      {
+        logger: (m) => {
+          if (m.status === 'recognizing text' && typeof m.progress === 'number') {
+            const pct = Math.round(m.progress * 100);
+            this.setAIScanningState(true, `OCR Offline nhận diện chữ số: ${pct}%...`);
+          } else if (m.status) {
+            this.setAIScanningState(true, `Đang xử lý hoá đơn (${m.status})...`);
+          }
+        }
+      }
+    );
+
+    const rawLines = result?.data?.lines || [];
+    const textLines = rawLines.map(l => (l.text || '').trim()).filter(Boolean);
+
+    let detectedAmount = null;
+    let detectedItems = [];
+
+    const totalKeyRegex = /(?:t[oổ]ng\s*c[oộ]ng|thanh\s*to[aá]n|t[oổ]ng\s*ti[eề]n|c[oộ]ng\s*ti[eề]n\s*h[aà]ng|kh[aá]ch\s*ph[aả]i\s*tr[aả]|ti[eề]n\s*m[aặ]t|t[oổ]ng|total|grand\s*total|amount|balance)/i;
+    const amountNumRegex = /(?:[\s:=]|^)(\d{1,3}(?:[.,]\d{3})+|\d{4,9})(?:\s*(?:đ|vnd|vnđ|d))?/i;
+
+    // 3. Quét dòng chứa từ khoá thanh toán
+    for (let i = textLines.length - 1; i >= 0; i--) {
+      const line = textLines[i];
+      if (totalKeyRegex.test(line)) {
+        const match = line.match(amountNumRegex);
+        if (match && match[1]) {
+          const num = parseInt(match[1].replace(/[.,]/g, ''), 10);
+          if (!isNaN(num) && num >= 1000) {
+            detectedAmount = num;
+            break;
+          }
+        }
+        if (i + 1 < textLines.length) {
+          const nextMatch = textLines[i + 1].match(amountNumRegex);
+          if (nextMatch && nextMatch[1]) {
+            const num = parseInt(nextMatch[1].replace(/[.,]/g, ''), 10);
+            if (!isNaN(num) && num >= 1000) {
+              detectedAmount = num;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (!detectedAmount) {
+      const bottomHalf = textLines.slice(Math.floor(textLines.length * 0.4));
+      let maxVal = 0;
+      for (const line of bottomHalf) {
+        const match = line.match(amountNumRegex);
+        if (match && match[1]) {
+          const num = parseInt(match[1].replace(/[.,]/g, ''), 10);
+          if (!isNaN(num) && num >= 1000 && num > maxVal) {
+            maxVal = num;
+          }
+        }
+      }
+      if (maxVal > 0) detectedAmount = maxVal;
+    }
+
+    for (const line of textLines) {
+      if (totalKeyRegex.test(line)) continue;
+      const match = line.match(/^(.+?)\s+(\d{1,3}(?:[.,]\d{3})+|\d{4,9})(?:\s*(?:đ|vnd|vnđ|d))?$/i);
+      if (match && match[1] && match[2]) {
+        const itemName = match[1].replace(/^[0-9•\-\s]+/, '').trim();
+        const price = parseInt(match[2].replace(/[.,]/g, ''), 10);
+        if (itemName.length > 2 && price >= 1000 && price < (detectedAmount || 1000000000)) {
+          detectedItems.push(`• ${itemName}: ${new Intl.NumberFormat('vi-VN').format(price)}đ`);
+        }
+      }
+    }
+
+    return {
+      success: true,
+      amount: detectedAmount,
+      items: detectedItems,
+      text: result?.data?.text || ''
+    };
+  },
+
   /* ==================== AI RECEIPT SCAN ENGINE ==================== */
-  // Nén và giảm kích thước ảnh trước khi gửi sang Google API (giải quyết triệt để lỗi treo/quá tải)
   async compressImageForAI(dataUrl, maxDim = 1280, quality = 0.78) {
     return new Promise((resolve) => {
       const img = new Image();
@@ -6127,7 +6410,7 @@ const UITransactions = {
         if (textEl) textEl.textContent = customText || 'Đang phân tích hoá đơn với Gemini Flash...';
       } else {
         btn.classList.remove('is-scanning');
-        if (textEl) textEl.textContent = 'Quét hoá đơn với AI (Tự điền món & giá)';
+        if (textEl) textEl.textContent = 'Quét hoá đơn (AI / OCR Offline)';
       }
     }
     if (cancelBtn) {
@@ -6203,42 +6486,94 @@ const UITransactions = {
     let offlineQrEnabled = true;
 
     if (window.UISettings) {
-      isEnabled = await window.UISettings.getGeminiEnabled();
-      apiKey = await window.UISettings.getGeminiApiKey();
-      model = await window.UISettings.getGeminiModel() || 'gemini-3.8-flash';
-      autoCrop = await window.UISettings.getGeminiAutoCrop();
-      autoAmount = await window.UISettings.getGeminiAutoAmount();
-      autoItems = await window.UISettings.getGeminiAutoItems();
-      autoCategory = await window.UISettings.getGeminiAutoCategory();
-      offlineQrEnabled = await window.UISettings.getGeminiOfflineQr();
+      try {
+        if (typeof window.UISettings.getGeminiEnabled === 'function') {
+          isEnabled = await window.UISettings.getGeminiEnabled();
+        }
+        if (typeof window.UISettings.getGeminiApiKey === 'function') {
+          apiKey = await window.UISettings.getGeminiApiKey();
+        }
+        if (typeof window.UISettings.getGeminiModel === 'function') {
+          model = (await window.UISettings.getGeminiModel()) || 'gemini-3.8-flash';
+        }
+        if (typeof window.UISettings.getGeminiAutoCrop === 'function') {
+          autoCrop = await window.UISettings.getGeminiAutoCrop();
+        }
+        if (typeof window.UISettings.getGeminiAutoAmount === 'function') {
+          autoAmount = await window.UISettings.getGeminiAutoAmount();
+        }
+        if (typeof window.UISettings.getGeminiAutoItems === 'function') {
+          autoItems = await window.UISettings.getGeminiAutoItems();
+        }
+        if (typeof window.UISettings.getGeminiAutoCategory === 'function') {
+          autoCategory = await window.UISettings.getGeminiAutoCategory();
+        }
+        if (typeof window.UISettings.getGeminiOfflineQr === 'function') {
+          offlineQrEnabled = await window.UISettings.getGeminiOfflineQr();
+        }
+      } catch (e) {
+        console.warn('[scanReceiptWithAI] Lỗi đọc cài đặt:', e);
+      }
     }
 
-    // Nếu người dùng tắt AI hoặc chưa có Key: thử quét QR offline trước
+    // Nếu người dùng tắt AI hoặc chưa có Key: thử quét QR offline rồi thử OCR offline
     if (!isEnabled || !apiKey) {
+      // 1. Thử đọc QR
       if (offlineQrEnabled) {
-        const qrResult = await this.scanReceiptQrOffline(lastImg);
-        if (qrResult && qrResult.amount) {
-          if (autoAmount) {
-            const formattedAmount = new Intl.NumberFormat('vi-VN').format(qrResult.amount);
-            const amountInput = document.getElementById('tx-amount-input');
-            const amountText = document.getElementById('tx-amount-text');
-            if (amountInput) amountInput.value = formattedAmount;
-            if (amountText) amountText.textContent = formattedAmount;
-          }
-          if (autoItems && qrResult.note) {
-            const noteInput = document.getElementById('tx-note-input');
-            if (noteInput && !noteInput.value.trim()) {
-              noteInput.value = qrResult.note;
-              this.autoResizeNoteInput();
+        try {
+          const qrResult = await this.scanReceiptQrOffline(lastImg);
+          if (qrResult && qrResult.amount) {
+            if (autoAmount) {
+              const formattedAmount = new Intl.NumberFormat('vi-VN').format(qrResult.amount);
+              const amountInput = document.getElementById('tx-amount-input');
+              const amountText = document.getElementById('tx-amount-text');
+              if (amountInput) amountInput.value = formattedAmount;
+              if (amountText) amountText.textContent = formattedAmount;
             }
+            if (autoItems && qrResult.note) {
+              const noteInput = document.getElementById('tx-note-input');
+              if (noteInput && !noteInput.value.trim()) {
+                noteInput.value = qrResult.note;
+                this.autoResizeNoteInput();
+              }
+            }
+            showToast(`✓ Đã đọc số tiền từ mã QR offline: ${new Intl.NumberFormat('vi-VN').format(qrResult.amount)}đ`, 'success');
+            return;
           }
-          showToast(`✓ Đã đọc số tiền từ mã QR offline: ${new Intl.NumberFormat('vi-VN').format(qrResult.amount)}đ`, 'success');
-          return;
+        } catch (_) {}
+      }
+
+      // 2. Thử đọc hoá đơn bằng OCR Offline (Tesseract)
+      if (typeof Tesseract !== 'undefined') {
+        try {
+          const ocrRes = await this.scanReceiptWithOfflineOCR(lastImg);
+          if (ocrRes && ocrRes.amount) {
+            if (autoAmount) {
+              const formattedAmount = new Intl.NumberFormat('vi-VN').format(ocrRes.amount);
+              const amountInput = document.getElementById('tx-amount-input');
+              const amountText = document.getElementById('tx-amount-text');
+              if (amountInput) amountInput.value = formattedAmount;
+              if (amountText) amountText.textContent = formattedAmount;
+            }
+            if (autoItems && Array.isArray(ocrRes.items) && ocrRes.items.length > 0) {
+              const noteInput = document.getElementById('tx-note-input');
+              if (noteInput && !noteInput.value.trim()) {
+                noteInput.value = ocrRes.items.join('\n');
+                this.autoResizeNoteInput();
+              }
+            }
+            showToast(`✓ Đã đọc số tiền bằng OCR Offline: ${new Intl.NumberFormat('vi-VN').format(ocrRes.amount)}đ`, 'success');
+            return;
+          }
+        } catch (ocrErr) {
+          console.warn('[scanReceiptWithOfflineOCR] Lỗi:', ocrErr);
+        } finally {
+          this.setAIScanningState(false);
         }
       }
 
       if (!isEnabled) {
-        showToast('Trợ lý AI đang tắt trong Cài Đặt. Bạn có thể bật lại trong phần Trợ lý AI.', 'info');
+        showToast('Trợ lý AI đang tắt trong Cài Đặt. Không tìm thấy mã QR hoặc chữ số rõ nét trên hoá đơn.', 'info');
         return;
       }
 
@@ -6425,7 +6760,7 @@ Hãy đọc hoá đơn / biên lai thanh toán trong ảnh và trả về DUY NH
       if (this._userAbortedAI) return;
       console.error('Lỗi quét AI:', err);
 
-      // Thử phương án quét offline bằng QR nếu AI thất bại
+      // 1. Thử phương án quét offline bằng QR nếu AI thất bại
       if (offlineQrEnabled) {
         try {
           const qrResult = await this.scanReceiptQrOffline(lastImg);
@@ -6441,6 +6776,33 @@ Hãy đọc hoá đơn / biên lai thanh toán trong ảnh và trả về DUY NH
             return;
           }
         } catch (_) {}
+      }
+
+      // 2. Thử phương án quét offline bằng OCR Tesseract nếu AI thất bại
+      if (typeof Tesseract !== 'undefined') {
+        try {
+          const ocrRes = await this.scanReceiptWithOfflineOCR(lastImg);
+          if (ocrRes && ocrRes.amount) {
+            if (autoAmount) {
+              const formattedAmount = new Intl.NumberFormat('vi-VN').format(ocrRes.amount);
+              const amountInput = document.getElementById('tx-amount-input');
+              const amountText = document.getElementById('tx-amount-text');
+              if (amountInput) amountInput.value = formattedAmount;
+              if (amountText) amountText.textContent = formattedAmount;
+            }
+            if (autoItems && Array.isArray(ocrRes.items) && ocrRes.items.length > 0) {
+              const noteInput = document.getElementById('tx-note-input');
+              if (noteInput && !noteInput.value.trim()) {
+                noteInput.value = ocrRes.items.join('\n');
+                this.autoResizeNoteInput();
+              }
+            }
+            showToast(`✓ AI bận, đã chuyển sang đọc hoá đơn bằng OCR Offline: ${new Intl.NumberFormat('vi-VN').format(ocrRes.amount)}đ`, 'success');
+            return;
+          }
+        } catch (ocrErr) {
+          console.warn('[Offline OCR Fallback] Lỗi:', ocrErr);
+        }
       }
 
       showToast('Lỗi quét hoá đơn: ' + (err.message || err), 'error');

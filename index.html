@@ -26,7 +26,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png?v=3.0.25">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=3.0.30">
+  <link rel="stylesheet" href="./css/style.css?v=3.0.31">
   <link rel="stylesheet" href="./css/admin-panel.css?v=3.0.25">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
@@ -7425,17 +7425,40 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           </div>
         </div>
 
-        <!-- Thanh công cụ chỉnh độ nghiêng (Tilt / Straighten) & Xoay góc -->
+        <!-- Thanh công cụ căn chỉnh phối cảnh (Góc xoay + Nghiêng Dọc + Nghiêng Ngang) theo chuẩn iOS -->
         <div class="crop-toolbar-panel">
-          <div class="crop-tilt-control">
-            <span class="crop-tilt-label">
-              <i data-lucide="compass" style="width: 14px; height: 14px;"></i>
-              Nghiêng: <strong id="crop-tilt-value">0°</strong>
-            </span>
-            <input type="range" id="crop-slider-tilt" min="-30" max="30" value="0" step="1" oninput="UITransactions.handleCropTilt(this.value)">
-            <button type="button" class="btn-tilt-reset" onclick="UITransactions.resetCropTilt()" title="Đặt lại góc nghiêng 0°">0°</button>
+          <!-- 3 Chế độ nắn chỉnh phối cảnh -->
+          <div class="crop-perspective-tabs">
+            <button type="button" class="btn-perspective-tab active" id="btn-persp-tilt" onclick="UITransactions.setCropAdjustMode('tilt')" title="Góc xoay nghiêng">
+              <span class="persp-tab-icon" id="persp-tab-tilt-val">0°</span>
+              <span class="persp-tab-label">Góc xoay</span>
+            </button>
+            <button type="button" class="btn-perspective-tab" id="btn-persp-vert" onclick="UITransactions.setCropAdjustMode('vert')" title="Nghiêng dọc (Trên to dưới nhỏ / Trên nhỏ dưới to)">
+              <svg class="persp-tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="4,5 20,5 17,19 7,19" />
+                <line x1="12" y1="5" x2="12" y2="19" stroke-dasharray="2 2" />
+              </svg>
+              <span class="persp-tab-label" id="persp-tab-vert-val">Dọc (0)</span>
+            </button>
+            <button type="button" class="btn-perspective-tab" id="btn-persp-horiz" onclick="UITransactions.setCropAdjustMode('horiz')" title="Nghiêng ngang (Trái to phải nhỏ / Trái nhỏ phải to)">
+              <svg class="persp-tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5,4 19,7 19,17 5,20" />
+                <line x1="5" y1="12" x2="19" y2="12" stroke-dasharray="2 2" />
+              </svg>
+              <span class="persp-tab-label" id="persp-tab-horiz-val">Ngang (0)</span>
+            </button>
           </div>
 
+          <!-- Thanh trượt điều chỉnh cho chế độ đang chọn -->
+          <div class="crop-tilt-control">
+            <span class="crop-tilt-label" id="crop-active-mode-label">
+              Góc xoay: <strong id="crop-tilt-value">0°</strong>
+            </span>
+            <input type="range" id="crop-slider-adjust" min="-30" max="30" value="0" step="1" oninput="UITransactions.handleCropSliderAdjust(this.value)">
+            <button type="button" class="btn-tilt-reset" id="btn-tilt-reset-active" onclick="UITransactions.resetActiveCropAdjust()" title="Đặt lại 0">0</button>
+          </div>
+
+          <!-- Các nút tác vụ nhanh: Xoay -90°, +90°, Mở trọn ảnh, Đặt lại toàn bộ -->
           <div class="crop-quick-actions">
             <button type="button" class="btn-crop-action" onclick="UITransactions.rotateCropLeft()" title="Xoay trái 90°">
               <i data-lucide="rotate-ccw"></i>
@@ -7448,6 +7471,10 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
             <button type="button" class="btn-crop-action" onclick="UITransactions.resetCropBoxToFull()" title="Kéo trọn ảnh">
               <i data-lucide="maximize-2"></i>
               <span>Trọn ảnh</span>
+            </button>
+            <button type="button" class="btn-crop-action" onclick="UITransactions.resetAllCropPerspective()" title="Đặt lại góc & phối cảnh">
+              <i data-lucide="refresh-cw"></i>
+              <span>Đặt lại</span>
             </button>
           </div>
         </div>
@@ -7469,6 +7496,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <!-- Vendor Scripts (Offline Pre-Cached) -->
   <script src="./vendor/dexie.min.js"></script>
   <script src="./vendor/chart.umd.min.js"></script>
+  <script src="./vendor/tesseract.min.js"></script>
 
   <!-- App Core Modules -->
   <script src="./js/config.js?v=3.0.43"></script>
@@ -7484,13 +7512,13 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=3.0.44"></script>
-  <script src="./js/ui-transactions.js?v=3.0.62"></script>
+  <script src="./js/ui-transactions.js?v=3.0.63"></script>
   <script src="./js/ui-debts.js?v=3.0.44"></script>
   <script src="./js/ui-accounts.js?v=3.0.59"></script>
   <script src="./js/ui-share.js?v=3.0.63"></script>
   <script src="./js/ui-budgets.js?v=3.0.57"></script>
   <script src="./js/ui-analytics.js?v=3.0.44"></script>
-  <script src="./js/ui-settings.js?v=3.0.65"></script>
+  <script src="./js/ui-settings.js?v=3.0.66"></script>
   <script src="./js/server-auth-modals.js?v=3.0.44"></script>
 
   <!-- Main Entry Coordinator -->
