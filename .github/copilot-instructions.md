@@ -5,3 +5,4 @@ Always follow the comprehensive project rules defined in [AGENTS.md](../AGENTS.m
 - **Edge-to-Edge Layout:** Sát viền màn hình, không lãng phí viền ngoài, tối đa hóa diện tích hiển thị cho PWA di động.
 - **Balanced Buttons:** Nút bấm căng đều (stretch/equal width), chiều cao tối thiểu 44px-48px cho thao tác cảm ứng.
 - **Code Standards:** Tái sử dụng CSS variables trong `css/style.css`, duy trì tính năng Offline-First PWA.
+- **Safari Link Preview & Long-press Tooltip:** Luôn khai báo `-webkit-touch-callout: none !important;`, tránh dùng `<a href="...">` cho nút hành động, chặn popup xem trước Safari; khi nhấn giữ nút thì hiển thị tên nút (từ `title`/`aria-label`) dạng tooltip thay thế.

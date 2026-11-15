@@ -26,8 +26,9 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png?v=3.0.25">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=3.0.31">
+  <link rel="stylesheet" href="./css/style.css?v=3.0.32">
   <link rel="stylesheet" href="./css/admin-panel.css?v=3.0.25">
+  <link rel="stylesheet" href="./css/ui-trips-finance.css?v=3.0.70">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1288,6 +1289,34 @@
 
       <!-- View: Dashboard (Tổng quan) -->
       <main id="view-dashboard" class="page-view">
+        <!-- Thẻ Tổng Quan: Tài chính hiện có (Tổng có | Tổng nợ) - Chạm mở trang chi tiết -->
+        <div class="finance-overview-card" onclick="UIOverviewFinance.openDetailPage()" role="button" tabindex="0" title="Chạm để xem chi tiết tất cả ví, tài khoản & khoản nợ">
+          <div class="finance-overview-header">
+            <div class="finance-overview-title-wrap">
+              <div class="finance-overview-icon"><i data-lucide="shield-check"></i></div>
+              <span class="finance-overview-title">Tài chính hiện có</span>
+            </div>
+            <div class="finance-overview-action">
+              <span>Chi tiết</span>
+              <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+            </div>
+          </div>
+          <div class="finance-overview-amount-row">
+            <span id="stat-finance-current" class="finance-overview-amount stat-amount">0đ</span>
+          </div>
+          <div class="finance-overview-split-row">
+            <div class="finance-split-col col-have">
+              <span class="finance-split-label">Tổng có</span>
+              <span id="stat-finance-total-assets" class="finance-split-val income-text stat-amount">0đ</span>
+            </div>
+            <div class="finance-split-divider"></div>
+            <div class="finance-split-col col-debt">
+              <span class="finance-split-label">Tổng nợ</span>
+              <span id="stat-finance-total-debts" class="finance-split-val debt-text stat-amount">0đ</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Stat Cards -->
         <div class="stats-grid">
           <div class="stat-card">
@@ -1333,6 +1362,51 @@
             </div>
             <div class="chart-container">
               <canvas id="chart-income-expense-trend"></canvas>
+            </div>
+          </div>
+
+          <!-- Tiện ích bên dưới Biến Động Thu - Chi Trong Năm (chỉ liệt kê không ghi đề mục) -->
+          <div class="dashboard-utilities-panel">
+            <div class="quick-utilities-grid">
+              <div class="quick-utility-card" onclick="UIBillSplit.openStandaloneModal()" role="button" tabindex="0">
+                <div class="quick-utility-icon" style="background: rgba(13, 148, 136, 0.15); color: #14b8a6;">
+                  <i data-lucide="arrow-right-left"></i>
+                </div>
+                <div class="quick-utility-info">
+                  <span class="quick-utility-name">Chia tiền nhóm</span>
+                  <span class="quick-utility-desc">Chia đều & bù trừ nợ</span>
+                </div>
+              </div>
+
+              <div class="quick-utility-card" onclick="UITrips.openManager()" role="button" tabindex="0">
+                <div class="quick-utility-icon" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
+                  <i data-lucide="palmtree"></i>
+                </div>
+                <div class="quick-utility-info">
+                  <span class="quick-utility-name">Chuyến đi sự kiện</span>
+                  <span class="quick-utility-desc">Tour, chi phí & Excel/PDF</span>
+                </div>
+              </div>
+
+              <div class="quick-utility-card" onclick="window.UISettings && window.UISettings.openSection('ocr-scanner')" role="button" tabindex="0">
+                <div class="quick-utility-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                  <i data-lucide="scan-text"></i>
+                </div>
+                <div class="quick-utility-info">
+                  <span class="quick-utility-name">Quét hoá đơn (OCR)</span>
+                  <span class="quick-utility-desc">Nhận diện tự động</span>
+                </div>
+              </div>
+
+              <div class="quick-utility-card" onclick="window.UISettings && window.UISettings.openSection('export-csv')" role="button" tabindex="0">
+                <div class="quick-utility-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                  <i data-lucide="file-spreadsheet"></i>
+                </div>
+                <div class="quick-utility-info">
+                  <span class="quick-utility-name">Xuất Excel (CSV)</span>
+                  <span class="quick-utility-desc">Báo cáo & sao lưu</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2044,6 +2118,36 @@
             <div class="settings-group">
               <div class="settings-group-label">TIỆN ÍCH & TRỢ LÝ THÔNG MINH</div>
               <div class="settings-nav-card">
+                <!-- Mục 6.3: Chuyến Đi & Sự Kiện -->
+                <div class="settings-nav-item" onclick="UITrips.openManager()">
+                  <div class="settings-item-icon-box" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
+                    <i data-lucide="palmtree"></i>
+                  </div>
+                  <div class="settings-item-content">
+                    <div class="settings-item-title-row">
+                      <span class="settings-item-title">Chuyến Đi & Sự Kiện</span>
+                      <span class="settings-status-pill pill-blue">Mới</span>
+                    </div>
+                    <div class="settings-item-desc">Quản lý tour du lịch, chi phí & tích hợp chia tiền nhóm (Xuất Excel, PDF)</div>
+                  </div>
+                  <i data-lucide="chevron-right" class="settings-item-arrow"></i>
+                </div>
+
+                <!-- Mục 6.4: Chia Tiền Nhóm -->
+                <div class="settings-nav-item" onclick="UIBillSplit.openStandaloneModal()">
+                  <div class="settings-item-icon-box" style="background: rgba(13, 148, 136, 0.15); color: #14b8a6;">
+                    <i data-lucide="arrow-right-left"></i>
+                  </div>
+                  <div class="settings-item-content">
+                    <div class="settings-item-title-row">
+                      <span class="settings-item-title">Chia Tiền Nhóm</span>
+                      <span class="settings-status-pill pill-green">Tiện ích</span>
+                    </div>
+                    <div class="settings-item-desc">Chia đều & bù trừ nợ tự động, sao chép gửi Zalo/Messenger</div>
+                  </div>
+                  <i data-lucide="chevron-right" class="settings-item-arrow"></i>
+                </div>
+
                 <!-- Mục 6.5: Nhận Diện Hoá Đơn (OCR Offline) -->
                 <div class="settings-nav-item" onclick="UISettings.openSection('ocr-scanner')">
                   <div class="settings-item-icon-box" style="background: rgba(13, 148, 136, 0.15); color: var(--primary);">
@@ -3650,6 +3754,40 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </div>
                 </div>
 
+                <!-- Hàng 4.1: Chuyến đi sự kiện (Nằm TRÊN Chi cho ai trong thu chi) -->
+                <div class="tx-info-row" id="tx-trip-row" onclick="UITrips.openTripPicker()" style="cursor: pointer;">
+                  <div class="tx-info-icon-bubble" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
+                    <i data-lucide="palmtree"></i>
+                  </div>
+                  <div class="tx-info-content" style="min-width: 0;">
+                    <div style="font-size: 0.74rem; color: var(--text-muted); font-weight: 500;">Chuyến đi / Sự kiện</div>
+                    <div id="tx-trip-name-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Chưa chọn chuyến đi</div>
+                    <input type="hidden" id="tx-trip-id-input" value="">
+                  </div>
+                  <button type="button" class="btn-clear-input" id="btn-clear-tx-trip" style="display: none; position: static; margin-right: 4px;" onclick="UITrips.clearTripSelection(event)" title="Hủy chọn chuyến đi">
+                    <i data-lucide="x"></i>
+                  </button>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                </div>
+
+                <!-- Hàng 4.2: Chi cho ai (Nằm DƯỚI Chuyến đi sự kiện, tích hợp Chia tiền nhóm) -->
+                <div class="tx-info-row" id="tx-payee-row" onclick="UIBillSplit.openFromTransaction()" style="cursor: pointer;">
+                  <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                    <i data-lucide="users"></i>
+                  </div>
+                  <div class="tx-info-content" style="min-width: 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                      <span style="font-size: 0.74rem; color: var(--text-muted); font-weight: 500;">Chi cho ai</span>
+                      <button type="button" class="btn-split-badge" onclick="event.stopPropagation(); UIBillSplit.openFromTransaction();" title="Mở chia tiền nhóm">
+                        <i data-lucide="arrow-right-left" style="width: 11px; height: 11px;"></i> Chia tiền nhóm
+                      </button>
+                    </div>
+                    <div id="tx-payee-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Chưa chọn ai</div>
+                    <input type="hidden" id="tx-split-data-input" value="">
+                  </div>
+                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                </div>
+
                 <!-- Hàng 5: Ngày thu nợ / Ngày trả nợ (Nằm phía trên Thêm chi tiết, chỉ icon và chú thích nền) -->
                 <div class="tx-info-row" id="tx-debt-due-row" style="display: none; cursor: pointer;" onclick="UITransactions.openDueDatePicker()">
                   <div class="tx-info-icon-bubble" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
@@ -3731,7 +3869,6 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                             <i data-lucide="scan-line" class="icon-sparkle-spin"></i>
                             <span id="btn-ai-scan-text">Quét hoá đơn (OCR Offline)</span>
                           </div>
-                          <span class="ai-badge-free">100% Offline</span>
                         </button>
                       </div>
                     </div>
@@ -5109,6 +5246,242 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               </button>
             </div>
           </form>
+        </div>
+      </section>
+
+      <!-- View: Chi Tiết Tài Chính Hiện Có (Tổng có | Tổng nợ) -->
+      <section id="view-finance-detail" class="page-view tx-page-view">
+        <div class="tx-page-card-wrapper">
+          <div class="tx-page-header">
+            <div class="tx-header-left">
+              <button type="button" class="btn-icon tx-header-btn" onclick="window.app.switchView('dashboard')" title="Quay lại Tổng Quan">
+                <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+            <div class="tx-header-center">
+              <span class="tx-page-header-title">Chi Tiết Tài Chính Hiện Có</span>
+            </div>
+            <div class="tx-header-right">
+              <button type="button" class="btn-icon tx-header-btn" onclick="UIAccounts.refreshAllLivePrices(); UIOverviewFinance.renderDetail();" title="Làm mới tỷ giá & giá tài sản">
+                <i data-lucide="refresh-cw" style="width: 18px; height: 18px;"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="finance-detail-view-body">
+            <!-- Hero Summary Card -->
+            <div class="finance-overview-card" style="cursor: default;">
+              <div class="finance-overview-header">
+                <div class="finance-overview-title-wrap">
+                  <div class="finance-overview-icon"><i data-lucide="shield-check"></i></div>
+                  <span class="finance-overview-title">TÀI CHÍNH HIỆN CÓ</span>
+                </div>
+                <button type="button" class="networth-privacy-btn" onclick="window.app.togglePrivacyMode()" title="Ẩn/Hiện số tiền">
+                  <i data-lucide="eye" style="width: 18px; height: 18px;"></i>
+                </button>
+              </div>
+              <div class="finance-overview-amount-row">
+                <span id="finance-detail-main-val" class="finance-overview-amount stat-amount">0đ</span>
+              </div>
+              <div class="finance-overview-split-row">
+                <div class="finance-split-col col-have">
+                  <span class="finance-split-label">Tổng có</span>
+                  <span id="finance-detail-total-assets" class="finance-split-val income-text stat-amount">0đ</span>
+                </div>
+                <div class="finance-split-divider"></div>
+                <div class="finance-split-col col-debt">
+                  <span class="finance-split-label">Tổng nợ</span>
+                  <span id="finance-detail-total-debts" class="finance-split-val debt-text stat-amount">0đ</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Segmented Filter Tabs: Tất cả | Tổng có | Tổng nợ -->
+            <div class="finance-filter-bar" role="tablist">
+              <button type="button" class="finance-filter-tab active" data-tab="all" onclick="UIOverviewFinance.setFilterTab('all')">
+                <i data-lucide="layout-grid" style="width: 14px; height: 14px;"></i>
+                <span>Tất cả</span>
+              </button>
+              <button type="button" class="finance-filter-tab" data-tab="assets" onclick="UIOverviewFinance.setFilterTab('assets')">
+                <i data-lucide="wallet" style="width: 14px; height: 14px; color: #10b981;"></i>
+                <span>Tổng có</span>
+              </button>
+              <button type="button" class="finance-filter-tab" data-tab="debts" onclick="UIOverviewFinance.setFilterTab('debts')">
+                <i data-lucide="arrow-down-left" style="width: 14px; height: 14px; color: #f43f5e;"></i>
+                <span>Tổng nợ</span>
+              </button>
+            </div>
+
+            <!-- PHẦN 1: TỔNG CÓ -->
+            <div id="finance-detail-assets-section" class="finance-group-card">
+              <div class="finance-group-header">
+                <div class="finance-group-title">
+                  <i data-lucide="plus-circle" style="color: #10b981; width: 18px; height: 18px;"></i>
+                  <span>TỔNG CÓ: CÁC VÍ & TÀI KHOẢN</span>
+                </div>
+                <span id="finance-detail-assets-subtotal" class="finance-group-badge income stat-amount">0đ</span>
+              </div>
+
+              <!-- 1.1: Tài khoản ngân hàng, Tiền mặt & Ví điện tử -->
+              <div class="finance-group-subhead">1. Tài khoản ngân hàng & Ví chi tiêu</div>
+              <div id="finance-list-bank-accounts"></div>
+
+              <!-- 1.2: Tài khoản đầu tư (VNĐ, USD, Ngoại tệ, Crypto, Vàng) -->
+              <div class="finance-group-subhead" style="margin-top: 14px;">2. Tài khoản đầu tư & Ngoại tệ (VNĐ, USD...)</div>
+              <div id="finance-list-investments"></div>
+
+              <!-- 1.3: Sổ tiết kiệm & Sổ tích lũy -->
+              <div class="finance-group-subhead" style="margin-top: 14px;">3. Sổ tiết kiệm & Sổ tích lũy</div>
+              <div id="finance-list-savings-acc"></div>
+            </div>
+
+            <!-- PHẦN 2: TỔNG NỢ -->
+            <div id="finance-detail-debts-section" class="finance-group-card">
+              <div class="finance-group-header">
+                <div class="finance-group-title">
+                  <i data-lucide="minus-circle" style="color: #f43f5e; width: 18px; height: 18px;"></i>
+                  <span>TỔNG NỢ: NỢ PHẢI TRẢ</span>
+                </div>
+                <span id="finance-detail-debts-subtotal" class="finance-group-badge debt stat-amount">0đ</span>
+              </div>
+
+              <!-- 2.1: Nợ phải trả cá nhân (Đi vay / Mượn nợ) -->
+              <div class="finance-group-subhead">1. Nợ cá nhân (Đi vay / Mượn nợ)</div>
+              <div id="finance-list-debts"></div>
+
+              <!-- 2.2: Sổ vay ngân hàng -->
+              <div class="finance-group-subhead" style="margin-top: 14px;">2. Sổ vay ngân hàng</div>
+              <div id="finance-list-loans"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- View: Quản Lý Chuyến Đi & Sự Kiện -->
+      <section id="view-trips-manager" class="page-view tx-page-view">
+        <div class="tx-page-card-wrapper">
+          <div class="tx-page-header">
+            <div class="tx-header-left">
+              <button type="button" class="btn-icon tx-header-btn" onclick="window.app.switchView(window.app.previousView || 'dashboard')" title="Quay lại">
+                <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+            <div class="tx-header-center">
+              <span class="tx-page-header-title">Chuyến Đi & Sự Kiện</span>
+            </div>
+            <div class="tx-header-right">
+              <button type="button" class="btn-icon tx-header-btn" onclick="UITrips.openTripModal()" title="Thêm chuyến đi / sự kiện mới">
+                <i data-lucide="plus" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+          </div>
+
+          <div style="padding: 12px 6px 80px 6px; max-width: 800px; margin: 0 auto;">
+            <!-- Tabs lọc: Đang diễn ra | Đã kết thúc | Tất cả -->
+            <div class="finance-filter-bar" role="tablist">
+              <button type="button" class="finance-filter-tab trips-filter-tab active" data-tab="active" onclick="UITrips.setManagerTab('active')">
+                <i data-lucide="play-circle" style="width: 14px; height: 14px; color: #10b981;"></i>
+                <span>Đang diễn ra</span>
+              </button>
+              <button type="button" class="finance-filter-tab trips-filter-tab" data-tab="completed" onclick="UITrips.setManagerTab('completed')">
+                <i data-lucide="check-circle-2" style="width: 14px; height: 14px; color: #94a3b8;"></i>
+                <span>Đã kết thúc</span>
+              </button>
+              <button type="button" class="finance-filter-tab trips-filter-tab" data-tab="all" onclick="UITrips.setManagerTab('all')">
+                <i data-lucide="layout-grid" style="width: 14px; height: 14px;"></i>
+                <span>Tất cả</span>
+              </button>
+            </div>
+
+            <!-- Danh sách chuyến đi -->
+            <div id="trips-list-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- View: Chi Tiết Chuyến Đi & Chia Tiền Nhóm -->
+      <section id="view-trip-detail" class="page-view tx-page-view">
+        <div class="tx-page-card-wrapper">
+          <div class="tx-page-header">
+            <div class="tx-header-left">
+              <button type="button" class="btn-icon tx-header-btn" onclick="window.app.switchView('trips-manager')" title="Quay lại danh sách">
+                <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+            <div class="tx-header-center">
+              <span id="trip-detail-title" class="tx-page-header-title">Chi Tiết Chuyến Đi</span>
+            </div>
+            <div class="tx-header-right" style="display: flex; gap: 4px;">
+              <button type="button" class="btn-icon tx-header-btn" onclick="UITrips.exportExcel()" title="Xuất báo cáo Excel (CSV UTF-8)">
+                <i data-lucide="file-spreadsheet" style="width: 18px; height: 18px; color: #10b981;"></i>
+              </button>
+              <button type="button" class="btn-icon tx-header-btn" onclick="UITrips.exportPDF()" title="Xuất báo cáo PDF / In ấn">
+                <i data-lucide="printer" style="width: 18px; height: 18px; color: #0ea5e9;"></i>
+              </button>
+            </div>
+          </div>
+
+          <div style="padding: 12px 6px 80px 6px; max-width: 800px; margin: 0 auto;">
+            <!-- Trip Banner Card -->
+            <div class="trip-card-item" style="cursor: default; margin-bottom: 14px;">
+              <div class="trip-card-header">
+                <div>
+                  <div id="trip-detail-dates" style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 4px;">--</div>
+                  <span id="trip-detail-status-badge" class="trip-status-badge active">Đang diễn ra</span>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                  <button type="button" class="btn-trip-icon-opt" onclick="UITrips.openTripModal(UITrips.currentTripId)" title="Sửa thông tin">
+                    <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i>
+                  </button>
+                  <button type="button" class="btn-trip-icon-opt" onclick="UITrips.exportExcel()" title="Xuất Excel">
+                    <i data-lucide="file-spreadsheet" style="width: 14px; height: 14px; color: #10b981;"></i>
+                  </button>
+                  <button type="button" class="btn-trip-icon-opt" onclick="UITrips.exportPDF()" title="Xuất PDF">
+                    <i data-lucide="printer" style="width: 14px; height: 14px; color: #0ea5e9;"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 10px;">
+                <div class="stat-card" style="padding: 10px 12px;">
+                  <span class="stat-title">TỔNG CHI TIÊU</span>
+                  <div id="trip-stat-total-spent" class="stat-amount expense-text" style="font-size: 1.25rem;">0đ</div>
+                </div>
+                <div class="stat-card" style="padding: 10px 12px;">
+                  <span class="stat-title">NGÂN SÁCH CÒN</span>
+                  <div id="trip-stat-remaining" class="stat-amount" style="font-size: 1.25rem;">0đ</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sub Tabs: Khoản Chi Tiêu | Chia Tiền Nhóm -->
+            <div class="trip-detail-tabs-bar">
+              <button type="button" class="trip-detail-tab-btn active" data-tab="expenses" onclick="UITrips.setDetailSubTab('expenses')">
+                <i data-lucide="receipt" style="width: 15px; height: 15px;"></i>
+                <span>Các khoản chi</span>
+              </button>
+              <button type="button" class="trip-detail-tab-btn" data-tab="split" onclick="UITrips.setDetailSubTab('split')">
+                <i data-lucide="arrow-right-left" style="width: 15px; height: 15px;"></i>
+                <span>Chia tiền nhóm</span>
+              </button>
+            </div>
+
+            <!-- Panel 1: Danh sách khoản chi -->
+            <div id="trip-detail-expenses-panel">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary);">Danh sách chi tiêu trong chuyến</span>
+                <button type="button" class="btn-primary" style="padding: 6px 12px; font-size: 0.82rem;" onclick="UITrips.addExpenseForCurrentTrip()">
+                  <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Thêm chi tiêu
+                </button>
+              </div>
+              <div id="trip-expenses-list"></div>
+            </div>
+
+            <!-- Panel 2: Tích hợp chia tiền nhóm -->
+            <div id="trip-detail-split-panel" style="display: none;">
+              <div id="trip-group-split-container"></div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -7318,10 +7691,10 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- Modal: Xem ảnh hoá đơn phóng to (Image Viewer) -->
   <div id="modal-image-viewer" class="modal-overlay" data-no-swipe-dismiss="true" style="z-index: 100060; display: none;" onclick="if (event.target === this) UITransactions.closeImageViewer()">
+    <button type="button" class="image-viewer-close-btn" onclick="UITransactions.closeImageViewer()" title="Đóng">
+      <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+    </button>
     <div class="image-viewer-dialog modal-dialog" onclick="event.stopPropagation()">
-      <button type="button" class="image-viewer-close-btn" onclick="UITransactions.closeImageViewer()" title="Đóng">
-        <i data-lucide="x" style="width: 20px; height: 20px;"></i>
-      </button>
       <img id="image-viewer-img" src="" alt="Hoá đơn">
     </div>
   </div>
@@ -7428,6 +7801,202 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
     </div>
   </div>
 
+  <!-- Modal: Chia Tiền Nhóm (Bill Split) -->
+  <div id="modal-bill-split" class="modal-overlay" onclick="if (event.target === this) UIBillSplit.closeModal()">
+    <div class="modal-dialog" style="max-width: 520px; width: 100%; border-radius: 16px; overflow: hidden; background: var(--bg-surface, #1e293b);" onclick="event.stopPropagation()">
+      <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(13, 148, 136, 0.18); color: #14b8a6; display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="arrow-right-left" style="width: 18px; height: 18px;"></i>
+          </div>
+          <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-primary);">Chia Tiền Nhóm</h3>
+        </div>
+        <button type="button" class="btn-icon" onclick="UIBillSplit.closeModal()" title="Đóng">
+          <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+        </button>
+      </div>
+
+      <div class="split-modal-body" style="padding: 14px 16px; max-height: 75vh; overflow-y: auto;">
+        <!-- Tiêu đề & Số tiền -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label" style="font-size: 0.78rem;">Nội dung hoá đơn / chi tiêu</label>
+          <input type="text" id="split-title-input" class="form-control" placeholder="VD: Ăn lẩu cuối tuần, Tiền taxi..." style="font-size: 0.9rem;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label" style="font-size: 0.78rem;">Tổng số tiền cần chia</label>
+          <div style="position: relative;">
+            <input type="text" inputmode="numeric" id="split-amount-input" class="form-control" placeholder="0" style="font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; padding-right: 32px;" oninput="UIBillSplit.handleAmountChange(this.value)">
+            <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted);">đ</span>
+          </div>
+        </div>
+
+        <!-- Người trả tiền -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label" style="font-size: 0.78rem;">Ai là người thanh toán cả bill?</label>
+          <select id="split-payer-select" class="form-control" style="font-size: 0.88rem;" onchange="UIBillSplit.setPayer(this.value)"></select>
+        </div>
+
+        <!-- Người tham gia -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label class="form-label" style="font-size: 0.78rem; margin: 0;">Người tham gia</label>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Nhập tên và nhấn Thêm</span>
+          </div>
+          <div style="display: flex; gap: 6px; margin-top: 6px;">
+            <input type="text" id="split-new-member-input" class="form-control" placeholder="Tên thành viên..." style="font-size: 0.85rem;" onkeydown="if(event.key==='Enter'){event.preventDefault(); UIBillSplit.addParticipant(this.value); this.value='';}">
+            <button type="button" class="btn-secondary" style="padding: 0 12px; font-size: 0.82rem; white-space: nowrap;" onclick="const inp=document.getElementById('split-new-member-input'); UIBillSplit.addParticipant(inp.value); inp.value='';">
+              + Thêm
+            </button>
+          </div>
+          <div id="split-participants-tags" class="split-members-tags-wrapper"></div>
+        </div>
+
+        <!-- Kiểu chia -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label" style="font-size: 0.78rem;">Hình thức chia tiền</label>
+          <div class="split-type-tabs">
+            <button type="button" class="split-type-tab active" data-type="equal" onclick="UIBillSplit.setSplitType('equal')">
+              <i data-lucide="divide" style="width: 14px; height: 14px;"></i> Chia đều
+            </button>
+            <button type="button" class="split-type-tab" data-type="custom" onclick="UIBillSplit.setSplitType('custom')">
+              <i data-lucide="sliders-horizontal" style="width: 14px; height: 14px;"></i> Số tiền
+            </button>
+            <button type="button" class="split-type-tab" data-type="shares" onclick="UIBillSplit.setSplitType('shares')">
+              <i data-lucide="pie-chart" style="width: 14px; height: 14px;"></i> Theo phần
+            </button>
+          </div>
+        </div>
+
+        <!-- Danh sách phân bổ chi phí -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label" style="font-size: 0.78rem;">Bảng phân bổ chi phí</label>
+          <div id="split-breakdown-list"></div>
+        </div>
+
+        <!-- Tóm tắt thanh toán bù trừ -->
+        <div id="split-summary-box" class="split-summary-box" style="display: none;"></div>
+
+        <!-- Checkbox: Tự động tạo nợ cần thu -->
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+          <input type="checkbox" id="split-auto-debt-checkbox" checked style="width: 16px; height: 16px; accent-color: var(--primary);">
+          <label for="split-auto-debt-checkbox" style="font-size: 0.8rem; color: var(--text-secondary); cursor: pointer;">
+            Tự động theo dõi các khoản nợ cần thu vào Sổ Nợ
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; gap: 8px;">
+        <button type="button" class="btn-secondary" style="flex: 1; padding: 10px; font-size: 0.85rem;" onclick="UIBillSplit.copyShareText()">
+          <i data-lucide="copy" style="width: 15px; height: 15px;"></i> Sao chép gửi Zalo
+        </button>
+        <button type="button" class="btn-primary" style="flex: 1.2; padding: 10px; font-size: 0.85rem;" onclick="if(UIBillSplit.mode==='transaction') UIBillSplit.applyToTransactionForm(); else UIBillSplit.saveStandaloneRecord();">
+          <i data-lucide="check" style="width: 15px; height: 15px;"></i> Hoàn tất & Áp dụng
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Chọn Chuyến Đi Cho Giao Dịch (Trip Picker Bottom-sheet) -->
+  <div id="modal-trip-picker" class="modal-overlay" onclick="if (event.target === this) UITrips.closeTripPicker()">
+    <div class="modal-dialog" style="max-width: 480px; width: 100%; border-radius: 16px; overflow: hidden; background: var(--bg-surface, #1e293b);" onclick="event.stopPropagation()">
+      <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(14, 165, 233, 0.18); color: #0ea5e9; display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="palmtree" style="width: 18px; height: 18px;"></i>
+          </div>
+          <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-primary);">Chọn Chuyến Đi / Sự Kiện</h3>
+        </div>
+        <button type="button" class="btn-icon" onclick="UITrips.closeTripPicker()" title="Đóng">
+          <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+        </button>
+      </div>
+
+      <div style="padding: 14px 16px; max-height: 60vh; overflow-y: auto;">
+        <div id="trip-picker-list"></div>
+      </div>
+
+      <div class="modal-footer" style="padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between;">
+        <button type="button" class="btn-secondary" style="font-size: 0.82rem; padding: 8px 12px;" onclick="UITrips.clearTripSelection(); UITrips.closeTripPicker();">
+          Bỏ chọn chuyến đi
+        </button>
+        <button type="button" class="btn-primary" style="font-size: 0.82rem; padding: 8px 14px;" onclick="UITrips.openTripModal()">
+          <i data-lucide="plus" style="width: 14px; height: 14px;"></i> + Tạo Chuyến Đi Mới
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Tạo / Chỉnh Sửa Chuyến Đi & Sự Kiện -->
+  <div id="modal-trip-form" class="modal-overlay" onclick="if (event.target === this) UITrips.closeTripModal()">
+    <div class="modal-dialog" style="max-width: 500px; width: 100%; border-radius: 16px; overflow: hidden; background: var(--bg-surface, #1e293b);" onclick="event.stopPropagation()">
+      <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(14, 165, 233, 0.18); color: #0ea5e9; display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="palmtree" style="width: 18px; height: 18px;"></i>
+          </div>
+          <h3 id="trip-form-modal-title" style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-primary);">Tạo Chuyến Đi / Sự Kiện Mới</h3>
+        </div>
+        <button type="button" class="btn-icon" onclick="UITrips.closeTripModal()" title="Đóng">
+          <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+        </button>
+      </div>
+
+      <div style="padding: 14px 16px; max-height: 70vh; overflow-y: auto;">
+        <input type="hidden" id="trip-form-id">
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label" style="font-size: 0.78rem;">Tên chuyến đi / sự kiện <span style="color: #f43f5e;">*</span></label>
+          <input type="text" id="trip-form-name" class="form-control" placeholder="VD: Du lịch Đà Lạt, Team building Phú Quốc..." required style="font-size: 0.92rem;">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+          <div class="form-group" style="margin: 0;">
+            <label class="form-label" style="font-size: 0.78rem;">Ngày bắt đầu</label>
+            <input type="date" id="trip-form-start" class="form-control" style="font-size: 0.85rem;">
+          </div>
+          <div class="form-group" style="margin: 0;">
+            <label class="form-label" style="font-size: 0.78rem;">Ngày kết thúc</label>
+            <input type="date" id="trip-form-end" class="form-control" style="font-size: 0.85rem;">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label" style="font-size: 0.78rem;">Ngân sách dự kiến (VNĐ)</label>
+          <input type="number" id="trip-form-budget" class="form-control" placeholder="VD: 10000000" style="font-size: 0.95rem; font-weight: 600;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label" style="font-size: 0.78rem;">Thành viên tham gia (phân cách bằng dấu phẩy)</label>
+          <input type="text" id="trip-form-members" class="form-control" placeholder="Tôi, Nam, Lan, Tuấn..." style="font-size: 0.88rem;">
+          <span style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; display: block;">Dùng để tự động tính toán chia tiền nhóm trong chuyến đi.</span>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label" style="font-size: 0.78rem;">Trạng thái</label>
+          <select id="trip-form-status" class="form-control" style="font-size: 0.88rem;">
+            <option value="active">Đang diễn ra</option>
+            <option value="completed">Đã kết thúc</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="font-size: 0.78rem;">Ghi chú</label>
+          <textarea id="trip-form-note" class="form-control" rows="2" placeholder="Ghi chú về lịch trình, khách sạn, xe cộ..." style="font-size: 0.85rem;"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; gap: 8px;">
+        <button type="button" class="btn-secondary" style="flex: 1; padding: 10px; font-size: 0.85rem;" onclick="UITrips.closeTripModal()">
+          Hủy
+        </button>
+        <button type="button" class="btn-primary" style="flex: 1; padding: 10px; font-size: 0.85rem;" onclick="UITrips.submitTripForm()">
+          <i data-lucide="check" style="width: 15px; height: 15px;"></i> Lưu Chuyến Đi
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div id="toast-container"></div>
 
@@ -7450,13 +8019,16 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=3.0.44"></script>
-  <script src="./js/ui-transactions.js?v=3.0.66"></script>
+  <script src="./js/ui-transactions.js?v=3.0.69"></script>
   <script src="./js/ui-debts.js?v=3.0.44"></script>
   <script src="./js/ui-accounts.js?v=3.0.59"></script>
   <script src="./js/ui-share.js?v=3.0.63"></script>
   <script src="./js/ui-budgets.js?v=3.0.57"></script>
   <script src="./js/ui-analytics.js?v=3.0.44"></script>
   <script src="./js/ui-settings.js?v=3.0.68"></script>
+  <script src="./js/ui-overview-finance.js?v=3.0.70"></script>
+  <script src="./js/ui-bill-split.js?v=3.0.70"></script>
+  <script src="./js/ui-trips.js?v=3.0.70"></script>
   <script src="./js/server-auth-modals.js?v=3.0.44"></script>
 
   <!-- Main Entry Coordinator -->

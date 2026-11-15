@@ -714,7 +714,7 @@ class App {
     }
     const primaryViews = ['dashboard', 'accounts', 'budgets', 'settings', 'transactions', 'debts', 'analytics'];
     const isPrimary = primaryViews.includes(viewId);
-    const isTxPage = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history'].includes(viewId);
+    const isTxPage = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history', 'finance-detail', 'trips-manager', 'trip-detail'].includes(viewId);
 
     // Instantly hide/show the header in JS FIRST — before any class/DOM changes.
     // CSS :has() and body-class selectors update asynchronously (next paint frame),
@@ -734,7 +734,7 @@ class App {
 
     const mobileBottomNav = document.querySelector('.mobile-bottom-nav');
     if (mobileBottomNav) {
-      const hideNavViews = ['budget-form', 'budget-category-form', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-cat-history'];
+      const hideNavViews = ['budget-form', 'budget-category-form', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-cat-history', 'finance-detail', 'trips-manager', 'trip-detail'];
       if (hideNavViews.includes(viewId)) {
         mobileBottomNav.style.setProperty('display', 'none', 'important');
       } else {
@@ -753,7 +753,7 @@ class App {
     }
 
     // 2. Lưu previousView trước khi chuyển vào các trang con (danh mục, biểu mẫu tài khoản, ...)
-    const formSubViews = ['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history'];
+    const formSubViews = ['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history', 'finance-detail', 'trips-manager', 'trip-detail'];
     if (formSubViews.includes(viewId) && !formSubViews.includes(this.currentView)) {
       this.previousView = this.currentView;
     } else if (viewId === 'transactions') {
@@ -1505,6 +1505,11 @@ class App {
     if (totalBorrowEl) totalBorrowEl.textContent = `${new Intl.NumberFormat('vi-VN').format(nw.totalBorrow)}đ`;
     if (totalBalanceEl) totalBalanceEl.textContent = `${new Intl.NumberFormat('vi-VN').format(nw.totalAccountBalance)}đ`;
 
+    // Cập nhật thẻ tổng quan Tài chính hiện có (Tổng có | Tổng nợ)
+    if (window.UIOverviewFinance && typeof window.UIOverviewFinance.renderDashboardCard === 'function') {
+      window.UIOverviewFinance.renderDashboardCard().catch(() => {});
+    }
+
     // Reapply privacy mask if enabled
     if (this.isPrivacyMode) {
       this.applyPrivacyMode(true);
@@ -1521,6 +1526,12 @@ class App {
     await window.UIAccounts.render();
     await window.UIBudgets.render();
     await window.UIAnalytics.render();
+    if (window.UIOverviewFinance && typeof window.UIOverviewFinance.renderDashboardCard === 'function') {
+      await window.UIOverviewFinance.renderDashboardCard();
+    }
+    if (window.UITrips && typeof window.UITrips.loadTrips === 'function') {
+      await window.UITrips.loadTrips();
+    }
     if (window.UITransactions && typeof window.UITransactions.updateSelectedAccountDisplay === 'function') {
       window.UITransactions.updateSelectedAccountDisplay().catch(() => {});
     }

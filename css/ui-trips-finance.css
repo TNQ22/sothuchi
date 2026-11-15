@@ -1,0 +1,1053 @@
+/* ==========================================================================
+   UI TRIPS & FINANCIAL OVERVIEW & BILL SPLIT STYLES
+   Tuân thủ nghiêm ngặt quy tắc AGENTS.md (Xanh Ngọc Bích, Edge-to-Edge, Touch Friendly)
+   ========================================================================== */
+
+/* 1. HERO FINANCIAL OVERVIEW CARD (DASHBOARD & DETAIL) */
+.finance-overview-card {
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.16) 0%, rgba(15, 23, 42, 0.8) 100%);
+  border: 1px solid rgba(13, 148, 136, 0.35);
+  border-radius: var(--radius-lg, 16px);
+  padding: 18px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), var(--shadow-glow, 0 0 20px rgba(13, 148, 136, 0.2));
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  -webkit-touch-callout: none !important;
+  user-select: none;
+}
+
+.finance-overview-card:active {
+  transform: scale(0.985);
+  border-color: var(--border-focus, #14b8a6);
+}
+
+.finance-overview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.finance-overview-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.finance-overview-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(13, 148, 136, 0.2);
+  color: #14b8a6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.finance-overview-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary, #94a3b8);
+  text-transform: uppercase;
+}
+
+.finance-overview-action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #14b8a6;
+  background: rgba(13, 148, 136, 0.12);
+  padding: 4px 8px;
+  border-radius: 20px;
+}
+
+.finance-overview-amount-row {
+  margin: 6px 0 14px 0;
+}
+
+.finance-overview-amount {
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.finance-overview-split-row {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+
+.finance-split-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.finance-split-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 12px;
+}
+
+.finance-split-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted, #94a3b8);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.finance-split-val {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.finance-split-col.col-have .finance-split-val {
+  color: #10b981;
+}
+
+.finance-split-col.col-debt .finance-split-val {
+  color: #f43f5e;
+}
+
+/* 2. DASHBOARD QUICK UTILITIES (BEN DƯỚI BIẾN ĐỘNG THU CHI TRONG NĂM) */
+.dashboard-utilities-panel {
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.quick-utilities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.quick-utility-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-surface, #1e293b);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md, 12px);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 48px;
+  box-sizing: border-box;
+  -webkit-touch-callout: none !important;
+  user-select: none;
+}
+
+.quick-utility-card:hover {
+  background: rgba(13, 148, 136, 0.08);
+  border-color: rgba(13, 148, 136, 0.3);
+}
+
+.quick-utility-card:active {
+  transform: scale(0.98);
+}
+
+.quick-utility-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.quick-utility-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.quick-utility-name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quick-utility-desc {
+  font-size: 0.7rem;
+  color: var(--text-muted, #94a3b8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 3. TRANG CHI TIẾT TÀI CHÍNH HIỆN CÓ (VIEW-FINANCE-DETAIL) */
+.finance-detail-view-body {
+  padding: 12px 6px 80px 6px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.finance-filter-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  width: 100%;
+}
+
+.finance-filter-tab {
+  flex: 1;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-surface, #1e293b);
+  color: var(--text-secondary, #94a3b8);
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-touch-callout: none !important;
+  user-select: none;
+}
+
+.finance-filter-tab.active {
+  background: rgba(13, 148, 136, 0.15);
+  border-color: var(--primary, #0d9488);
+  color: #14b8a6;
+}
+
+.finance-group-card {
+  background: var(--bg-surface, #1e293b);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-lg, 16px);
+  padding: 14px 12px;
+  margin-bottom: 14px;
+}
+
+.finance-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.finance-group-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.finance-group-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted, #94a3b8);
+}
+
+.finance-group-badge.income {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.finance-group-badge.debt {
+  background: rgba(244, 63, 94, 0.15);
+  color: #f43f5e;
+}
+
+.finance-group-subhead {
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+  margin: 10px 0 6px 2px;
+  letter-spacing: 0.03em;
+}
+
+.finance-item-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 52px;
+  -webkit-touch-callout: none !important;
+  user-select: none;
+}
+
+.finance-item-card:hover {
+  background: rgba(13, 148, 136, 0.07);
+  border-color: rgba(13, 148, 136, 0.25);
+}
+
+.finance-item-card:active {
+  transform: scale(0.99);
+}
+
+.finance-item-card.debt-card-item:hover {
+  background: rgba(244, 63, 94, 0.07);
+  border-color: rgba(244, 63, 94, 0.25);
+}
+
+.finance-item-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.finance-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.finance-item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.finance-item-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.finance-currency-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: rgba(14, 165, 233, 0.2);
+  color: #0ea5e9;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.finance-type-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted, #94a3b8);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.finance-type-badge.debt-badge {
+  background: rgba(244, 63, 94, 0.15);
+  color: #f43f5e;
+}
+
+.finance-item-sub-row {
+  font-size: 0.74rem;
+  color: var(--text-muted, #94a3b8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.finance-item-amount-wrap {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.finance-item-amount {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.finance-item-sub-val {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted, #94a3b8);
+}
+
+.finance-item-action-hint {
+  font-size: 0.68rem;
+  color: #14b8a6;
+  font-weight: 600;
+}
+
+/* 4. FORM TRANSACTION ROWS (CHUYẾN ĐI & CHI CHO AI) */
+.tx-trip-row-selected {
+  color: #14b8a6 !important;
+}
+
+.tx-trip-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(13, 148, 136, 0.15);
+  color: #14b8a6;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-top: 3px;
+}
+
+.btn-split-badge {
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.25) 0%, rgba(14, 165, 233, 0.25) 100%);
+  border: 1px solid rgba(20, 184, 166, 0.4);
+  color: #14b8a6;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  -webkit-touch-callout: none !important;
+}
+
+.btn-split-badge:active {
+  transform: scale(0.95);
+  background: rgba(13, 148, 136, 0.4);
+}
+
+/* 5. MODAL CHIA TIỀN NHÓM (MODAL-BILL-SPLIT) */
+.split-modal-body {
+  padding: 12px 10px;
+}
+
+.split-type-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.split-type-tab {
+  flex: 1;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-surface, #1e293b);
+  color: var(--text-secondary, #94a3b8);
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  -webkit-touch-callout: none !important;
+}
+
+.split-type-tab.active {
+  background: rgba(13, 148, 136, 0.15);
+  border-color: var(--primary, #0d9488);
+  color: #14b8a6;
+}
+
+.split-members-tags-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 10px 0;
+  min-height: 32px;
+}
+
+.split-member-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: var(--text-primary, #f8fafc);
+}
+
+.btn-remove-tag {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.split-row-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  margin-bottom: 6px;
+}
+
+.split-row-item.is-payer {
+  border-color: rgba(13, 148, 136, 0.3);
+  background: rgba(13, 148, 136, 0.08);
+}
+
+.split-row-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.split-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(13, 148, 136, 0.2);
+  color: #14b8a6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.split-row-names {
+  display: flex;
+  flex-direction: column;
+}
+
+.split-row-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+}
+
+.split-payer-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #10b981;
+}
+
+.split-row-val {
+  font-size: 0.92rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.split-summary-box {
+  background: rgba(13, 148, 136, 0.1);
+  border: 1px solid rgba(13, 148, 136, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 10px;
+}
+
+.split-summary-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #14b8a6;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.split-summary-debts {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-primary, #f8fafc);
+}
+
+.split-summary-debts li {
+  margin-bottom: 4px;
+}
+
+/* 6. QUẢN LÝ CHUYẾN ĐI (TRIPS MANAGER & DETAIL) */
+.trip-card-item {
+  background: var(--bg-surface, #1e293b);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg, 16px);
+  padding: 14px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-touch-callout: none !important;
+  user-select: none;
+}
+
+.trip-card-item:hover {
+  border-color: rgba(13, 148, 136, 0.4);
+}
+
+.trip-card-item.is-completed {
+  opacity: 0.75;
+}
+
+.trip-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.trip-card-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.trip-card-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(13, 148, 136, 0.15);
+  color: #14b8a6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.trip-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.trip-card-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+  margin: 0 0 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trip-card-meta {
+  font-size: 0.74rem;
+  color: var(--text-muted, #94a3b8);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trip-status-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.trip-status-badge.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.trip-status-badge.completed {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+}
+
+.trip-card-spending-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 6px;
+}
+
+.trip-card-spent-label {
+  font-size: 0.72rem;
+  color: var(--text-muted, #94a3b8);
+  display: block;
+}
+
+.trip-card-spent-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.trip-card-budget-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-secondary, #cbd5e1);
+  font-variant-numeric: tabular-nums;
+}
+
+.trip-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.trip-progress-fill {
+  height: 100%;
+  background: #10b981;
+  border-radius: 3px;
+}
+
+.trip-progress-fill.danger {
+  background: #f43f5e;
+}
+
+.trip-members-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.trip-mini-member-pill {
+  font-size: 0.68rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary, #cbd5e1);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.trip-mini-member-pill.more {
+  background: rgba(13, 148, 136, 0.15);
+  color: #14b8a6;
+  font-weight: 700;
+}
+
+.trip-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.btn-trip-action-link {
+  background: transparent;
+  border: none;
+  color: #14b8a6;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+
+.btn-trip-icon-opt {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  color: var(--text-secondary, #94a3b8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.btn-trip-icon-opt:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+/* 7. TRIP DETAIL TABS & EXPENSE / SPLIT LIST */
+.trip-detail-tabs-bar {
+  display: flex;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 3px;
+  margin-bottom: 14px;
+}
+
+.trip-detail-tab-btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #94a3b8);
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-touch-callout: none !important;
+}
+
+.trip-detail-tab-btn.active {
+  background: var(--bg-surface, #1e293b);
+  color: #14b8a6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.trip-expense-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface, #1e293b);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.trip-expense-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.trip-expense-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(244, 63, 94, 0.12);
+  color: #f43f5e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.trip-expense-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trip-expense-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted, #94a3b8);
+  margin-top: 2px;
+}
+
+.trip-expense-amount {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Trip Split settlement */
+.trip-split-card {
+  background: var(--bg-surface, #1e293b);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg, 16px);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.trip-split-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.trip-split-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.trip-split-member-row:last-child {
+  border-bottom: none;
+}
+
+.trip-member-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.trip-member-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+  display: block;
+}
+
+.trip-member-sub {
+  font-size: 0.7rem;
+  color: var(--text-muted, #94a3b8);
+  display: block;
+}
+
+.trip-member-right {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.trip-member-net {
+  font-size: 0.92rem;
+  font-weight: 800;
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+.trip-member-net-label {
+  font-size: 0.68rem;
+  color: var(--text-muted, #94a3b8);
+  display: block;
+}
+
+.trip-settlement-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+}
+
+.settle-from-to {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.settle-payer {
+  font-weight: 700;
+  color: #f43f5e;
+}
+
+.settle-receiver {
+  font-weight: 700;
+  color: #10b981;
+}
+
+.settle-arrow {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.settle-amount {
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Trip Picker Bottom-Sheet items */
+.trip-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.trip-picker-item:hover, .trip-picker-item.active {
+  background: rgba(13, 148, 136, 0.12);
+  border-color: rgba(13, 148, 136, 0.35);
+}
+
+.trip-picker-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(13, 148, 136, 0.2);
+  color: #14b8a6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.trip-picker-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.trip-picker-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+  display: block;
+}
+
+.trip-picker-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted, #94a3b8);
+  display: block;
+}
+
+.trip-picker-check {
+  width: 18px;
+  height: 18px;
+  color: #14b8a6;
+}
+
+/* Empty list placeholder small */
+.empty-list-placeholder-sm {
+  text-align: center;
+  padding: 18px 10px;
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.84rem;
+}

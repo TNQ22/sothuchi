@@ -56,6 +56,23 @@ db.version(2).stores({
   loans: '++id, name, bankCode, loanAmount, remainingAmount, status, isDeleted, updatedAt'
 });
 
+// Schema Version 3: Bổ sung Quản lý Chuyến đi & Sự kiện, Chia tiền nhóm, tripId trong transactions
+db.version(3).stores({
+  transactions: '++id, type, categoryId, accountId, toAccountId, amount, date, isDeleted, updatedAt, tripId',
+  accounts: '++id, name, type, balance, isDeleted, updatedAt',
+  categories: '++id, name, type, icon, color, isDeleted, updatedAt',
+  debts: '++id, type, personName, originalAmount, remainingAmount, dueDate, accountId, status, isDeleted, updatedAt',
+  budgets: '++id, categoryId, month, updatedAt',
+  recurring: '++id, title, type, amount, categoryId, accountId, frequency, nextDueDate, updatedAt',
+  settings: 'key',
+  savings: '++id, name, bankCode, balance, status, dueDate, isDeleted, updatedAt',
+  accumulations: '++id, name, targetAmount, currentAmount, status, isDeleted, updatedAt',
+  assets: '++id, assetType, subType, name, status, includeInNetWorth, isDeleted, updatedAt',
+  loans: '++id, name, bankCode, loanAmount, remainingAmount, status, isDeleted, updatedAt',
+  trips: '++id, name, startDate, endDate, budget, status, isDeleted, updatedAt',
+  splits: '++id, tripId, txId, title, totalAmount, paidBy, splitType, status, isDeleted, updatedAt'
+});
+
 // Default Seed Categories
 const DEFAULT_CATEGORIES = [
   // Chi tiêu (Expense) - Quick items
@@ -1934,6 +1951,8 @@ async function wipeAndResetLocalDatabase(options = {}) {
   if (db.assets) await db.assets.clear();
   if (db.loans) await db.loans.clear();
   if (db.loan_schedules) await db.loan_schedules.clear();
+  if (db.trips) await db.trips.clear();
+  if (db.splits) await db.splits.clear();
 
   // Reset tài khoản về mặc định ban đầu với timestamp = 1 (untouched) để không đè lên bản sao lưu từ remote khi đồng bộ
   await db.accounts.clear();
@@ -1963,3 +1982,120 @@ async function wipeAndResetLocalDatabase(options = {}) {
   }
 }
 window.wipeAndResetLocalDatabase = wipeAndResetLocalDatabase;
+
+/* ==================== QUẢN LÝ CHUYẾN ĐI & SỰ KIỆN (TRIPS) ==================== */
+async function getTrips(includeDeleted = false) {
+  if (!db.trips) return [];
+  try {
+    const list = await db.trips.toArray();
+    return includeDeleted ? list : list.filter(t => !t.isDeleted);
+  } catch (e) {
+    console.warn('Error reading trips:', e);
+    return [];
+  }
+}
+
+async function getTripById(id) {
+  if (!db.trips) return null;
+  try {
+    return await db.trips.get(Number(id));
+  } catch (e) {
+    console.warn('Error reading trip:', e);
+    return null;
+  }
+}
+
+async function saveTrip(tripData) {
+  if (!db.trips) return null;
+  const now = Date.now();
+  const payload = {
+    ...tripData,
+    budget: Number(tripData.budget) || 0,
+    members: Array.isArray(tripData.members) ? tripData.members : (tripData.members ? String(tripData.members).split(',').map(m => m.trim()).filter(Boolean) : []),
+    status: tripData.status || 'active',
+    isDeleted: tripData.isDeleted ? 1 : 0,
+    updatedAt: now
+  };
+
+  if (payload.id) {
+    await db.trips.update(Number(payload.id), payload);
+    triggerAutoSync();
+    return Number(payload.id);
+  } else {
+    payload.createdAt = now;
+    const newId = await db.trips.add(payload);
+    triggerAutoSync();
+    return newId;
+  }
+}
+
+async function deleteTrip(id) {
+  if (!db.trips) return false;
+  try {
+    await db.trips.update(Number(id), { isDeleted: 1, updatedAt: Date.now() });
+    triggerAutoSync();
+    return true;
+  } catch (e) {
+    console.warn('Error deleting trip:', e);
+    return false;
+  }
+}
+
+async function getTripTransactions(tripId) {
+  try {
+    const tId = Number(tripId);
+    const txs = await db.transactions.where('isDeleted').equals(0).toArray();
+    return txs.filter(t => Number(t.tripId) === tId);
+  } catch (e) {
+    console.warn('Error getTripTransactions:', e);
+    return [];
+  }
+}
+
+/* ==================== QUẢN LÝ CHIA TIỀN NHÓM (SPLITS) ==================== */
+async function getSplits(tripId = null) {
+  if (!db.splits) return [];
+  try {
+    const all = (await db.splits.toArray()).filter(s => !s.isDeleted);
+    if (tripId !== null) {
+      return all.filter(s => Number(s.tripId) === Number(tripId));
+    }
+    return all;
+  } catch (e) {
+    console.warn('Error reading splits:', e);
+    return [];
+  }
+}
+
+async function saveSplit(splitData) {
+  if (!db.splits) return null;
+  const now = Date.now();
+  const payload = {
+    ...splitData,
+    totalAmount: Number(splitData.totalAmount) || 0,
+    tripId: splitData.tripId ? Number(splitData.tripId) : null,
+    txId: splitData.txId ? Number(splitData.txId) : null,
+    isDeleted: splitData.isDeleted ? 1 : 0,
+    updatedAt: now
+  };
+
+  if (payload.id) {
+    await db.splits.update(Number(payload.id), payload);
+    triggerAutoSync();
+    return Number(payload.id);
+  } else {
+    payload.createdAt = now;
+    const id = await db.splits.add(payload);
+    triggerAutoSync();
+    return id;
+  }
+}
+
+window.getTrips = getTrips;
+window.getTripById = getTripById;
+window.saveTrip = saveTrip;
+window.deleteTrip = deleteTrip;
+window.getTripTransactions = getTripTransactions;
+window.getSplits = getSplits;
+window.saveSplit = saveSplit;
+

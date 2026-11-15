@@ -83,6 +83,8 @@ const BackupService = {
     const accumulations = db.accumulations ? await db.accumulations.toArray() : [];
     const assets = db.assets ? await db.assets.toArray() : [];
     const loans = db.loans ? await db.loans.toArray() : [];
+    const trips = db.trips ? await db.trips.toArray() : [];
+    const splits = db.splits ? await db.splits.toArray() : [];
 
     return {
       version: '2.0.0',
@@ -98,7 +100,9 @@ const BackupService = {
         savings,
         accumulations,
         assets,
-        loans
+        loans,
+        trips,
+        splits
       }
     };
   },
@@ -197,13 +201,15 @@ const BackupService = {
             throw new Error('Định dạng tệp sao lưu không hợp lệ.');
           }
 
-          const { transactions, accounts, categories, debts, budgets, recurring, savings, accumulations, assets, loans, settings } = parsed.data;
+          const { transactions, accounts, categories, debts, budgets, recurring, savings, accumulations, assets, loans, trips, splits, settings } = parsed.data;
 
           const storesToLock = [db.transactions, db.accounts, db.categories, db.debts, db.budgets, db.recurring];
           if (db.savings) storesToLock.push(db.savings);
           if (db.accumulations) storesToLock.push(db.accumulations);
           if (db.assets) storesToLock.push(db.assets);
           if (db.loans) storesToLock.push(db.loans);
+          if (db.trips) storesToLock.push(db.trips);
+          if (db.splits) storesToLock.push(db.splits);
 
           await db.transaction('rw', storesToLock, async () => {
             if (transactions && transactions.length) {
@@ -245,6 +251,14 @@ const BackupService = {
             if (loans && loans.length && db.loans) {
               await db.loans.clear();
               await db.loans.bulkAdd(loans);
+            }
+            if (trips && trips.length && db.trips) {
+              await db.trips.clear();
+              await db.trips.bulkAdd(trips);
+            }
+            if (splits && splits.length && db.splits) {
+              await db.splits.clear();
+              await db.splits.bulkAdd(splits);
             }
           });
 

@@ -4196,6 +4196,8 @@ const UITransactions = {
       const borrowDueDate = document.getElementById('tx-borrow-due-date-input')?.value || '';
       const borrowDueDateRaw = document.getElementById('tx-borrow-due-date-input')?.dataset.rawDate || '';
       const extraOpen = document.getElementById('extra-details-body')?.style.display !== 'none';
+      const tripId = document.getElementById('tx-trip-id-input')?.value || '';
+      const splitData = document.getElementById('tx-split-data-input')?.value || '';
 
       const draft = {
         type,
@@ -4211,6 +4213,8 @@ const UITransactions = {
         note,
         fee,
         person,
+        tripId,
+        splitData,
         dueDate,
         dueDateRaw,
         isBorrowed,
@@ -4328,6 +4332,16 @@ const UITransactions = {
         if (personTitle) {
           personTitle.textContent = (type === 'lend' || draft.debtSubaction === 'lend') ? 'Người vay' : 'Người cho vay';
         }
+        const payeeDisplay = document.getElementById('tx-payee-display');
+        if (payeeDisplay) payeeDisplay.textContent = draft.person;
+      }
+
+      if (draft.tripId && window.UITrips) {
+        window.UITrips.selectTripForTx(Number(draft.tripId));
+      }
+      if (draft.splitData) {
+        const splitDataInput = document.getElementById('tx-split-data-input');
+        if (splitDataInput) splitDataInput.value = draft.splitData;
       }
       if (type === 'lend' || draft.debtSubaction === 'lend' || type === 'borrow' || draft.debtSubaction === 'borrow') {
         const haydungContainer = document.getElementById('tx-haydung-container');
@@ -4459,6 +4473,23 @@ const UITransactions = {
     if (personTitle) personTitle.textContent = 'Người vay';
     const personDisplay = document.getElementById('tx-debt-person-display');
     if (personDisplay) personDisplay.textContent = 'Chưa chọn ai';
+
+    // Reset trip & payee
+    const tripInput = document.getElementById('tx-trip-id-input');
+    if (tripInput) tripInput.value = '';
+    const tripNameDisplay = document.getElementById('tx-trip-name-display');
+    if (tripNameDisplay) {
+      tripNameDisplay.textContent = 'Chưa chọn chuyến đi';
+      tripNameDisplay.classList.remove('has-trip');
+    }
+    const tripClearBtn = document.getElementById('btn-clear-tx-trip');
+    if (tripClearBtn) tripClearBtn.style.display = 'none';
+
+    const payeeDisplay = document.getElementById('tx-payee-display');
+    if (payeeDisplay) payeeDisplay.textContent = 'Chưa chọn ai';
+    const splitDataInput = document.getElementById('tx-split-data-input');
+    if (splitDataInput) splitDataInput.value = '';
+
     const dueDateInput = document.getElementById('tx-due-date-input');
     if (dueDateInput) {
       dueDateInput.value = '';
@@ -4673,6 +4704,15 @@ const UITransactions = {
       return;
     }
 
+    // Chuyến đi & Sự kiện và Chi cho ai (Chia tiền nhóm)
+    const tripId = document.getElementById('tx-trip-id-input')?.value ? Number(document.getElementById('tx-trip-id-input').value) : null;
+    const person = document.getElementById('tx-person-input')?.value?.trim() || null;
+    let splitDetails = null;
+    try {
+      const splitRaw = document.getElementById('tx-split-data-input')?.value;
+      if (splitRaw) splitDetails = JSON.parse(splitRaw);
+    } catch (_) {}
+
     this.isSubmitting = true;
     const submitBtn = document.querySelector('.tx-submit-bottom-btn');
     const headerDoneBtn = document.querySelector('.tx-header-done-btn');
@@ -4884,6 +4924,9 @@ const UITransactions = {
         date,
         time,
         note,
+        tripId,
+        person,
+        splitDetails,
         isBorrowed,
         borrowPerson,
         borrowDueDate,
@@ -4907,11 +4950,40 @@ const UITransactions = {
         date,
         time,
         note,
+        tripId,
+        person,
+        splitDetails,
         isBorrowed,
         borrowPerson,
         borrowDueDate,
         images: [...this.attachedImages]
       });
+
+      // Tự động tạo khoản nợ cần thu nếu bật tính năng chia tiền nhóm
+      if (splitDetails && splitDetails.autoCreateDebt && splitDetails.breakdown && (splitDetails.payer === 'Tôi' || !splitDetails.payer)) {
+        try {
+          for (const [pName, pAmt] of Object.entries(splitDetails.breakdown)) {
+            if (pName !== 'Tôi' && pAmt > 0) {
+              await db.debts.add({
+                type: 'lend',
+                personName: pName,
+                originalAmount: pAmt,
+                remainingAmount: pAmt,
+                dueDate: '',
+                accountId: Number(accountId),
+                note: `Chia tiền: ${note || 'Chi tiêu nhóm'}`,
+                status: 'active',
+                isDeleted: 0,
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+              });
+            }
+          }
+        } catch (e) {
+          console.warn('Auto create debt error:', e);
+        }
+      }
+
       // Thêm mới: KHÔNG thoát về trang trước, chỉ làm mới form để người dùng tiếp tục ghi chép
       await this.resetForm(type);
       showToast('Đã thêm ghi chép mới', 'success');
@@ -5424,6 +5496,34 @@ const UITransactions = {
     this.renderAttachedImages();
     this.updateAIStatus();
 
+    // Khôi phục Chuyến đi & Chi cho ai / Chia tiền nhóm
+    const tripInput = document.getElementById('tx-trip-id-input');
+    const tripNameDisplay = document.getElementById('tx-trip-name-display');
+    const tripClearBtn = document.getElementById('btn-clear-tx-trip');
+    if (tx.tripId && window.UITrips) {
+      const trip = window.UITrips.getTripFromCache(tx.tripId);
+      if (tripInput) tripInput.value = tx.tripId;
+      if (tripNameDisplay) {
+        tripNameDisplay.textContent = trip ? trip.name : ('Chuyến đi #' + tx.tripId);
+        tripNameDisplay.classList.add('has-trip');
+      }
+      if (tripClearBtn) tripClearBtn.style.display = 'inline-flex';
+    } else {
+      if (tripInput) tripInput.value = '';
+      if (tripNameDisplay) {
+        tripNameDisplay.textContent = 'Chưa chọn chuyến đi';
+        tripNameDisplay.classList.remove('has-trip');
+      }
+      if (tripClearBtn) tripClearBtn.style.display = 'none';
+    }
+
+    const payeeDisplay = document.getElementById('tx-payee-display');
+    const personInput = document.getElementById('tx-person-input');
+    const splitDataInput = document.getElementById('tx-split-data-input');
+    if (personInput) personInput.value = tx.person || '';
+    if (payeeDisplay) payeeDisplay.textContent = tx.person || 'Chưa chọn ai';
+    if (splitDataInput) splitDataInput.value = tx.splitDetails ? JSON.stringify(tx.splitDetails) : '';
+
     // Chế độ sửa: hiện nút Hủy + Xóa
     this.setEditMode(true, tx.id);
 
@@ -5433,6 +5533,18 @@ const UITransactions = {
       window.app.switchView('new-transaction');
     }
     if (window.lucide) lucide.createIcons();
+  },
+
+  async openNewWithTrip(tripId) {
+    await this.resetForm('expense', false);
+    if (window.app) {
+      window.app.editSourceView = 'trip-detail';
+      window.app.previousView = 'trip-detail';
+      window.app.switchView('new-transaction');
+    }
+    if (window.UITrips) {
+      window.UITrips.selectTripForTx(Number(tripId));
+    }
   },
 
   /* ==================== DELETE TRANSACTION ==================== */
@@ -5660,8 +5772,20 @@ const UITransactions = {
     if (window.lucide) lucide.createIcons();
   },
 
-  deleteAttachedImage(index) {
+  async deleteAttachedImage(index) {
     if (index >= 0 && index < this.attachedImages.length) {
+      if (typeof showConfirm === 'function') {
+        const ok = await showConfirm({
+          title: 'Xoá ảnh',
+          message: 'Bạn có chắc chắn muốn xoá ảnh hoá đơn này không?',
+          confirmText: 'Xoá',
+          cancelText: 'Huỷ',
+          danger: true
+        });
+        if (!ok) return;
+      } else if (!confirm('Bạn có chắc chắn muốn xoá ảnh hoá đơn này không?')) {
+        return;
+      }
       this.attachedImages.splice(index, 1);
       this.renderAttachedImages();
       this.updateAIStatus();
@@ -5852,14 +5976,12 @@ const UITransactions = {
 
     this.setCropAdjustMode(this.cropState.activeAdjustMode || 'tilt');
     this.drawCropCanvas();
-    showToast('Đã đặt lại toàn bộ góc xoay & phối cảnh về 0', 'info');
   },
 
   flipCropHorizontal() {
     if (!this.cropState) return;
     this.cropState.flipH = !this.cropState.flipH;
     this.drawCropCanvas();
-    showToast(this.cropState.flipH ? 'Đã lật ảnh ngang' : 'Đã khôi phục hướng lật', 'info');
   },
 
   initCropTouchHandlers() {
@@ -5999,7 +6121,6 @@ const UITransactions = {
     if (!this.cropState) return;
     this.cropState.cropNorm = { x: 0, y: 0, w: 1, h: 1 };
     this.updateCropBoxUI();
-    showToast('Đã mở rộng vùng cắt toàn bộ hoá đơn', 'info');
   },
 
   drawCropCanvas() {
@@ -6323,115 +6444,226 @@ const UITransactions = {
   },
 
   extractItemsFromOCR(textLines, detectedAmount) {
-    const detectedItems = [];
-    if (!Array.isArray(textLines) || textLines.length === 0) return detectedItems;
+    const removeAccents = (str) => (str || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .toLowerCase();
 
-    // Từ khoá tiêu đề / đầu hoá đơn (Header - loại trừ khỏi danh sách item)
-    const headerRegex = /^(?:công\s*ty|cong\s*ty|hóa\s*đơn|hoa\s*don|phiếu\s*thanh\s*toán|phieu\s*thanh\s*toan|receipt|invoice|địa\s*chỉ|dia\s*chi|address|tel|sđt|hotline|wifi|pass|mã\s*số\s*thuế|mst|thu\s*ngân|cashier|bàn|table|khách\s*hàng|so\s*hd|số\s*hđ|ngày|date|giờ|time)/i;
+    const isHeaderLine = (line) => {
+      const norm = removeAccents(line);
+      // Ngày tháng, giờ giấc, timestamp
+      if (/\b\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b/.test(line) || /\b\d{4}[/\-.]\d{1,2}[/\-.]\d{1,2}\b/.test(line)) return true;
+      if (/(?:ngay\s*in|ngay\s*lap|thoi\s*gian|gio\s*in|gio\s*giao|dia\s*chi\s*giao|kho\s*xuat|hinh\s*thuc\s*giao)/i.test(norm)) return true;
+      // Tên cửa hàng, tiêu đề hoá đơn / phiếu
+      if (/(?:cong\s*ty|robinson|dienmayxanh|thegioididong|poolbar|bien\s*nhan|hoa\s*don|phieu\s*thu|receipt|invoice)/i.test(norm)) return true;
+      // Liên hệ & thông tin bổ trợ
+      if (/(?:phone|dien\s*thoai|tel|hotline|tax\s*number|ma\s*so\s*thue|mst|phieu\s*y\/c|so\s*luong\s*khach|so\s*ban|khach\s*hang|dia\s*chi)/i.test(norm)) return true;
+      // Địa danh / địa chỉ
+      if (/(?:village|commune|district|ward|street|vietnam|da\s*nang|tam\s*xuan|ha\s*noi|ho\s*chi\s*minh|tran\s*nhan\s*tong)/i.test(norm)) return true;
+      return false;
+    };
 
-    // Từ khoá chân hoá đơn / tổng tiền (Footer - kết thúc danh sách item)
-    const footerRegex = /(?:tổng\s*cộng|tong\s*cong|thanh\s*toán|thanh\s*toan|tổng\s*tiền|tong\s*tien|cộng\s*tiền|cong\s*tien|khách\s*phải\s*trả|tiền\s*mặt|tien\s*mat|chuyển\s*khoản|tiền\s*thừa|tien\s*thua|tiền\s*thối|tien\s*thoi|khách\s*đưa|khach\s*dua|vat|thuế|thue\s*gtgt|chiết\s*khấu|chiet\s*khau|giảm\s*giá|giam\s*gia|discount|điểm\s*tích\s*lũy|cảm\s*ơn|cam\s*on|thank\s*you|hẹn\s*gặp\s*lại)/i;
+    const isTableHeader = (line) => {
+      const norm = removeAccents(line);
+      let matches = 0;
+      const kwList = ['don gia', 'so luong', 'thanh tien', 'bill', 'time', 'date', 'table', 'bang', 'stt', 'item', 'price', 'qty', 'amount'];
+      for (const kw of kwList) {
+        if (norm.includes(kw)) matches++;
+      }
+      return matches >= 2;
+    };
 
-    // Từ khoá tiêu đề cột (Bỏ qua dòng này)
-    const tableHeaderRegex = /^(?:stt|tên\s*hàng|ten\s*hang|mặt\s*hàng|mat\s*hang|món|mon|đơn\s*giá|don\s*gia|số\s*lượng|so\s*luong|sl|thành\s*tiền|thanh\s*tien|tt|item|qty|price|amount)$/i;
+    const isFooterOrTotal = (line) => {
+      const norm = removeAccents(line);
+      // Khớp Tổng, Tong, Téng, Tông, Total, Thanh toán, Service Charge, VAT, Cảm ơn...
+      if (/(?:t[oeôóòỏõọéèẻẽẹếề]ng|total|thanh\s*toan|cong\s*tien|khach\s*tra|tien\s*mat|chuyen\s*khoan|tien\s*thua|tien\s*thoi|vat|thue|service\s*charge|so\s*phong|ten\s*khach|chu\s*ky|signature|cam\s*on|thanks)/i.test(norm)) return true;
+      return false;
+    };
 
-    // Regex tìm số tiền (định dạng 1.000 đến 999.000.000)
-    const priceExtractRegex = /\b(\d{1,3}(?:[.,]\d{3})+|\d{4,9})\b/g;
+    const isPureNumberOrNoise = (str) => {
+      const letters = (str || '').match(/[a-zA-Z\u00C0-\u1EF9]/g);
+      return !letters || letters.length < 2;
+    };
 
-    const maxItemPrice = (detectedAmount && detectedAmount > 1000) ? detectedAmount : 500000000;
+    const isZeroPriceRow = (line) => {
+      return /^(?:0\s*)+[0-9]*\s*(?:0\s*)*$/.test((line || '').trim());
+    };
 
+    const isPromoOrCouponLine = (line) => {
+      const norm = removeAccents(line);
+      return /^(?:pmh|phieu\s*mua\s*hang|phieu\s*giam\s*gia|qua\s*tang|tang\s*kem|mien\s*phi\s*cong)\b/i.test(norm);
+    };
+
+    const maxItemPrice = (detectedAmount && detectedAmount > 1000) ? Math.round(detectedAmount * 1.1) : 500000000;
+
+    const extractValidPrices = (line) => {
+      if (isHeaderLine(line)) return [];
+      const matches = [...line.matchAll(/\b(\d{1,3}(?:[.,]\d{3})+|\d{4,9})\b/g)];
+      const valid = [];
+      for (const m of matches) {
+        const raw = m[1];
+        const prefix = line.slice(0, m.index);
+        const suffix = line.slice(m.index + m[0].length);
+
+        // Nếu kèm / hoặc - bên trái hoặc bên phải thì xem nó là ngày tháng năm để bỏ qua
+        const isDateSepAdjacent = /[/\-]\s*$/.test(prefix) || /^\s*[/\-]/.test(suffix);
+        if (isDateSepAdjacent) continue;
+
+        const hasSep = raw.includes('.') || raw.includes(',');
+        const num = parseInt(raw.replace(/[.,]/g, ''), 10);
+
+        // Bỏ qua mã bưu chính hoặc số điện thoại (6, 10 hoặc 11 chữ số không có dấu phân cách)
+        if (!hasSep && (raw.length === 6 || raw.length === 10 || raw.length === 11)) continue;
+
+        if (num >= 1000 && num <= maxItemPrice) {
+          valid.push({ text: raw, val: num, index: m.index });
+        }
+      }
+      return valid;
+    };
+
+    const items = [];
     let inItemSection = false;
 
     for (let i = 0; i < textLines.length; i++) {
       const line = textLines[i].trim();
       if (!line) continue;
 
-      // Bỏ qua các dòng tiêu đề cột
-      if (tableHeaderRegex.test(line)) {
+      if (isTableHeader(line)) {
         inItemSection = true;
         continue;
       }
 
-      // Nếu gặp dòng tổng tiền hoặc footer -> ngừng quét item
-      if (footerRegex.test(line)) {
-        // Nếu đã có item hoặc dòng này rõ ràng là tổng cộng
-        if (detectedItems.length > 0 || /(?:tổng\s*cộng|tong\s*cong|thanh\s*toán|total)/i.test(line)) {
-          break;
+      if (isFooterOrTotal(line)) {
+        if (inItemSection || items.length > 0) break;
+      }
+
+      if (!inItemSection) {
+        if (isHeaderLine(line)) continue;
+      }
+
+      // Bỏ qua dòng phiếu mua hàng / khuyến mãi có đơn giá 0đ
+      if (isPromoOrCouponLine(line)) {
+        if (i + 1 < textLines.length && isZeroPriceRow(textLines[i + 1])) {
+          i++;
+          continue;
         }
         continue;
       }
 
-      // Bỏ qua dòng header nếu chưa vào phần thân
-      if (!inItemSection && headerRegex.test(line)) {
-        continue;
-      }
+      if (isZeroPriceRow(line)) continue;
 
-      // Dạng 1: Dòng đơn chứa cả Tên mặt hàng + Số lượng/Đơn giá + Thành tiền
-      // Ví dụ: "Cà phê sữa đá   2   35.000   70.000" hoặc "Bạc xỉu đá   35.000"
-      const allPrices = [...line.matchAll(priceExtractRegex)];
-      if (allPrices.length > 0) {
-        const lastMatch = allPrices[allPrices.length - 1];
-        const lastPriceVal = parseInt(lastMatch[1].replace(/[.,]/g, ''), 10);
+      // 1. Dạng dòng đơn: Chứa Tên + Số lượng/Đơn giá + Thành tiền trên cùng 1 dòng
+      const prices = extractValidPrices(line);
+      if (prices.length > 0) {
+        const firstPrice = prices[0];
+        const lastPrice = prices[prices.length - 1];
+        let textBefore = line.substring(0, prices.length >= 2 ? firstPrice.index : lastPrice.index).trim();
+        let qty = '';
 
-        if (!isNaN(lastPriceVal) && lastPriceVal >= 1000 && lastPriceVal <= maxItemPrice) {
-          // Lấy phần văn bản phía trước số tiền
-          let textBefore = line.substring(0, lastMatch.index).trim();
-
-          // Kiểm tra xem có số lượng đứng ngay trước (ví dụ "2 x 35.000" hoặc "x2" hoặc số cột)
-          let quantity = '';
-          const qtyMatch = textBefore.match(/(?:x\s*(\d+)|\b(\d+)\s*x|\b(\d+)\s+(?:\d{1,3}(?:[.,]\d{3})+|\d{4,9}))$/i);
-          if (qtyMatch) {
-            quantity = qtyMatch[1] || qtyMatch[2] || qtyMatch[3] || '';
-            textBefore = textBefore.substring(0, qtyMatch.index).trim();
+        // Kiểm tra số lượng ở đầu tên món: 1.00x ... hoặc 2x ...
+        const leadQtyMatch = textBefore.match(/^(\d+(?:\.\d+)?)\s*x\s*(.+)$/i);
+        if (leadQtyMatch) {
+          qty = Math.round(Number(leadQtyMatch[1])) || '';
+          textBefore = leadQtyMatch[2].trim();
+        } else {
+          // Nếu có 2 giá trở lên trên cùng 1 dòng: "Cà phê sữa đá 35.000 2 70.000"
+          if (prices.length >= 2) {
+            const between = line.substring(firstPrice.index + firstPrice.text.length, lastPrice.index).trim();
+            const betweenMatch = between.match(/\b([1-9]\d{0,2})\b/);
+            if (betweenMatch) qty = parseInt(betweenMatch[1], 10);
           }
-
-          // Làm sạch tên mặt hàng (bỏ số thứ tự 1., 2), dấu gạch, bullet)
-          const cleanName = textBefore.replace(/^[0-9•\-\*\.]+\s*/, '').replace(/[:\-_]+$/, '').trim();
-
-          if (cleanName.length >= 2 && !headerRegex.test(cleanName) && !footerRegex.test(cleanName)) {
-            const formattedPrice = new Intl.NumberFormat('vi-VN').format(lastPriceVal);
-            const qtyStr = quantity && Number(quantity) > 1 ? ` (x${quantity})` : '';
-            detectedItems.push(`• ${cleanName}${qtyStr}: ${formattedPrice}đ`);
-            inItemSection = true;
-            continue;
+          if (!qty) {
+            // Kiểm tra số lượng đứng trước đơn giá: "Bánh mì trứng 2 30.000" hoặc "... 2 x"
+            const qtyMatch = textBefore.match(/(?:^|\s)(?:x\s*(\d+)|\b(\d+)\s*x|\bSL[:\s]*(\d+)|\b([1-9]\d{0,2}))$/i);
+            if (qtyMatch) {
+              qty = parseInt(qtyMatch[1] || qtyMatch[2] || qtyMatch[3] || qtyMatch[4], 10);
+              textBefore = textBefore.substring(0, qtyMatch.index).trim();
+            }
           }
+        }
+
+        let cleanName = textBefore.replace(/^[0-9•\-*.]+\s*/, '').replace(/[:\-_]+$/, '').replace(/\((?:vnd|vnđ|d)\s*\d+\)/i, '').trim();
+
+        if (!isPureNumberOrNoise(cleanName) && !isHeaderLine(cleanName) && !isFooterOrTotal(cleanName) && !isPromoOrCouponLine(cleanName)) {
+          const finalQty = qty && Number(qty) > 0 ? Number(qty) : 1;
+          const qtyStr = ` (x${finalQty})`;
+          items.push(`• ${cleanName}${qtyStr}: ${new Intl.NumberFormat('vi-VN').format(lastPrice.val)}đ`);
+          inItemSection = true;
+          continue;
         }
       }
 
-      // Dạng 2: Hoá đơn in 2 dòng cho 1 mặt hàng:
-      // Dòng i: Tên mặt hàng (VD: "Bánh mì bơ tỏi đặc biệt")
-      // Dòng i+1: Số lượng x Đơn giá hoặc Thành tiền (VD: "2 x 35.000    70.000" hoặc "70.000")
+      // 2. Dạng 2 hoặc 3 dòng:
+      // Dòng i: Tên món
+      // Dòng i+1: Giá tiền (hoặc Phụ đề tiếng Anh / size, và dòng i+2 là giá tiền)
       if (i + 1 < textLines.length) {
         const nextLine = textLines[i + 1].trim();
-        const nextPrices = [...nextLine.matchAll(priceExtractRegex)];
+        let nextPrices = extractValidPrices(nextLine);
+        let consumed = 1;
+        let extraTitle = '';
 
-        if (nextPrices.length > 0 && !footerRegex.test(line) && !headerRegex.test(line)) {
-          const lastNextMatch = nextPrices[nextPrices.length - 1];
-          const priceVal = parseInt(lastNextMatch[1].replace(/[.,]/g, ''), 10);
-
-          if (!isNaN(priceVal) && priceVal >= 1000 && priceVal <= maxItemPrice) {
-            let cleanName = line.replace(/^[0-9•\-\*\.]+\s*/, '').replace(/[:\-_]+$/, '').trim();
-
-            let quantity = '';
-            const qtyMatch = nextLine.match(/(?:x\s*(\d+)|\b(\d+)\s*x|\bSL:\s*(\d+))/i);
-            if (qtyMatch) {
-              quantity = qtyMatch[1] || qtyMatch[2] || qtyMatch[3] || '';
+        if (nextPrices.length === 0 && i + 2 < textLines.length) {
+          const thirdLine = textLines[i + 2].trim();
+          const thirdPrices = extractValidPrices(thirdLine);
+          if (thirdPrices.length > 0 && !isFooterOrTotal(thirdLine)) {
+            nextPrices = thirdPrices;
+            consumed = 2;
+            if (!isPureNumberOrNoise(nextLine) && !isHeaderLine(nextLine)) {
+              extraTitle = ` (${nextLine})`;
             }
+          }
+        }
 
-            if (cleanName.length >= 2 && !headerRegex.test(cleanName) && !footerRegex.test(cleanName) && !tableHeaderRegex.test(cleanName)) {
-              const formattedPrice = new Intl.NumberFormat('vi-VN').format(priceVal);
-              const qtyStr = quantity && Number(quantity) > 1 ? ` (x${quantity})` : '';
-              detectedItems.push(`• ${cleanName}${qtyStr}: ${formattedPrice}đ`);
-              inItemSection = true;
-              i++; // Bỏ qua dòng giá tiếp theo
-              continue;
+        if (nextPrices.length > 0 && !isFooterOrTotal(line) && !isHeaderLine(line) && !isTableHeader(line) && !isPromoOrCouponLine(line)) {
+          const lastNext = nextPrices[nextPrices.length - 1];
+          let cleanName = line.trim();
+          let qty = '';
+
+          // 1. Kiểm tra số lượng ở đầu tên món: 1.00x ... hoặc 2x ...
+          const leadQtyMatch = cleanName.match(/^(\d+(?:\.\d+)?)\s*x\s*(.+)$/i);
+          if (leadQtyMatch) {
+            qty = Math.round(Number(leadQtyMatch[1])) || '';
+            cleanName = leadQtyMatch[2].trim();
+          }
+
+          // 2. Kiểm tra dòng giá dạng bảng nhiều cột (Đơn giá - Số lượng - Thành tiền): "8,990,000   1   8,990,000"
+          if (!qty && nextPrices.length >= 2) {
+            const between = nextLine.substring(nextPrices[0].index + nextPrices[0].text.length, nextPrices[nextPrices.length - 1].index).trim();
+            const betweenMatch = between.match(/\b([1-9]\d{0,2})\b/);
+            if (betweenMatch) {
+              qty = parseInt(betweenMatch[1], 10);
+            } else {
+              const before = nextLine.substring(0, nextPrices[0].index).trim();
+              const beforeMatch = before.match(/\b([1-9]\d{0,2})\b/);
+              if (beforeMatch) qty = parseInt(beforeMatch[1], 10);
             }
+          }
+
+          // 3. Kiểm tra ký hiệu số lượng x / SL: "2 x 35.000" hoặc "SL: 2"
+          if (!qty) {
+            const qtyMatch = nextLine.match(/(?:x\s*(\d+)|(?:^|\s)(\d+)\s*x|\bSL[:\s]*(\d+)|(?:^|\s)([1-9]\d{0,2})\s+(?:\d{1,3}(?:[.,]\d{3})+|\d{4,9}))/i);
+            if (qtyMatch) qty = parseInt(qtyMatch[1] || qtyMatch[2] || qtyMatch[3] || qtyMatch[4], 10);
+          }
+
+          cleanName = cleanName.replace(/^[0-9•\-*.]+\s*/, '').replace(/[:\-_]+$/, '').replace(/\((?:vnd|vnđ|d)\s*\d+\)/i, '').trim();
+          cleanName += extraTitle;
+
+          if (!isPureNumberOrNoise(cleanName) && !isHeaderLine(cleanName) && !isFooterOrTotal(cleanName) && !isTableHeader(cleanName) && !isPromoOrCouponLine(cleanName)) {
+            const finalQty = qty && Number(qty) > 0 ? Number(qty) : 1;
+            const qtyStr = ` (x${finalQty})`;
+            items.push(`• ${cleanName}${qtyStr}: ${new Intl.NumberFormat('vi-VN').format(lastNext.val)}đ`);
+            inItemSection = true;
+            i += consumed;
+            continue;
           }
         }
       }
     }
 
-    return detectedItems;
+    return items;
   },
 
   async scanReceiptWithOfflineOCR(dataUrl) {
@@ -6505,8 +6737,24 @@ const UITransactions = {
 
     let detectedAmount = null;
 
-    const totalKeyRegex = /(?:t[oổ]ng\s*c[oộ]ng|thanh\s*to[aá]n|t[oổ]ng\s*ti[eề]n|c[oộ]ng\s*ti[eề]n\s*h[aà]ng|kh[aá]ch\s*ph[aả]i\s*tr[aả]|ti[eề]n\s*m[aặ]t|t[oổ]ng|total|grand\s*total|amount|balance)/i;
+    const totalKeyRegex = /(?:t[oeôóòỏõọéèẻẽẹếề]ng\s*c[oộ]ng|thanh\s*to[aán]|t[oeôóòỏõọéèẻẽẹếề]ng\s*ti[eền]|c[oộ]ng\s*ti[eền]\s*h[aàng]|kh[aá]ch\s*ph[aải]\s*tr[aả]|ti[eền]\s*m[aặt]|t[oeôóòỏõọéèẻẽẹếề]ng|total|grand\s*total|amount|balance)/i;
     const amountNumRegex = /(?:[\s:=]|^)(\d{1,3}(?:[.,]\d{3})+|\d{4,9})(?:\s*(?:đ|vnd|vnđ|d))?/i;
+
+    // Helper kiểm tra giá trị số tiền hợp lệ (không phải ngày tháng năm hay số điện thoại)
+    const parseValidAmount = (rawStr, line = '', matchIndex = -1) => {
+      if (!rawStr) return null;
+      if (matchIndex >= 0 && line) {
+        const prefix = line.slice(0, matchIndex);
+        const suffix = line.slice(matchIndex + rawStr.length);
+        const isDateSepAdjacent = /[/\-]\s*$/.test(prefix) || /^\s*[/\-]/.test(suffix);
+        if (isDateSepAdjacent) return null;
+      }
+      const hasSep = rawStr.includes('.') || rawStr.includes(',');
+      const num = parseInt(rawStr.replace(/[.,]/g, ''), 10);
+      if (isNaN(num) || num < 1000) return null;
+      if (!hasSep && (rawStr.length === 6 || rawStr.length === 10 || rawStr.length === 11)) return null;
+      return num;
+    };
 
     // 3. Quét dòng chứa từ khoá thanh toán
     for (let i = textLines.length - 1; i >= 0; i--) {
@@ -6514,17 +6762,20 @@ const UITransactions = {
       if (totalKeyRegex.test(line)) {
         const match = line.match(amountNumRegex);
         if (match && match[1]) {
-          const num = parseInt(match[1].replace(/[.,]/g, ''), 10);
-          if (!isNaN(num) && num >= 1000) {
+          const numIdx = line.indexOf(match[1], match.index);
+          const num = parseValidAmount(match[1], line, numIdx);
+          if (num) {
             detectedAmount = num;
             break;
           }
         }
         if (i + 1 < textLines.length) {
-          const nextMatch = textLines[i + 1].match(amountNumRegex);
+          const nextLine = textLines[i + 1];
+          const nextMatch = nextLine.match(amountNumRegex);
           if (nextMatch && nextMatch[1]) {
-            const num = parseInt(nextMatch[1].replace(/[.,]/g, ''), 10);
-            if (!isNaN(num) && num >= 1000) {
+            const nextIdx = nextLine.indexOf(nextMatch[1], nextMatch.index);
+            const num = parseValidAmount(nextMatch[1], nextLine, nextIdx);
+            if (num) {
               detectedAmount = num;
               break;
             }
@@ -6537,10 +6788,12 @@ const UITransactions = {
       const bottomHalf = textLines.slice(Math.floor(textLines.length * 0.4));
       let maxVal = 0;
       for (const line of bottomHalf) {
+        if (/\b\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b/.test(line) || /\b\d{4}[/\-.]\d{1,2}[/\-.]\d{1,2}\b/.test(line)) continue;
         const match = line.match(amountNumRegex);
         if (match && match[1]) {
-          const num = parseInt(match[1].replace(/[.,]/g, ''), 10);
-          if (!isNaN(num) && num >= 1000 && num > maxVal) {
+          const numIdx = line.indexOf(match[1], match.index);
+          const num = parseValidAmount(match[1], line, numIdx);
+          if (num && num > maxVal) {
             maxVal = num;
           }
         }

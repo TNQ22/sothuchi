@@ -56,6 +56,21 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
 - **Tên dữ liệu trải dài 100% dòng trên:** Tên dữ liệu/tệp phải nằm trọn vẹn ở dòng trên cùng, kéo dài hết bề ngang của thẻ (`width: 100%`, `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`), không bị nút hay icon bên cạnh chèn ép.
 - **Nút thao tác chuyển xuống cạnh dưới (Bottom Action):** Nút hành động (như Khôi phục, Tải về, Xoá) chuyển xuống hàng dưới cùng hàng với Tag + Thời gian. Ưu tiên nút icon gọn gàng (`icon button`), bỏ chữ rườm rà để tiết kiệm diện tích tối đa.
 
+### 2.6. Chống Link Preview / Callout trên Safari & Trình duyệt - Long-Press Tooltip (BẮT BUỘC)
+- **Triệt tiêu xem trước (Link Preview) & Context Menu mặc định của Safari / WebKit:**
+  - Trên Safari / iOS WebKit, khi người dùng nhấn giữ (long-press) vào thẻ `<a>`, nút bấm hoặc icon, trình duyệt mặc định sẽ bung cửa sổ popup xem trước trang web (Peek & Pop / Link Preview) và menu chia sẻ hệ thống, gây khó chịu và che khuất màn hình ứng dụng PWA.
+  - **Quy tắc CSS bắt buộc:** Mọi nút bấm, icon button, thẻ tab, đường dẫn hành động (`button`, `.btn`, `.btn-icon`, `a`, `[role="button"]`, `.nav-item`,...) phải luôn được áp dụng:
+    ```css
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none;
+    user-select: none;
+    ```
+  - **Quy tắc HTML / Semantic:** Tuyệt đối không dùng `<a href="...">` cho các nút bấm hành động nội bộ (actions, modal triggers, icon controls). Bắt buộc dùng thẻ `<button type="button">`. Nếu bắt buộc phải dùng thẻ `<a>`, không đặt URL thực mà dùng `href="javascript:void(0)"` hoặc không có `href`, kết hợp chặn sự kiện `contextmenu`.
+- **Nhấn giữ hiển thị tên nút thay thế (Long-Press Tooltip / Label):**
+  - Khi người dùng nhấn và giữ nút bấm trên màn hình cảm ứng (~300ms - 500ms), **thay vì để trình duyệt bung menu hoặc popup xem trước**, hệ thống phải ngăn chặn menu mặc định (`e.preventDefault()` trên `contextmenu` hoặc touch event) và hiển thị tên nút đó thay thế.
+  - **Thuộc tính bắt buộc:** Tất cả các icon button, nút rút gọn chữ bắt buộc phải khai báo thuộc tính `title` hoặc `aria-label` (hoặc `data-tooltip`) rõ ràng, xúc tích.
+  - **Trải nghiệm hiển thị:** Hiển thị tên nút dạng Tooltip / Micro-toast nổi nhỏ gọn với phong cách thương hiệu (nền tối, viền ngọc bích, bo góc), tự động biến mất khi nhấc tay (`touchend`), di chuyển ngón tay (`touchmove`), hoặc sau 1.5 giây.
+
 ---
 
 ## 3. NGUYÊN TẮC VIẾT CODE & BẢO TRÌ

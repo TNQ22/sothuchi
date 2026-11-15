@@ -7,3 +7,4 @@ Vui lòng luôn đọc và tuân thủ nghiêm ngặt các quy tắc thiết k�
 2. **Bố cục:** Xát viền màn hình (Edge-to-edge), không tạo khoảng lề trống thừa mứa, tối đa diện tích hiển thị nội dung trên màn hình điện thoại và máy tính.
 3. **Nút bấm:** Căng đều các cạnh (full width / grid / flex 1 căng tràn đều nhau), chiều cao tối thiểu 44px-48px cho cảm ứng điện thoại, bo góc 12px - 16px.
 4. **Code:** Sử dụng biến CSS trong `css/style.css`, đảm bảo Offline-First PWA, không thêm thư viện cồng kềnh.
+5. **Chống Preview Safari & Nhấn giữ hiện tên nút:** Mọi nút bấm/link/icon phải có `-webkit-touch-callout: none !important` và `user-select: none`. Chặn `contextmenu` / preview mặc định của Safari; khi người dùng nhấn giữ nút thì hiển thị tên nút (từ `title`/`aria-label`) dạng tooltip thay thế.
