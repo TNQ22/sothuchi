@@ -3229,27 +3229,76 @@ const UISettings = {
       }
 
       listEl.innerHTML = backups.map((b, idx) => {
-        const timeStr = b.modifiedTime ? new Date(b.modifiedTime).toLocaleString('vi-VN') : 'Không rõ ngày';
-        const isCustom = b.locationType === 'customFolder';
-        const isPriv = b.locationType === 'privateVault';
-        const isRev = b.locationType === 'revision';
-        const badgeColor = isPriv ? '#8b5cf6' : (isCustom ? '#10b981' : (isRev ? '#f59e0b' : '#3b82f6'));
-        const badgeText = isPriv ? 'Bản sao lưu riêng tư' : (isCustom ? 'Thư mục Sổ Thu Chi' : (isRev ? 'Lịch sử phiên bản' : 'AppData ẩn'));
+        const timeObj = b.modifiedTime ? new Date(b.modifiedTime) : null;
+        const timeStr = timeObj
+          ? `${String(timeObj.getHours()).padStart(2, '0')}:${String(timeObj.getMinutes()).padStart(2, '0')}:${String(timeObj.getSeconds()).padStart(2, '0')} • ${timeObj.toLocaleDateString('vi-VN')}`
+          : 'Không rõ ngày';
+        const sizeStr = b.size ? `${(Number(b.size) / 1024).toFixed(1)} KB` : '';
+
+        let iconName = 'folder';
+        let iconBg = 'rgba(16, 185, 129, 0.12)';
+        let iconColor = '#10b981';
+        let badgeColor = '#10b981';
+        let badgeText = 'Thư mục Drive';
+
+        if (b.locationType === 'privateVault') {
+          iconName = 'shield-check';
+          iconBg = 'rgba(139, 92, 246, 0.12)';
+          iconColor = '#8b5cf6';
+          badgeColor = '#8b5cf6';
+          badgeText = 'Bản sao riêng tư';
+        } else if (b.locationType === 'revision') {
+          iconName = 'history';
+          iconBg = 'rgba(245, 158, 11, 0.12)';
+          iconColor = '#f59e0b';
+          badgeColor = '#f59e0b';
+          badgeText = 'Bản lịch sử';
+        } else if (b.locationType === 'sharedWithMe') {
+          iconName = 'users';
+          iconBg = 'rgba(59, 130, 246, 0.12)';
+          iconColor = '#3b82f6';
+          badgeColor = '#3b82f6';
+          badgeText = b.ownerEmail ? `Từ ${b.ownerEmail.split('@')[0]}` : 'Được chia sẻ';
+        } else if (b.locationType === 'mirror') {
+          iconName = 'archive';
+          iconBg = 'rgba(99, 102, 241, 0.12)';
+          iconColor = '#6366f1';
+          badgeColor = '#6366f1';
+          badgeText = 'Bản Mirror';
+        } else if (b.locationType === 'appDataFolder') {
+          iconName = 'database';
+          iconBg = 'rgba(14, 165, 233, 0.12)';
+          iconColor = '#0ea5e9';
+          badgeColor = '#0ea5e9';
+          badgeText = 'AppData ẩn';
+        }
+
+        const titleText = b.displayName || b.name;
+        const safeTitle = typeof escapeHTML === 'function' ? escapeHTML(titleText) : titleText;
 
         return `
-          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-            <div style="min-width: 0; flex: 1;">
-              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                <span style="font-size: 0.7rem; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: ${badgeColor}20; color: ${badgeColor}; border: 1px solid ${badgeColor}40;">${badgeText}</span>
-                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${typeof escapeHTML === 'function' ? escapeHTML(b.name) : b.name}</span>
+          <div class="drive-recovery-card">
+            <div class="drive-recovery-icon-wrap" style="background: ${iconBg}; color: ${iconColor};">
+              <i data-lucide="${iconName}" style="width: 18px; height: 18px;"></i>
+            </div>
+            <div class="drive-recovery-content">
+              <div class="drive-recovery-title" title="${safeTitle}">
+                ${safeTitle}
               </div>
-              <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
-                <span><i data-lucide="clock" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i> ${timeStr}</span>
-                ${b.size ? `<span>• ${(Number(b.size) / 1024).toFixed(1)} KB</span>` : ''}
+              <div class="drive-recovery-meta-row">
+                <span class="drive-recovery-badge" style="background: ${badgeColor}18; color: ${badgeColor}; border: 1px solid ${badgeColor}35;">
+                  ${badgeText}
+                </span>
+                <span class="drive-recovery-meta-item">
+                  <i data-lucide="clock" style="width: 11px; height: 11px;"></i>
+                  ${timeStr}
+                </span>
+                ${sizeStr ? `<span class="drive-recovery-meta-item">• ${sizeStr}</span>` : ''}
               </div>
             </div>
-            <button type="button" class="btn-primary btn-sm btn-restore-backup-item" data-backup-idx="${idx}" style="white-space: nowrap; font-size: 0.78rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 4px;">
-              <i data-lucide="download-cloud" style="width: 13px; height: 13px;"></i> Khôi phục
+            <button type="button" class="btn-primary drive-recovery-btn btn-restore-backup-item" data-backup-idx="${idx}" title="Khôi phục bản này">
+              <i data-lucide="rotate-ccw" style="width: 13px; height: 13px;"></i>
+              <span>Khôi phục</span>
             </button>
           </div>
         `;
@@ -3264,9 +3313,10 @@ const UISettings = {
           const selected = backups[idx];
           if (!selected) return;
 
+          const targetName = selected.displayName || selected.name;
           const ok = await showConfirm({
             title: 'Khôi Phục Dữ Liệu Bản Này',
-            message: `Bạn có chắc chắn muốn khôi phục dữ liệu từ:<br><strong>${typeof escapeHTML === 'function' ? escapeHTML(selected.name) : selected.name}</strong><br><span style="color: var(--text-muted); font-size: 0.8rem;">Thời gian: ${selected.modifiedTime ? new Date(selected.modifiedTime).toLocaleString('vi-VN') : ''}</span><br><br><span style="color: #ef4444; font-size: 0.82rem;">Dữ liệu hiện tại trên máy sẽ được thay thế bằng bản sao lưu này.</span>`,
+            message: `Bạn có chắc chắn muốn khôi phục dữ liệu từ:<br><strong>${typeof escapeHTML === 'function' ? escapeHTML(targetName) : targetName}</strong><br><span style="color: var(--text-muted); font-size: 0.8rem;">Thời gian: ${selected.modifiedTime ? new Date(selected.modifiedTime).toLocaleString('vi-VN') : ''}</span><br><br><span style="color: #ef4444; font-size: 0.82rem;">Dữ liệu hiện tại trên máy sẽ được thay thế bằng bản sao lưu này.</span>`,
             confirmText: 'Khôi Phục Ngay',
             cancelText: 'Huỷ',
             icon: 'download-cloud'
@@ -3274,7 +3324,7 @@ const UISettings = {
           if (!ok) return;
 
           btn.disabled = true;
-          btn.innerHTML = '<i data-lucide="loader-2" class="spin-animation" style="width: 13px; height: 13px;"></i> Đang tải...';
+          btn.innerHTML = '<i data-lucide="loader-2" class="spin-animation" style="width: 13px; height: 13px;"></i> <span>Đang tải...</span>';
           if (window.lucide) lucide.createIcons();
 
           try {
@@ -3286,7 +3336,7 @@ const UISettings = {
             console.error('Lỗi khôi phục:', err);
             showToast('Lỗi: ' + err.message, 'error');
             btn.disabled = false;
-            btn.innerHTML = '<i data-lucide="download-cloud" style="width: 13px; height: 13px;"></i> Khôi phục';
+            btn.innerHTML = '<i data-lucide="rotate-ccw" style="width: 13px; height: 13px;"></i> <span>Khôi phục</span>';
             if (window.lucide) lucide.createIcons();
           }
         });

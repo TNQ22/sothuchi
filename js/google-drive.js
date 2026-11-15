@@ -1152,8 +1152,9 @@ class GoogleDriveSync {
           seenIds.add(f.id);
           results.push({
             id: f.id,
-            name: `${f.name} (Thư mục Google Drive)`,
-            location: 'Thư mục trên Drive (My Drive / Sổ Thu Chi)',
+            name: f.name,
+            displayName: f.name === this.syncFileName ? 'Sổ chính (sothuchi_vault.json)' : f.name,
+            location: 'Thư mục Drive (My Drive)',
             locationType: 'customFolder',
             modifiedTime: f.modifiedTime,
             size: f.size
@@ -1165,7 +1166,8 @@ class GoogleDriveSync {
             results.push({
               id: f.id,
               revisionId: r.id,
-              name: `${f.name} - Bản ngày ${new Date(r.modifiedTime).toLocaleString('vi-VN')}`,
+              name: f.name,
+              displayName: `Bản lịch sử: ${f.name}`,
               location: 'Lịch sử phiên bản (Revision)',
               locationType: 'revision',
               modifiedTime: r.modifiedTime,
@@ -1192,8 +1194,10 @@ class GoogleDriveSync {
             const owner = f.owners?.[0]?.emailAddress || 'Thành viên';
             results.push({
               id: f.id,
-              name: `${f.name} (Được chia sẻ bởi: ${owner})`,
-              location: 'Mục được chia sẻ (Shared With Me)',
+              name: f.name,
+              displayName: f.name,
+              ownerEmail: owner,
+              location: 'Mục được chia sẻ',
               locationType: 'sharedWithMe',
               modifiedTime: f.modifiedTime,
               size: f.size
@@ -1217,8 +1221,9 @@ class GoogleDriveSync {
           seenIds.add(f.id);
           results.push({
             id: f.id,
-            name: 'sothuchi_private_vault.json (Bản sao lưu riêng tư ngầm)',
-            location: 'Vùng ứng dụng ẩn (appDataFolder)',
+            name: f.name,
+            displayName: 'Bản sao lưu riêng tư ngầm',
+            location: 'Vùng ẩn AppData',
             locationType: 'privateVault',
             modifiedTime: f.modifiedTime,
             size: f.size
@@ -1241,8 +1246,9 @@ class GoogleDriveSync {
           seenIds.add(f.id);
           results.push({
             id: f.id,
-            name: `${f.name} (Vùng ẩn appDataFolder)`,
-            location: 'Vùng ứng dụng ẩn (appDataFolder)',
+            name: f.name,
+            displayName: 'Sổ chính (AppData ẩn)',
+            location: 'Vùng ẩn AppData',
             locationType: 'appDataFolder',
             modifiedTime: f.modifiedTime,
             size: f.size
@@ -1253,8 +1259,9 @@ class GoogleDriveSync {
             results.push({
               id: f.id,
               revisionId: r.id,
-              name: `${f.name} (appData) - Bản ngày ${new Date(r.modifiedTime).toLocaleString('vi-VN')}`,
-              location: 'Lịch sử phiên bản appData',
+              name: f.name,
+              displayName: `Bản lịch sử: ${f.name}`,
+              location: 'Lịch sử phiên bản AppData',
               locationType: 'revision',
               modifiedTime: r.modifiedTime,
               size: r.size
@@ -1279,8 +1286,9 @@ class GoogleDriveSync {
             seenIds.add(f.id);
             results.push({
               id: f.id,
-              name: 'SoThuChi_Mirror_Backup.stc (Bản sao lưu dự phòng)',
-              location: 'Vùng ứng dụng ẩn (appDataFolder)',
+              name: f.name,
+              displayName: 'Bản sao lưu dự phòng (.stc)',
+              location: 'Vùng ẩn AppData',
               locationType: 'mirror',
               modifiedTime: f.modifiedTime,
               size: f.size

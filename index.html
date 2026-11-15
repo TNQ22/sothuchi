@@ -7086,30 +7086,30 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- Modal: Tìm lại & Khôi phục bản sao lưu Google Drive -->
   <div id="modal-drive-recovery" class="modal-overlay" style="z-index: 100040;" onclick="if (event.target === this) UISettings.closeDriveRecoveryModal()">
-    <div class="modal-dialog" style="max-width: 540px;">
-      <div class="modal-header">
-        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
-          <i data-lucide="history" style="color: #3b82f6;"></i>
-          <span>Khôi Phục Bản Sao Lưu Google Drive</span>
+    <div class="modal-dialog" style="max-width: 500px;">
+      <div class="modal-header" style="padding: 14px 16px;">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px; font-size: 1.02rem;">
+          <i data-lucide="history" style="color: #3b82f6; width: 20px; height: 20px; flex-shrink: 0;"></i>
+          <span>Khôi Phục Bản Sao Lưu Drive</span>
         </h3>
         <button type="button" class="btn-icon" onclick="UISettings.closeDriveRecoveryModal()"><i data-lucide="x"></i></button>
       </div>
-      <div class="modal-body" style="padding: 16px 20px;">
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">
-          Hệ thống sẽ quét toàn bộ các tệp sao lưu, bản lưu riêng tư và lịch sử phiên bản (Revisions) trên Google Drive của bạn để bạn lựa chọn khôi phục.
+      <div class="modal-body" style="padding: 14px 16px;">
+        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.45;">
+          Chọn một bản sao lưu hoặc phiên bản lịch sử trên Google Drive để phục hồi lại dữ liệu của bạn.
         </p>
         <div id="drive-recovery-loading" style="text-align: center; padding: 30px 10px; display: none;">
-          <i data-lucide="loader-2" class="spin-animation" style="width: 28px; height: 28px; color: var(--primary); margin-bottom: 8px;"></i>
-          <div style="font-size: 0.85rem; color: var(--text-muted);">Đang quét các bản sao lưu trên Google Drive...</div>
+          <i data-lucide="loader-2" class="spin-animation" style="width: 26px; height: 26px; color: var(--primary); margin-bottom: 8px;"></i>
+          <div style="font-size: 0.82rem; color: var(--text-muted);">Đang quét các bản sao lưu trên Google Drive...</div>
         </div>
-        <div id="drive-recovery-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto;">
+        <div id="drive-recovery-list" class="drive-recovery-list">
         </div>
       </div>
-      <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-        <button type="button" class="btn-secondary btn-sm" onclick="UISettings.scanAndShowDriveRecovery()">
-          <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Quét lại
+      <div class="modal-footer" style="padding: 10px 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" class="btn-secondary btn-sm" onclick="UISettings.scanAndShowDriveRecovery()" style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; padding: 6px 12px; border-radius: 8px;">
+          <i data-lucide="refresh-cw" style="width: 13px; height: 13px;"></i> Quét lại
         </button>
-        <button type="button" class="btn-secondary" onclick="UISettings.closeDriveRecoveryModal()">Đóng</button>
+        <button type="button" class="btn-secondary btn-sm" onclick="UISettings.closeDriveRecoveryModal()" style="font-size: 0.78rem; padding: 6px 16px; border-radius: 8px;">Đóng</button>
       </div>
     </div>
   </div>
