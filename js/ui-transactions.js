@@ -643,11 +643,31 @@ const UITransactions = {
           }
         });
       }
+
+      const noteInput = document.getElementById('tx-note-input');
+      if (noteInput) {
+        noteInput.addEventListener('input', () => this.autoResizeNoteInput());
+        noteInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            // Cho phép Enter xuống dòng tự nhiên, ngăn chặn submit form
+            e.stopPropagation();
+          }
+        });
+      }
     }
 
     window.addEventListener('beforeunload', () => {
       if (window.UITransactions) window.UITransactions.saveDraft();
     });
+  },
+
+  autoResizeNoteInput() {
+    const el = document.getElementById('tx-note-input');
+    if (!el) return;
+    el.style.height = 'auto';
+    const newH = Math.max(28, el.scrollHeight);
+    el.style.height = (newH > 180 ? 180 : newH) + 'px';
+    el.style.overflowY = el.scrollHeight > 180 ? 'auto' : 'hidden';
   },
 
   /* ==================== POPUP NUMERIC KEYPAD ==================== */
@@ -4286,6 +4306,7 @@ const UITransactions = {
       // 6. Note (restore AFTER category/action so user note is not overwritten)
       if (draft.note !== undefined) {
         document.getElementById('tx-note-input').value = draft.note;
+        this.autoResizeNoteInput();
       }
 
       // 7. Fee
@@ -4494,6 +4515,7 @@ const UITransactions = {
     // Chế độ thêm mới: ẩn nút Xóa
     this.attachedImages = [];
     this.renderAttachedImages();
+    this.autoResizeNoteInput();
     this.updateAIStatus();
     this.setEditMode(false);
     this.formInitialized = true;
@@ -5362,6 +5384,7 @@ const UITransactions = {
     this.updateHeaderTypeDisplay(tx.type);
 
     document.getElementById('tx-note-input').value = tx.note || '';
+    this.autoResizeNoteInput();
 
     // Fee
     const feeInput = document.getElementById('tx-fee-input');
@@ -5477,14 +5500,24 @@ const UITransactions = {
     const statusText = document.getElementById('tx-ai-status-text');
     const scanBanner = document.getElementById('tx-ai-scan-banner');
 
+    let isEnabled = true;
     let apiKey = '';
-    if (window.UISettings && typeof window.UISettings.getGeminiApiKey === 'function') {
-      apiKey = await window.UISettings.getGeminiApiKey();
+    if (window.UISettings) {
+      if (typeof window.UISettings.getGeminiEnabled === 'function') {
+        isEnabled = await window.UISettings.getGeminiEnabled();
+      }
+      if (typeof window.UISettings.getGeminiApiKey === 'function') {
+        apiKey = await window.UISettings.getGeminiApiKey();
+      }
     }
 
     if (statusPill) {
       statusPill.style.display = 'inline-flex';
-      if (apiKey) {
+      if (!isEnabled) {
+        statusPill.style.background = 'rgba(148, 163, 184, 0.15)';
+        statusPill.style.color = 'var(--text-muted)';
+        if (statusText) statusText.textContent = 'AI Đang Tắt';
+      } else if (apiKey) {
         statusPill.style.background = 'rgba(13, 148, 136, 0.15)';
         statusPill.style.color = 'var(--primary)';
         if (statusText) statusText.textContent = 'AI Sẵn Sàng';
@@ -5544,14 +5577,16 @@ const UITransactions = {
       this.updateAIStatus();
 
       // Kiểm tra xem có cấu hình tự động quét AI không
-      let autoScan = true;
+      let autoScan = false;
+      let isEnabled = true;
       let apiKey = '';
       if (window.UISettings) {
         autoScan = await window.UISettings.getGeminiAutoScan();
+        isEnabled = await window.UISettings.getGeminiEnabled();
         apiKey = await window.UISettings.getGeminiApiKey();
       }
 
-      if (autoScan && apiKey) {
+      if (autoScan && isEnabled && apiKey) {
         // Tự động kích hoạt quét hoá đơn bằng AI
         await this.scanReceiptWithAI();
       } else {
@@ -5669,30 +5704,43 @@ const UITransactions = {
     }
   },
 
-  /* ==================== MANUAL CROP & ROTATE TOOL ==================== */
+  /* ==================== MANUAL CROP, ROTATE & TILT TOOL ==================== */
   openCropModal(index) {
     if (index < 0 || index >= this.attachedImages.length) return;
     const dataUrl = this.attachedImages[index];
+
     this.cropState = {
       targetIndex: index,
-      rotation: 0,
-      topPercent: 0,
-      bottomPercent: 0,
-      leftPercent: 0,
-      rightPercent: 0,
-      sourceImg: new Image()
+      rotation90: 0,
+      tiltAngle: 0,
+      cropNorm: { x: 0.04, y: 0.04, w: 0.92, h: 0.92 },
+      sourceImg: new Image(),
+      isDragging: false,
+      dragMode: null,
+      dragStartX: 0,
+      dragStartY: 0,
+      dragStartNorm: null
     };
 
     const modal = document.getElementById('modal-crop-image');
-    const canvas = document.getElementById('crop-source-canvas');
-    if (!modal || !canvas) return;
+    const tiltSlider = document.getElementById('crop-slider-tilt');
+    const tiltValueText = document.getElementById('crop-tilt-value');
+
+    if (tiltSlider) tiltSlider.value = 0;
+    if (tiltValueText) tiltValueText.textContent = '0°';
 
     this.cropState.sourceImg.onload = () => {
-      this.resetCropSliders();
+      this.initCropTouchHandlers();
       this.drawCropCanvas();
-      modal.style.display = 'flex';
-      modal.classList.add('open', 'active');
-      if (window.lucide) lucide.createIcons();
+      if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('open', 'active');
+      }
+      // Khởi tạo lại kích thước khi modal hiển thị đầy đủ
+      setTimeout(() => {
+        this.drawCropCanvas();
+        if (window.lucide) lucide.createIcons();
+      }, 50);
     };
     this.cropState.sourceImg.src = dataUrl;
   },
@@ -5703,92 +5751,235 @@ const UITransactions = {
       modal.style.display = 'none';
       modal.classList.remove('open', 'active');
     }
+    if (this.cropState) {
+      this.cropState.isDragging = false;
+    }
   },
 
-  resetCropSliders() {
-    ['top', 'bottom', 'left', 'right'].forEach(side => {
-      const el = document.getElementById(`crop-range-${side}`);
-      if (el) el.value = 0;
+  initCropTouchHandlers() {
+    if (this._cropTouchHandlersBound) return;
+    this._cropTouchHandlersBound = true;
+
+    const overlay = document.getElementById('crop-overlay-box');
+    const container = document.getElementById('crop-canvas-container');
+    if (!overlay || !container) return;
+
+    const onPointerDown = (e) => {
+      if (!this.cropState || !this.cropState.sourceImg) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const handle = e.target.getAttribute('data-handle');
+      this.cropState.dragMode = handle || 'move';
+      this.cropState.isDragging = true;
+      this.cropState.dragStartX = e.clientX;
+      this.cropState.dragStartY = e.clientY;
+      this.cropState.dragStartNorm = { ...this.cropState.cropNorm };
+
+      if (e.target.setPointerCapture && e.pointerId !== undefined) {
+        try { e.target.setPointerCapture(e.pointerId); } catch (_) {}
+      }
+    };
+
+    overlay.addEventListener('pointerdown', onPointerDown);
+
+    const onPointerMove = (e) => {
+      if (!this.cropState || !this.cropState.isDragging) return;
+      const canvas = document.getElementById('crop-source-canvas');
+      if (!canvas) return;
+
+      const cRect = canvas.getBoundingClientRect();
+      if (cRect.width <= 0 || cRect.height <= 0) return;
+
+      const dx = (e.clientX - this.cropState.dragStartX) / cRect.width;
+      const dy = (e.clientY - this.cropState.dragStartY) / cRect.height;
+      const sn = this.cropState.dragStartNorm;
+      if (!sn) return;
+
+      const minW = Math.max(0.04, 30 / cRect.width);
+      const minH = Math.max(0.04, 30 / cRect.height);
+
+      let nx = sn.x;
+      let ny = sn.y;
+      let nw = sn.w;
+      let nh = sn.h;
+      const mode = this.cropState.dragMode;
+
+      if (mode === 'move') {
+        nx = Math.max(0, Math.min(1 - sn.w, sn.x + dx));
+        ny = Math.max(0, Math.min(1 - sn.h, sn.y + dy));
+      } else if (mode === 'tl') {
+        const newX = Math.max(0, Math.min(sn.x + sn.w - minW, sn.x + dx));
+        const newY = Math.max(0, Math.min(sn.y + sn.h - minH, sn.y + dy));
+        nw = (sn.x + sn.w) - newX;
+        nh = (sn.y + sn.h) - newY;
+        nx = newX;
+        ny = newY;
+      } else if (mode === 'tr') {
+        const newY = Math.max(0, Math.min(sn.y + sn.h - minH, sn.y + dy));
+        nw = Math.max(minW, Math.min(1 - sn.x, sn.w + dx));
+        nh = (sn.y + sn.h) - newY;
+        ny = newY;
+      } else if (mode === 'bl') {
+        const newX = Math.max(0, Math.min(sn.x + sn.w - minW, sn.x + dx));
+        nw = (sn.x + sn.w) - newX;
+        nh = Math.max(minH, Math.min(1 - sn.y, sn.h + dy));
+        nx = newX;
+      } else if (mode === 'br') {
+        nw = Math.max(minW, Math.min(1 - sn.x, sn.w + dx));
+        nh = Math.max(minH, Math.min(1 - sn.y, sn.h + dy));
+      } else if (mode === 't') {
+        const newY = Math.max(0, Math.min(sn.y + sn.h - minH, sn.y + dy));
+        nh = (sn.y + sn.h) - newY;
+        ny = newY;
+      } else if (mode === 'b') {
+        nh = Math.max(minH, Math.min(1 - sn.y, sn.h + dy));
+      } else if (mode === 'l') {
+        const newX = Math.max(0, Math.min(sn.x + sn.w - minW, sn.x + dx));
+        nw = (sn.x + sn.w) - newX;
+        nx = newX;
+      } else if (mode === 'r') {
+        nw = Math.max(minW, Math.min(1 - sn.x, sn.w + dx));
+      }
+
+      this.cropState.cropNorm = {
+        x: Math.max(0, Math.min(1 - minW, nx)),
+        y: Math.max(0, Math.min(1 - minH, ny)),
+        w: Math.max(minW, Math.min(1 - nx, nw)),
+        h: Math.max(minH, Math.min(1 - ny, nh))
+      };
+
+      this.updateCropBoxUI();
+    };
+
+    const onPointerUp = () => {
+      if (this.cropState) {
+        this.cropState.isDragging = false;
+      }
+    };
+
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
+    window.addEventListener('resize', () => {
+      const modal = document.getElementById('modal-crop-image');
+      if (modal && modal.style.display !== 'none') {
+        this.drawCropCanvas();
+      }
     });
-    this.cropState.topPercent = 0;
-    this.cropState.bottomPercent = 0;
-    this.cropState.leftPercent = 0;
-    this.cropState.rightPercent = 0;
-    this.updateCropOverlay();
   },
 
-  rotateCropImage() {
-    this.cropState.rotation = (this.cropState.rotation + 90) % 360;
+  handleCropTilt(val) {
+    if (!this.cropState) return;
+    this.cropState.tiltAngle = Number(val);
+    const textEl = document.getElementById('crop-tilt-value');
+    if (textEl) textEl.textContent = `${val}°`;
     this.drawCropCanvas();
-    this.updateCropOverlay();
+  },
+
+  resetCropTilt() {
+    const slider = document.getElementById('crop-slider-tilt');
+    if (slider) slider.value = 0;
+    this.handleCropTilt(0);
+  },
+
+  rotateCropLeft() {
+    if (!this.cropState) return;
+    this.cropState.rotation90 = (this.cropState.rotation90 - 90 + 360) % 360;
+    this.drawCropCanvas();
+  },
+
+  rotateCropRight() {
+    if (!this.cropState) return;
+    this.cropState.rotation90 = (this.cropState.rotation90 + 90) % 360;
+    this.drawCropCanvas();
+  },
+
+  resetCropBoxToFull() {
+    if (!this.cropState) return;
+    this.cropState.cropNorm = { x: 0, y: 0, w: 1, h: 1 };
+    this.updateCropBoxUI();
+    showToast('Đã mở rộng vùng cắt toàn bộ hoá đơn', 'info');
   },
 
   drawCropCanvas() {
     const canvas = document.getElementById('crop-source-canvas');
-    const img = this.cropState.sourceImg;
-    if (!canvas || !img) return;
+    const container = document.getElementById('crop-canvas-container');
+    const img = this.cropState?.sourceImg;
+    if (!canvas || !container || !img || !img.naturalWidth) return;
 
-    const rot = this.cropState.rotation;
-    const isSideways = (rot === 90 || rot === 270);
-    const w = isSideways ? img.height : img.width;
-    const h = isSideways ? img.width : img.height;
+    const origW = img.naturalWidth;
+    const origH = img.naturalHeight;
+    const totalDeg = (this.cropState.rotation90 || 0) + (this.cropState.tiltAngle || 0);
+    const rad = (totalDeg * Math.PI) / 180;
 
-    canvas.width = w;
-    canvas.height = h;
+    const absCos = Math.abs(Math.cos(rad));
+    const absSin = Math.abs(Math.sin(rad));
+    const boundW = Math.round(origW * absCos + origH * absSin);
+    const boundH = Math.round(origW * absSin + origH * absCos);
+
+    canvas.width = boundW;
+    canvas.height = boundH;
 
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, boundW, boundH);
     ctx.save();
-    ctx.translate(w / 2, h / 2);
-    ctx.rotate((rot * Math.PI) / 180);
-    ctx.drawImage(img, -img.width / 2, -img.height / 2);
+    ctx.translate(boundW / 2, boundH / 2);
+    ctx.rotate(rad);
+    ctx.drawImage(img, -origW / 2, -origH / 2);
     ctx.restore();
+
+    // Tính kích thước hiển thị CSS để toàn bộ hoá đơn (kể cả bill dọc siêu dài) nằm gọn 100% trong khung
+    const contW = Math.max(80, container.clientWidth - 20);
+    const contH = Math.max(80, container.clientHeight - 20);
+    const scale = Math.min(contW / boundW, contH / boundH, 1);
+
+    const dispW = Math.max(40, Math.round(boundW * scale));
+    const dispH = Math.max(40, Math.round(boundH * scale));
+
+    canvas.style.width = `${dispW}px`;
+    canvas.style.height = `${dispH}px`;
+
+    this.updateCropBoxUI();
   },
 
-  updateCropOverlay() {
+  updateCropBoxUI() {
     const overlay = document.getElementById('crop-overlay-box');
     const canvas = document.getElementById('crop-source-canvas');
-    if (!overlay || !canvas) return;
+    const container = document.getElementById('crop-canvas-container');
+    if (!overlay || !canvas || !container || !this.cropState) return;
 
-    const top = Number(document.getElementById('crop-range-top')?.value || 0);
-    const bottom = Number(document.getElementById('crop-range-bottom')?.value || 0);
-    const left = Number(document.getElementById('crop-range-left')?.value || 0);
-    const right = Number(document.getElementById('crop-range-right')?.value || 0);
+    const cRect = canvas.getBoundingClientRect();
+    const pRect = container.getBoundingClientRect();
 
-    this.cropState.topPercent = top;
-    this.cropState.bottomPercent = bottom;
-    this.cropState.leftPercent = left;
-    this.cropState.rightPercent = right;
+    const offLeft = cRect.left - pRect.left;
+    const offTop = cRect.top - pRect.top;
 
-    const rect = canvas.getBoundingClientRect();
-    const parentRect = canvas.parentElement.getBoundingClientRect();
+    const norm = this.cropState.cropNorm || { x: 0, y: 0, w: 1, h: 1 };
+    const boxLeft = offLeft + norm.x * cRect.width;
+    const boxTop = offTop + norm.y * cRect.height;
+    const boxWidth = norm.w * cRect.width;
+    const boxHeight = norm.h * cRect.height;
 
-    const canvasOffsetLeft = rect.left - parentRect.left;
-    const canvasOffsetTop = rect.top - parentRect.top;
-
-    const boxLeft = canvasOffsetLeft + (rect.width * left) / 100;
-    const boxTop = canvasOffsetTop + (rect.height * top) / 100;
-    const boxWidth = rect.width * (100 - left - right) / 100;
-    const boxHeight = rect.height * (100 - top - bottom) / 100;
-
-    overlay.style.left = `${boxLeft}px`;
-    overlay.style.top = `${boxTop}px`;
-    overlay.style.width = `${Math.max(10, boxWidth)}px`;
-    overlay.style.height = `${Math.max(10, boxHeight)}px`;
+    overlay.style.left = `${Math.round(boxLeft)}px`;
+    overlay.style.top = `${Math.round(boxTop)}px`;
+    overlay.style.width = `${Math.max(20, Math.round(boxWidth))}px`;
+    overlay.style.height = `${Math.max(20, Math.round(boxHeight))}px`;
   },
 
   applyCrop() {
     const canvas = document.getElementById('crop-source-canvas');
-    if (!canvas || this.cropState.targetIndex < 0) return;
+    if (!canvas || !this.cropState || this.cropState.targetIndex < 0) return;
 
-    const { topPercent, bottomPercent, leftPercent, rightPercent } = this.cropState;
-    const sx = Math.floor((canvas.width * leftPercent) / 100);
-    const sy = Math.floor((canvas.height * topPercent) / 100);
-    const sw = Math.floor((canvas.width * (100 - leftPercent - rightPercent)) / 100);
-    const sh = Math.floor((canvas.height * (100 - topPercent - bottomPercent)) / 100);
+    const norm = this.cropState.cropNorm || { x: 0, y: 0, w: 1, h: 1 };
+    const sx = Math.max(0, Math.floor(norm.x * canvas.width));
+    const sy = Math.max(0, Math.floor(norm.y * canvas.height));
+    const sw = Math.min(canvas.width - sx, Math.floor(norm.w * canvas.width));
+    const sh = Math.min(canvas.height - sy, Math.floor(norm.h * canvas.height));
 
-    if (sw <= 10 || sh <= 10) {
-      showToast('Vùng cắt quá nhỏ, vui lòng chỉnh lại!', 'warning');
+    if (sw <= 15 || sh <= 15) {
+      showToast('Vùng cắt quá nhỏ, vui lòng kéo rộng thêm!', 'warning');
       return;
     }
 
@@ -5798,26 +5989,160 @@ const UITransactions = {
     const ctx = cropCanvas.getContext('2d');
     ctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
 
-    const croppedDataUrl = cropCanvas.toDataURL('image/jpeg', 0.82);
+    const croppedDataUrl = cropCanvas.toDataURL('image/jpeg', 0.85);
     this.attachedImages[this.cropState.targetIndex] = croppedDataUrl;
     this.renderAttachedImages();
     this.closeCropModal();
-    showToast('Đã cắt và lưu ảnh hoá đơn!', 'success');
+    showToast('Đã cắt và xoay hoá đơn thành công!', 'success');
+  },
+
+  /* ==================== OFFLINE QR BILL & AMOUNT PARSER ==================== */
+  async scanReceiptQrOffline(dataUrl) {
+    if (typeof window === 'undefined' || !('BarcodeDetector' in window)) {
+      return null;
+    }
+    try {
+      const formats = await window.BarcodeDetector.getSupportedFormats().catch(() => []);
+      if (!formats.includes('qr_code')) return null;
+
+      const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+      const img = new Image();
+      await new Promise((res, rej) => {
+        img.onload = res;
+        img.onerror = rej;
+        img.src = dataUrl;
+      });
+
+      const barcodes = await detector.detect(img);
+      if (!barcodes || barcodes.length === 0) return null;
+
+      const rawValue = (barcodes[0].rawValue || '').trim();
+      if (!rawValue) return null;
+
+      let parsedAmount = null;
+      let parsedNote = '';
+
+      // 1. Phân tích mã VietQR chuẩn EMVCo (Tag 54 là Số tiền giao dịch)
+      if (rawValue.includes('000201')) {
+        const emvStr = rawValue.substring(rawValue.indexOf('000201'));
+        let i = 0;
+        while (i < emvStr.length - 4) {
+          const tag = emvStr.substring(i, i + 2);
+          const len = parseInt(emvStr.substring(i + 2, i + 4), 10);
+          if (isNaN(len) || i + 4 + len > emvStr.length) break;
+          const val = emvStr.substring(i + 4, i + 4 + len);
+          i += 4 + len;
+
+          if (tag === '54') {
+            const num = parseFloat(val);
+            if (!isNaN(num) && num > 0) parsedAmount = Math.round(num);
+          }
+          if (tag === '62') {
+            let j = 0;
+            while (j < val.length - 4) {
+              const subTag = val.substring(j, j + 2);
+              const subLen = parseInt(val.substring(j + 2, j + 4), 10);
+              if (isNaN(subLen) || j + 4 + subLen > val.length) break;
+              const subVal = val.substring(j + 4, j + 4 + subLen);
+              j += 4 + subLen;
+              if (subTag === '08') parsedNote = subVal;
+            }
+          }
+        }
+      }
+
+      // 2. Phân tích JSON hoặc chuỗi Hoá đơn điện tử
+      if (!parsedAmount) {
+        try {
+          const jsonObj = JSON.parse(rawValue);
+          const amt = jsonObj.total || jsonObj.tong_tien || jsonObj.tongtien || jsonObj.amount;
+          if (amt && !isNaN(Number(amt))) parsedAmount = Math.round(Number(amt));
+        } catch (_) {}
+      }
+
+      // 3. Regex tìm số tiền trong chuỗi QR hoá đơn
+      if (!parsedAmount) {
+        const match = rawValue.match(/(?:tongtien|amount|tien|total)[^\d]*([0-9.,]{4,12})/i);
+        if (match && match[1]) {
+          const clean = match[1].replace(/[.,]/g, '');
+          const num = parseInt(clean, 10);
+          if (!isNaN(num) && num >= 1000) parsedAmount = num;
+        }
+      }
+
+      return {
+        raw: rawValue,
+        amount: parsedAmount,
+        note: parsedNote
+      };
+    } catch (err) {
+      console.warn('[scanReceiptQrOffline] Lỗi quét QR:', err);
+      return null;
+    }
   },
 
   /* ==================== AI RECEIPT SCAN ENGINE ==================== */
-  setAIScanningState(isScanning) {
+  // Nén và giảm kích thước ảnh trước khi gửi sang Google API (giải quyết triệt để lỗi treo/quá tải)
+  async compressImageForAI(dataUrl, maxDim = 1280, quality = 0.78) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w >= h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        const base64Data = compressedDataUrl.replace(/^data:image\/\w+;base64,/, '');
+        resolve(base64Data);
+      };
+      img.onerror = () => {
+        resolve(dataUrl.replace(/^data:image\/\w+;base64,/, ''));
+      };
+      img.src = dataUrl;
+    });
+  },
+
+  setAIScanningState(isScanning, customText = null) {
     this.isScanningAI = isScanning;
     const btn = document.getElementById('btn-tx-ai-scan');
+    const cancelBtn = document.getElementById('btn-tx-ai-cancel');
     const textEl = document.getElementById('btn-ai-scan-text');
-    if (!btn) return;
-    if (isScanning) {
-      btn.classList.add('is-scanning');
-      if (textEl) textEl.textContent = 'Đang phân tích hoá đơn với Gemini Flash...';
-    } else {
-      btn.classList.remove('is-scanning');
-      if (textEl) textEl.textContent = 'Quét hoá đơn với AI (Tự điền món & giá)';
+    if (btn) {
+      if (isScanning) {
+        btn.classList.add('is-scanning');
+        if (textEl) textEl.textContent = customText || 'Đang phân tích hoá đơn với Gemini Flash...';
+      } else {
+        btn.classList.remove('is-scanning');
+        if (textEl) textEl.textContent = 'Quét hoá đơn với AI (Tự điền món & giá)';
+      }
     }
+    if (cancelBtn) {
+      cancelBtn.style.display = isScanning ? 'inline-flex' : 'none';
+    }
+  },
+
+  cancelAIScan() {
+    if (!this.isScanningAI) return;
+    this._userAbortedAI = true;
+    if (this._aiAbortController) {
+      try { this._aiAbortController.abort(); } catch (_) {}
+    }
+    this.setAIScanningState(false);
+    showToast('Đã huỷ quét hoá đơn', 'info');
   },
 
   async cropImageByBox(dataUrl, cropBox) {
@@ -5862,24 +6187,64 @@ const UITransactions = {
 
   async scanReceiptWithAI() {
     if (this.attachedImages.length === 0) {
-      showToast('Vui lòng chụp hoặc chọn ảnh hoá đơn trước khi quét AI', 'warning');
+      showToast('Vui lòng chụp hoặc chọn ảnh hoá đơn trước khi quét', 'warning');
       return;
     }
 
+    const lastImg = this.attachedImages[this.attachedImages.length - 1];
+
+    let isEnabled = true;
     let apiKey = '';
     let model = 'gemini-3.8-flash';
     let autoCrop = true;
+    let autoAmount = true;
+    let autoItems = true;
+    let autoCategory = true;
+    let offlineQrEnabled = true;
 
     if (window.UISettings) {
+      isEnabled = await window.UISettings.getGeminiEnabled();
       apiKey = await window.UISettings.getGeminiApiKey();
-      model = await window.UISettings.resolveActiveGeminiModel(apiKey);
+      model = await window.UISettings.getGeminiModel() || 'gemini-3.8-flash';
       autoCrop = await window.UISettings.getGeminiAutoCrop();
+      autoAmount = await window.UISettings.getGeminiAutoAmount();
+      autoItems = await window.UISettings.getGeminiAutoItems();
+      autoCategory = await window.UISettings.getGeminiAutoCategory();
+      offlineQrEnabled = await window.UISettings.getGeminiOfflineQr();
     }
 
-    if (!apiKey) {
+    // Nếu người dùng tắt AI hoặc chưa có Key: thử quét QR offline trước
+    if (!isEnabled || !apiKey) {
+      if (offlineQrEnabled) {
+        const qrResult = await this.scanReceiptQrOffline(lastImg);
+        if (qrResult && qrResult.amount) {
+          if (autoAmount) {
+            const formattedAmount = new Intl.NumberFormat('vi-VN').format(qrResult.amount);
+            const amountInput = document.getElementById('tx-amount-input');
+            const amountText = document.getElementById('tx-amount-text');
+            if (amountInput) amountInput.value = formattedAmount;
+            if (amountText) amountText.textContent = formattedAmount;
+          }
+          if (autoItems && qrResult.note) {
+            const noteInput = document.getElementById('tx-note-input');
+            if (noteInput && !noteInput.value.trim()) {
+              noteInput.value = qrResult.note;
+              this.autoResizeNoteInput();
+            }
+          }
+          showToast(`✓ Đã đọc số tiền từ mã QR offline: ${new Intl.NumberFormat('vi-VN').format(qrResult.amount)}đ`, 'success');
+          return;
+        }
+      }
+
+      if (!isEnabled) {
+        showToast('Trợ lý AI đang tắt trong Cài Đặt. Bạn có thể bật lại trong phần Trợ lý AI.', 'info');
+        return;
+      }
+
       const goToSettings = await showConfirm({
         title: 'Chưa Cài Đặt Gemini API Key',
-        message: 'Tính năng AI Quét hoá đơn thông minh sử dụng <strong>Google Gemini Flash (100% Miễn phí)</strong>.<br><br>Bạn chỉ cần tạo API Key miễn phí trong 1 phút để kích hoạt.<br>Bạn có muốn mở Cài Đặt ngay bây giờ không?',
+        message: 'Tính năng AI Quét hoá đơn thông minh sử dụng mô hình <strong>Gemini 3.8 Flash (Mới nhất)</strong> hoàn toàn miễn phí.<br><br>Bạn có muốn mở Cài Đặt để dán API Key không?',
         confirmText: 'Mở Cài Đặt',
         cancelText: 'Để Sau',
         icon: 'sparkles'
@@ -5890,11 +6255,14 @@ const UITransactions = {
       return;
     }
 
+    this._userAbortedAI = false;
+    this._aiAbortController = new AbortController();
     this.setAIScanningState(true);
-    const lastImg = this.attachedImages[this.attachedImages.length - 1];
-    const base64Data = lastImg.replace(/^data:image\/\w+;base64,/, '');
 
     try {
+      // Nén ảnh nhẹ xuống ~80-120KB trước khi gửi để tránh nghẽn mạng và timeout
+      const base64Data = await this.compressImageForAI(lastImg, 1280, 0.78);
+
       const categories = await this.loadCategories();
       const categoryNames = categories.map(c => c.name).join(', ');
 
@@ -5915,11 +6283,28 @@ Hãy đọc hoá đơn / biên lai thanh toán trong ảnh và trả về DUY NH
   "crop_box": [<ymin>, <xmin>, <ymax>, <xmax>] // toạ độ chuẩn hoá 0-1000 bao quanh tờ hoá đơn để cắt bỏ mặt bàn thừa
 }`;
 
-      // Gọi Gemini API có cơ chế Auto-Healing tự động chuyển sang model mới nếu model cũ bị Google đóng
-      const requestGemini = async (targetModel) => {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
+      const timeoutMs = 25000;
+      let timeoutTimer = null;
+      const perReqController = new AbortController();
+
+      const onAbort = () => perReqController.abort();
+      if (this._aiAbortController) {
+        this._aiAbortController.signal.addEventListener('abort', onAbort);
+      }
+
+      timeoutTimer = setTimeout(() => {
+        const timeoutErr = new Error(`Thời gian phản hồi quá lâu (> ${timeoutMs / 1000}s)`);
+        timeoutErr.name = 'TimeoutError';
+        timeoutErr.isTimeout = true;
+        perReqController.abort(timeoutErr);
+      }, timeoutMs);
+
+      let data;
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         const response = await fetch(url, {
           method: 'POST',
+          signal: perReqController.signal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [
@@ -5945,43 +6330,19 @@ Hãy đọc hoá đơn / biên lai thanh toán trong ảnh và trả về DUY NH
         if (!response.ok) {
           const errJson = await response.json().catch(() => ({}));
           const errMsg = errJson?.error?.message || `Mã phản hồi HTTP ${response.status}`;
-          const err = new Error(errMsg);
-          err.status = response.status;
-          throw err;
+          throw new Error(errMsg);
         }
 
-        return await response.json();
-      };
-
-      let data;
-      try {
-        data = await requestGemini(model);
-      } catch (callErr) {
-        // Tự động phát hiện lỗi model cũ không còn tồn tại hoặc limit = 0 -> tự thử các model Flash Free Tier khác
-        const isUnavailable = callErr.status === 404 || 
-          /no longer available|not found|deprecated|quota.*limit:\s*0|exceeded your current quota/i.test(callErr.message || '');
-        if (isUnavailable && window.UISettings) {
-          console.warn(`[Gemini Auto-Heal] Model ${model} không khả dụng trên Free Tier (${callErr.message}), đang tự động chuyển model...`);
-          const fallbacks = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'].filter(m => m !== model);
-          let recovered = false;
-          for (const nextModel of fallbacks) {
-            try {
-              console.log(`[Gemini Auto-Heal] Đang chuyển sang model: ${nextModel}`);
-              data = await requestGemini(nextModel);
-              model = nextModel;
-              localStorage.setItem('gemini_discovered_model', nextModel);
-              localStorage.setItem('gemini_discovered_ts', String(Date.now()));
-              recovered = true;
-              break;
-            } catch (retryErr) {
-              console.warn(`[Gemini Auto-Heal] Thử model ${nextModel} thất bại:`, retryErr.message);
-            }
-          }
-          if (!recovered) throw callErr;
-        } else {
-          throw callErr;
+        data = await response.json();
+      } finally {
+        clearTimeout(timeoutTimer);
+        if (this._aiAbortController) {
+          this._aiAbortController.signal.removeEventListener('abort', onAbort);
         }
-      };
+      }
+
+      if (this._userAbortedAI) return;
+
       const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!rawText) throw new Error('Không nhận được nội dung từ Gemini');
 
@@ -5994,7 +6355,7 @@ Hãy đọc hoá đơn / biên lai thanh toán trong ảnh và trả về DUY NH
         else throw new Error('Dữ liệu AI trả về không đúng cú pháp JSON');
       }
 
-      // 1. Tự động crop ảnh theo toạ độ hoá đơn
+      // 1. Tự động crop ảnh theo toạ độ hoá đơn (nếu bật)
       if (autoCrop && Array.isArray(parsed.crop_box) && parsed.crop_box.length === 4) {
         try {
           const cropped = await this.cropImageByBox(lastImg, parsed.crop_box);
@@ -6007,8 +6368,8 @@ Hãy đọc hoá đơn / biên lai thanh toán trong ảnh và trả về DUY NH
         }
       }
 
-      // 2. Tự điền số tiền
-      if (parsed.total_amount && Number(parsed.total_amount) > 0) {
+      // 2. Tự điền số tiền (nếu bật)
+      if (autoAmount && parsed.total_amount && Number(parsed.total_amount) > 0) {
         const formattedAmount = new Intl.NumberFormat('vi-VN').format(parsed.total_amount);
         const amountInput = document.getElementById('tx-amount-input');
         const amountText = document.getElementById('tx-amount-text');
@@ -6016,8 +6377,8 @@ Hãy đọc hoá đơn / biên lai thanh toán trong ảnh và trả về DUY NH
         if (amountText) amountText.textContent = formattedAmount;
       }
 
-      // 3. Tự điền danh sách món và giá từng dòng vào Ghi chú
-      if (Array.isArray(parsed.items) && parsed.items.length > 0) {
+      // 3. Tự điền danh sách món và giá từng dòng vào Ghi chú (nếu bật)
+      if (autoItems && Array.isArray(parsed.items) && parsed.items.length > 0) {
         const lines = [];
         parsed.items.forEach(it => {
           if (!it.name) return;
@@ -6030,13 +6391,14 @@ Hãy đọc hoá đơn / biên lai thanh toán trong ảnh và trả về DUY NH
           const noteInput = document.getElementById('tx-note-input');
           if (noteInput) {
             noteInput.value = lines.join('\n');
+            this.autoResizeNoteInput();
             try { noteInput.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
           }
         }
       }
 
-      // 4. Tự động chọn đúng danh mục
-      if (parsed.suggested_category) {
+      // 4. Tự động chọn đúng danh mục (nếu bật)
+      if (autoCategory && parsed.suggested_category) {
         const targetName = parsed.suggested_category.trim().toLowerCase();
         const matchedCat = categories.find(c => {
           const cName = c.name.trim().toLowerCase();
@@ -6058,12 +6420,33 @@ Hãy đọc hoá đơn / biên lai thanh toán trong ảnh và trả về DUY NH
         this.updateDateTimeDisplays(parsed.date, parsed.time || '12:00');
       }
 
-      showToast('✨ Đã quét hoá đơn và điền thông tin tự động thành công!', 'success');
+      showToast(`✨ Đã quét hoá đơn và điền thông tin tự động (${model})!`, 'success');
     } catch (err) {
+      if (this._userAbortedAI) return;
       console.error('Lỗi quét AI:', err);
+
+      // Thử phương án quét offline bằng QR nếu AI thất bại
+      if (offlineQrEnabled) {
+        try {
+          const qrResult = await this.scanReceiptQrOffline(lastImg);
+          if (qrResult && qrResult.amount) {
+            if (autoAmount) {
+              const formattedAmount = new Intl.NumberFormat('vi-VN').format(qrResult.amount);
+              const amountInput = document.getElementById('tx-amount-input');
+              const amountText = document.getElementById('tx-amount-text');
+              if (amountInput) amountInput.value = formattedAmount;
+              if (amountText) amountText.textContent = formattedAmount;
+            }
+            showToast(`✓ AI bận, đã chuyển sang đọc số tiền từ mã QR: ${new Intl.NumberFormat('vi-VN').format(qrResult.amount)}đ`, 'success');
+            return;
+          }
+        } catch (_) {}
+      }
+
       showToast('Lỗi quét hoá đơn: ' + (err.message || err), 'error');
     } finally {
       this.setAIScanningState(false);
+      this._userAbortedAI = false;
     }
   }
 };

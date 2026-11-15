@@ -1375,7 +1375,7 @@ class App {
   /* ==================== UNIVERSAL CLEARABLE INPUTS (Nút X xóa nhanh) ==================== */
   setupClearableInputs() {
     const attachWrapper = (wrapper) => {
-      const input = wrapper.querySelector('input');
+      const input = wrapper.querySelector('input, textarea');
       const btn = wrapper.querySelector('.btn-clear-input');
       if (!input || !btn || input._clearableBound) return;
       input._clearableBound = true;
@@ -1412,7 +1412,7 @@ class App {
     if (!this._clearableGlobalBound) {
       this._clearableGlobalBound = true;
       document.addEventListener('focusin', (e) => {
-        if (e.target && e.target.matches && e.target.matches('.input-clearable-wrapper input')) {
+        if (e.target && e.target.matches && e.target.matches('.input-clearable-wrapper input, .input-clearable-wrapper textarea')) {
           const wrapper = e.target.closest('.input-clearable-wrapper');
           const btn = wrapper?.querySelector('.btn-clear-input');
           if (btn) {
@@ -1427,7 +1427,7 @@ class App {
   syncClearableInputs() {
     this.setupClearableInputs();
     document.querySelectorAll('.input-clearable-wrapper').forEach(wrapper => {
-      const input = wrapper.querySelector('input');
+      const input = wrapper.querySelector('input, textarea');
       const btn = wrapper.querySelector('.btn-clear-input');
       if (input && btn) {
         const val = input.value ? input.value.trim() : '';

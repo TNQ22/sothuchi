@@ -26,7 +26,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png?v=3.0.25">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=3.0.28">
+  <link rel="stylesheet" href="./css/style.css?v=3.0.30">
   <link rel="stylesheet" href="./css/admin-panel.css?v=3.0.25">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
@@ -3106,40 +3106,89 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               <div class="settings-card-clean" style="margin-bottom: 12px;">
                 <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 12px;">Tuỳ Chọn Quét Hoá Đơn</div>
 
-                <!-- Chọn Mô hình AI -->
+                <!-- Bật / Tắt AI Quét Hoá Đơn (Master Switch) -->
                 <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
                   <div>
-                    <div style="font-weight: 600; font-size: 0.86rem;">Mô hình Gemini</div>
-                    <div style="font-size: 0.74rem; color: var(--text-muted);">Phiên bản Flash siêu tốc độ, nhận diện tiếng Việt cực tốt</div>
-                  </div>
-                  <select id="settings-gemini-model" class="form-control" style="width: 180px; font-size: 0.82rem;" onchange="UISettings.saveGeminiSettings(false)">
-                    <option value="auto">⚡ Tự động (Free Tier tối ưu)</option>
-                    <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                    <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B</option>
-                  </select>
-                </div>
-
-                <!-- Tự động crop ảnh -->
-                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
-                  <div>
-                    <div style="font-weight: 600; font-size: 0.86rem;">Tự động crop hoá đơn</div>
-                    <div style="font-size: 0.74rem; color: var(--text-muted);">Cắt tỉa bỏ mặt bàn/hình nền thừa, chỉ giữ lại hoá đơn</div>
+                    <div style="font-weight: 600; font-size: 0.86rem;">Kích hoạt Trợ lý AI Quét hoá đơn</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Bật nút quét thông minh bằng Gemini Flash khi đính kèm ảnh</div>
                   </div>
                   <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
-                    <input type="checkbox" id="settings-gemini-auto-crop" checked onchange="UISettings.saveGeminiSettings(false)">
+                    <input type="checkbox" id="settings-gemini-enabled" checked onchange="UISettings.saveGeminiSettings(false)">
+                    <span class="app-switch-slider slider round"></span>
+                  </label>
+                </div>
+
+                <!-- Chọn Mô hình AI -->
+                <div style="padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <div>
+                      <div style="font-weight: 600; font-size: 0.86rem;">Mô hình Gemini</div>
+                      <div style="font-size: 0.74rem; color: var(--text-muted);">Mặc định phiên bản chuẩn mới nhất của Google</div>
+                    </div>
+                    <select id="settings-gemini-model" class="form-control" style="width: 175px; font-size: 0.82rem;" onchange="UISettings.handleModelSelectChange()">
+                      <option value="gemini-3.8-flash">Gemini 3.8 Flash (Mới nhất)</option>
+                      <option value="custom">✏️ Tự nhập mô hình...</option>
+                    </select>
+                  </div>
+                  <input type="text" id="settings-gemini-model-custom" class="form-control" placeholder="Nhập tên model, ví dụ: gemini-3.8-flash" style="display: none; font-size: 0.8rem; margin-top: 6px;" onchange="UISettings.saveGeminiSettings(false)">
+                </div>
+
+                <!-- Tự động điền số tiền -->
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
+                  <div>
+                    <div style="font-weight: 600; font-size: 0.86rem;">Tự động điền số tiền</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Đọc tổng tiền thanh toán và điền vào ô số tiền</div>
+                  </div>
+                  <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
+                    <input type="checkbox" id="settings-gemini-auto-amount" checked onchange="UISettings.saveGeminiSettings(false)">
+                    <span class="app-switch-slider slider round"></span>
+                  </label>
+                </div>
+
+                <!-- Tự động bóc tách từng món & giá vào ghi chú -->
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
+                  <div>
+                    <div style="font-weight: 600; font-size: 0.86rem;">Tự điền danh sách món & giá</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Bóc tách từng món vào ghi chú theo từng dòng</div>
+                  </div>
+                  <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
+                    <input type="checkbox" id="settings-gemini-auto-items" checked onchange="UISettings.saveGeminiSettings(false)">
+                    <span class="app-switch-slider slider round"></span>
+                  </label>
+                </div>
+
+                <!-- Tự động chọn danh mục -->
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
+                  <div>
+                    <div style="font-weight: 600; font-size: 0.86rem;">Tự động chọn danh mục</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Khớp tên cửa hàng/món ăn vào danh mục có sẵn</div>
+                  </div>
+                  <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
+                    <input type="checkbox" id="settings-gemini-auto-category" checked onchange="UISettings.saveGeminiSettings(false)">
                     <span class="app-switch-slider slider round"></span>
                   </label>
                 </div>
 
                 <!-- Tự động quét khi chọn ảnh -->
-                <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
                   <div>
                     <div style="font-weight: 600; font-size: 0.86rem;">Tự động quét ngay khi chụp/tải ảnh</div>
-                    <div style="font-size: 0.74rem; color: var(--text-muted);">Bật để AI tự động điền ngay sau khi chụp ảnh</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Tự động quét ngay không cần bấm nút (tắt nếu muốn kéo cắt tay trước)</div>
                   </div>
                   <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
-                    <input type="checkbox" id="settings-gemini-auto-scan" checked onchange="UISettings.saveGeminiSettings(false)">
+                    <input type="checkbox" id="settings-gemini-auto-scan" onchange="UISettings.saveGeminiSettings(false)">
+                    <span class="app-switch-slider slider round"></span>
+                  </label>
+                </div>
+
+                <!-- Quét mã QR hoá đơn Offline -->
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <div>
+                    <div style="font-weight: 600; font-size: 0.86rem;">Quét mã QR hoá đơn Offline</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Đọc số tiền từ mã QR trên hoá đơn / VietQR hoàn toàn offline</div>
+                  </div>
+                  <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
+                    <input type="checkbox" id="settings-gemini-offline-qr" checked onchange="UISettings.saveGeminiSettings(false)">
                     <span class="app-switch-slider slider round"></span>
                   </label>
                 </div>
@@ -3639,8 +3688,8 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   <div class="tx-info-icon-bubble" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8;">
                     <i data-lucide="file-text"></i>
                   </div>
-                  <div class="tx-info-content input-clearable-wrapper">
-                    <input type="text" id="tx-note-input" class="tx-clean-input" placeholder="Ghi chú (tùy chọn)...">
+                  <div class="tx-info-content input-clearable-wrapper has-textarea">
+                    <textarea id="tx-note-input" class="tx-clean-input" rows="1" placeholder="Ghi chú (tùy chọn, Enter xuống dòng)..."></textarea>
                     <button type="button" class="btn-clear-input" id="btn-clear-tx-note" title="Xóa ghi chú" aria-label="Xóa ghi chú">
                       <i data-lucide="x"></i>
                     </button>
@@ -3688,6 +3737,10 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                         <span id="btn-ai-scan-text">Quét hoá đơn với AI (Tự điền món & giá)</span>
                       </div>
                       <span class="ai-badge-free">Flash</span>
+                    </button>
+                    <button type="button" id="btn-tx-ai-cancel" class="btn-ai-scan-cancel" onclick="UITransactions.cancelAIScan()" style="display: none;" title="Huỷ quét hoá đơn">
+                      <i data-lucide="x"></i>
+                      <span>Huỷ</span>
                     </button>
                   </div>
                 </div>
@@ -7336,11 +7389,11 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
     </div>
   </div>
 
-  <!-- Modal: Cắt & Xoay ảnh hoá đơn (Interactive Canvas Crop) -->
+  <!-- Modal: Cắt & Căn Chỉnh Hoá Đơn (Interactive Touch Canvas Crop) -->
   <div id="modal-crop-image" class="modal-overlay" style="z-index: 100060; display: none;" onclick="if (event.target === this) UITransactions.closeCropModal()">
     <div class="modal-dialog crop-modal-dialog">
-      <div class="modal-header" style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px; font-size: 0.96rem;">
+      <div class="modal-header" style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
           <i data-lucide="crop" style="color: var(--primary); width: 18px; height: 18px;"></i>
           <span>Cắt & Căn Chỉnh Hoá Đơn</span>
         </h3>
@@ -7349,47 +7402,60 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         </button>
       </div>
 
-      <div class="modal-body" style="padding: 0; background: #000; overflow: hidden;">
+      <div class="modal-body crop-modal-body" style="padding: 0; background: #070a12; overflow: hidden; display: flex; flex-direction: column; flex: 1; min-height: 0;">
+        <!-- Container hiển thị ảnh & kéo cắt tay trực tiếp -->
         <div class="crop-canvas-container" id="crop-canvas-container">
           <canvas id="crop-source-canvas"></canvas>
-          <div id="crop-overlay-box" class="crop-overlay-box"></div>
-        </div>
-
-        <!-- Căn lề cắt 4 cạnh -->
-        <div class="crop-sliders-section">
-          <div class="crop-slider-group">
-            <label>Trên (Top)</label>
-            <input type="range" id="crop-range-top" min="0" max="45" value="0" oninput="UITransactions.updateCropOverlay()">
-          </div>
-          <div class="crop-slider-group">
-            <label>Dưới (Bot)</label>
-            <input type="range" id="crop-range-bottom" min="0" max="45" value="0" oninput="UITransactions.updateCropOverlay()">
-          </div>
-          <div class="crop-slider-group">
-            <label>Trái (Left)</label>
-            <input type="range" id="crop-range-left" min="0" max="45" value="0" oninput="UITransactions.updateCropOverlay()">
-          </div>
-          <div class="crop-slider-group">
-            <label>Phải (Right)</label>
-            <input type="range" id="crop-range-right" min="0" max="45" value="0" oninput="UITransactions.updateCropOverlay()">
+          <div id="crop-overlay-box" class="crop-overlay-box">
+            <!-- 3x3 Grid lines -->
+            <div class="crop-grid-h top"></div>
+            <div class="crop-grid-h bot"></div>
+            <div class="crop-grid-v left"></div>
+            <div class="crop-grid-v right"></div>
+            <!-- 4 Góc kéo tay (Touch corner handles) -->
+            <div class="crop-handle" data-handle="tl"></div>
+            <div class="crop-handle" data-handle="tr"></div>
+            <div class="crop-handle" data-handle="bl"></div>
+            <div class="crop-handle" data-handle="br"></div>
+            <!-- 4 Cạnh kéo tay (Touch edge handles) -->
+            <div class="crop-handle" data-handle="t"></div>
+            <div class="crop-handle" data-handle="b"></div>
+            <div class="crop-handle" data-handle="l"></div>
+            <div class="crop-handle" data-handle="r"></div>
           </div>
         </div>
 
-        <div class="crop-controls-row">
-          <button type="button" class="btn-secondary btn-sm" onclick="UITransactions.rotateCropImage()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; padding: 6px 12px;">
-            <i data-lucide="rotate-cw" style="width: 14px; height: 14px;"></i>
-            <span>Xoay 90°</span>
-          </button>
-          <button type="button" class="btn-secondary btn-sm" onclick="UITransactions.resetCropSliders()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; padding: 6px 12px;">
-            <i data-lucide="refresh-ccw" style="width: 14px; height: 14px;"></i>
-            <span>Đặt lại</span>
-          </button>
+        <!-- Thanh công cụ chỉnh độ nghiêng (Tilt / Straighten) & Xoay góc -->
+        <div class="crop-toolbar-panel">
+          <div class="crop-tilt-control">
+            <span class="crop-tilt-label">
+              <i data-lucide="compass" style="width: 14px; height: 14px;"></i>
+              Nghiêng: <strong id="crop-tilt-value">0°</strong>
+            </span>
+            <input type="range" id="crop-slider-tilt" min="-30" max="30" value="0" step="1" oninput="UITransactions.handleCropTilt(this.value)">
+            <button type="button" class="btn-tilt-reset" onclick="UITransactions.resetCropTilt()" title="Đặt lại góc nghiêng 0°">0°</button>
+          </div>
+
+          <div class="crop-quick-actions">
+            <button type="button" class="btn-crop-action" onclick="UITransactions.rotateCropLeft()" title="Xoay trái 90°">
+              <i data-lucide="rotate-ccw"></i>
+              <span>-90°</span>
+            </button>
+            <button type="button" class="btn-crop-action" onclick="UITransactions.rotateCropRight()" title="Xoay phải 90°">
+              <i data-lucide="rotate-cw"></i>
+              <span>+90°</span>
+            </button>
+            <button type="button" class="btn-crop-action" onclick="UITransactions.resetCropBoxToFull()" title="Kéo trọn ảnh">
+              <i data-lucide="maximize-2"></i>
+              <span>Trọn ảnh</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <div class="modal-footer" style="padding: 10px 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 8px;">
-        <button type="button" class="btn-secondary" onclick="UITransactions.closeCropModal()">Huỷ</button>
-        <button type="button" class="btn-emerald" onclick="UITransactions.applyCrop()" style="padding: 0 16px;">
+      <div class="modal-footer" style="padding: 10px 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-card, #111827);">
+        <button type="button" class="btn-secondary btn-sm" onclick="UITransactions.closeCropModal()">Huỷ</button>
+        <button type="button" class="btn-emerald btn-sm" onclick="UITransactions.applyCrop()" style="padding: 0 18px; height: 38px;">
           <i data-lucide="check" style="width: 16px; height: 16px;"></i>
           <span>Áp Dụng Cắt</span>
         </button>
@@ -7418,19 +7484,19 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=3.0.44"></script>
-  <script src="./js/ui-transactions.js?v=3.0.60"></script>
+  <script src="./js/ui-transactions.js?v=3.0.62"></script>
   <script src="./js/ui-debts.js?v=3.0.44"></script>
   <script src="./js/ui-accounts.js?v=3.0.59"></script>
   <script src="./js/ui-share.js?v=3.0.63"></script>
   <script src="./js/ui-budgets.js?v=3.0.57"></script>
   <script src="./js/ui-analytics.js?v=3.0.44"></script>
-  <script src="./js/ui-settings.js?v=3.0.64"></script>
+  <script src="./js/ui-settings.js?v=3.0.65"></script>
   <script src="./js/server-auth-modals.js?v=3.0.44"></script>
 
   <!-- Main Entry Coordinator -->
   <script src="./js/ui-admin.js?v=3.0.44"></script>
   <script src="./js/pull-to-refresh.js?v=3.0.44"></script>
-  <script src="./js/app.js?v=3.0.63"></script>
+  <script src="./js/app.js?v=3.0.64"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
   <script>

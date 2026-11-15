@@ -298,8 +298,12 @@ const UISettings = {
     const aiBadge = document.getElementById('hub-ai-badge');
     if (aiBadge) {
       try {
+        const isEnabled = await this.getGeminiEnabled();
         const apiKey = await this.getGeminiApiKey();
-        if (apiKey) {
+        if (!isEnabled) {
+          aiBadge.textContent = 'Đang tắt';
+          aiBadge.className = 'settings-status-pill pill-gray';
+        } else if (apiKey) {
           aiBadge.textContent = 'Sẵn sàng';
           aiBadge.className = 'settings-status-pill pill-green';
         } else {
@@ -3396,35 +3400,58 @@ const UISettings = {
     return '';
   },
 
+
+  async getGeminiEnabled() {
+    try {
+      const setting = await db.settings.get('geminiEnabled');
+      if (setting && setting.value !== undefined) return !!setting.value;
+      const ls = localStorage.getItem('gemini_enabled');
+      if (ls !== null) return ls === 'true';
+    } catch (_) {}
+    return true; // Mặc định bật nếu có key
+  },
+
   async getGeminiModel() {
     try {
       const setting = await db.settings.get('geminiModel');
       if (setting && setting.value) {
-        // Nếu người dùng từng lưu model cũ đã bị Google đóng (2.0-flash), tự nâng lên 'auto'
-        if (setting.value === 'gemini-2.0-flash') return 'auto';
+        if (setting.value === 'auto' || setting.value === 'gemini-2.0-flash') return 'gemini-3.8-flash';
         return setting.value;
       }
       const ls = localStorage.getItem('gemini_model');
       if (ls) {
-        if (ls === 'gemini-2.0-flash') return 'auto';
+        if (ls === 'auto' || ls === 'gemini-2.0-flash') return 'gemini-3.8-flash';
         return ls;
       }
     } catch (_) {}
-    return 'auto'; // Mặc định tự động chọn phiên bản mới nhất
+    return 'gemini-3.8-flash'; // Khóa chuẩn phiên bản mới nhất theo yêu cầu
   },
 
-  // Tự động truy vấn Google API để tìm mô hình Flash khả dụng mới nhất (không lo lỗi khi Google ra bản mới)
+  handleModelSelectChange() {
+    const modelSelect = document.getElementById('settings-gemini-model');
+    const customInput = document.getElementById('settings-gemini-model-custom');
+    if (!modelSelect || !customInput) return;
+    if (modelSelect.value === 'custom') {
+      customInput.style.display = 'block';
+      customInput.focus();
+    } else {
+      customInput.style.display = 'none';
+      this.saveGeminiSettings(false);
+    }
+  },
+
+  // Truy vấn mô hình khả dụng, luôn ưu tiên gemini-3.8-flash
   async resolveActiveGeminiModel(apiKey, forceRefresh = false) {
     if (!apiKey) apiKey = await this.getGeminiApiKey();
-    const fallbacks = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
-    if (!apiKey) return fallbacks[0];
-
     const preferredModel = await this.getGeminiModel();
     if (preferredModel && preferredModel !== 'auto' && !forceRefresh) {
       return preferredModel;
     }
 
-    // Kiểm tra cache đã phát hiện gần đây (trong 12 tiếng), loại bỏ ngay nếu cache chứa model omni/audio không có free tier
+    const fallbacks = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+    if (!apiKey) return fallbacks[0];
+
+    // Kiểm tra cache đã phát hiện gần đây
     if (!forceRefresh) {
       try {
         const cached = localStorage.getItem('gemini_discovered_model');
@@ -3435,16 +3462,13 @@ const UISettings = {
       } catch (_) {}
     }
 
-    // Gọi endpoint /v1beta/models để truy vấn danh sách model hiện có của Google
+    // Gọi /v1beta/models nếu cần dò tìm tự động
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
       const res = await fetch(url, { cache: 'no-cache' });
       if (res.ok) {
         const data = await res.json();
         const models = Array.isArray(data?.models) ? data.models : [];
-
-        // Lọc các model thuộc dòng Gemini Flash chuẩn
-        // LOẠI BỎ omni, audio, live, realtime vì Google đặt limit = 0 trên Free Tier (chỉ dành cho tài khoản trả phí)
         const excludedKeywords = ['omni', 'audio', 'live', 'realtime', 'tts', 'embedding', 'search', 'retrieval', 'imagen', 'learnlm'];
         const flashModels = models
           .filter(m => {
@@ -3458,7 +3482,6 @@ const UISettings = {
           .map(m => m.name.replace(/^models\//, ''));
 
         if (flashModels.length > 0) {
-          // Sắp xếp theo số phiên bản số học giảm dần (ví dụ: 2.5 > 1.5, tránh so sánh chuỗi bị chữ 'omni' lên đầu)
           flashModels.sort((a, b) => {
             const matchA = a.match(/gemini-(\d+(?:\.\d+)?)/i);
             const matchB = b.match(/gemini-(\d+(?:\.\d+)?)/i);
@@ -3485,14 +3508,34 @@ const UISettings = {
     return fallbacks[0];
   },
 
-  async getGeminiAutoCrop() {
+  async getGeminiAutoAmount() {
     try {
-      const setting = await db.settings.get('geminiAutoCrop');
+      const setting = await db.settings.get('geminiAutoAmount');
       if (setting && setting.value !== undefined) return !!setting.value;
-      const ls = localStorage.getItem('gemini_auto_crop');
+      const ls = localStorage.getItem('gemini_auto_amount');
       if (ls !== null) return ls === 'true';
     } catch (_) {}
-    return true; // Mặc định tự crop
+    return true;
+  },
+
+  async getGeminiAutoItems() {
+    try {
+      const setting = await db.settings.get('geminiAutoItems');
+      if (setting && setting.value !== undefined) return !!setting.value;
+      const ls = localStorage.getItem('gemini_auto_items');
+      if (ls !== null) return ls === 'true';
+    } catch (_) {}
+    return true;
+  },
+
+  async getGeminiAutoCategory() {
+    try {
+      const setting = await db.settings.get('geminiAutoCategory');
+      if (setting && setting.value !== undefined) return !!setting.value;
+      const ls = localStorage.getItem('gemini_auto_category');
+      if (ls !== null) return ls === 'true';
+    } catch (_) {}
+    return true;
   },
 
   async getGeminiAutoScan() {
@@ -3502,7 +3545,17 @@ const UISettings = {
       const ls = localStorage.getItem('gemini_auto_scan');
       if (ls !== null) return ls === 'true';
     } catch (_) {}
-    return true; // Mặc định tự quét khi chụp/tải ảnh
+    return false; // Mặc định tắt tự quét ngay khi upload để người dùng bấm Quét hoặc xem ảnh trước
+  },
+
+  async getGeminiOfflineQr() {
+    try {
+      const setting = await db.settings.get('geminiOfflineQr');
+      if (setting && setting.value !== undefined) return !!setting.value;
+      const ls = localStorage.getItem('gemini_offline_qr');
+      if (ls !== null) return ls === 'true';
+    } catch (_) {}
+    return true;
   },
 
   async loadGeminiSettings() {
@@ -3510,70 +3563,67 @@ const UISettings = {
     const badge = document.getElementById('ai-key-status-badge');
     const envSourceAlert = document.getElementById('ai-key-env-source-alert');
     const clearBtn = document.getElementById('btn-clear-gemini-key');
+    const enabledToggle = document.getElementById('settings-gemini-enabled');
     const modelSelect = document.getElementById('settings-gemini-model');
-    const autoCropToggle = document.getElementById('settings-gemini-auto-crop');
+    const customInput = document.getElementById('settings-gemini-model-custom');
+    const autoAmountToggle = document.getElementById('settings-gemini-auto-amount');
+    const autoItemsToggle = document.getElementById('settings-gemini-auto-items');
+    const autoCategoryToggle = document.getElementById('settings-gemini-auto-category');
     const autoScanToggle = document.getElementById('settings-gemini-auto-scan');
+    const offlineQrToggle = document.getElementById('settings-gemini-offline-qr');
 
     const apiKey = await this.getGeminiApiKey();
+    const isEnabled = await this.getGeminiEnabled();
     const model = await this.getGeminiModel();
-    const autoCrop = await this.getGeminiAutoCrop();
+    const autoAmount = await this.getGeminiAutoAmount();
+    const autoItems = await this.getGeminiAutoItems();
+    const autoCategory = await this.getGeminiAutoCategory();
     const autoScan = await this.getGeminiAutoScan();
+    const offlineQr = await this.getGeminiOfflineQr();
 
-    // Nạp thêm các model mới phát hiện vào dropdown nếu chưa có
+    if (enabledToggle) enabledToggle.checked = isEnabled;
+    if (autoAmountToggle) autoAmountToggle.checked = autoAmount;
+    if (autoItemsToggle) autoItemsToggle.checked = autoItems;
+    if (autoCategoryToggle) autoCategoryToggle.checked = autoCategory;
+    if (autoScanToggle) autoScanToggle.checked = autoScan;
+    if (offlineQrToggle) offlineQrToggle.checked = offlineQr;
+
     if (modelSelect) {
-      try {
-        const rawList = localStorage.getItem('gemini_discovered_list');
-        if (rawList) {
-          const list = JSON.parse(rawList);
-          if (Array.isArray(list)) {
-            const existingVals = Array.from(modelSelect.options).map(o => o.value);
-            list.forEach(m => {
-              if (!existingVals.includes(m)) {
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.textContent = m;
-                modelSelect.appendChild(opt);
-              }
-            });
-          }
+      const hasStandardOpt = Array.from(modelSelect.options).some(o => o.value === model);
+      if (hasStandardOpt) {
+        modelSelect.value = model;
+        if (customInput) customInput.style.display = 'none';
+      } else {
+        modelSelect.value = 'custom';
+        if (customInput) {
+          customInput.style.display = 'block';
+          customInput.value = model;
         }
-      } catch (_) {}
-
-      modelSelect.value = model || 'auto';
-
-      // Cập nhật text gợi ý nếu chọn 'auto'
-      const autoOption = modelSelect.querySelector('option[value="auto"]');
-      if (autoOption) {
-        const activeDiscovered = localStorage.getItem('gemini_discovered_model') || 'gemini-3.8-flash';
-        autoOption.textContent = `⚡ Tự động (${activeDiscovered})`;
       }
     }
 
-    if (autoCropToggle) autoCropToggle.checked = autoCrop;
-    if (autoScanToggle) autoScanToggle.checked = autoScan;
-
-    // Kiểm tra xem key có nguồn từ Env/Docker không
     let isFromEnv = false;
     if (window.EnvConfig) {
       const envKey = window.EnvConfig.get('GEMINI_API_KEY') || window.EnvConfig.get('VITE_GEMINI_API_KEY');
       if (envKey && envKey.trim()) isFromEnv = true;
     }
 
-    if (keyInput) {
-      keyInput.value = apiKey;
-    }
+    if (keyInput) keyInput.value = apiKey;
 
     if (envSourceAlert) {
       envSourceAlert.style.display = (isFromEnv && apiKey) ? 'block' : 'none';
     }
 
     if (badge) {
-      if (apiKey) {
-        badge.textContent = isFromEnv ? '✓ Sẵn sàng (Máy chủ Docker)' : '✓ Sẵn sàng';
+      if (!isEnabled) {
+        badge.textContent = 'Đang tắt';
+        badge.className = 'settings-status-pill pill-gray';
+      } else if (apiKey) {
+        badge.textContent = isFromEnv ? '✓ Sẵn sàng (Docker)' : '✓ Sẵn sàng';
         badge.className = 'settings-status-pill pill-green';
       } else {
-        badge.textContent = 'Chưa cấu hình';
-        badge.className = 'settings-status-pill pill-gray';
+        badge.textContent = 'Chưa cấu hình Key';
+        badge.className = 'settings-status-pill pill-yellow';
       }
     }
 
@@ -3586,25 +3636,49 @@ const UISettings = {
 
   async saveGeminiSettings(showToastMsg = true) {
     const keyInput = document.getElementById('settings-gemini-api-key');
+    const enabledToggle = document.getElementById('settings-gemini-enabled');
     const modelSelect = document.getElementById('settings-gemini-model');
-    const autoCropToggle = document.getElementById('settings-gemini-auto-crop');
+    const customInput = document.getElementById('settings-gemini-model-custom');
+    const autoAmountToggle = document.getElementById('settings-gemini-auto-amount');
+    const autoItemsToggle = document.getElementById('settings-gemini-auto-items');
+    const autoCategoryToggle = document.getElementById('settings-gemini-auto-category');
     const autoScanToggle = document.getElementById('settings-gemini-auto-scan');
+    const offlineQrToggle = document.getElementById('settings-gemini-offline-qr');
 
     const rawKey = keyInput ? keyInput.value.trim() : '';
-    const model = modelSelect ? modelSelect.value : 'auto';
-    const autoCrop = autoCropToggle ? autoCropToggle.checked : true;
-    const autoScan = autoScanToggle ? autoScanToggle.checked : true;
+    const enabled = enabledToggle ? enabledToggle.checked : true;
+    let model = 'gemini-3.8-flash';
+    if (modelSelect) {
+      if (modelSelect.value === 'custom') {
+        model = (customInput && customInput.value.trim()) ? customInput.value.trim() : 'gemini-3.8-flash';
+      } else {
+        model = modelSelect.value;
+      }
+    }
+    const autoAmount = autoAmountToggle ? autoAmountToggle.checked : true;
+    const autoItems = autoItemsToggle ? autoItemsToggle.checked : true;
+    const autoCategory = autoCategoryToggle ? autoCategoryToggle.checked : true;
+    const autoScan = autoScanToggle ? autoScanToggle.checked : false;
+    const offlineQr = offlineQrToggle ? offlineQrToggle.checked : true;
 
     try {
       await db.settings.put({ key: 'geminiApiKey', value: rawKey });
+      await db.settings.put({ key: 'geminiEnabled', value: enabled });
       await db.settings.put({ key: 'geminiModel', value: model });
-      await db.settings.put({ key: 'geminiAutoCrop', value: autoCrop });
+      await db.settings.put({ key: 'geminiAutoAmount', value: autoAmount });
+      await db.settings.put({ key: 'geminiAutoItems', value: autoItems });
+      await db.settings.put({ key: 'geminiAutoCategory', value: autoCategory });
       await db.settings.put({ key: 'geminiAutoScan', value: autoScan });
+      await db.settings.put({ key: 'geminiOfflineQr', value: offlineQr });
 
       localStorage.setItem('gemini_api_key', rawKey);
+      localStorage.setItem('gemini_enabled', enabled ? 'true' : 'false');
       localStorage.setItem('gemini_model', model);
-      localStorage.setItem('gemini_auto_crop', autoCrop ? 'true' : 'false');
+      localStorage.setItem('gemini_auto_amount', autoAmount ? 'true' : 'false');
+      localStorage.setItem('gemini_auto_items', autoItems ? 'true' : 'false');
+      localStorage.setItem('gemini_auto_category', autoCategory ? 'true' : 'false');
       localStorage.setItem('gemini_auto_scan', autoScan ? 'true' : 'false');
+      localStorage.setItem('gemini_offline_qr', offlineQr ? 'true' : 'false');
 
       await this.loadGeminiSettings();
       await this.updateHubBadges();
@@ -3614,7 +3688,7 @@ const UISettings = {
       }
 
       if (showToastMsg) {
-        showToast('Đã lưu cấu hình Trợ lý AI thành công!', 'success');
+        showToast('Đã lưu cài đặt AI và xử lý hóa đơn thành công!', 'success');
       }
     } catch (err) {
       console.error('Lỗi lưu cấu hình Gemini:', err);
@@ -3675,67 +3749,27 @@ const UISettings = {
       return;
     }
 
-    showToast('Đang kết nối & tự động dò tìm mô hình Free Tier khả dụng...', 'info');
-
-    // Xoá cache lỗi nếu có lưu model omni/audio
-    try {
-      const cached = localStorage.getItem('gemini_discovered_model');
-      if (cached && (cached.includes('omni') || cached.includes('audio'))) {
-        localStorage.removeItem('gemini_discovered_model');
-      }
-    } catch (_) {}
+    const testModel = await this.getGeminiModel() || 'gemini-3.8-flash';
+    showToast(`Đang kiểm tra kết nối với mô hình ${testModel}...`, 'info');
 
     try {
-      // 1. Dò tìm danh sách các model khả dụng
-      await this.resolveActiveGeminiModel(apiKey, true);
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${testModel}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(12000) : undefined,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'Ping test connection. Respond with OK.' }] }]
+        })
+      });
 
-      let candidateList = [];
-      try {
-        const rawList = localStorage.getItem('gemini_discovered_list');
-        if (rawList) candidateList = JSON.parse(rawList);
-      } catch (_) {}
-
-      const fallbacks = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
-      const testQueue = Array.from(new Set([...(Array.isArray(candidateList) ? candidateList : []), ...fallbacks]))
-        .filter(m => !m.includes('omni') && !m.includes('audio') && !m.includes('live'));
-
-      let workingModel = null;
-      let lastErrorMsg = '';
-
-      // Thử từng model ứng viên để tìm model hoạt động tốt nhất trên Free Tier
-      for (const modelToTest of testQueue) {
-        try {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToTest}:generateContent?key=${apiKey}`;
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: 'Ping: OK' }] }]
-            })
-          });
-
-          if (res.ok) {
-            workingModel = modelToTest;
-            break;
-          } else {
-            const errData = await res.json().catch(() => ({}));
-            lastErrorMsg = errData?.error?.message || `Mã HTTP ${res.status}`;
-            console.warn(`[Gemini Test] Model ${modelToTest} không khả dụng (${lastErrorMsg}), thử model kế tiếp...`);
-          }
-        } catch (callErr) {
-          lastErrorMsg = callErr.message || String(callErr);
-        }
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const msg = errData?.error?.message || `Mã phản hồi HTTP ${res.status}`;
+        throw new Error(msg);
       }
 
-      if (!workingModel) {
-        throw new Error(lastErrorMsg || 'Không tìm thấy model nào khả dụng với API Key này');
-      }
-
-      // Lưu model đã ping thành công
-      localStorage.setItem('gemini_discovered_model', workingModel);
-      localStorage.setItem('gemini_discovered_ts', String(Date.now()));
-
-      showToast(`✨ Kết nối thành công! Tự động sử dụng: ${workingModel}`, 'success');
+      showToast(`✓ Kết nối thành công với ${testModel}!`, 'success');
       await this.saveGeminiSettings(false);
       await this.loadGeminiSettings();
       await this.updateHubBadges();
