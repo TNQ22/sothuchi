@@ -12123,22 +12123,31 @@ body.dark .account-role-badge.editor {
    MODAL KHÔI PHỤC BẢN SAO LƯU GOOGLE DRIVE (TỐI ƯU SÁT VIỀN MOBILE)
    ============================================================ */
 #modal-drive-recovery {
-  padding: 4px 4px max(4px, env(safe-area-inset-bottom, 0px)) !important;
+  padding: 4px 2px max(4px, env(safe-area-inset-bottom, 0px)) !important;
 }
 
-#modal-drive-recovery .modal-dialog {
-  width: calc(100% - 8px) !important;
-  max-width: 540px !important;
+#modal-drive-recovery .modal-dialog,
+.drive-recovery-dialog {
+  width: calc(100% - 4px) !important;
+  max-width: 560px !important;
   margin: 0 auto;
-  border-radius: 14px;
+  border-radius: 12px;
 }
 
 #modal-drive-recovery .modal-header {
-  padding: 10px 12px;
+  padding: 10px 10px;
 }
 
 #modal-drive-recovery .modal-body {
-  padding: 8px 10px;
+  padding: 6px 2px !important;
+}
+
+#modal-drive-recovery .drive-recovery-desc {
+  padding: 0 6px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  line-height: 1.4;
 }
 
 #modal-drive-recovery .modal-footer {
@@ -12148,16 +12157,16 @@ body.dark .account-role-badge.editor {
 #modal-drive-recovery #drive-recovery-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  max-height: 72dvh;
+  gap: 5px;
+  max-height: 74dvh;
   overflow-y: auto;
-  padding-right: 2px;
+  padding: 0 1px;
 }
 
 .drive-recovery-card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
