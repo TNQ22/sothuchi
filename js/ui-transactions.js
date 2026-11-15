@@ -5867,12 +5867,12 @@ const UITransactions = {
     }
 
     let apiKey = '';
-    let model = 'gemini-2.0-flash';
+    let model = 'gemini-3.8-flash';
     let autoCrop = true;
 
     if (window.UISettings) {
       apiKey = await window.UISettings.getGeminiApiKey();
-      model = await window.UISettings.getGeminiModel();
+      model = await window.UISettings.resolveActiveGeminiModel(apiKey);
       autoCrop = await window.UISettings.getGeminiAutoCrop();
     }
 
@@ -5915,37 +5915,64 @@ Hãy đọc hoá đơn / biên lai thanh toán trong ảnh và trả về DUY NH
   "crop_box": [<ymin>, <xmin>, <ymax>, <xmax>] // toạ độ chuẩn hoá 0-1000 bao quanh tờ hoá đơn để cắt bỏ mặt bàn thừa
 }`;
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt },
-                {
-                  inline_data: {
-                    mime_type: 'image/jpeg',
-                    data: base64Data
+      // Gọi Gemini API có cơ chế Auto-Healing tự động chuyển sang model mới nếu model cũ bị Google đóng
+      const requestGemini = async (targetModel) => {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt },
+                  {
+                    inline_data: {
+                      mime_type: 'image/jpeg',
+                      data: base64Data
+                    }
                   }
-                }
-              ]
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              responseMimeType: 'application/json'
             }
-          ],
-          generationConfig: {
-            temperature: 0.1,
-            responseMimeType: 'application/json'
+          })
+        });
+
+        if (!response.ok) {
+          const errJson = await response.json().catch(() => ({}));
+          const errMsg = errJson?.error?.message || `Mã phản hồi HTTP ${response.status}`;
+          const err = new Error(errMsg);
+          err.status = response.status;
+          throw err;
+        }
+
+        return await response.json();
+      };
+
+      let data;
+      try {
+        data = await requestGemini(model);
+      } catch (callErr) {
+        // Tự động phát hiện lỗi model cũ không còn tồn tại -> tự dò model mới và retry
+        const isDeprecated = callErr.status === 404 || /no longer available|not found|deprecated/i.test(callErr.message || '');
+        if (isDeprecated && window.UISettings) {
+          console.warn(`[Gemini Auto-Heal] Model ${model} không còn khả dụng, đang tự động dò tìm model mới nhất từ Google...`);
+          const freshModel = await window.UISettings.resolveActiveGeminiModel(apiKey, true);
+          if (freshModel && freshModel !== model) {
+            console.log(`[Gemini Auto-Heal] Đã chuyển sang model: ${freshModel}`);
+            model = freshModel;
+            data = await requestGemini(freshModel);
+          } else {
+            throw callErr;
           }
-        })
-      });
-
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson?.error?.message || `Mã phản hồi HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
+        } else {
+          throw callErr;
+        }
+      };
       const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!rawText) throw new Error('Không nhận được nội dung từ Gemini');
 
