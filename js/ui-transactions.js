@@ -34,6 +34,19 @@ const UITransactions = {
   editingCatId: null,
   _categoriesCache: null,
 
+  /* Đính kèm ảnh hoá đơn & Quét AI */
+  attachedImages: [],
+  isScanningAI: false,
+  cropState: {
+    sourceImg: null,
+    targetIndex: -1,
+    rotation: 0,
+    topPercent: 0,
+    bottomPercent: 0,
+    leftPercent: 0,
+    rightPercent: 0
+  },
+
   async loadCategories(forceReload = false) {
     if (!forceReload && this._categoriesCache && this._categoriesCache.length > 0) {
       return this._categoriesCache;
@@ -4185,6 +4198,7 @@ const UITransactions = {
         borrowDueDate,
         borrowDueDateRaw,
         extraOpen,
+        images: this.attachedImages ? [...this.attachedImages] : [],
         userChangedAccount: this.userChangedAccount,
         userSelectedAccountId: this.userSelectedAccountId || '',
         savedAt: Date.now()
@@ -4202,6 +4216,8 @@ const UITransactions = {
       sessionStorage.removeItem('stc_tx_draft');
       localStorage.removeItem('stc_tx_draft');
     } catch (e) {}
+    this.attachedImages = [];
+    this.renderAttachedImages();
   },
 
   async restoreDraft() {
@@ -4345,6 +4361,12 @@ const UITransactions = {
         if (extraChevron) extraChevron.style.transform = 'rotate(180deg)';
       }
 
+      // 11. Attached Images
+      if (Array.isArray(draft.images)) {
+        this.attachedImages = [...draft.images];
+        this.renderAttachedImages();
+      }
+
       await this.updateSelectedAccountDisplay();
       this.setEditMode(false);
       this.formInitialized = true;
@@ -4470,6 +4492,9 @@ const UITransactions = {
     }
 
     // Chế độ thêm mới: ẩn nút Xóa
+    this.attachedImages = [];
+    this.renderAttachedImages();
+    this.updateAIStatus();
     this.setEditMode(false);
     this.formInitialized = true;
     if (window.lucide) lucide.createIcons();
@@ -4716,7 +4741,8 @@ const UITransactions = {
         toAccountId,
         date,
         time,
-        note
+        note,
+        images: [...this.attachedImages]
       });
       if (id) {
         this.closeModal();
@@ -4757,6 +4783,7 @@ const UITransactions = {
         date,
         time,
         note: `${type === 'lend' ? 'Cho vay / Chi hộ' : 'Mượn / Đi vay'}: ${personName}${note ? ' - ' + note : ''}`,
+        images: [...this.attachedImages],
         isDeleted: 0,
         updatedAt: Date.now()
       });
@@ -4782,6 +4809,7 @@ const UITransactions = {
         date,
         time,
         note: note || 'Thu tiền nợ',
+        images: [...this.attachedImages],
         isDeleted: 0,
         updatedAt: Date.now()
       });
@@ -4806,6 +4834,7 @@ const UITransactions = {
         date,
         time,
         note: note || 'Trả tiền nợ',
+        images: [...this.attachedImages],
         isDeleted: 0,
         updatedAt: Date.now()
       });
@@ -4836,6 +4865,7 @@ const UITransactions = {
         isBorrowed,
         borrowPerson,
         borrowDueDate,
+        images: [...this.attachedImages],
         recordedByOther: existingTx?.recordedByOther,
         createdBy: existingTx?.createdBy,
         createdByEmail: existingTx?.createdByEmail,
@@ -4857,7 +4887,8 @@ const UITransactions = {
         note,
         isBorrowed,
         borrowPerson,
-        borrowDueDate
+        borrowDueDate,
+        images: [...this.attachedImages]
       });
       // Thêm mới: KHÔNG thoát về trang trước, chỉ làm mới form để người dùng tiếp tục ghi chép
       await this.resetForm(type);
@@ -5037,7 +5068,7 @@ const UITransactions = {
             <i data-lucide="${iconName}" style="width: 20px; height: 20px;"></i>
           </div>
           <div class="tx-info">
-            <span class="tx-title" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span>${escapeHTML(title)}</span>${(t.loanId || t.loanAction) ? `<span title="Giao dịch liên kết Sổ Vay (Được khóa bảo vệ)" style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; padding: 1px 5px; border-radius: 4px; background: rgba(99, 102, 241, 0.12); color: var(--primary);"><i data-lucide="lock" style="width: 10px; height: 10px;"></i> Sổ vay</span>` : ""}</span>
+            <span class="tx-title" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span>${escapeHTML(title)}</span>${(t.images && t.images.length > 0) ? `<span title="Có ảnh hoá đơn đính kèm" style="display: inline-flex; align-items: center; gap: 2px; font-size: 0.68rem; font-weight: 600; padding: 1px 5px; border-radius: 4px; background: rgba(13, 148, 136, 0.12); color: var(--primary);"><i data-lucide="receipt" style="width: 10px; height: 10px;"></i>${t.images.length > 1 ? ` ${t.images.length}` : ''}</span>` : ''}${(t.loanId || t.loanAction) ? `<span title="Giao dịch liên kết Sổ Vay (Được khóa bảo vệ)" style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; font-weight: 600; padding: 1px 5px; border-radius: 4px; background: rgba(99, 102, 241, 0.12); color: var(--primary);"><i data-lucide="lock" style="width: 10px; height: 10px;"></i> Sổ vay</span>` : ""}</span>
             <span class="tx-meta">${accountDisplay}</span>
           </div>
         </div>
@@ -5365,6 +5396,11 @@ const UITransactions = {
     // Render quick categories với trạng thái đã chọn
     await this.renderQuickCategories();
 
+    // Nạp ảnh đính kèm của giao dịch
+    this.attachedImages = Array.isArray(tx.images) ? [...tx.images] : [];
+    this.renderAttachedImages();
+    this.updateAIStatus();
+
     // Chế độ sửa: hiện nút Hủy + Xóa
     this.setEditMode(true, tx.id);
 
@@ -5429,6 +5465,569 @@ const UITransactions = {
     } catch (err) {
       console.error('Delete transaction error:', err);
       showToast('Lỗi khi xóa giao dịch', 'error');
+    }
+  },
+
+  /* ==========================================================================
+     ATTACHMENTS, MANUAL CROP & AI RECEIPT SCANNER (GOOGLE GEMINI FLASH)
+     ========================================================================== */
+
+  async updateAIStatus() {
+    const statusPill = document.getElementById('tx-ai-status-pill');
+    const statusText = document.getElementById('tx-ai-status-text');
+    const scanBanner = document.getElementById('tx-ai-scan-banner');
+
+    let apiKey = '';
+    if (window.UISettings && typeof window.UISettings.getGeminiApiKey === 'function') {
+      apiKey = await window.UISettings.getGeminiApiKey();
+    }
+
+    if (statusPill) {
+      statusPill.style.display = 'inline-flex';
+      if (apiKey) {
+        statusPill.style.background = 'rgba(13, 148, 136, 0.15)';
+        statusPill.style.color = 'var(--primary)';
+        if (statusText) statusText.textContent = 'AI Sẵn Sàng';
+      } else {
+        statusPill.style.background = 'rgba(148, 163, 184, 0.15)';
+        statusPill.style.color = 'var(--text-muted)';
+        if (statusText) statusText.textContent = 'Cài AI';
+      }
+    }
+
+    if (scanBanner) {
+      scanBanner.style.display = this.attachedImages.length > 0 ? 'block' : 'none';
+    }
+
+    if (window.lucide) lucide.createIcons();
+  },
+
+  openAISettingsShortcut() {
+    this.closeModal();
+    if (window.app && window.app.switchView) {
+      window.app.switchView('settings');
+    }
+    if (window.UISettings && typeof window.UISettings.openSection === 'function') {
+      window.UISettings.openSection('ai-gemini');
+    }
+  },
+
+  triggerImagePicker(source) {
+    if (source === 'camera') {
+      const cameraInput = document.getElementById('tx-image-input-camera');
+      if (cameraInput) {
+        cameraInput.value = '';
+        cameraInput.click();
+      }
+    } else {
+      const galleryInput = document.getElementById('tx-image-input-gallery');
+      if (galleryInput) {
+        galleryInput.value = '';
+        galleryInput.click();
+      }
+    }
+  },
+
+  async handleImageFileSelect(event) {
+    const files = event.target?.files;
+    if (!files || files.length === 0) return;
+
+    showToast('Đang nén và tối ưu hoá ảnh...', 'info');
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith('image/')) continue;
+        const compressed = await this.compressImage(file);
+        this.attachedImages.push(compressed);
+      }
+      this.renderAttachedImages();
+      this.updateAIStatus();
+
+      // Kiểm tra xem có cấu hình tự động quét AI không
+      let autoScan = true;
+      let apiKey = '';
+      if (window.UISettings) {
+        autoScan = await window.UISettings.getGeminiAutoScan();
+        apiKey = await window.UISettings.getGeminiApiKey();
+      }
+
+      if (autoScan && apiKey) {
+        // Tự động kích hoạt quét hoá đơn bằng AI
+        await this.scanReceiptWithAI();
+      } else {
+        showToast(`Đã đính kèm ${files.length} ảnh hoá đơn`, 'success');
+      }
+    } catch (err) {
+      console.error('Lỗi nén ảnh:', err);
+      showToast('Không thể xử lý ảnh: ' + (err.message || err), 'error');
+    }
+  },
+
+  async compressImage(file, maxDimension = 1280, quality = 0.78) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(dataUrl);
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  },
+
+  renderAttachedImages() {
+    const listEl = document.getElementById('tx-images-list');
+    const badgeEl = document.getElementById('tx-attachment-badge');
+    const scanBanner = document.getElementById('tx-ai-scan-banner');
+
+    if (badgeEl) {
+      if (this.attachedImages.length > 0) {
+        badgeEl.textContent = `${this.attachedImages.length} ảnh`;
+        badgeEl.style.display = 'inline-block';
+      } else {
+        badgeEl.style.display = 'none';
+      }
+    }
+
+    if (scanBanner) {
+      scanBanner.style.display = this.attachedImages.length > 0 ? 'block' : 'none';
+    }
+
+    if (!listEl) return;
+    if (this.attachedImages.length === 0) {
+      listEl.innerHTML = '';
+      listEl.style.display = 'none';
+      return;
+    }
+
+    listEl.style.display = 'flex';
+    listEl.innerHTML = this.attachedImages.map((imgUrl, idx) => `
+      <div class="tx-image-card" title="Chạm để xem phóng to">
+        <img src="${imgUrl}" alt="Hoá đơn #${idx + 1}" onclick="UITransactions.openImageViewer(${idx})">
+        <div class="tx-image-card-actions">
+          <button type="button" class="tx-image-card-btn" onclick="event.stopPropagation(); UITransactions.openCropModal(${idx})" title="Cắt / Xoay ảnh">
+            <i data-lucide="crop"></i>
+          </button>
+          <button type="button" class="tx-image-card-btn btn-del-img" onclick="event.stopPropagation(); UITransactions.deleteAttachedImage(${idx})" title="Xoá ảnh này">
+            <i data-lucide="trash-2"></i>
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+    if (window.lucide) lucide.createIcons();
+  },
+
+  deleteAttachedImage(index) {
+    if (index >= 0 && index < this.attachedImages.length) {
+      this.attachedImages.splice(index, 1);
+      this.renderAttachedImages();
+      this.updateAIStatus();
+    }
+  },
+
+  openImageViewer(index) {
+    if (index < 0 || index >= this.attachedImages.length) return;
+    const modal = document.getElementById('modal-image-viewer');
+    const img = document.getElementById('image-viewer-img');
+    if (modal && img) {
+      img.src = this.attachedImages[index];
+      modal.style.display = 'flex';
+      modal.classList.add('open', 'active');
+      if (window.lucide) lucide.createIcons();
+    }
+  },
+
+  closeImageViewer() {
+    const modal = document.getElementById('modal-image-viewer');
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.remove('open', 'active');
+    }
+  },
+
+  /* ==================== MANUAL CROP & ROTATE TOOL ==================== */
+  openCropModal(index) {
+    if (index < 0 || index >= this.attachedImages.length) return;
+    const dataUrl = this.attachedImages[index];
+    this.cropState = {
+      targetIndex: index,
+      rotation: 0,
+      topPercent: 0,
+      bottomPercent: 0,
+      leftPercent: 0,
+      rightPercent: 0,
+      sourceImg: new Image()
+    };
+
+    const modal = document.getElementById('modal-crop-image');
+    const canvas = document.getElementById('crop-source-canvas');
+    if (!modal || !canvas) return;
+
+    this.cropState.sourceImg.onload = () => {
+      this.resetCropSliders();
+      this.drawCropCanvas();
+      modal.style.display = 'flex';
+      modal.classList.add('open', 'active');
+      if (window.lucide) lucide.createIcons();
+    };
+    this.cropState.sourceImg.src = dataUrl;
+  },
+
+  closeCropModal() {
+    const modal = document.getElementById('modal-crop-image');
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.remove('open', 'active');
+    }
+  },
+
+  resetCropSliders() {
+    ['top', 'bottom', 'left', 'right'].forEach(side => {
+      const el = document.getElementById(`crop-range-${side}`);
+      if (el) el.value = 0;
+    });
+    this.cropState.topPercent = 0;
+    this.cropState.bottomPercent = 0;
+    this.cropState.leftPercent = 0;
+    this.cropState.rightPercent = 0;
+    this.updateCropOverlay();
+  },
+
+  rotateCropImage() {
+    this.cropState.rotation = (this.cropState.rotation + 90) % 360;
+    this.drawCropCanvas();
+    this.updateCropOverlay();
+  },
+
+  drawCropCanvas() {
+    const canvas = document.getElementById('crop-source-canvas');
+    const img = this.cropState.sourceImg;
+    if (!canvas || !img) return;
+
+    const rot = this.cropState.rotation;
+    const isSideways = (rot === 90 || rot === 270);
+    const w = isSideways ? img.height : img.width;
+    const h = isSideways ? img.width : img.height;
+
+    canvas.width = w;
+    canvas.height = h;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.rotate((rot * Math.PI) / 180);
+    ctx.drawImage(img, -img.width / 2, -img.height / 2);
+    ctx.restore();
+  },
+
+  updateCropOverlay() {
+    const overlay = document.getElementById('crop-overlay-box');
+    const canvas = document.getElementById('crop-source-canvas');
+    if (!overlay || !canvas) return;
+
+    const top = Number(document.getElementById('crop-range-top')?.value || 0);
+    const bottom = Number(document.getElementById('crop-range-bottom')?.value || 0);
+    const left = Number(document.getElementById('crop-range-left')?.value || 0);
+    const right = Number(document.getElementById('crop-range-right')?.value || 0);
+
+    this.cropState.topPercent = top;
+    this.cropState.bottomPercent = bottom;
+    this.cropState.leftPercent = left;
+    this.cropState.rightPercent = right;
+
+    const rect = canvas.getBoundingClientRect();
+    const parentRect = canvas.parentElement.getBoundingClientRect();
+
+    const canvasOffsetLeft = rect.left - parentRect.left;
+    const canvasOffsetTop = rect.top - parentRect.top;
+
+    const boxLeft = canvasOffsetLeft + (rect.width * left) / 100;
+    const boxTop = canvasOffsetTop + (rect.height * top) / 100;
+    const boxWidth = rect.width * (100 - left - right) / 100;
+    const boxHeight = rect.height * (100 - top - bottom) / 100;
+
+    overlay.style.left = `${boxLeft}px`;
+    overlay.style.top = `${boxTop}px`;
+    overlay.style.width = `${Math.max(10, boxWidth)}px`;
+    overlay.style.height = `${Math.max(10, boxHeight)}px`;
+  },
+
+  applyCrop() {
+    const canvas = document.getElementById('crop-source-canvas');
+    if (!canvas || this.cropState.targetIndex < 0) return;
+
+    const { topPercent, bottomPercent, leftPercent, rightPercent } = this.cropState;
+    const sx = Math.floor((canvas.width * leftPercent) / 100);
+    const sy = Math.floor((canvas.height * topPercent) / 100);
+    const sw = Math.floor((canvas.width * (100 - leftPercent - rightPercent)) / 100);
+    const sh = Math.floor((canvas.height * (100 - topPercent - bottomPercent)) / 100);
+
+    if (sw <= 10 || sh <= 10) {
+      showToast('Vùng cắt quá nhỏ, vui lòng chỉnh lại!', 'warning');
+      return;
+    }
+
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = sw;
+    cropCanvas.height = sh;
+    const ctx = cropCanvas.getContext('2d');
+    ctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+
+    const croppedDataUrl = cropCanvas.toDataURL('image/jpeg', 0.82);
+    this.attachedImages[this.cropState.targetIndex] = croppedDataUrl;
+    this.renderAttachedImages();
+    this.closeCropModal();
+    showToast('Đã cắt và lưu ảnh hoá đơn!', 'success');
+  },
+
+  /* ==================== AI RECEIPT SCAN ENGINE ==================== */
+  setAIScanningState(isScanning) {
+    this.isScanningAI = isScanning;
+    const btn = document.getElementById('btn-tx-ai-scan');
+    const textEl = document.getElementById('btn-ai-scan-text');
+    if (!btn) return;
+    if (isScanning) {
+      btn.classList.add('is-scanning');
+      if (textEl) textEl.textContent = 'Đang phân tích hoá đơn với Gemini Flash...';
+    } else {
+      btn.classList.remove('is-scanning');
+      if (textEl) textEl.textContent = 'Quét hoá đơn với AI (Tự điền món & giá)';
+    }
+  },
+
+  async cropImageByBox(dataUrl, cropBox) {
+    return new Promise((resolve) => {
+      if (!Array.isArray(cropBox) || cropBox.length < 4) return resolve(dataUrl);
+      let [ymin, xmin, ymax, xmax] = cropBox;
+      if (ymax > 1 || xmax > 1) {
+        ymin /= 1000;
+        xmin /= 1000;
+        ymax /= 1000;
+        xmax /= 1000;
+      }
+      ymin = Math.max(0, Math.min(1, ymin));
+      xmin = Math.max(0, Math.min(1, xmin));
+      ymax = Math.max(0, Math.min(1, ymax));
+      xmax = Math.max(0, Math.min(1, xmax));
+
+      const boxW = xmax - xmin;
+      const boxH = ymax - ymin;
+      if (boxW < 0.15 || boxH < 0.15 || (boxW > 0.95 && boxH > 0.95)) {
+        return resolve(dataUrl);
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        const sx = Math.floor(xmin * img.width);
+        const sy = Math.floor(ymin * img.height);
+        const sw = Math.floor(boxW * img.width);
+        const sh = Math.floor(boxH * img.height);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = sw;
+        canvas.height = sh;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  },
+
+  async scanReceiptWithAI() {
+    if (this.attachedImages.length === 0) {
+      showToast('Vui lòng chụp hoặc chọn ảnh hoá đơn trước khi quét AI', 'warning');
+      return;
+    }
+
+    let apiKey = '';
+    let model = 'gemini-2.0-flash';
+    let autoCrop = true;
+
+    if (window.UISettings) {
+      apiKey = await window.UISettings.getGeminiApiKey();
+      model = await window.UISettings.getGeminiModel();
+      autoCrop = await window.UISettings.getGeminiAutoCrop();
+    }
+
+    if (!apiKey) {
+      const goToSettings = await showConfirm({
+        title: 'Chưa Cài Đặt Gemini API Key',
+        message: 'Tính năng AI Quét hoá đơn thông minh sử dụng <strong>Google Gemini Flash (100% Miễn phí)</strong>.<br><br>Bạn chỉ cần tạo API Key miễn phí trong 1 phút để kích hoạt.<br>Bạn có muốn mở Cài Đặt ngay bây giờ không?',
+        confirmText: 'Mở Cài Đặt',
+        cancelText: 'Để Sau',
+        icon: 'sparkles'
+      });
+      if (goToSettings) {
+        this.openAISettingsShortcut();
+      }
+      return;
+    }
+
+    this.setAIScanningState(true);
+    const lastImg = this.attachedImages[this.attachedImages.length - 1];
+    const base64Data = lastImg.replace(/^data:image\/\w+;base64,/, '');
+
+    try {
+      const categories = await this.loadCategories();
+      const categoryNames = categories.map(c => c.name).join(', ');
+
+      const prompt = `Bạn là trợ lý tài chính thông minh của ứng dụng "Sổ Thu Chi".
+Hãy đọc hoá đơn / biên lai thanh toán trong ảnh và trả về DUY NHẤT một chuỗi JSON thuần túy (không kèm định dạng markdown như \`\`\`json):
+{
+  "total_amount": <tổng số tiền thanh toán cuối cùng của hoá đơn dạng số nguyên, ví dụ 55000, nếu không thấy để null>,
+  "items": [
+    {
+      "name": "<tên món hàng / dịch vụ>",
+      "price": <giá tiền dạng số nguyên, nếu không có để null>,
+      "qty": <số lượng dạng số, nếu không có để 1>
+    }
+  ],
+  "date": "<ngày trên hoá đơn dạng YYYY-MM-DD, nếu không có để null>",
+  "time": "<giờ trên hoá đơn dạng HH:mm, nếu không có để null>",
+  "suggested_category": "<chọn 1 tên danh mục khớp nhất từ danh sách: [${categoryNames}], nếu không khớp để null>",
+  "crop_box": [<ymin>, <xmin>, <ymax>, <xmax>] // toạ độ chuẩn hoá 0-1000 bao quanh tờ hoá đơn để cắt bỏ mặt bàn thừa
+}`;
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt },
+                {
+                  inline_data: {
+                    mime_type: 'image/jpeg',
+                    data: base64Data
+                  }
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: 'application/json'
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson?.error?.message || `Mã phản hồi HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) throw new Error('Không nhận được nội dung từ Gemini');
+
+      let parsed;
+      try {
+        parsed = JSON.parse(rawText.trim());
+      } catch (_) {
+        const match = rawText.match(/\{[\s\S]*\}/);
+        if (match) parsed = JSON.parse(match[0]);
+        else throw new Error('Dữ liệu AI trả về không đúng cú pháp JSON');
+      }
+
+      // 1. Tự động crop ảnh theo toạ độ hoá đơn
+      if (autoCrop && Array.isArray(parsed.crop_box) && parsed.crop_box.length === 4) {
+        try {
+          const cropped = await this.cropImageByBox(lastImg, parsed.crop_box);
+          if (cropped && cropped !== lastImg) {
+            this.attachedImages[this.attachedImages.length - 1] = cropped;
+            this.renderAttachedImages();
+          }
+        } catch (cropErr) {
+          console.warn('[cropImageByBox] Lỗi crop ảnh:', cropErr);
+        }
+      }
+
+      // 2. Tự điền số tiền
+      if (parsed.total_amount && Number(parsed.total_amount) > 0) {
+        const formattedAmount = new Intl.NumberFormat('vi-VN').format(parsed.total_amount);
+        const amountInput = document.getElementById('tx-amount-input');
+        const amountText = document.getElementById('tx-amount-text');
+        if (amountInput) amountInput.value = formattedAmount;
+        if (amountText) amountText.textContent = formattedAmount;
+      }
+
+      // 3. Tự điền danh sách món và giá từng dòng vào Ghi chú
+      if (Array.isArray(parsed.items) && parsed.items.length > 0) {
+        const lines = [];
+        parsed.items.forEach(it => {
+          if (!it.name) return;
+          let line = `• ${it.name}`;
+          if (it.qty && Number(it.qty) > 1) line += ` (x${it.qty})`;
+          if (it.price && Number(it.price) > 0) line += `: ${new Intl.NumberFormat('vi-VN').format(it.price)}đ`;
+          lines.push(line);
+        });
+        if (lines.length > 0) {
+          const noteInput = document.getElementById('tx-note-input');
+          if (noteInput) {
+            noteInput.value = lines.join('\n');
+            try { noteInput.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
+          }
+        }
+      }
+
+      // 4. Tự động chọn đúng danh mục
+      if (parsed.suggested_category) {
+        const targetName = parsed.suggested_category.trim().toLowerCase();
+        const matchedCat = categories.find(c => {
+          const cName = c.name.trim().toLowerCase();
+          return cName === targetName || cName.includes(targetName) || targetName.includes(cName);
+        });
+        if (matchedCat) {
+          await this.selectCategory(matchedCat);
+        }
+      }
+
+      // 5. Tự động cập nhật ngày & giờ
+      if (parsed.date && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)) {
+        const dateInput = document.getElementById('tx-date-input');
+        if (dateInput) dateInput.value = parsed.date;
+        if (parsed.time && /^\d{1,2}:\d{2}$/.test(parsed.time)) {
+          const timeInput = document.getElementById('tx-time-input');
+          if (timeInput) timeInput.value = parsed.time;
+        }
+        this.updateDateTimeDisplays(parsed.date, parsed.time || '12:00');
+      }
+
+      showToast('✨ Đã quét hoá đơn và điền thông tin tự động thành công!', 'success');
+    } catch (err) {
+      console.error('Lỗi quét AI:', err);
+      showToast('Lỗi quét hoá đơn: ' + (err.message || err), 'error');
+    } finally {
+      this.setAIScanningState(false);
     }
   }
 };

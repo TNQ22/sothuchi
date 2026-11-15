@@ -91,6 +91,10 @@ const UISettings = {
       this.renderTrashPanel();
     }
 
+    if (sectionId === 'ai-gemini') {
+      this.loadGeminiSettings();
+    }
+
     // Cập nhật tiêu đề trang con
     const titleMap = {
       'google-drive': '<svg viewBox="0 0 87.3 78" style="width: 20px; height: 18px; vertical-align: middle;"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg> Google Drive',
@@ -100,6 +104,7 @@ const UISettings = {
       'backup-restore': '<i data-lucide="database" style="color: #ec4899; width: 20px; height: 20px;"></i> Sao Lưu & Khôi Phục File',
       'trash': '<i data-lucide="trash-2" style="color: #ef4444; width: 20px; height: 20px;"></i> Thùng Rác & Khôi Phục',
       'export-csv': '<i data-lucide="file-spreadsheet" style="color: #10b981; width: 20px; height: 20px;"></i> Xuất Dữ Liệu Excel (CSV)',
+      'ai-gemini': '<i data-lucide="sparkles" style="color: var(--primary); width: 20px; height: 20px;"></i> Trợ Lý AI Quét Hoá Đơn',
       'appearance': '<i data-lucide="palette" style="color: #6366f1; width: 20px; height: 20px;"></i> Giao Diện & Hệ Thống',
       'server-admin': '<i data-lucide="shield-check" style="color: var(--primary); width: 20px; height: 20px;"></i> Quản Trị Máy Chủ'
     };
@@ -286,6 +291,24 @@ const UISettings = {
       } catch (_) {
         trashBadge.textContent = '0 mục';
         trashBadge.className = 'settings-status-pill pill-gray';
+      }
+    }
+
+    // 5.2 Trợ lý AI Quét Hoá Đơn Badge
+    const aiBadge = document.getElementById('hub-ai-badge');
+    if (aiBadge) {
+      try {
+        const apiKey = await this.getGeminiApiKey();
+        if (apiKey) {
+          aiBadge.textContent = 'Sẵn sàng';
+          aiBadge.className = 'settings-status-pill pill-green';
+        } else {
+          aiBadge.textContent = 'Chưa cài đặt';
+          aiBadge.className = 'settings-status-pill pill-gray';
+        }
+      } catch (_) {
+        aiBadge.textContent = 'Chưa cài đặt';
+        aiBadge.className = 'settings-status-pill pill-gray';
       }
     }
 
@@ -2004,9 +2027,15 @@ const UISettings = {
     // Toggle Google Advanced Box
     const advBtn = document.getElementById('btn-toggle-google-advanced');
     const advBox = document.getElementById('google-advanced-box');
+    const advChevron = document.getElementById('google-advanced-chevron');
     if (advBtn && advBox) {
       advBtn.addEventListener('click', () => {
-        advBox.style.display = advBox.style.display === 'none' ? 'block' : 'none';
+        const isHidden = advBox.style.display === 'none' || !advBox.style.display;
+        advBox.style.display = isHidden ? 'block' : 'none';
+        if (advChevron) {
+          advChevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+          advChevron.style.color = isHidden ? 'var(--primary)' : 'var(--text-muted)';
+        }
       });
     }
 
@@ -3342,6 +3371,216 @@ const UISettings = {
         </div>
       `;
       if (window.lucide) lucide.createIcons();
+    }
+  },
+
+  // ==========================================
+  // TRỢ LÝ AI QUÉT HOÁ ĐƠN (GOOGLE GEMINI FLASH)
+  // ==========================================
+  async getGeminiApiKey() {
+    try {
+      const localSetting = await db.settings.get('geminiApiKey');
+      if (localSetting && localSetting.value && localSetting.value.trim()) {
+        return localSetting.value.trim();
+      }
+      const lsKey = localStorage.getItem('gemini_api_key');
+      if (lsKey && lsKey.trim()) return lsKey.trim();
+      if (window.EnvConfig) {
+        const envKey = window.EnvConfig.get('GEMINI_API_KEY') || window.EnvConfig.get('VITE_GEMINI_API_KEY');
+        if (envKey && envKey.trim()) return envKey.trim();
+      }
+    } catch (_) {}
+    return '';
+  },
+
+  async getGeminiModel() {
+    try {
+      const setting = await db.settings.get('geminiModel');
+      if (setting && setting.value) return setting.value;
+      const ls = localStorage.getItem('gemini_model');
+      if (ls) return ls;
+    } catch (_) {}
+    return 'gemini-2.0-flash';
+  },
+
+  async getGeminiAutoCrop() {
+    try {
+      const setting = await db.settings.get('geminiAutoCrop');
+      if (setting && setting.value !== undefined) return !!setting.value;
+      const ls = localStorage.getItem('gemini_auto_crop');
+      if (ls !== null) return ls === 'true';
+    } catch (_) {}
+    return true; // Mặc định tự crop
+  },
+
+  async getGeminiAutoScan() {
+    try {
+      const setting = await db.settings.get('geminiAutoScan');
+      if (setting && setting.value !== undefined) return !!setting.value;
+      const ls = localStorage.getItem('gemini_auto_scan');
+      if (ls !== null) return ls === 'true';
+    } catch (_) {}
+    return true; // Mặc định tự quét khi chụp/tải ảnh
+  },
+
+  async loadGeminiSettings() {
+    const keyInput = document.getElementById('settings-gemini-api-key');
+    const badge = document.getElementById('ai-key-status-badge');
+    const envSourceAlert = document.getElementById('ai-key-env-source-alert');
+    const clearBtn = document.getElementById('btn-clear-gemini-key');
+    const modelSelect = document.getElementById('settings-gemini-model');
+    const autoCropToggle = document.getElementById('settings-gemini-auto-crop');
+    const autoScanToggle = document.getElementById('settings-gemini-auto-scan');
+
+    const apiKey = await this.getGeminiApiKey();
+    const model = await this.getGeminiModel();
+    const autoCrop = await this.getGeminiAutoCrop();
+    const autoScan = await this.getGeminiAutoScan();
+
+    if (modelSelect) modelSelect.value = model;
+    if (autoCropToggle) autoCropToggle.checked = autoCrop;
+    if (autoScanToggle) autoScanToggle.checked = autoScan;
+
+    // Kiểm tra xem key có nguồn từ Env/Docker không
+    let isFromEnv = false;
+    if (window.EnvConfig) {
+      const envKey = window.EnvConfig.get('GEMINI_API_KEY') || window.EnvConfig.get('VITE_GEMINI_API_KEY');
+      if (envKey && envKey.trim()) isFromEnv = true;
+    }
+
+    if (keyInput) {
+      keyInput.value = apiKey;
+    }
+
+    if (envSourceAlert) {
+      envSourceAlert.style.display = (isFromEnv && apiKey) ? 'block' : 'none';
+    }
+
+    if (badge) {
+      if (apiKey) {
+        badge.textContent = isFromEnv ? '✓ Sẵn sàng (Máy chủ Docker)' : '✓ Sẵn sàng';
+        badge.className = 'settings-status-pill pill-green';
+      } else {
+        badge.textContent = 'Chưa cấu hình';
+        badge.className = 'settings-status-pill pill-gray';
+      }
+    }
+
+    if (clearBtn) {
+      clearBtn.style.display = apiKey ? 'inline-flex' : 'none';
+    }
+
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async saveGeminiSettings(showToastMsg = true) {
+    const keyInput = document.getElementById('settings-gemini-api-key');
+    const modelSelect = document.getElementById('settings-gemini-model');
+    const autoCropToggle = document.getElementById('settings-gemini-auto-crop');
+    const autoScanToggle = document.getElementById('settings-gemini-auto-scan');
+
+    const rawKey = keyInput ? keyInput.value.trim() : '';
+    const model = modelSelect ? modelSelect.value : 'gemini-2.0-flash';
+    const autoCrop = autoCropToggle ? autoCropToggle.checked : true;
+    const autoScan = autoScanToggle ? autoScanToggle.checked : true;
+
+    try {
+      await db.settings.put({ key: 'geminiApiKey', value: rawKey });
+      await db.settings.put({ key: 'geminiModel', value: model });
+      await db.settings.put({ key: 'geminiAutoCrop', value: autoCrop });
+      await db.settings.put({ key: 'geminiAutoScan', value: autoScan });
+
+      localStorage.setItem('gemini_api_key', rawKey);
+      localStorage.setItem('gemini_model', model);
+      localStorage.setItem('gemini_auto_crop', autoCrop ? 'true' : 'false');
+      localStorage.setItem('gemini_auto_scan', autoScan ? 'true' : 'false');
+
+      await this.loadGeminiSettings();
+      await this.updateHubBadges();
+
+      if (window.UITransactions && typeof window.UITransactions.updateAIStatus === 'function') {
+        window.UITransactions.updateAIStatus();
+      }
+
+      if (showToastMsg) {
+        showToast('Đã lưu cấu hình Trợ lý AI thành công!', 'success');
+      }
+    } catch (err) {
+      console.error('Lỗi lưu cấu hình Gemini:', err);
+      showToast('Lỗi khi lưu cấu hình: ' + err.message, 'error');
+    }
+  },
+
+  toggleGeminiKeyVisibility() {
+    const keyInput = document.getElementById('settings-gemini-api-key');
+    const icon = document.getElementById('icon-toggle-gemini-key');
+    if (!keyInput) return;
+    if (keyInput.type === 'password') {
+      keyInput.type = 'text';
+      if (icon) icon.setAttribute('data-lucide', 'eye-off');
+    } else {
+      keyInput.type = 'password';
+      if (icon) icon.setAttribute('data-lucide', 'eye');
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async clearGeminiKey() {
+    const ok = await showConfirm({
+      title: 'Xoá Gemini API Key',
+      message: 'Bạn có chắc chắn muốn xoá mã khoá API Gemini đã lưu trên máy này?',
+      confirmText: 'Xoá Key',
+      cancelText: 'Huỷ',
+      icon: 'trash-2'
+    });
+    if (!ok) return;
+
+    try {
+      await db.settings.delete('geminiApiKey');
+      localStorage.removeItem('gemini_api_key');
+      const keyInput = document.getElementById('settings-gemini-api-key');
+      if (keyInput) keyInput.value = '';
+      await this.loadGeminiSettings();
+      await this.updateHubBadges();
+      if (window.UITransactions && typeof window.UITransactions.updateAIStatus === 'function') {
+        window.UITransactions.updateAIStatus();
+      }
+      showToast('Đã xoá khoá API Gemini', 'info');
+    } catch (err) {
+      showToast('Lỗi khi xoá: ' + err.message, 'error');
+    }
+  },
+
+  async testGeminiApiKey() {
+    const apiKey = await this.getGeminiApiKey();
+    if (!apiKey) {
+      showToast('Vui lòng nhập hoặc lưu Gemini API Key trước khi kiểm tra!', 'warning');
+      return;
+    }
+    const model = await this.getGeminiModel();
+    showToast('Đang kiểm tra kết nối với Google Gemini...', 'info');
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'Trả về từ: OK' }] }]
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error?.message || `Mã phản hồi HTTP ${res.status}`);
+      }
+
+      showToast(`Kết nối thành công tới ${model}! API Key hoàn toàn hợp lệ.`, 'success');
+      await this.loadGeminiSettings();
+      await this.updateHubBadges();
+    } catch (err) {
+      console.error('Lỗi kiểm tra Gemini Key:', err);
+      showToast('Kiểm tra thất bại: ' + err.message, 'error');
     }
   }
 };

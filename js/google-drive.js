@@ -309,11 +309,14 @@ class GoogleDriveSync {
     return true;
   }
 
-  // Dọn dẹp sạch các iframe / modal rác do Google Identity Services (GIS) tự chèn vào DOM bị kẹt
+  // Dọn dẹp sạch các iframe / modal rác do Google Identity Services (GIS) hoặc Google Picker tự chèn vào DOM bị kẹt
   cleanupGoogleIframes() {
     try {
       const dismissBtn = document.getElementById('google-iframe-dismiss-btn');
       if (dismissBtn) dismissBtn.remove();
+
+      const pickerBtn = document.getElementById('google-picker-close-btn');
+      if (pickerBtn) pickerBtn.remove();
 
       const overlay = document.getElementById('google-iframe-reauth-overlay');
       if (overlay) overlay.remove();
@@ -324,7 +327,10 @@ class GoogleDriveSync {
       const pickerIframe = document.getElementById('credential_picker_iframe');
       if (pickerIframe) pickerIframe.remove();
 
-      const iframes = document.querySelectorAll('iframe[src*="accounts.google.com"]');
+      const dialogs = document.querySelectorAll('.picker-dialog, .picker-dialog-bg');
+      dialogs.forEach(d => d.remove());
+
+      const iframes = document.querySelectorAll('iframe[src*="accounts.google.com"], iframe[src*="docs.google.com"], iframe[src*="picker"]');
       iframes.forEach(iframe => {
         const parent = iframe.parentElement;
         if (parent && parent !== document.body && (parent.style.position === 'fixed' || parent.style.position === 'absolute')) {
@@ -336,13 +342,106 @@ class GoogleDriveSync {
     } catch (_) {}
   }
 
-  // Tự động phát hiện khi có iframe Google bị kẹt (lỗi cookie/phiên) và thay thế bằng bảng "Cần làm mới đăng nhập" kèm nút Đăng nhập lại
+  // Hiển thị banner nổi phía dưới: "Cần Làm Mới Đăng Nhập Google" kèm nút [Đăng Nhập Lại]
+  showGoogleReauthOverlay(options = {}) {
+    let overlay = document.getElementById('google-iframe-reauth-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'google-iframe-reauth-overlay';
+      Object.assign(overlay.style, {
+        position: 'fixed',
+        bottom: '24px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: '2147483647',
+        width: 'calc(100% - 32px)',
+        maxWidth: '400px',
+        background: 'rgba(15, 23, 42, 0.96)',
+        backdropFilter: 'blur(16px)',
+        webkitBackdropFilter: 'blur(16px)',
+        border: '1.5px solid rgba(59, 130, 246, 0.5)',
+        borderRadius: '16px',
+        padding: '16px 18px',
+        boxShadow: '0 12px 36px rgba(0, 0, 0, 0.7)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        textAlign: 'center',
+        boxSizing: 'border-box'
+      });
+
+      overlay.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #f59e0b; font-weight: 700; font-size: 0.96rem;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          <span>Cần Làm Mới Đăng Nhập Google</span>
+        </div>
+        <p style="font-size: 0.82rem; color: #cbd5e1; margin: 0; line-height: 1.45;">
+          Trình duyệt chặn cookie trong khung Google. Vui lòng bấm bên dưới để mở cửa sổ đăng nhập độc lập.
+        </p>
+        <div style="display: flex; gap: 10px; margin-top: 4px;">
+          <button type="button" id="btn-reauth-overlay-login" style="flex: 1; padding: 11px 16px; background: #2563eb; color: #ffffff; border: none; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 10px rgba(37, 99, 235, 0.45); -webkit-tap-highlight-color: transparent;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+            <span>Đăng Nhập Lại</span>
+          </button>
+          <button type="button" id="btn-reauth-overlay-close" style="padding: 11px 16px; background: rgba(255, 255, 255, 0.12); color: #ffffff; border: 1.5px solid rgba(255, 255, 255, 0.2); border-radius: 10px; font-weight: 500; font-size: 0.9rem; cursor: pointer; -webkit-tap-highlight-color: transparent;">
+            Đóng
+          </button>
+        </div>
+      `;
+
+      const loginActionBtn = overlay.querySelector('#btn-reauth-overlay-login');
+      const closeActionBtn = overlay.querySelector('#btn-reauth-overlay-close');
+
+      if (loginActionBtn) {
+        loginActionBtn.onclick = async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.cleanupGoogleIframes();
+          if (typeof options.onClose === 'function') options.onClose();
+          try {
+            if (typeof showToast === 'function') showToast('Đang mở màn hình xác thực Google...', 'info');
+            await this.requestToken({ interactive: true, prompt: 'select_account' });
+            this.autoSync = true;
+            await db.settings.put({ key: 'autoSyncEnabled', value: true });
+            if (typeof showToast === 'function') showToast('Đăng nhập Google thành công!', 'success');
+            if (window.SyncCoordinator && typeof window.SyncCoordinator.syncAll === 'function') {
+              await window.SyncCoordinator.syncAll(true);
+            } else {
+              await this.sync();
+            }
+            if (window.app && typeof window.app.refreshAll === 'function') {
+              await window.app.refreshAll();
+            }
+            if (typeof options.onReauthSuccess === 'function') {
+              options.onReauthSuccess();
+            }
+          } catch (reauthErr) {
+            if (typeof showToast === 'function') showToast(reauthErr?.message || 'Chưa hoàn tất đăng nhập', 'warning');
+          }
+        };
+      }
+
+      if (closeActionBtn) {
+        closeActionBtn.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.cleanupGoogleIframes();
+          if (typeof options.onClose === 'function') options.onClose();
+        };
+      }
+
+      document.body.appendChild(overlay);
+    }
+    return overlay;
+  }
+
+  // Tự động phát hiện khi có iframe Google / Google Picker bị kẹt (lỗi cookie/phiên) và thay thế bằng bảng "Cần làm mới đăng nhập" kèm nút Đăng nhập lại
   setupGoogleIframeDismissWatcher() {
     if (this._iframeDismissWatcherActive) return;
     this._iframeDismissWatcherActive = true;
 
     const checkAndAttachDismissBtn = () => {
-      const iframes = document.querySelectorAll('iframe[src*="accounts.google.com"]');
+      const iframes = document.querySelectorAll('iframe[src*="accounts.google.com"], iframe[src*="docs.google.com"], iframe[src*="picker"], .picker-dialog');
       const hasVisibleIframe = Array.from(iframes).some(f => {
         try {
           const style = window.getComputedStyle(f);
@@ -353,11 +452,11 @@ class GoogleDriveSync {
       });
 
       let btn = document.getElementById('google-iframe-dismiss-btn');
-      let overlay = document.getElementById('google-iframe-reauth-overlay');
+      let pickerBtn = document.getElementById('google-picker-close-btn');
 
       if (hasVisibleIframe) {
         // 1. Nút "✕" đóng khẩn cấp
-        if (!btn) {
+        if (!btn && !pickerBtn) {
           btn = document.createElement('button');
           btn.id = 'google-iframe-dismiss-btn';
           btn.setAttribute('aria-label', 'Đóng cửa sổ Google');
@@ -391,91 +490,13 @@ class GoogleDriveSync {
         }
 
         // 2. Banner đè bên dưới: "Phiên đăng nhập cần làm mới" kèm nút [Đăng nhập lại]
-        if (!overlay) {
-          overlay = document.createElement('div');
-          overlay.id = 'google-iframe-reauth-overlay';
-          Object.assign(overlay.style, {
-            position: 'fixed',
-            bottom: '24px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: '2147483647',
-            width: 'calc(100% - 32px)',
-            maxWidth: '400px',
-            background: 'rgba(15, 23, 42, 0.95)',
-            backdropFilter: 'blur(12px)',
-            webkitBackdropFilter: 'blur(12px)',
-            border: '1.5px solid rgba(59, 130, 246, 0.4)',
-            borderRadius: '16px',
-            padding: '14px 16px',
-            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.6)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-            textAlign: 'center',
-            boxSizing: 'border-box'
-          });
-
-          overlay.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #f59e0b; font-weight: 700; font-size: 0.95rem;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-              <span>Cần Làm Mới Đăng Nhập Google</span>
-            </div>
-            <p style="font-size: 0.8rem; color: #94a3b8; margin: 0; line-height: 1.4;">
-              Trình duyệt chặn cookie trong khung Google. Vui lòng bấm bên dưới để mở cửa sổ đăng nhập độc lập.
-            </p>
-            <div style="display: flex; gap: 8px; margin-top: 2px;">
-              <button type="button" id="btn-reauth-overlay-login" style="flex: 1; padding: 10px 14px; background: #2563eb; color: #ffffff; border: none; border-radius: 10px; font-weight: 600; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
-                <span>Đăng Nhập Lại</span>
-              </button>
-              <button type="button" id="btn-reauth-overlay-close" style="padding: 10px 14px; background: rgba(255, 255, 255, 0.1); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 10px; font-weight: 500; font-size: 0.88rem; cursor: pointer;">
-                Đóng
-              </button>
-            </div>
-          `;
-
-          const loginActionBtn = overlay.querySelector('#btn-reauth-overlay-login');
-          const closeActionBtn = overlay.querySelector('#btn-reauth-overlay-close');
-
-          if (loginActionBtn) {
-            loginActionBtn.onclick = async (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              this.cleanupGoogleIframes();
-              try {
-                if (typeof showToast === 'function') showToast('Đang mở màn hình xác thực Google...', 'info');
-                await this.requestToken({ interactive: true, prompt: 'select_account' });
-                this.autoSync = true;
-                await db.settings.put({ key: 'autoSyncEnabled', value: true });
-                if (typeof showToast === 'function') showToast('Đăng nhập Google thành công!', 'success');
-                if (window.SyncCoordinator && typeof window.SyncCoordinator.syncAll === 'function') {
-                  await window.SyncCoordinator.syncAll(true);
-                } else {
-                  await this.sync();
-                }
-                if (window.app && typeof window.app.refreshAll === 'function') {
-                  await window.app.refreshAll();
-                }
-              } catch (reauthErr) {
-                if (typeof showToast === 'function') showToast(reauthErr?.message || 'Chưa hoàn tất đăng nhập', 'warning');
-              }
-            };
-          }
-
-          if (closeActionBtn) {
-            closeActionBtn.onclick = (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              this.cleanupGoogleIframes();
-            };
-          }
-
-          document.body.appendChild(overlay);
-        }
+        this.showGoogleReauthOverlay();
       } else {
         if (btn) btn.remove();
-        if (overlay) overlay.remove();
+        if (!pickerBtn) {
+          const overlay = document.getElementById('google-iframe-reauth-overlay');
+          if (overlay) overlay.remove();
+        }
       }
     };
 
@@ -3037,6 +3058,19 @@ class GoogleDriveSync {
     };
     document.body.appendChild(btn);
 
+    // Hiển thị banner trợ giúp đăng nhập lại nếu Google Picker bị lỗi/chặn cookie
+    this.showGoogleReauthOverlay({
+      onClose: () => {
+        this._removePickerCloseButton();
+        if (typeof onClose === 'function') onClose();
+      },
+      onReauthSuccess: () => {
+        if (window.ReceiveShareModal && typeof window.ReceiveShareModal.pickGoogleDriveDirectly === 'function') {
+          setTimeout(() => window.ReceiveShareModal.pickGoogleDriveDirectly(), 300);
+        }
+      }
+    });
+
     // Bắt sự kiện click vào backdrop xám bên ngoài của Google Picker để đóng
     const bgWatcher = setInterval(() => {
       const bgs = document.querySelectorAll('.picker-dialog-bg');
@@ -3056,6 +3090,8 @@ class GoogleDriveSync {
   _removePickerCloseButton() {
     const btn = document.getElementById('google-picker-close-btn');
     if (btn) btn.remove();
+    const overlay = document.getElementById('google-iframe-reauth-overlay');
+    if (overlay) overlay.remove();
     const dialogs = document.querySelectorAll('.picker-dialog, .picker-dialog-bg');
     dialogs.forEach(d => d.remove());
   }
