@@ -508,13 +508,21 @@ const UISettings = {
         roleBadge.className = isOwner ? 'sync-vault-role-pill owner' : 'sync-vault-role-pill editor';
       }
 
+      const hasValidToken = window.googleDriveService && window.googleDriveService.hasValidToken();
       if (loginBtn) {
-        loginBtn.innerHTML = '<i data-lucide="check-circle" style="width: 16px; height: 16px; color: #10b981;"></i> Đã Đăng Nhập';
+        if (hasValidToken) {
+          loginBtn.innerHTML = '<i data-lucide="check-circle" style="width: 16px; height: 16px; color: #10b981;"></i> Đã Đăng Nhập';
+          loginBtn.className = 'btn-secondary';
+        } else {
+          loginBtn.innerHTML = '<i data-lucide="refresh-cw" style="width: 16px; height: 16px; color: #f59e0b;"></i> Kết Nối Lại';
+          loginBtn.className = 'btn-primary';
+        }
       }
     } else {
       card.style.display = 'none';
       if (loginBtn) {
         loginBtn.innerHTML = '<i data-lucide="log-in" style="width: 16px; height: 16px;"></i> Đăng Nhập Google';
+        loginBtn.className = 'btn-primary';
       }
     }
 
@@ -2237,8 +2245,7 @@ const UISettings = {
         if (!window.googleDriveService) return;
         showToast('Đang kết nối Google Identity Services...', 'info');
         const drive = window.googleDriveService;
-        const promptMode = (drive.userProfile && drive.userProfile.email) ? '' : 'select_account';
-        await drive.requestToken({ prompt: promptMode, interactive: true });
+        await drive.requestToken({ prompt: 'select_account', interactive: true });
 
         // Tự động kích hoạt tự động đồng bộ khi đăng nhập
         window.googleDriveService.autoSync = true;

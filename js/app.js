@@ -354,23 +354,9 @@ class App {
               window.googleDriveService.sync().catch(e => console.warn('Startup sync:', e));
             }
           } else if (window.googleDriveService.userProfile?.email) {
-            if (typeof window.googleDriveService.cannotSilentRefresh === 'function' && window.googleDriveService.cannotSilentRefresh()) {
-              console.log('[GoogleDrive] Môi trường iOS/Safari/PWA: Bỏ qua gia hạn ngầm khi mở app (bấm vào Avatar để kết nối lại).');
-            } else {
-              console.log('[GoogleDrive] Thử gia hạn ngầm phiên đăng nhập với email đã nhớ...');
-              window.googleDriveService.requestToken({ prompt: '', interactive: false })
-                .then(async () => {
-                  console.log('[GoogleDrive] Gia hạn ngầm thành công khi mở app! Bắt đầu đồng bộ...');
-                  if (window.SyncCoordinator) {
-                    await window.SyncCoordinator.syncAll(true);
-                  } else {
-                    await window.googleDriveService.sync();
-                  }
-                  await this.refreshAll();
-                })
-                .catch(err => {
-                  console.log('[GoogleDrive] Trình duyệt chặn kết nối ngầm (sẵn sàng kết nối khi bấm vào Avatar):', err.message);
-                });
+            console.log('[GoogleDrive] Phiên đăng nhập Google Drive đã hết hạn khi mở app. Chờ người dùng kết nối lại.');
+            if (window.SyncCoordinator && typeof window.SyncCoordinator.updateUI === 'function') {
+              window.SyncCoordinator.updateUI();
             }
           }
         }

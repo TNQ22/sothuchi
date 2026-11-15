@@ -201,7 +201,7 @@ class SyncCoordinator {
               }
               if (!refreshed && !driveAdapter.hasValidToken()) {
                 if (!isAuto) {
-                  await driveAdapter.requestToken({ interactive: true });
+                  await driveAdapter.requestToken({ interactive: true, prompt: 'select_account' });
                 } else {
                   throw new Error('Lỗi xác thực');
                 }

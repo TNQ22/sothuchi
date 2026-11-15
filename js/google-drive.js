@@ -175,7 +175,7 @@ class GoogleDriveSync {
           this.accessToken = null;
           this.tokenExpiresAt = 0;
           if (this.workerUrl && this.refreshToken && this.clientId) {
-            this.refreshViaWorker().catch(e => console.warn('[GoogleDrive] Auto-refresh on init failed:', e));
+            await this.refreshViaWorker().catch(e => console.warn('[GoogleDrive] Auto-refresh on init failed:', e));
           }
         }
       } catch (tErr) {}
@@ -247,12 +247,7 @@ class GoogleDriveSync {
       } catch (_) {}
     }
     if (interactive) {
-      try {
-        return await this.requestToken({ interactive: true, prompt: '' });
-      } catch (err) {
-        console.warn('[GoogleDriveSync] Silent token refresh failed, prompting select_account:', err);
-        return await this.requestToken({ interactive: true, prompt: 'select_account' });
-      }
+      return await this.requestToken({ interactive: true, prompt: 'select_account' });
     }
     if (this.accessToken && this.hasValidToken(0)) return this.accessToken;
     throw new Error('Chưa kết nối Google Drive hoặc phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.');
@@ -306,17 +301,12 @@ class GoogleDriveSync {
     }
   }
 
-  // Kiểm tra xem môi trường hiện tại có bị chặn cookie bên thứ 3 trong iframe không (iOS Safari, iOS PWA, WebKit)
+  // Kiểm tra xem môi trường hiện tại có thể refresh ngầm hay không
   cannotSilentRefresh() {
-    // Nếu có Worker backend thì luôn refresh ngầm an toàn bằng HTTP POST
+    // Chỉ có thể refresh ngầm an toàn nếu có Worker backend + Refresh Token (bằng HTTP POST, không dùng iframe)
     if (this.workerUrl && this.refreshToken) return false;
-
-    // Các môi trường chặn cookie bên thứ ba trong iframe: iOS Safari, PWA Standalone trên iPhone, Safari desktop
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isStandalone = Boolean(window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches));
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    return isIOS || isStandalone || isSafari;
+    // Client-side GIS thuần túy bị chặn cookie bên thứ ba trong iframe trên mọi trình duyệt hiện đại
+    return true;
   }
 
   // Dọn dẹp sạch các iframe / modal rác do Google Identity Services (GIS) tự chèn vào DOM bị kẹt
@@ -423,7 +413,7 @@ class GoogleDriveSync {
 
   setupTokenRefreshTimer() {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
-    // Mỗi 35 phút (trước khi token 60 phút hết hạn), tự động làm mới phiên ngầm
+    // Mỗi 35 phút (trước khi token 60 phút hết hạn), tự động làm mới ngầm qua Worker (nếu có cấu hình)
     this.refreshTimer = setInterval(async () => {
       if (this.clientId && this.userProfile?.email && this.autoSync) {
         if (this.workerUrl && this.refreshToken) {
@@ -431,13 +421,6 @@ class GoogleDriveSync {
             await this.refreshViaWorker();
             console.log('[GoogleDrive] Đã tự động gia hạn token qua Worker!');
           } catch (e) {}
-        } else if (!this.cannotSilentRefresh()) {
-          try {
-            await this.requestToken({ prompt: '', interactive: false });
-            console.log('[GoogleDrive] Đã tự động gia hạn phiên đăng nhập ngầm thành công!');
-          } catch (e) {
-            console.log('[GoogleDrive] Chưa thể gia hạn ngầm (sẽ gia hạn khi tương tác):', e.message);
-          }
         }
       }
     }, 35 * 60 * 1000);
@@ -500,6 +483,18 @@ class GoogleDriveSync {
   async requestToken(options = {}) {
     if (!this.clientId) {
       throw new Error('Vui lòng nhập Google Client ID trong mục Cài đặt trước khi kết nối.');
+    }
+
+    // Nếu chạy ngầm (không tương tác): tuyệt đối không chèn iframe GIS (tránh lỗi kẹt iframe cookie)
+    if (!options.interactive && !options.forceCode) {
+      if (this.workerUrl && this.refreshToken && this.clientId) {
+        const refreshed = await this.refreshViaWorker();
+        if (refreshed && this.hasValidToken()) {
+          return this.accessToken;
+        }
+        throw new Error('Không thể làm mới token qua Cloudflare Worker');
+      }
+      return Promise.reject(new Error('Phiên đăng nhập Google Drive đã hết hạn. Vui lòng bấm vào biểu tượng để kết nối lại.'));
     }
 
     if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
@@ -589,13 +584,9 @@ class GoogleDriveSync {
       });
     }
 
-    const promptValue = options.prompt !== undefined ? options.prompt : (options.forceSelect ? 'select_account' : '');
-    const isInteractive = promptValue === 'select_account' || options.interactive;
-
-    // Chặn yêu cầu ngầm trên iOS/Safari/PWA để tránh lỗi kẹt iframe "Không thể truy cập vào Tài khoản Google của bạn"
-    if (!isInteractive && this.cannotSilentRefresh()) {
-      return Promise.reject(new Error('Môi trường iOS/Safari/PWA chặn cookie bên thứ 3 trong iframe, bỏ qua gia hạn ngầm. Hãy bấm vào Avatar để kết nối.'));
-    }
+    // Khi tương tác: luôn dùng popup với 'select_account' để mở cửa sổ đăng nhập an toàn, không dùng iframe
+    const promptValue = 'select_account';
+    const isInteractive = true;
 
     return new Promise((resolve, reject) => {
       let settled = false;
@@ -1461,7 +1452,7 @@ class GoogleDriveSync {
   // Chia sẻ quyền truy cập sổ cho email Google (Owner mời thành viên, hỗ trợ nhiều email)
   async shareVaultWithEmail(email, role = 'writer') {
     if (!this.accessToken) {
-      await this.requestToken();
+      await this.ensureToken(true);
     }
 
     // Google Drive không cho phép chia sẻ file trong 'appDataFolder'.
@@ -1541,20 +1532,11 @@ class GoogleDriveSync {
 
         if (!refreshedViaWorker && !this.hasValidToken()) {
           if (options.interactive) {
-            await this.requestToken({ interactive: true });
-          } else if (!this.cannotSilentRefresh()) {
-            try {
-              await this.requestToken({ prompt: '', interactive: false });
-            } catch (tokErr) {
-              this.accessToken = null;
-              this.tokenExpiresAt = 0;
-              console.warn('[GoogleDrive] Không thể lấy token ngầm:', tokErr.message);
-              throw new Error('Phiên đăng nhập đã hết hạn. Bấm vào Avatar để kết nối lại.');
-            }
+            await this.requestToken({ interactive: true, prompt: 'select_account' });
           } else {
             this.accessToken = null;
             this.tokenExpiresAt = 0;
-            throw new Error('Phiên đăng nhập đã hết hạn. Bấm vào Avatar để kết nối lại.');
+            throw new Error('Phiên đăng nhập Google Drive đã hết hạn. Bấm vào Avatar để kết nối lại.');
           }
         }
       }
