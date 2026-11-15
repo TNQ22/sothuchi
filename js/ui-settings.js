@@ -2036,6 +2036,9 @@ const UISettings = {
           advChevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
           advChevron.style.color = isHidden ? 'var(--primary)' : 'var(--text-muted)';
         }
+        if (isHidden && window.lucide) {
+          lucide.createIcons();
+        }
       });
     }
 
