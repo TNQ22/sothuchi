@@ -2044,17 +2044,17 @@
             <div class="settings-group">
               <div class="settings-group-label">TIỆN ÍCH & TRỢ LÝ THÔNG MINH</div>
               <div class="settings-nav-card">
-                <!-- Mục 6.5: Trợ lý AI Quét Hoá Đơn (Google Gemini Flash) -->
-                <div class="settings-nav-item" onclick="UISettings.openSection('ai-gemini')">
+                <!-- Mục 6.5: Nhận Diện Hoá Đơn (OCR Offline) -->
+                <div class="settings-nav-item" onclick="UISettings.openSection('ocr-scanner')">
                   <div class="settings-item-icon-box" style="background: rgba(13, 148, 136, 0.15); color: var(--primary);">
-                    <i data-lucide="sparkles"></i>
+                    <i data-lucide="scan-text"></i>
                   </div>
                   <div class="settings-item-content">
                     <div class="settings-item-title-row">
-                      <span class="settings-item-title">Trợ Lý AI Quét Hoá Đơn</span>
-                      <span id="hub-ai-badge" class="settings-status-pill pill-gray">Chưa cài đặt</span>
+                      <span class="settings-item-title">Nhận Diện Hoá Đơn (OCR Offline)</span>
+                      <span id="hub-ai-badge" class="settings-status-pill pill-green">Sẵn sàng</span>
                     </div>
-                    <div class="settings-item-desc">Đọc hoá đơn, tự crop, bóc tách món & danh mục (100% Miễn phí)</div>
+                    <div class="settings-item-desc">Đọc số tiền, danh mục & món ăn hoàn toàn ngoại tuyến</div>
                   </div>
                   <i data-lucide="chevron-right" class="settings-item-arrow"></i>
                 </div>
@@ -3051,96 +3051,47 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
             </div>
 
             <!-- ==========================================
-                 PANEL 7.5: TRỢ LÝ AI QUÉT HOÁ ĐƠN (GOOGLE GEMINI)
+                 PANEL 7.5: NHẬN DIỆN HOÁ ĐƠN (OCR OFFLINE)
                  ========================================== -->
-            <div id="panel-ai-gemini" class="settings-detail-panel">
+            <div id="panel-ocr-scanner" class="settings-detail-panel">
               <!-- Header info card -->
               <div class="settings-card-clean" style="margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                   <div style="display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="sparkles" style="width: 18px; height: 18px; color: var(--primary);"></i>
-                    <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">Google Gemini Flash</span>
+                    <i data-lucide="scan-text" style="width: 18px; height: 18px; color: var(--primary);"></i>
+                    <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">Nhận Diện Hoá Đơn (OCR Offline)</span>
                   </div>
-                  <span class="badge" style="font-size: 0.72rem; padding: 3px 8px; background: rgba(16, 185, 129, 0.15); color: #10b981; border-radius: 9999px; font-weight: 600;">100% Miễn Phí</span>
+                  <span class="badge" style="font-size: 0.72rem; padding: 3px 8px; background: rgba(16, 185, 129, 0.15); color: #10b981; border-radius: 9999px; font-weight: 600;">100% Ngoại Tuyến</span>
                 </div>
                 <p class="settings-lead-text" style="font-size: 0.82rem; margin-bottom: 0;">
-                  Trợ lý AI tự động nhận diện hoá đơn từ ảnh chụp, bóc tách từng món và giá tiền vào ghi chú, tự động chọn danh mục phù hợp và crop hoá đơn gọn gàng.
+                  Công nghệ quét ký tự quang học Tesseract OCR và mã QR chạy trực tiếp trên thiết bị của bạn. Không cần internet, không tốn phí API, bảo mật tuyệt đối 100%.
                 </p>
               </div>
 
-              <!-- Thẻ Cấu hình API Key -->
+              <!-- Thẻ Tuỳ chọn Quét Hoá Đơn & Bóc Tách Thông Tin -->
               <div class="settings-card-clean" style="margin-bottom: 12px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                  <span style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary);">Google Gemini API Key</span>
-                  <span id="ai-key-status-badge" class="settings-status-pill pill-gray" style="font-size: 0.7rem;">Chưa cấu hình</span>
-                </div>
-
-                <div id="ai-key-env-source-alert" style="display: none; background: rgba(13, 148, 136, 0.1); border: 1px solid rgba(13, 148, 136, 0.3); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; font-size: 0.78rem; color: var(--primary);">
-                  <i data-lucide="server" style="width: 13px; height: 13px; vertical-align: middle; margin-right: 4px;"></i>
-                  <span>Đang sử dụng API Key từ Máy chủ Docker / file .env</span>
-                </div>
-
-                <div class="form-group" style="position: relative; margin-bottom: 12px;">
-                  <input type="password" id="settings-gemini-api-key" class="form-control" placeholder="Dán Gemini API Key tại đây (bắt đầu bằng AIzaSy...)" style="padding-right: 40px; font-family: monospace; font-size: 0.84rem;">
-                  <button type="button" id="btn-toggle-gemini-key" onclick="UISettings.toggleGeminiKeyVisibility()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px;">
-                    <i data-lucide="eye" id="icon-toggle-gemini-key" style="width: 16px; height: 16px;"></i>
-                  </button>
-                </div>
-
-                <div style="display: flex; gap: 8px;">
-                  <button type="button" class="btn-emerald" style="flex: 1; height: 42px; font-size: 0.84rem;" onclick="UISettings.saveGeminiSettings()">
-                    <i data-lucide="check" style="width: 16px; height: 16px;"></i>
-                    <span>Lưu Cài Đặt</span>
-                  </button>
-                  <button type="button" class="btn-secondary" style="height: 42px; padding: 0 14px; font-size: 0.84rem;" onclick="UISettings.testGeminiApiKey()">
-                    <i data-lucide="zap" style="width: 15px; height: 15px; color: var(--warning);"></i>
-                    <span>Kiểm Tra</span>
-                  </button>
-                  <button type="button" class="btn-secondary" id="btn-clear-gemini-key" style="height: 42px; padding: 0 12px; font-size: 0.84rem; display: none;" onclick="UISettings.clearGeminiKey()" title="Xoá Key">
-                    <i data-lucide="trash-2" style="width: 15px; height: 15px; color: #ef4444;"></i>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Thẻ Tuỳ chọn Mô hình & Hành vi -->
-              <div class="settings-card-clean" style="margin-bottom: 12px;">
-                <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 12px;">Tuỳ Chọn Quét Hoá Đơn</div>
-
-                <!-- Bật / Tắt AI Quét Hoá Đơn (Master Switch) -->
-                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
-                  <div>
-                    <div style="font-weight: 600; font-size: 0.86rem;">Kích hoạt Trợ lý AI Quét hoá đơn</div>
-                    <div style="font-size: 0.74rem; color: var(--text-muted);">Bật nút quét thông minh bằng Gemini Flash khi đính kèm ảnh</div>
-                  </div>
-                  <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
-                    <input type="checkbox" id="settings-gemini-enabled" checked onchange="UISettings.saveGeminiSettings(false)">
-                    <span class="app-switch-slider slider round"></span>
-                  </label>
-                </div>
-
-                <!-- Chọn Mô hình AI -->
-                <div style="padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
-                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                    <div>
-                      <div style="font-weight: 600; font-size: 0.86rem;">Mô hình Gemini</div>
-                      <div style="font-size: 0.74rem; color: var(--text-muted);">Mặc định phiên bản chuẩn mới nhất của Google</div>
-                    </div>
-                    <select id="settings-gemini-model" class="form-control" style="width: 175px; font-size: 0.82rem;" onchange="UISettings.handleModelSelectChange()">
-                      <option value="gemini-3.8-flash">Gemini 3.8 Flash (Mới nhất)</option>
-                      <option value="custom">✏️ Tự nhập mô hình...</option>
-                    </select>
-                  </div>
-                  <input type="text" id="settings-gemini-model-custom" class="form-control" placeholder="Nhập tên model, ví dụ: gemini-3.8-flash" style="display: none; font-size: 0.8rem; margin-top: 6px;" onchange="UISettings.saveGeminiSettings(false)">
-                </div>
+                <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 12px;">Tuỳ Chọn Quét & Tự Động Điền</div>
 
                 <!-- Tự động điền số tiền -->
                 <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
                   <div>
                     <div style="font-weight: 600; font-size: 0.86rem;">Tự động điền số tiền</div>
-                    <div style="font-size: 0.74rem; color: var(--text-muted);">Đọc tổng tiền thanh toán và điền vào ô số tiền</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Đọc tổng tiền thanh toán từ hoá đơn/QR và điền vào ô số tiền</div>
                   </div>
                   <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
-                    <input type="checkbox" id="settings-gemini-auto-amount" checked onchange="UISettings.saveGeminiSettings(false)">
+                    <input type="checkbox" id="settings-ocr-auto-amount" checked onchange="UISettings.saveOCRSettings(false)">
+                    <span class="app-switch-slider slider round"></span>
+                  </label>
+                </div>
+
+                <!-- Tự động chọn danh mục bằng OCR -->
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
+                  <div>
+                    <div style="font-weight: 600; font-size: 0.86rem;">Tự động chọn danh mục bằng OCR</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Tự khớp tên cửa hàng, quán ăn, siêu thị vào danh mục có sẵn</div>
+                  </div>
+                  <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
+                    <input type="checkbox" id="settings-ocr-auto-category" checked onchange="UISettings.saveOCRSettings(false)">
                     <span class="app-switch-slider slider round"></span>
                   </label>
                 </div>
@@ -3149,63 +3100,51 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
                   <div>
                     <div style="font-weight: 600; font-size: 0.86rem;">Tự điền danh sách món & giá</div>
-                    <div style="font-size: 0.74rem; color: var(--text-muted);">Bóc tách từng món vào ghi chú theo từng dòng</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Bóc tách từng món vào ghi chú theo từng dòng rõ ràng</div>
                   </div>
                   <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
-                    <input type="checkbox" id="settings-gemini-auto-items" checked onchange="UISettings.saveGeminiSettings(false)">
-                    <span class="app-switch-slider slider round"></span>
-                  </label>
-                </div>
-
-                <!-- Tự động chọn danh mục -->
-                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
-                  <div>
-                    <div style="font-weight: 600; font-size: 0.86rem;">Tự động chọn danh mục</div>
-                    <div style="font-size: 0.74rem; color: var(--text-muted);">Khớp tên cửa hàng/món ăn vào danh mục có sẵn</div>
-                  </div>
-                  <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
-                    <input type="checkbox" id="settings-gemini-auto-category" checked onchange="UISettings.saveGeminiSettings(false)">
-                    <span class="app-switch-slider slider round"></span>
-                  </label>
-                </div>
-
-                <!-- Tự động quét khi chọn ảnh -->
-                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
-                  <div>
-                    <div style="font-weight: 600; font-size: 0.86rem;">Tự động quét ngay khi chụp/tải ảnh</div>
-                    <div style="font-size: 0.74rem; color: var(--text-muted);">Tự động quét ngay không cần bấm nút (tắt nếu muốn kéo cắt tay trước)</div>
-                  </div>
-                  <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
-                    <input type="checkbox" id="settings-gemini-auto-scan" onchange="UISettings.saveGeminiSettings(false)">
+                    <input type="checkbox" id="settings-ocr-auto-items" checked onchange="UISettings.saveOCRSettings(false)">
                     <span class="app-switch-slider slider round"></span>
                   </label>
                 </div>
 
                 <!-- Quét mã QR hoá đơn Offline -->
-                <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
                   <div>
-                    <div style="font-weight: 600; font-size: 0.86rem;">Quét mã QR hoá đơn Offline</div>
-                    <div style="font-size: 0.74rem; color: var(--text-muted);">Đọc số tiền từ mã QR trên hoá đơn / VietQR hoàn toàn offline</div>
+                    <div style="font-weight: 600; font-size: 0.86rem;">Quét mã QR hoá đơn / VietQR</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Nhận diện chuẩn mã VietQR (Tag 54) và mã QR hoá đơn điện tử tức thì</div>
                   </div>
                   <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
-                    <input type="checkbox" id="settings-gemini-offline-qr" checked onchange="UISettings.saveGeminiSettings(false)">
+                    <input type="checkbox" id="settings-ocr-offline-qr" checked onchange="UISettings.saveOCRSettings(false)">
+                    <span class="app-switch-slider slider round"></span>
+                  </label>
+                </div>
+
+                <!-- Tự động quét khi chọn ảnh -->
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <div>
+                    <div style="font-weight: 600; font-size: 0.86rem;">Tự động quét ngay khi chụp/tải ảnh</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Tự động phân tích ngay khi đính kèm ảnh mà không cần bấm nút Quét</div>
+                  </div>
+                  <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
+                    <input type="checkbox" id="settings-ocr-auto-scan" onchange="UISettings.saveOCRSettings(false)">
                     <span class="app-switch-slider slider round"></span>
                   </label>
                 </div>
               </div>
 
-              <!-- Thẻ Hướng dẫn lấy API Key Miễn Phí -->
+              <!-- Thẻ Giới thiệu OCR Ngoại Tuyến -->
               <div class="settings-card-clean">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-                  <i data-lucide="help-circle" style="width: 16px; height: 16px; color: var(--primary);"></i>
-                  <span style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary);">Cách lấy API Key Miễn Phí trong 1 phút</span>
+                  <i data-lucide="shield-check" style="width: 16px; height: 16px; color: #10b981;"></i>
+                  <span style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary);">Ưu Điểm Chế Độ Ngoại Tuyến (Offline)</span>
                 </div>
                 <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.6;">
-                  <div style="margin-bottom: 6px;">1. Truy cập <strong><a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline;">Google AI Studio (aistudio.google.com)</a></strong> và đăng nhập Gmail.</div>
-                  <div style="margin-bottom: 6px;">2. Nhấn nút <strong>"Create API key"</strong> (Tạo khoá API).</div>
-                  <div style="margin-bottom: 8px;">3. Sao chép chuỗi mã khoá và dán vào ô bên trên rồi nhấn <strong>"Lưu Cài Đặt"</strong>.</div>
-                  <div style="background: rgba(16, 185, 129, 0.08); border-radius: 8px; padding: 8px 10px; color: #10b981; font-weight: 500;">
-                    ✓ <strong>Lưu ý:</strong> Hoàn toàn không yêu cầu nhập thẻ tín dụng/Visa. Hạn mức miễn phí 1.500 lượt quét/ngày tha hồ dùng.
+                  <div style="margin-bottom: 6px;">• <strong>Bảo mật tối đa:</strong> Ảnh chụp hoá đơn được xử lý trực tiếp trên chip của máy, không bao giờ được gửi qua internet.</div>
+                  <div style="margin-bottom: 6px;">• <strong>Không cần API Key:</strong> Không phải đăng ký tài khoản Google hay lo lắng về việc khoá API.</div>
+                  <div style="margin-bottom: 6px;">• <strong>Tốc độ phản hồi:</strong> Quét mã VietQR chỉ mất dưới 50ms, đọc OCR chữ số hoá đơn chỉ vài giây.</div>
+                  <div style="background: rgba(13, 148, 136, 0.08); border-radius: 8px; padding: 8px 10px; color: var(--primary); font-weight: 500;">
+                    💡 <strong>Mẹo chụp ảnh:</strong> Chụp hoá đơn thẳng góc, đủ ánh sáng và dùng công cụ Cắt &amp; Căn Chỉnh kiểu iPhone để xoay ngay ngắn giúp OCR đọc chuẩn nhất!
                   </div>
                 </div>
               </div>
@@ -3704,9 +3643,9 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                       <span>Ảnh hoá đơn</span>
                       <span id="tx-attachment-badge" class="tx-attachment-badge" style="display: none;">0 ảnh</span>
                     </div>
-                    <div id="tx-ai-status-pill" class="tx-ai-status-pill" onclick="UITransactions.openAISettingsShortcut()" title="Cài đặt AI Gemini">
-                      <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i>
-                      <span id="tx-ai-status-text">AI Gemini</span>
+                    <div id="tx-ai-status-pill" class="tx-ai-status-pill" onclick="UITransactions.openAISettingsShortcut()" title="Cài đặt Nhận diện OCR">
+                      <i data-lucide="scan-text" style="width: 12px; height: 12px;"></i>
+                      <span id="tx-ai-status-text">OCR Offline</span>
                     </div>
                   </div>
 
@@ -3729,14 +3668,14 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   <!-- Khung hiển thị danh sách ảnh hoá đơn đã đính kèm -->
                   <div id="tx-images-list" class="tx-images-list" style="display: none;"></div>
 
-                  <!-- Khung trạng thái / nút bấm Quét AI thông minh -->
+                  <!-- Khung trạng thái / nút bấm Quét OCR Offline -->
                   <div id="tx-ai-scan-banner" class="tx-ai-scan-banner" style="display: none;">
-                    <button type="button" id="btn-tx-ai-scan" class="btn-ai-scan-magic" onclick="UITransactions.scanReceiptWithAI()">
+                    <button type="button" id="btn-tx-ai-scan" class="btn-ai-scan-magic" onclick="UITransactions.scanReceiptWithOCR()">
                       <div class="btn-ai-scan-content">
-                        <i data-lucide="sparkles" class="icon-sparkle-spin"></i>
-                        <span id="btn-ai-scan-text">Quét hoá đơn với AI (Tự điền món & giá)</span>
+                        <i data-lucide="scan-line" class="icon-sparkle-spin"></i>
+                        <span id="btn-ai-scan-text">Quét hoá đơn (OCR Offline)</span>
                       </div>
-                      <span class="ai-badge-free">Flash</span>
+                      <span class="ai-badge-free">100% Offline</span>
                     </button>
                     <button type="button" id="btn-tx-ai-cancel" class="btn-ai-scan-cancel" onclick="UITransactions.cancelAIScan()" style="display: none;" title="Huỷ quét hoá đơn">
                       <i data-lucide="x"></i>
@@ -7389,103 +7328,104 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
     </div>
   </div>
 
-  <!-- Modal: Cắt & Căn Chỉnh Hoá Đơn (Interactive Touch Canvas Crop) -->
-  <div id="modal-crop-image" class="modal-overlay" style="z-index: 100060; display: none;" onclick="if (event.target === this) UITransactions.closeCropModal()">
-    <div class="modal-dialog crop-modal-dialog">
-      <div class="modal-header" style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
-        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
-          <i data-lucide="crop" style="color: var(--primary); width: 18px; height: 18px;"></i>
-          <span>Cắt & Căn Chỉnh Hoá Đơn</span>
-        </h3>
-        <button type="button" class="btn-icon" onclick="UITransactions.closeCropModal()" title="Đóng">
-          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+  <!-- Modal: Cắt & Căn Chỉnh Hoá Đơn (iPhone Photos App Style) -->
+  <div id="modal-crop-image" class="modal-overlay modal-crop-ios-overlay" style="z-index: 100060; display: none;" onclick="if (event.target === this) UITransactions.closeCropModal()">
+    <div class="crop-modal-dialog ios-theme">
+      <!-- Top Bar: Hủy (X) | Quick Actions (Lật ngang, Xoay 90°, Trọn ảnh) | Xong (Nút vàng check) -->
+      <div class="ios-crop-topbar">
+        <button type="button" class="ios-circle-btn btn-cancel" onclick="UITransactions.closeCropModal()" title="Hủy">
+          <i data-lucide="x"></i>
+        </button>
+
+        <div class="ios-topbar-actions">
+          <button type="button" class="ios-circle-btn" onclick="UITransactions.flipCropHorizontal()" title="Lật ảnh ngang">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 17px; height: 17px;">
+              <path d="M12 3v18" stroke-dasharray="2 2" />
+              <path d="M4 18l5-12v12z" />
+              <path d="M20 18l-5-12v12z" />
+            </svg>
+          </button>
+          <button type="button" class="ios-circle-btn" onclick="UITransactions.rotateCropRight()" title="Xoay 90°">
+            <i data-lucide="rotate-cw" style="width: 17px; height: 17px;"></i>
+          </button>
+          <button type="button" class="ios-circle-btn" onclick="UITransactions.resetCropBoxToFull()" title="Mở rộng trọn ảnh">
+            <i data-lucide="maximize-2" style="width: 17px; height: 17px;"></i>
+          </button>
+        </div>
+
+        <button type="button" class="ios-circle-btn btn-done-yellow" onclick="UITransactions.applyCrop()" title="Áp dụng & Xong">
+          <i data-lucide="check" style="width: 20px; height: 20px; stroke-width: 3;"></i>
         </button>
       </div>
 
-      <div class="modal-body crop-modal-body" style="padding: 0; background: #070a12; overflow: hidden; display: flex; flex-direction: column; flex: 1; min-height: 0;">
-        <!-- Container hiển thị ảnh & kéo cắt tay trực tiếp -->
-        <div class="crop-canvas-container" id="crop-canvas-container">
-          <canvas id="crop-source-canvas"></canvas>
-          <div id="crop-overlay-box" class="crop-overlay-box">
-            <!-- 3x3 Grid lines -->
-            <div class="crop-grid-h top"></div>
-            <div class="crop-grid-h bot"></div>
-            <div class="crop-grid-v left"></div>
-            <div class="crop-grid-v right"></div>
-            <!-- 4 Góc kéo tay (Touch corner handles) -->
-            <div class="crop-handle" data-handle="tl"></div>
-            <div class="crop-handle" data-handle="tr"></div>
-            <div class="crop-handle" data-handle="bl"></div>
-            <div class="crop-handle" data-handle="br"></div>
-            <!-- 4 Cạnh kéo tay (Touch edge handles) -->
-            <div class="crop-handle" data-handle="t"></div>
-            <div class="crop-handle" data-handle="b"></div>
-            <div class="crop-handle" data-handle="l"></div>
-            <div class="crop-handle" data-handle="r"></div>
-          </div>
+      <!-- Khu vực hiển thị ảnh & kéo cắt tay trực tiếp nền đen chuẩn iPhone -->
+      <div class="crop-canvas-container" id="crop-canvas-container">
+        <canvas id="crop-source-canvas"></canvas>
+        <div id="crop-overlay-box" class="crop-overlay-box ios-style">
+          <!-- 3x3 Grid lines -->
+          <div class="crop-grid-h top"></div>
+          <div class="crop-grid-h bot"></div>
+          <div class="crop-grid-v left"></div>
+          <div class="crop-grid-v right"></div>
+          <!-- 4 Góc kéo tay L-Bracket chuẩn iOS Photos -->
+          <div class="crop-handle" data-handle="tl"></div>
+          <div class="crop-handle" data-handle="tr"></div>
+          <div class="crop-handle" data-handle="bl"></div>
+          <div class="crop-handle" data-handle="br"></div>
+          <!-- 4 Cạnh kéo tay -->
+          <div class="crop-handle" data-handle="t"></div>
+          <div class="crop-handle" data-handle="b"></div>
+          <div class="crop-handle" data-handle="l"></div>
+          <div class="crop-handle" data-handle="r"></div>
         </div>
+      </div>
 
-        <!-- Thanh công cụ căn chỉnh phối cảnh (Góc xoay + Nghiêng Dọc + Nghiêng Ngang) theo chuẩn iOS -->
-        <div class="crop-toolbar-panel">
-          <!-- 3 Chế độ nắn chỉnh phối cảnh -->
-          <div class="crop-perspective-tabs">
-            <button type="button" class="btn-perspective-tab active" id="btn-persp-tilt" onclick="UITransactions.setCropAdjustMode('tilt')" title="Góc xoay nghiêng">
-              <span class="persp-tab-icon" id="persp-tab-tilt-val">0°</span>
-              <span class="persp-tab-label">Góc xoay</span>
-            </button>
-            <button type="button" class="btn-perspective-tab" id="btn-persp-vert" onclick="UITransactions.setCropAdjustMode('vert')" title="Nghiêng dọc (Trên to dưới nhỏ / Trên nhỏ dưới to)">
-              <svg class="persp-tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <!-- Bottom Panel iOS: 3 Nút tròn công cụ (Góc xoay | Nghiêng dọc | Nghiêng ngang) + Thước vạch dial kèm kim vàng -->
+      <div class="ios-crop-bottom-panel">
+        <div class="ios-crop-tools-row">
+          <!-- 1. Góc xoay dial -->
+          <button type="button" class="ios-tool-circle-btn active" id="btn-persp-tilt" onclick="UITransactions.setCropAdjustMode('tilt')" title="Góc xoay">
+            <div class="ios-tool-icon-circle">
+              <span id="persp-tab-tilt-val">0°</span>
+            </div>
+            <span class="ios-tool-label">Góc xoay</span>
+          </button>
+
+          <!-- 2. Nghiêng dọc (Trên to dưới nhỏ / Trên nhỏ dưới to) -->
+          <button type="button" class="ios-tool-circle-btn" id="btn-persp-vert" onclick="UITransactions.setCropAdjustMode('vert')" title="Nghiêng dọc (Phối cảnh trên/dưới)">
+            <div class="ios-tool-icon-circle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
                 <polygon points="4,5 20,5 17,19 7,19" />
                 <line x1="12" y1="5" x2="12" y2="19" stroke-dasharray="2 2" />
               </svg>
-              <span class="persp-tab-label" id="persp-tab-vert-val">Dọc (0)</span>
-            </button>
-            <button type="button" class="btn-perspective-tab" id="btn-persp-horiz" onclick="UITransactions.setCropAdjustMode('horiz')" title="Nghiêng ngang (Trái to phải nhỏ / Trái nhỏ phải to)">
-              <svg class="persp-tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            </div>
+            <span class="ios-tool-label" id="persp-tab-vert-val">Dọc</span>
+          </button>
+
+          <!-- 3. Nghiêng ngang (Trái to phải nhỏ / Trái nhỏ phải to) -->
+          <button type="button" class="ios-tool-circle-btn" id="btn-persp-horiz" onclick="UITransactions.setCropAdjustMode('horiz')" title="Nghiêng ngang (Phối cảnh trái/phải)">
+            <div class="ios-tool-icon-circle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
                 <polygon points="5,4 19,7 19,17 5,20" />
                 <line x1="5" y1="12" x2="19" y2="12" stroke-dasharray="2 2" />
               </svg>
-              <span class="persp-tab-label" id="persp-tab-horiz-val">Ngang (0)</span>
-            </button>
+            </div>
+            <span class="ios-tool-label" id="persp-tab-horiz-val">Ngang</span>
+          </button>
+        </div>
+
+        <!-- Thước đo vạch (iOS Ruler Dial) kèm vạch kim vàng ở giữa -->
+        <div class="ios-ruler-wrap" id="ios-ruler-wrap">
+          <div class="ios-ruler-value-badge" id="ios-ruler-value-badge" onclick="UITransactions.resetActiveCropAdjust()" title="Chạm để đặt lại 0">
+            <span id="crop-tilt-value">0°</span>
           </div>
 
-          <!-- Thanh trượt điều chỉnh cho chế độ đang chọn -->
-          <div class="crop-tilt-control">
-            <span class="crop-tilt-label" id="crop-active-mode-label">
-              Góc xoay: <strong id="crop-tilt-value">0°</strong>
-            </span>
-            <input type="range" id="crop-slider-adjust" min="-30" max="30" value="0" step="1" oninput="UITransactions.handleCropSliderAdjust(this.value)">
-            <button type="button" class="btn-tilt-reset" id="btn-tilt-reset-active" onclick="UITransactions.resetActiveCropAdjust()" title="Đặt lại 0">0</button>
-          </div>
-
-          <!-- Các nút tác vụ nhanh: Xoay -90°, +90°, Mở trọn ảnh, Đặt lại toàn bộ -->
-          <div class="crop-quick-actions">
-            <button type="button" class="btn-crop-action" onclick="UITransactions.rotateCropLeft()" title="Xoay trái 90°">
-              <i data-lucide="rotate-ccw"></i>
-              <span>-90°</span>
-            </button>
-            <button type="button" class="btn-crop-action" onclick="UITransactions.rotateCropRight()" title="Xoay phải 90°">
-              <i data-lucide="rotate-cw"></i>
-              <span>+90°</span>
-            </button>
-            <button type="button" class="btn-crop-action" onclick="UITransactions.resetCropBoxToFull()" title="Kéo trọn ảnh">
-              <i data-lucide="maximize-2"></i>
-              <span>Trọn ảnh</span>
-            </button>
-            <button type="button" class="btn-crop-action" onclick="UITransactions.resetAllCropPerspective()" title="Đặt lại góc & phối cảnh">
-              <i data-lucide="refresh-cw"></i>
-              <span>Đặt lại</span>
-            </button>
+          <div class="ios-ruler-viewport">
+            <div class="ios-ruler-needle"></div>
+            <div class="ios-ruler-track" id="ios-ruler-track"></div>
+            <input type="range" id="crop-slider-adjust" min="-30" max="30" value="0" step="1" oninput="UITransactions.handleCropSliderAdjust(this.value)" class="ios-ruler-range-input" aria-label="Thước xoay và phối cảnh">
           </div>
         </div>
-      </div>
-
-      <div class="modal-footer" style="padding: 10px 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-card, #111827);">
-        <button type="button" class="btn-secondary btn-sm" onclick="UITransactions.closeCropModal()">Huỷ</button>
-        <button type="button" class="btn-emerald btn-sm" onclick="UITransactions.applyCrop()" style="padding: 0 18px; height: 38px;">
-          <i data-lucide="check" style="width: 16px; height: 16px;"></i>
-          <span>Áp Dụng Cắt</span>
-        </button>
       </div>
     </div>
   </div>
@@ -7512,13 +7452,13 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=3.0.44"></script>
-  <script src="./js/ui-transactions.js?v=3.0.63"></script>
+  <script src="./js/ui-transactions.js?v=3.0.64"></script>
   <script src="./js/ui-debts.js?v=3.0.44"></script>
   <script src="./js/ui-accounts.js?v=3.0.59"></script>
   <script src="./js/ui-share.js?v=3.0.63"></script>
   <script src="./js/ui-budgets.js?v=3.0.57"></script>
   <script src="./js/ui-analytics.js?v=3.0.44"></script>
-  <script src="./js/ui-settings.js?v=3.0.66"></script>
+  <script src="./js/ui-settings.js?v=3.0.67"></script>
   <script src="./js/server-auth-modals.js?v=3.0.44"></script>
 
   <!-- Main Entry Coordinator -->

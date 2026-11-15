@@ -5500,32 +5500,11 @@ const UITransactions = {
     const statusText = document.getElementById('tx-ai-status-text');
     const scanBanner = document.getElementById('tx-ai-scan-banner');
 
-    let isEnabled = true;
-    let apiKey = '';
-    if (window.UISettings) {
-      if (typeof window.UISettings.getGeminiEnabled === 'function') {
-        isEnabled = await window.UISettings.getGeminiEnabled();
-      }
-      if (typeof window.UISettings.getGeminiApiKey === 'function') {
-        apiKey = await window.UISettings.getGeminiApiKey();
-      }
-    }
-
     if (statusPill) {
       statusPill.style.display = 'inline-flex';
-      if (!isEnabled) {
-        statusPill.style.background = 'rgba(148, 163, 184, 0.15)';
-        statusPill.style.color = 'var(--text-muted)';
-        if (statusText) statusText.textContent = 'AI Đang Tắt';
-      } else if (apiKey) {
-        statusPill.style.background = 'rgba(13, 148, 136, 0.15)';
-        statusPill.style.color = 'var(--primary)';
-        if (statusText) statusText.textContent = 'AI Sẵn Sàng';
-      } else {
-        statusPill.style.background = 'rgba(148, 163, 184, 0.15)';
-        statusPill.style.color = 'var(--text-muted)';
-        if (statusText) statusText.textContent = 'Cài AI';
-      }
+      statusPill.style.background = 'rgba(13, 148, 136, 0.15)';
+      statusPill.style.color = 'var(--primary)';
+      if (statusText) statusText.textContent = 'OCR Offline';
     }
 
     if (scanBanner) {
@@ -5541,7 +5520,7 @@ const UITransactions = {
       window.app.switchView('settings');
     }
     if (window.UISettings && typeof window.UISettings.openSection === 'function') {
-      window.UISettings.openSection('ai-gemini');
+      window.UISettings.openSection('ocr-scanner');
     }
   },
 
@@ -5576,19 +5555,15 @@ const UITransactions = {
       this.renderAttachedImages();
       this.updateAIStatus();
 
-      // Kiểm tra xem có cấu hình tự động quét AI không
+      // Kiểm tra xem có cấu hình tự động quét OCR không
       let autoScan = false;
-      let isEnabled = true;
-      let apiKey = '';
       if (window.UISettings) {
-        autoScan = await window.UISettings.getGeminiAutoScan();
-        isEnabled = await window.UISettings.getGeminiEnabled();
-        apiKey = await window.UISettings.getGeminiApiKey();
+        autoScan = await window.UISettings.getOCRAutoScan();
       }
 
-      if (autoScan && isEnabled && apiKey) {
-        // Tự động kích hoạt quét hoá đơn bằng AI
-        await this.scanReceiptWithAI();
+      if (autoScan) {
+        // Tự động kích hoạt quét hoá đơn bằng OCR
+        await this.scanReceiptWithOCR();
       } else {
         showToast(`Đã đính kèm ${files.length} ảnh hoá đơn`, 'success');
       }
@@ -5704,7 +5679,7 @@ const UITransactions = {
     }
   },
 
-  /* ==================== MANUAL CROP, ROTATE & PERSPECTIVE TOOL ==================== */
+  /* ==================== MANUAL CROP, ROTATE & PERSPECTIVE TOOL (iOS PHOTOS STYLE) ==================== */
   openCropModal(index) {
     if (index < 0 || index >= this.attachedImages.length) return;
     const dataUrl = this.attachedImages[index];
@@ -5715,6 +5690,7 @@ const UITransactions = {
       tiltAngle: 0,
       perspectiveV: 0,
       perspectiveH: 0,
+      flipH: false,
       activeAdjustMode: 'tilt',
       cropNorm: { x: 0.04, y: 0.04, w: 0.92, h: 0.92 },
       sourceImg: new Image(),
@@ -5725,6 +5701,20 @@ const UITransactions = {
       dragStartNorm: null
     };
 
+    // Khởi tạo các vạch thước đo (61 ticks từ -30 đến +30)
+    const track = document.getElementById('ios-ruler-track');
+    if (track && !track.children.length) {
+      let html = '';
+      for (let i = -30; i <= 30; i++) {
+        let cls = 'ios-ruler-tick';
+        if (i === 0) cls += ' zero';
+        else if (i % 10 === 0) cls += ' major';
+        else if (i % 5 === 0) cls += ' med';
+        html += `<div class="${cls}" data-val="${i}"><div class="ios-ruler-tick-line"></div></div>`;
+      }
+      track.innerHTML = html;
+    }
+
     const modal = document.getElementById('modal-crop-image');
     this.setCropAdjustMode('tilt');
 
@@ -5732,8 +5722,8 @@ const UITransactions = {
     const vertVal = document.getElementById('persp-tab-vert-val');
     const horizVal = document.getElementById('persp-tab-horiz-val');
     if (tiltVal) tiltVal.textContent = '0°';
-    if (vertVal) vertVal.textContent = 'Dọc (0)';
-    if (horizVal) horizVal.textContent = 'Ngang (0)';
+    if (vertVal) vertVal.textContent = 'Dọc';
+    if (horizVal) horizVal.textContent = 'Ngang';
 
     this.cropState.sourceImg.onload = () => {
       this.initCropTouchHandlers();
@@ -5771,21 +5761,39 @@ const UITransactions = {
     });
 
     const slider = document.getElementById('crop-slider-adjust');
-    const label = document.getElementById('crop-active-mode-label');
-
     let curVal = 0;
     if (mode === 'tilt') {
       curVal = this.cropState.tiltAngle || 0;
-      if (label) label.innerHTML = `Góc xoay: <strong id="crop-tilt-value">${curVal}°</strong>`;
     } else if (mode === 'vert') {
       curVal = this.cropState.perspectiveV || 0;
-      if (label) label.innerHTML = `Nghiêng dọc: <strong id="crop-tilt-value">${curVal > 0 ? '+' : ''}${curVal}</strong>`;
     } else if (mode === 'horiz') {
       curVal = this.cropState.perspectiveH || 0;
-      if (label) label.innerHTML = `Nghiêng ngang: <strong id="crop-tilt-value">${curVal > 0 ? '+' : ''}${curVal}</strong>`;
     }
 
     if (slider) slider.value = curVal;
+    this.updateRulerDialPosition(curVal);
+  },
+
+  updateRulerDialPosition(num) {
+    const track = document.getElementById('ios-ruler-track');
+    const badge = document.getElementById('ios-ruler-value-badge');
+    const valueEl = document.getElementById('crop-tilt-value');
+    if (badge) {
+      badge.classList.toggle('has-val', num !== 0);
+    }
+    if (valueEl) {
+      const mode = this.cropState?.activeAdjustMode;
+      if (mode === 'tilt') {
+        valueEl.textContent = `${num}°`;
+      } else {
+        valueEl.textContent = `${num > 0 ? '+' : ''}${num}`;
+      }
+    }
+    if (track) {
+      // 61 ticks (-30 đến +30), mỗi tick 7px. Tick 0 ở index 30 (210px + 3.5px nửa tick)
+      const tickPos = (num + 30) * 7 + 3.5;
+      track.style.transform = `translateX(calc(50% - ${tickPos}px))`;
+    }
   },
 
   handleCropSliderAdjust(val) {
@@ -5793,24 +5801,21 @@ const UITransactions = {
     const num = Number(val);
     const mode = this.cropState.activeAdjustMode || 'tilt';
 
-    const valueEl = document.getElementById('crop-tilt-value');
     if (mode === 'tilt') {
       this.cropState.tiltAngle = num;
-      if (valueEl) valueEl.textContent = `${num}°`;
       const tabVal = document.getElementById('persp-tab-tilt-val');
       if (tabVal) tabVal.textContent = `${num}°`;
     } else if (mode === 'vert') {
       this.cropState.perspectiveV = num;
-      if (valueEl) valueEl.textContent = `${num > 0 ? '+' : ''}${num}`;
       const tabVal = document.getElementById('persp-tab-vert-val');
-      if (tabVal) tabVal.textContent = `Dọc (${num > 0 ? '+' : ''}${num})`;
+      if (tabVal) tabVal.textContent = num === 0 ? 'Dọc' : `Dọc (${num > 0 ? '+' : ''}${num})`;
     } else if (mode === 'horiz') {
       this.cropState.perspectiveH = num;
-      if (valueEl) valueEl.textContent = `${num > 0 ? '+' : ''}${num}`;
       const tabVal = document.getElementById('persp-tab-horiz-val');
-      if (tabVal) tabVal.textContent = `Ngang (${num > 0 ? '+' : ''}${num})`;
+      if (tabVal) tabVal.textContent = num === 0 ? 'Ngang' : `Ngang (${num > 0 ? '+' : ''}${num})`;
     }
 
+    this.updateRulerDialPosition(num);
     this.drawCropCanvas();
   },
 
@@ -5826,18 +5831,26 @@ const UITransactions = {
     this.cropState.perspectiveV = 0;
     this.cropState.perspectiveH = 0;
     this.cropState.rotation90 = 0;
+    this.cropState.flipH = false;
     this.cropState.cropNorm = { x: 0.04, y: 0.04, w: 0.92, h: 0.92 };
 
     const tiltVal = document.getElementById('persp-tab-tilt-val');
     const vertVal = document.getElementById('persp-tab-vert-val');
     const horizVal = document.getElementById('persp-tab-horiz-val');
     if (tiltVal) tiltVal.textContent = '0°';
-    if (vertVal) vertVal.textContent = 'Dọc (0)';
-    if (horizVal) horizVal.textContent = 'Ngang (0)';
+    if (vertVal) vertVal.textContent = 'Dọc';
+    if (horizVal) horizVal.textContent = 'Ngang';
 
     this.setCropAdjustMode(this.cropState.activeAdjustMode || 'tilt');
     this.drawCropCanvas();
     showToast('Đã đặt lại toàn bộ góc xoay & phối cảnh về 0', 'info');
+  },
+
+  flipCropHorizontal() {
+    if (!this.cropState) return;
+    this.cropState.flipH = !this.cropState.flipH;
+    this.drawCropCanvas();
+    showToast(this.cropState.flipH ? 'Đã lật ảnh ngang' : 'Đã khôi phục hướng lật', 'info');
   },
 
   initCropTouchHandlers() {
@@ -5996,7 +6009,7 @@ const UITransactions = {
     const boundW = Math.round(origW * absCos + origH * absSin);
     const boundH = Math.round(origW * absSin + origH * absCos);
 
-    // 1. Tạo canvas xoay
+    // 1. Tạo canvas xoay & lật
     let workCanvas = document.createElement('canvas');
     workCanvas.width = boundW;
     workCanvas.height = boundH;
@@ -6005,6 +6018,9 @@ const UITransactions = {
     wCtx.fillRect(0, 0, boundW, boundH);
     wCtx.save();
     wCtx.translate(boundW / 2, boundH / 2);
+    if (this.cropState.flipH) {
+      wCtx.scale(-1, 1);
+    }
     wCtx.rotate(rad);
     wCtx.drawImage(img, -origW / 2, -origH / 2);
     wCtx.restore();
@@ -6407,10 +6423,10 @@ const UITransactions = {
     if (btn) {
       if (isScanning) {
         btn.classList.add('is-scanning');
-        if (textEl) textEl.textContent = customText || 'Đang phân tích hoá đơn với Gemini Flash...';
+        if (textEl) textEl.textContent = customText || 'Đang quét hoá đơn (OCR Offline)...';
       } else {
         btn.classList.remove('is-scanning');
-        if (textEl) textEl.textContent = 'Quét hoá đơn (AI / OCR Offline)';
+        if (textEl) textEl.textContent = 'Quét hoá đơn (OCR Offline)';
       }
     }
     if (cancelBtn) {
@@ -6421,54 +6437,155 @@ const UITransactions = {
   cancelAIScan() {
     if (!this.isScanningAI) return;
     this._userAbortedAI = true;
-    if (this._aiAbortController) {
-      try { this._aiAbortController.abort(); } catch (_) {}
-    }
     this.setAIScanningState(false);
     showToast('Đã huỷ quét hoá đơn', 'info');
   },
 
-  async cropImageByBox(dataUrl, cropBox) {
-    return new Promise((resolve) => {
-      if (!Array.isArray(cropBox) || cropBox.length < 4) return resolve(dataUrl);
-      let [ymin, xmin, ymax, xmax] = cropBox;
-      if (ymax > 1 || xmax > 1) {
-        ymin /= 1000;
-        xmin /= 1000;
-        ymax /= 1000;
-        xmax /= 1000;
+  /* ==================== SMART OCR CATEGORY CLASSIFIER ==================== */
+  async categorizeFromOCRText(ocrText) {
+    if (!ocrText || typeof ocrText !== 'string') return null;
+    const rawText = ocrText.toLowerCase();
+
+    // Loại bỏ dấu tiếng Việt để so khớp mượt mà
+    const removeAccents = (str) => {
+      return (str || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .toLowerCase();
+    };
+    const normText = removeAccents(rawText);
+
+    let categories = [];
+    try {
+      categories = await db.categories.where('type').equals('expense').toArray();
+    } catch (_) {}
+    if (!categories || categories.length === 0) return null;
+
+    // Bộ từ điển nhóm ngữ nghĩa tiếng Việt nhận diện danh mục từ hoá đơn
+    const ruleGroups = [
+      {
+        group: 'food',
+        keywords: [
+          'an uong', 'cafe', 'ca phe', 'coffee', 'tra sua', 'tra dao', 'quan', 'nha hang', 'food',
+          'com', 'pho', 'bun', 'banh mi', 'lau', 'nuong', 'bbq', 'pizza', 'burger', 'kfc',
+          'lotteria', 'jollibee', 'highlands', 'phuc long', 'starbucks', 'the coffee house',
+          'trung nguyen', 'thit', 'hai san', 'bia', 'nuoc ngot', 'do an', 'mon an', 'an vat',
+          'banh ngot', 'che', 'suon', 'ga ran', 'nem', 'goi', 'mi cay', 'dimsum', 'sushi', 'order'
+        ],
+        catNamePatterns: ['an uong', 'an tiep', 'cafe', 'ca phe', 'nha hang', 'an ngoai', 'am thuc', 'food', 'an']
+      },
+      {
+        group: 'groceries',
+        keywords: [
+          'sieu thi', 'mart', 'winmart', 'vinmart', 'co.op', 'coop', 'bach hoa xanh', 'bhx',
+          'circle k', 'gs25', '7-eleven', 'family mart', 'mega market', 'go!', 'big c',
+          'lotte mart', 'aeon', 'cho', 'thuc pham', 'rau', 'cu', 'qua', 'trai cay', 'thit heo',
+          'thit bo', 'ca tuoi', 'trung', 'sua', 'gao', 'gia vi', 'dau an', 'tap hoa', 'do kho'
+        ],
+        catNamePatterns: ['di cho', 'sieu thi', 'thuc pham', 'tap hoa', 'cho', 'market', 'groceries']
+      },
+      {
+        group: 'transport',
+        keywords: [
+          'xang', 'dau', 'petrolimex', 'pvoil', 'petro', 'grab', 'be', 'gojek', 'xanh sm',
+          'taxi', 'mai linh', 'vina sun', 've xe', 'gui xe', 'trong xe', 'rua xe', 'sua xe',
+          'bao duong', 'thay nhot', 'tram thu phi', 'vetc', 'epass', 've tau', 've may bay',
+          'vietnam airlines', 'vietjet', 'bamboo'
+        ],
+        catNamePatterns: ['di chuyen', 'xang', 'xe', 'giao thong', 'xang xe', 'transport']
+      },
+      {
+        group: 'shopping',
+        keywords: [
+          'quan ao', 'thoi trang', 'giay', 'dep', 'my pham', 'tui xach', 'dong ho', 'shopee',
+          'lazada', 'tiki', 'tiktok shop', 'uniqlo', 'zara', 'h&m', 'canifa', 'ivymoda',
+          'phu kien', 'son', 'kem chong nang', 'nuoc hoa', 'vay', 'ao so mi', 'shop', 'boutique'
+        ],
+        catNamePatterns: ['mua sam', 'thoi trang', 'quan ao', 'shopping']
+      },
+      {
+        group: 'bills',
+        keywords: [
+          'dien luc', 'evn', 'tien dien', 'tien nuoc', 'cap nuoc', 'sawaco', 'internet',
+          'viettel', 'fpt', 'vnpt', 'mobifone', 'vinaphone', 'vtvcap', 'truyen hinh',
+          'rac', 've sinh', 'phi dich vu', 'phi chung cu', 'quan ly toa nha', 'gas', 'tien mang'
+        ],
+        catNamePatterns: ['hoa don', 'dien nuoc', 'tien ich', 'dich vu', 'bill', 'utilities']
+      },
+      {
+        group: 'health',
+        keywords: [
+          'nha thuoc', 'duoc', 'pharmacity', 'long chau', 'an khang', 'thuoc', 'kham',
+          'benh vien', 'phong kham', 'bac si', 'nha khoa', 'rang', 'kinh mat', 'xet nghiem',
+          'y te', 'khau trang', 'vitamin', 'thuc pham chuc nang'
+        ],
+        catNamePatterns: ['suc khoe', 'y te', 'thuoc', 'kham benh', 'health', 'medical']
+      },
+      {
+        group: 'entertainment',
+        keywords: [
+          'rap phim', 'cgv', 'lotte cinema', 'galaxy', 'bhd', 've xem phim', 'karaoke',
+          'billiards', 'bida', 'bowling', 'du lich', 'khach san', 'hotel', 'resort',
+          'homestay', 'tour', 've tham quan', 'cong vien', 'spa', 'massage', 'netflix'
+        ],
+        catNamePatterns: ['giai tri', 'du lich', 'vui choi', 'entertainment', 'travel']
+      },
+      {
+        group: 'education',
+        keywords: [
+          'hoc phi', 'truong', 'dai hoc', 'nha sach', 'fahasa', 'tien tho', 'phuong nam',
+          'sach', 'giao trinh', 'vo', 'but', 'khoa hoc', 'tieng anh', 'toeic', 'ielts', 'gia su'
+        ],
+        catNamePatterns: ['giao duc', 'hoc tap', 'sach', 'hoc phi', 'education']
+      },
+      {
+        group: 'housing',
+        keywords: [
+          'noi that', 'dien may', 'dien may xanh', 'dmx', 'nguyen kim', 'the gioi di dong',
+          'tgdd', 'cellphones', 'fpt shop', 'do gia dung', 'son', 'khoa', 'bong den'
+        ],
+        catNamePatterns: ['nha cua', 'thiet bi', 'gia dung', 'home', 'housing']
       }
-      ymin = Math.max(0, Math.min(1, ymin));
-      xmin = Math.max(0, Math.min(1, xmin));
-      ymax = Math.max(0, Math.min(1, ymax));
-      xmax = Math.max(0, Math.min(1, xmax));
+    ];
 
-      const boxW = xmax - xmin;
-      const boxH = ymax - ymin;
-      if (boxW < 0.15 || boxH < 0.15 || (boxW > 0.95 && boxH > 0.95)) {
-        return resolve(dataUrl);
+    // 1. So khớp trực tiếp tên danh mục người dùng có trong văn bản
+    for (const cat of categories) {
+      const cNorm = removeAccents(cat.name);
+      if (cNorm.length >= 3 && (normText.includes(cNorm) || rawText.includes(cat.name.toLowerCase().trim()))) {
+        return cat;
       }
+    }
 
-      const img = new Image();
-      img.onload = () => {
-        const sx = Math.floor(xmin * img.width);
-        const sy = Math.floor(ymin * img.height);
-        const sw = Math.floor(boxW * img.width);
-        const sh = Math.floor(boxH * img.height);
+    // 2. Chấm điểm theo nhóm từ điển ngữ nghĩa
+    let bestCat = null;
+    let maxScore = 0;
 
-        const canvas = document.createElement('canvas');
-        canvas.width = sw;
-        canvas.height = sh;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
-        resolve(canvas.toDataURL('image/jpeg', 0.82));
-      };
-      img.onerror = () => resolve(dataUrl);
-      img.src = dataUrl;
-    });
+    for (const rule of ruleGroups) {
+      let score = 0;
+      for (const kw of rule.keywords) {
+        if (normText.includes(kw)) {
+          score += kw.length >= 5 ? 2 : 1;
+        }
+      }
+      if (score > 0) {
+        for (const cat of categories) {
+          const cNorm = removeAccents(cat.name);
+          const matchesCat = rule.catNamePatterns.some(p => cNorm.includes(p) || p.includes(cNorm));
+          if (matchesCat && score > maxScore) {
+            maxScore = score;
+            bestCat = cat;
+          }
+        }
+      }
+    }
+
+    return bestCat;
   },
 
-  async scanReceiptWithAI() {
+  /* ==================== OFFLINE RECEIPT SCANNER (QR + TESSERACT OCR) ==================== */
+  async scanReceiptWithOCR() {
     if (this.attachedImages.length === 0) {
       showToast('Vui lòng chụp hoặc chọn ảnh hoá đơn trước khi quét', 'warning');
       return;
@@ -6476,10 +6593,6 @@ const UITransactions = {
 
     const lastImg = this.attachedImages[this.attachedImages.length - 1];
 
-    let isEnabled = true;
-    let apiKey = '';
-    let model = 'gemini-3.8-flash';
-    let autoCrop = true;
     let autoAmount = true;
     let autoItems = true;
     let autoCategory = true;
@@ -6487,38 +6600,20 @@ const UITransactions = {
 
     if (window.UISettings) {
       try {
-        if (typeof window.UISettings.getGeminiEnabled === 'function') {
-          isEnabled = await window.UISettings.getGeminiEnabled();
-        }
-        if (typeof window.UISettings.getGeminiApiKey === 'function') {
-          apiKey = await window.UISettings.getGeminiApiKey();
-        }
-        if (typeof window.UISettings.getGeminiModel === 'function') {
-          model = (await window.UISettings.getGeminiModel()) || 'gemini-3.8-flash';
-        }
-        if (typeof window.UISettings.getGeminiAutoCrop === 'function') {
-          autoCrop = await window.UISettings.getGeminiAutoCrop();
-        }
-        if (typeof window.UISettings.getGeminiAutoAmount === 'function') {
-          autoAmount = await window.UISettings.getGeminiAutoAmount();
-        }
-        if (typeof window.UISettings.getGeminiAutoItems === 'function') {
-          autoItems = await window.UISettings.getGeminiAutoItems();
-        }
-        if (typeof window.UISettings.getGeminiAutoCategory === 'function') {
-          autoCategory = await window.UISettings.getGeminiAutoCategory();
-        }
-        if (typeof window.UISettings.getGeminiOfflineQr === 'function') {
-          offlineQrEnabled = await window.UISettings.getGeminiOfflineQr();
-        }
+        autoAmount = await window.UISettings.getOCRAutoAmount();
+        autoItems = await window.UISettings.getOCRAutoItems();
+        autoCategory = await window.UISettings.getOCRAutoCategory();
+        offlineQrEnabled = await window.UISettings.getOCROfflineQr();
       } catch (e) {
-        console.warn('[scanReceiptWithAI] Lỗi đọc cài đặt:', e);
+        console.warn('[scanReceiptWithOCR] Lỗi đọc cài đặt:', e);
       }
     }
 
-    // Nếu người dùng tắt AI hoặc chưa có Key: thử quét QR offline rồi thử OCR offline
-    if (!isEnabled || !apiKey) {
-      // 1. Thử đọc QR
+    this._userAbortedAI = false;
+    this.setAIScanningState(true, 'Đang chuẩn bị quét hoá đơn offline...');
+
+    try {
+      // 1. Thử quét mã VietQR / hoá đơn điện tử QR
       if (offlineQrEnabled) {
         try {
           const qrResult = await this.scanReceiptQrOffline(lastImg);
@@ -6537,279 +6632,82 @@ const UITransactions = {
                 this.autoResizeNoteInput();
               }
             }
-            showToast(`✓ Đã đọc số tiền từ mã QR offline: ${new Intl.NumberFormat('vi-VN').format(qrResult.amount)}đ`, 'success');
+            if (autoCategory && qrResult.note) {
+              const matchedCat = await this.categorizeFromOCRText(qrResult.note);
+              if (matchedCat) {
+                await this.selectCategory(matchedCat);
+              }
+            }
+            showToast(`✓ Đã đọc số tiền từ mã QR: ${new Intl.NumberFormat('vi-VN').format(qrResult.amount)}đ`, 'success');
             return;
           }
         } catch (_) {}
       }
 
-      // 2. Thử đọc hoá đơn bằng OCR Offline (Tesseract)
-      if (typeof Tesseract !== 'undefined') {
-        try {
-          const ocrRes = await this.scanReceiptWithOfflineOCR(lastImg);
-          if (ocrRes && ocrRes.amount) {
-            if (autoAmount) {
-              const formattedAmount = new Intl.NumberFormat('vi-VN').format(ocrRes.amount);
-              const amountInput = document.getElementById('tx-amount-input');
-              const amountText = document.getElementById('tx-amount-text');
-              if (amountInput) amountInput.value = formattedAmount;
-              if (amountText) amountText.textContent = formattedAmount;
-            }
-            if (autoItems && Array.isArray(ocrRes.items) && ocrRes.items.length > 0) {
-              const noteInput = document.getElementById('tx-note-input');
-              if (noteInput && !noteInput.value.trim()) {
-                noteInput.value = ocrRes.items.join('\n');
-                this.autoResizeNoteInput();
-              }
-            }
-            showToast(`✓ Đã đọc số tiền bằng OCR Offline: ${new Intl.NumberFormat('vi-VN').format(ocrRes.amount)}đ`, 'success');
-            return;
-          }
-        } catch (ocrErr) {
-          console.warn('[scanReceiptWithOfflineOCR] Lỗi:', ocrErr);
-        } finally {
-          this.setAIScanningState(false);
-        }
-      }
-
-      if (!isEnabled) {
-        showToast('Trợ lý AI đang tắt trong Cài Đặt. Không tìm thấy mã QR hoặc chữ số rõ nét trên hoá đơn.', 'info');
+      // 2. Quét hoá đơn bằng Tesseract OCR
+      if (typeof Tesseract === 'undefined') {
+        showToast('Thư viện OCR chưa sẵn sàng hoặc đang tải trong nền', 'warning');
         return;
       }
 
-      const goToSettings = await showConfirm({
-        title: 'Chưa Cài Đặt Gemini API Key',
-        message: 'Tính năng AI Quét hoá đơn thông minh sử dụng mô hình <strong>Gemini 3.8 Flash (Mới nhất)</strong> hoàn toàn miễn phí.<br><br>Bạn có muốn mở Cài Đặt để dán API Key không?',
-        confirmText: 'Mở Cài Đặt',
-        cancelText: 'Để Sau',
-        icon: 'sparkles'
-      });
-      if (goToSettings) {
-        this.openAISettingsShortcut();
-      }
-      return;
-    }
-
-    this._userAbortedAI = false;
-    this._aiAbortController = new AbortController();
-    this.setAIScanningState(true);
-
-    try {
-      // Nén ảnh nhẹ xuống ~80-120KB trước khi gửi để tránh nghẽn mạng và timeout
-      const base64Data = await this.compressImageForAI(lastImg, 1280, 0.78);
-
-      const categories = await this.loadCategories();
-      const categoryNames = categories.map(c => c.name).join(', ');
-
-      const prompt = `Bạn là trợ lý tài chính thông minh của ứng dụng "Sổ Thu Chi".
-Hãy đọc hoá đơn / biên lai thanh toán trong ảnh và trả về DUY NHẤT một chuỗi JSON thuần túy (không kèm định dạng markdown như \`\`\`json):
-{
-  "total_amount": <tổng số tiền thanh toán cuối cùng của hoá đơn dạng số nguyên, ví dụ 55000, nếu không thấy để null>,
-  "items": [
-    {
-      "name": "<tên món hàng / dịch vụ>",
-      "price": <giá tiền dạng số nguyên, nếu không có để null>,
-      "qty": <số lượng dạng số, nếu không có để 1>
-    }
-  ],
-  "date": "<ngày trên hoá đơn dạng YYYY-MM-DD, nếu không có để null>",
-  "time": "<giờ trên hoá đơn dạng HH:mm, nếu không có để null>",
-  "suggested_category": "<chọn 1 tên danh mục khớp nhất từ danh sách: [${categoryNames}], nếu không khớp để null>",
-  "crop_box": [<ymin>, <xmin>, <ymax>, <xmax>] // toạ độ chuẩn hoá 0-1000 bao quanh tờ hoá đơn để cắt bỏ mặt bàn thừa
-}`;
-
-      const timeoutMs = 25000;
-      let timeoutTimer = null;
-      const perReqController = new AbortController();
-
-      const onAbort = () => perReqController.abort();
-      if (this._aiAbortController) {
-        this._aiAbortController.signal.addEventListener('abort', onAbort);
+      const ocrRes = await this.scanReceiptWithOfflineOCR(lastImg);
+      if (!ocrRes) {
+        showToast('Không thể nhận diện nội dung từ hoá đơn', 'warning');
+        return;
       }
 
-      timeoutTimer = setTimeout(() => {
-        const timeoutErr = new Error(`Thời gian phản hồi quá lâu (> ${timeoutMs / 1000}s)`);
-        timeoutErr.name = 'TimeoutError';
-        timeoutErr.isTimeout = true;
-        perReqController.abort(timeoutErr);
-      }, timeoutMs);
+      let infoCount = 0;
 
-      let data;
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const response = await fetch(url, {
-          method: 'POST',
-          signal: perReqController.signal,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: prompt },
-                  {
-                    inline_data: {
-                      mime_type: 'image/jpeg',
-                      data: base64Data
-                    }
-                  }
-                ]
-              }
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              responseMimeType: 'application/json'
-            }
-          })
-        });
-
-        if (!response.ok) {
-          const errJson = await response.json().catch(() => ({}));
-          const errMsg = errJson?.error?.message || `Mã phản hồi HTTP ${response.status}`;
-          throw new Error(errMsg);
-        }
-
-        data = await response.json();
-      } finally {
-        clearTimeout(timeoutTimer);
-        if (this._aiAbortController) {
-          this._aiAbortController.signal.removeEventListener('abort', onAbort);
-        }
-      }
-
-      if (this._userAbortedAI) return;
-
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!rawText) throw new Error('Không nhận được nội dung từ Gemini');
-
-      let parsed;
-      try {
-        parsed = JSON.parse(rawText.trim());
-      } catch (_) {
-        const match = rawText.match(/\{[\s\S]*\}/);
-        if (match) parsed = JSON.parse(match[0]);
-        else throw new Error('Dữ liệu AI trả về không đúng cú pháp JSON');
-      }
-
-      // 1. Tự động crop ảnh theo toạ độ hoá đơn (nếu bật)
-      if (autoCrop && Array.isArray(parsed.crop_box) && parsed.crop_box.length === 4) {
-        try {
-          const cropped = await this.cropImageByBox(lastImg, parsed.crop_box);
-          if (cropped && cropped !== lastImg) {
-            this.attachedImages[this.attachedImages.length - 1] = cropped;
-            this.renderAttachedImages();
-          }
-        } catch (cropErr) {
-          console.warn('[cropImageByBox] Lỗi crop ảnh:', cropErr);
-        }
-      }
-
-      // 2. Tự điền số tiền (nếu bật)
-      if (autoAmount && parsed.total_amount && Number(parsed.total_amount) > 0) {
-        const formattedAmount = new Intl.NumberFormat('vi-VN').format(parsed.total_amount);
+      // Điền số tiền
+      if (autoAmount && ocrRes.amount) {
+        const formattedAmount = new Intl.NumberFormat('vi-VN').format(ocrRes.amount);
         const amountInput = document.getElementById('tx-amount-input');
         const amountText = document.getElementById('tx-amount-text');
         if (amountInput) amountInput.value = formattedAmount;
         if (amountText) amountText.textContent = formattedAmount;
+        infoCount++;
       }
 
-      // 3. Tự điền danh sách món và giá từng dòng vào Ghi chú (nếu bật)
-      if (autoItems && Array.isArray(parsed.items) && parsed.items.length > 0) {
-        const lines = [];
-        parsed.items.forEach(it => {
-          if (!it.name) return;
-          let line = `• ${it.name}`;
-          if (it.qty && Number(it.qty) > 1) line += ` (x${it.qty})`;
-          if (it.price && Number(it.price) > 0) line += `: ${new Intl.NumberFormat('vi-VN').format(it.price)}đ`;
-          lines.push(line);
-        });
-        if (lines.length > 0) {
-          const noteInput = document.getElementById('tx-note-input');
-          if (noteInput) {
-            noteInput.value = lines.join('\n');
-            this.autoResizeNoteInput();
-            try { noteInput.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
-          }
+      // Điền danh sách món & giá vào ghi chú
+      if (autoItems && Array.isArray(ocrRes.items) && ocrRes.items.length > 0) {
+        const noteInput = document.getElementById('tx-note-input');
+        if (noteInput && !noteInput.value.trim()) {
+          noteInput.value = ocrRes.items.join('\n');
+          this.autoResizeNoteInput();
+          infoCount++;
         }
       }
 
-      // 4. Tự động chọn đúng danh mục (nếu bật)
-      if (autoCategory && parsed.suggested_category) {
-        const targetName = parsed.suggested_category.trim().toLowerCase();
-        const matchedCat = categories.find(c => {
-          const cName = c.name.trim().toLowerCase();
-          return cName === targetName || cName.includes(targetName) || targetName.includes(cName);
-        });
+      // Tự động khớp và chọn danh mục bằng kết quả OCR
+      let matchedCatName = '';
+      if (autoCategory && ocrRes.text) {
+        const matchedCat = await this.categorizeFromOCRText(ocrRes.text);
         if (matchedCat) {
           await this.selectCategory(matchedCat);
+          matchedCatName = matchedCat.name;
+          infoCount++;
         }
       }
 
-      // 5. Tự động cập nhật ngày & giờ
-      if (parsed.date && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)) {
-        const dateInput = document.getElementById('tx-date-input');
-        if (dateInput) dateInput.value = parsed.date;
-        if (parsed.time && /^\d{1,2}:\d{2}$/.test(parsed.time)) {
-          const timeInput = document.getElementById('tx-time-input');
-          if (timeInput) timeInput.value = parsed.time;
-        }
-        this.updateDateTimeDisplays(parsed.date, parsed.time || '12:00');
+      if (infoCount > 0) {
+        const catMsg = matchedCatName ? ` • Danh mục: ${matchedCatName}` : '';
+        const amtMsg = ocrRes.amount ? `${new Intl.NumberFormat('vi-VN').format(ocrRes.amount)}đ` : '';
+        showToast(`✓ Nhận diện OCR thành công! ${amtMsg}${catMsg}`, 'success');
+      } else {
+        showToast('Đã quét xong nhưng chữ số trên hoá đơn chưa đủ rõ để bóc tách tự động', 'info');
       }
-
-      showToast(`✨ Đã quét hoá đơn và điền thông tin tự động (${model})!`, 'success');
     } catch (err) {
       if (this._userAbortedAI) return;
-      console.error('Lỗi quét AI:', err);
-
-      // 1. Thử phương án quét offline bằng QR nếu AI thất bại
-      if (offlineQrEnabled) {
-        try {
-          const qrResult = await this.scanReceiptQrOffline(lastImg);
-          if (qrResult && qrResult.amount) {
-            if (autoAmount) {
-              const formattedAmount = new Intl.NumberFormat('vi-VN').format(qrResult.amount);
-              const amountInput = document.getElementById('tx-amount-input');
-              const amountText = document.getElementById('tx-amount-text');
-              if (amountInput) amountInput.value = formattedAmount;
-              if (amountText) amountText.textContent = formattedAmount;
-            }
-            showToast(`✓ AI bận, đã chuyển sang đọc số tiền từ mã QR: ${new Intl.NumberFormat('vi-VN').format(qrResult.amount)}đ`, 'success');
-            return;
-          }
-        } catch (_) {}
-      }
-
-      // 2. Thử phương án quét offline bằng OCR Tesseract nếu AI thất bại
-      if (typeof Tesseract !== 'undefined') {
-        try {
-          const ocrRes = await this.scanReceiptWithOfflineOCR(lastImg);
-          if (ocrRes && ocrRes.amount) {
-            if (autoAmount) {
-              const formattedAmount = new Intl.NumberFormat('vi-VN').format(ocrRes.amount);
-              const amountInput = document.getElementById('tx-amount-input');
-              const amountText = document.getElementById('tx-amount-text');
-              if (amountInput) amountInput.value = formattedAmount;
-              if (amountText) amountText.textContent = formattedAmount;
-            }
-            if (autoItems && Array.isArray(ocrRes.items) && ocrRes.items.length > 0) {
-              const noteInput = document.getElementById('tx-note-input');
-              if (noteInput && !noteInput.value.trim()) {
-                noteInput.value = ocrRes.items.join('\n');
-                this.autoResizeNoteInput();
-              }
-            }
-            showToast(`✓ AI bận, đã chuyển sang đọc hoá đơn bằng OCR Offline: ${new Intl.NumberFormat('vi-VN').format(ocrRes.amount)}đ`, 'success');
-            return;
-          }
-        } catch (ocrErr) {
-          console.warn('[Offline OCR Fallback] Lỗi:', ocrErr);
-        }
-      }
-
-      showToast('Lỗi quét hoá đơn: ' + (err.message || err), 'error');
+      console.error('Lỗi quét OCR:', err);
+      showToast('Lỗi khi quét hoá đơn: ' + (err.message || err), 'error');
     } finally {
       this.setAIScanningState(false);
       this._userAbortedAI = false;
     }
+  },
+
+  scanReceiptWithAI() {
+    return this.scanReceiptWithOCR();
   }
 };
 

@@ -14602,19 +14602,90 @@ body.light .ptr-circle-badge,
 }
 
 /* Modal Cắt & Căn Chỉnh Hoá Đơn (Interactive Touch Crop) */
+/* ==================== iOS PHOTOS APP STYLE CROP MODAL ==================== */
 .crop-modal-dialog {
-  max-width: 540px;
-  width: 96%;
-  height: 92vh;
-  max-height: 92vh;
-  background: var(--bg-card, #111827);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: var(--radius-lg, 16px);
+  max-width: 580px;
+  width: 100%;
+  height: 100vh;
+  max-height: 100vh;
+  background: #000000;
+  border: none;
+  border-radius: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
+@media (min-width: 640px) {
+  .crop-modal-dialog.ios-theme {
+    height: 94vh;
+    max-height: 94vh;
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);
+  }
+}
+
+/* Top bar: Cancel X | Quick tools | Done Checkmark */
+.ios-crop-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: #000000;
+  z-index: 20;
+  user-select: none;
+}
+
+.ios-circle-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+  padding: 0;
+}
+.ios-circle-btn:active {
+  transform: scale(0.9);
+}
+.ios-circle-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.ios-circle-btn.btn-cancel {
+  background: rgba(255, 255, 255, 0.14);
+}
+.ios-circle-btn.btn-cancel i {
+  width: 18px;
+  height: 18px;
+}
+
+.ios-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Nút Xong màu vàng rực rỡ đặc trưng Apple Photos */
+.ios-circle-btn.btn-done-yellow {
+  background: #ffcc00;
+  color: #000000;
+  font-weight: 800;
+  box-shadow: 0 0 16px rgba(255, 204, 0, 0.45);
+}
+.ios-circle-btn.btn-done-yellow:hover {
+  background: #ffd633;
+  box-shadow: 0 0 20px rgba(255, 204, 0, 0.65);
+}
+
+/* Canvas Area: Nền đen tuyền 100% */
 .crop-canvas-container {
   position: relative;
   flex: 1;
@@ -14623,7 +14694,7 @@ body.light .ptr-circle-badge,
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #070a12;
+  background: #000000;
   overflow: hidden;
   user-select: none;
   touch-action: none;
@@ -14631,16 +14702,16 @@ body.light .ptr-circle-badge,
 
 #crop-source-canvas {
   display: block;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.8);
   user-select: none;
   pointer-events: none;
 }
 
-/* Touch Crop Overlay Box */
+/* Touch Crop Overlay Box - Chuẩn viền mảnh & L-bracket iOS */
 .crop-overlay-box {
   position: absolute;
-  border: 2px solid #14b8a6;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.68);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.72);
   touch-action: none;
   cursor: move;
   box-sizing: border-box;
@@ -14650,13 +14721,13 @@ body.light .ptr-circle-badge,
 .crop-grid-h, .crop-grid-v {
   position: absolute;
   pointer-events: none;
-  opacity: 0.45;
+  opacity: 0.35;
 }
 .crop-grid-h {
   left: 0;
   right: 0;
   height: 1px;
-  border-top: 1px dashed rgba(255, 255, 255, 0.6);
+  border-top: 1px dashed rgba(255, 255, 255, 0.7);
 }
 .crop-grid-h.top { top: 33.333%; }
 .crop-grid-h.bot { top: 66.666%; }
@@ -14665,7 +14736,7 @@ body.light .ptr-circle-badge,
   top: 0;
   bottom: 0;
   width: 1px;
-  border-left: 1px dashed rgba(255, 255, 255, 0.6);
+  border-left: 1px dashed rgba(255, 255, 255, 0.7);
 }
 .crop-grid-v.left { left: 33.333%; }
 .crop-grid-v.right { left: 66.666%; }
@@ -14677,40 +14748,45 @@ body.light .ptr-circle-badge,
   z-index: 10;
 }
 
-/* 4 Corner Handles - Large touch target with visual node */
+/* 4 Góc L-Bracket dày màu trắng giống hệt app Ảnh trên iPhone */
 .crop-handle[data-handle="tl"],
 .crop-handle[data-handle="tr"],
 .crop-handle[data-handle="bl"],
 .crop-handle[data-handle="br"] {
-  width: 32px;
-  height: 32px;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
 }
-.crop-handle[data-handle="tl"] { top: -16px; left: -16px; cursor: nwse-resize; }
-.crop-handle[data-handle="tr"] { top: -16px; right: -16px; cursor: nesw-resize; }
-.crop-handle[data-handle="bl"] { bottom: -16px; left: -16px; cursor: nesw-resize; }
-.crop-handle[data-handle="br"] { bottom: -16px; right: -16px; cursor: nwse-resize; }
-
-.crop-handle[data-handle="tl"]::after,
-.crop-handle[data-handle="tr"]::after,
-.crop-handle[data-handle="bl"]::after,
-.crop-handle[data-handle="br"]::after {
-  content: '';
-  position: absolute;
-  top: 9px;
-  left: 9px;
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-  background: #14b8a6;
-  border: 2px solid #ffffff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+.crop-handle[data-handle="tl"] {
+  top: -2px; left: -2px;
+  border-top: 3.5px solid #ffffff;
+  border-left: 3.5px solid #ffffff;
+  cursor: nwse-resize;
+}
+.crop-handle[data-handle="tr"] {
+  top: -2px; right: -2px;
+  border-top: 3.5px solid #ffffff;
+  border-right: 3.5px solid #ffffff;
+  cursor: nesw-resize;
+}
+.crop-handle[data-handle="bl"] {
+  bottom: -2px; left: -2px;
+  border-bottom: 3.5px solid #ffffff;
+  border-left: 3.5px solid #ffffff;
+  cursor: nesw-resize;
+}
+.crop-handle[data-handle="br"] {
+  bottom: -2px; right: -2px;
+  border-bottom: 3.5px solid #ffffff;
+  border-right: 3.5px solid #ffffff;
+  cursor: nwse-resize;
 }
 
-/* 4 Edge Handles */
+/* 4 Cạnh kéo tay */
 .crop-handle[data-handle="t"],
 .crop-handle[data-handle="b"] {
-  left: 32px;
-  right: 32px;
+  left: 24px;
+  right: 24px;
   height: 24px;
   cursor: ns-resize;
 }
@@ -14723,19 +14799,19 @@ body.light .ptr-circle-badge,
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  width: 36px;
-  height: 4px;
+  width: 32px;
+  height: 3px;
   border-radius: 2px;
   background: #ffffff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
-.crop-handle[data-handle="t"]::after { top: 9px; }
-.crop-handle[data-handle="b"]::after { bottom: 9px; }
+.crop-handle[data-handle="t"]::after { top: 10px; }
+.crop-handle[data-handle="b"]::after { bottom: 10px; }
 
 .crop-handle[data-handle="l"],
 .crop-handle[data-handle="r"] {
-  top: 32px;
-  bottom: 32px;
+  top: 24px;
+  bottom: 24px;
   width: 24px;
   cursor: ew-resize;
 }
@@ -14748,86 +14824,191 @@ body.light .ptr-circle-badge,
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 4px;
-  height: 36px;
+  width: 3px;
+  height: 32px;
   border-radius: 2px;
   background: #ffffff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
-.crop-handle[data-handle="l"]::after { left: 9px; }
-.crop-handle[data-handle="r"]::after { right: 9px; }
+.crop-handle[data-handle="l"]::after { left: 10px; }
+.crop-handle[data-handle="r"]::after { right: 10px; }
 
-/* Crop Toolbar Panel (Tilt + Perspective + Rotate) */
-.crop-toolbar-panel {
-  padding: 10px 14px;
-  background: rgba(15, 23, 42, 0.92);
-  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+/* Bottom Panel iOS: 3 nút tròn công cụ + Thước đo vạch kim vàng */
+.ios-crop-bottom-panel {
+  background: #000000;
+  padding: 12px 18px 24px 18px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  z-index: 20;
+  user-select: none;
 }
 
-/* Perspective mode tabs (Góc xoay | Dọc | Ngang - Style iOS Photos) */
-.crop-perspective-tabs {
+/* 3 Nút tròn công cụ (Góc xoay | Nghiêng dọc | Nghiêng ngang) */
+.ios-crop-tools-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 32px;
 }
-.btn-perspective-tab {
-  flex: 1;
-  max-width: 110px;
-  height: 44px;
+
+.ios-tool-circle-btn {
+  background: transparent;
+  border: none;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  color: var(--text-muted, #94a3b8);
+  gap: 6px;
   cursor: pointer;
+  color: #8e8e93;
+  padding: 0;
   transition: all 0.2s ease;
-  padding: 2px 6px;
 }
-.btn-perspective-tab:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-.btn-perspective-tab.active {
-  background: rgba(13, 148, 136, 0.2);
-  border-color: #14b8a6;
-  color: #2dd4bf;
-  box-shadow: 0 0 10px rgba(20, 184, 166, 0.2);
-}
-.persp-tab-svg {
-  width: 18px;
-  height: 18px;
-}
-.persp-tab-icon {
+
+.ios-tool-icon-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #1c1c1e;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
   font-size: 0.82rem;
   font-weight: 700;
-  line-height: 18px;
-}
-.persp-tab-label {
-  font-size: 0.68rem;
-  font-weight: 500;
-  white-space: nowrap;
+  transition: all 0.2s ease;
 }
 
-.crop-tilt-control {
+.ios-tool-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #8e8e93;
+  transition: color 0.2s ease;
+}
+
+/* Trạng thái được chọn hoặc có giá trị khác 0: Nổi bật viền vàng iOS */
+.ios-tool-circle-btn.active .ios-tool-icon-circle {
+  border-color: #ffcc00;
+  color: #ffcc00;
+  background: rgba(255, 204, 0, 0.12);
+  box-shadow: 0 0 12px rgba(255, 204, 0, 0.35);
+}
+.ios-tool-circle-btn.active .ios-tool-label {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Khung Thước đo vạch (Ruler Dial) */
+.ios-ruler-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.ios-ruler-value-badge {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 6px;
+  cursor: pointer;
+  padding: 2px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  transition: all 0.15s ease;
+}
+.ios-ruler-value-badge.has-val {
+  color: #ffcc00;
+  background: rgba(255, 204, 0, 0.16);
+  box-shadow: 0 0 8px rgba(255, 204, 0, 0.2);
+}
+
+.ios-ruler-viewport {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  height: 44px;
+  overflow: hidden;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  mask-image: linear-gradient(to right, transparent 0%, black 20%, black 80%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 20%, black 80%, transparent 100%);
 }
-.crop-tilt-label {
-  display: inline-flex;
+
+/* Kim chỉ số màu vàng nằm ở chính giữa thước đo */
+.ios-ruler-needle {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  bottom: 6px;
+  width: 2.5px;
+  background: #ffcc00;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  z-index: 5;
+  box-shadow: 0 0 10px rgba(255, 204, 0, 0.8);
+  pointer-events: none;
+}
+
+/* Dải vạch thước kẻ trượt ngang */
+.ios-ruler-track {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 0.78rem;
-  color: var(--text-secondary, #94a3b8);
-  width: 115px;
+  pointer-events: none;
+  transition: transform 0.06s linear;
+}
+
+.ios-ruler-tick {
+  width: 7px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  flex-shrink: 0;
+}
+.ios-ruler-tick-line {
+  width: 1.5px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 1px;
+}
+.ios-ruler-tick.med .ios-ruler-tick-line {
+  height: 16px;
+  background: rgba(255, 255, 255, 0.65);
+}
+.ios-ruler-tick.major .ios-ruler-tick-line {
+  height: 24px;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.9);
+}
+.ios-ruler-tick.zero .ios-ruler-tick-line {
+  height: 28px;
+  width: 2px;
+  background: #ffffff;
+}
+
+/* Vùng cảm ứng trượt mượt mà trên dải thước */
+.ios-ruler-range-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: ew-resize;
+  z-index: 10;
+  margin: 0;
+  padding: 0;
+  touch-action: pan-y;
+}
   flex-shrink: 0;
 }
 .crop-tilt-label strong {

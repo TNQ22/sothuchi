@@ -91,8 +91,8 @@ const UISettings = {
       this.renderTrashPanel();
     }
 
-    if (sectionId === 'ai-gemini') {
-      this.loadGeminiSettings();
+    if (sectionId === 'ocr-scanner' || sectionId === 'ai-gemini') {
+      this.loadOCRSettings();
     }
 
     // Cập nhật tiêu đề trang con
@@ -104,7 +104,8 @@ const UISettings = {
       'backup-restore': '<i data-lucide="database" style="color: #ec4899; width: 20px; height: 20px;"></i> Sao Lưu & Khôi Phục File',
       'trash': '<i data-lucide="trash-2" style="color: #ef4444; width: 20px; height: 20px;"></i> Thùng Rác & Khôi Phục',
       'export-csv': '<i data-lucide="file-spreadsheet" style="color: #10b981; width: 20px; height: 20px;"></i> Xuất Dữ Liệu Excel (CSV)',
-      'ai-gemini': '<i data-lucide="sparkles" style="color: var(--primary); width: 20px; height: 20px;"></i> Trợ Lý AI Quét Hoá Đơn',
+      'ocr-scanner': '<i data-lucide="scan-text" style="color: var(--primary); width: 20px; height: 20px;"></i> Nhận Diện Hoá Đơn (OCR Offline)',
+      'ai-gemini': '<i data-lucide="scan-text" style="color: var(--primary); width: 20px; height: 20px;"></i> Nhận Diện Hoá Đơn (OCR Offline)',
       'appearance': '<i data-lucide="palette" style="color: #6366f1; width: 20px; height: 20px;"></i> Giao Diện & Hệ Thống',
       'server-admin': '<i data-lucide="shield-check" style="color: var(--primary); width: 20px; height: 20px;"></i> Quản Trị Máy Chủ'
     };
@@ -294,26 +295,11 @@ const UISettings = {
       }
     }
 
-    // 5.2 Trợ lý AI Quét Hoá Đơn Badge
+    // 5.2 Nhận diện Hoá Đơn OCR Badge
     const aiBadge = document.getElementById('hub-ai-badge');
     if (aiBadge) {
-      try {
-        const isEnabled = await this.getGeminiEnabled();
-        const apiKey = await this.getGeminiApiKey();
-        if (!isEnabled) {
-          aiBadge.textContent = 'Đang tắt';
-          aiBadge.className = 'settings-status-pill pill-gray';
-        } else if (apiKey) {
-          aiBadge.textContent = 'Sẵn sàng';
-          aiBadge.className = 'settings-status-pill pill-green';
-        } else {
-          aiBadge.textContent = 'Chưa cài đặt';
-          aiBadge.className = 'settings-status-pill pill-gray';
-        }
-      } catch (_) {
-        aiBadge.textContent = 'Chưa cài đặt';
-        aiBadge.className = 'settings-status-pill pill-gray';
-      }
+      aiBadge.textContent = 'OCR Sẵn sàng';
+      aiBadge.className = 'settings-status-pill pill-green';
     }
 
     // 6. Quản trị máy chủ (Đồng bộ hiển thị item trên Hub)
@@ -3382,412 +3368,130 @@ const UISettings = {
   },
 
   // ==========================================
-  // TRỢ LÝ AI QUÉT HOÁ ĐƠN (GOOGLE GEMINI FLASH)
+  // NHẬN DIỆN HOÁ ĐƠN (OCR OFFLINE)
   // ==========================================
-  async getGeminiApiKey() {
+  async getOCRAutoAmount() {
     try {
-      const localSetting = await db.settings.get('geminiApiKey');
-      if (localSetting && localSetting.value && localSetting.value.trim()) {
-        return localSetting.value.trim();
-      }
-      const lsKey = localStorage.getItem('gemini_api_key');
-      if (lsKey && lsKey.trim()) return lsKey.trim();
-      if (window.EnvConfig) {
-        const envKey = window.EnvConfig.get('GEMINI_API_KEY') || window.EnvConfig.get('VITE_GEMINI_API_KEY');
-        if (envKey && envKey.trim()) return envKey.trim();
-      }
-    } catch (_) {}
-    return '';
-  },
-
-
-  async getGeminiEnabled() {
-    try {
-      const setting = await db.settings.get('geminiEnabled');
+      const setting = await db.settings.get('ocrAutoAmount');
       if (setting && setting.value !== undefined) return !!setting.value;
-      const ls = localStorage.getItem('gemini_enabled');
-      if (ls !== null) return ls === 'true';
-    } catch (_) {}
-    return true; // Mặc định bật nếu có key
-  },
-
-  async getGeminiModel() {
-    try {
-      const setting = await db.settings.get('geminiModel');
-      if (setting && setting.value) {
-        if (setting.value === 'auto' || setting.value === 'gemini-2.0-flash') return 'gemini-3.8-flash';
-        return setting.value;
-      }
-      const ls = localStorage.getItem('gemini_model');
-      if (ls) {
-        if (ls === 'auto' || ls === 'gemini-2.0-flash') return 'gemini-3.8-flash';
-        return ls;
-      }
-    } catch (_) {}
-    return 'gemini-3.8-flash'; // Khóa chuẩn phiên bản mới nhất theo yêu cầu
-  },
-
-  handleModelSelectChange() {
-    const modelSelect = document.getElementById('settings-gemini-model');
-    const customInput = document.getElementById('settings-gemini-model-custom');
-    if (!modelSelect || !customInput) return;
-    if (modelSelect.value === 'custom') {
-      customInput.style.display = 'block';
-      customInput.focus();
-    } else {
-      customInput.style.display = 'none';
-      this.saveGeminiSettings(false);
-    }
-  },
-
-  // Truy vấn mô hình khả dụng, luôn ưu tiên gemini-3.8-flash
-  async resolveActiveGeminiModel(apiKey, forceRefresh = false) {
-    if (!apiKey) apiKey = await this.getGeminiApiKey();
-    const preferredModel = await this.getGeminiModel();
-    if (preferredModel && preferredModel !== 'auto' && !forceRefresh) {
-      return preferredModel;
-    }
-
-    const fallbacks = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
-    if (!apiKey) return fallbacks[0];
-
-    // Kiểm tra cache đã phát hiện gần đây
-    if (!forceRefresh) {
-      try {
-        const cached = localStorage.getItem('gemini_discovered_model');
-        const ts = Number(localStorage.getItem('gemini_discovered_ts') || 0);
-        if (cached && !cached.includes('omni') && !cached.includes('audio') && (Date.now() - ts < 12 * 3600 * 1000)) {
-          return cached;
-        }
-      } catch (_) {}
-    }
-
-    // Gọi /v1beta/models nếu cần dò tìm tự động
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
-      const res = await fetch(url, { cache: 'no-cache' });
-      if (res.ok) {
-        const data = await res.json();
-        const models = Array.isArray(data?.models) ? data.models : [];
-        const excludedKeywords = ['omni', 'audio', 'live', 'realtime', 'tts', 'embedding', 'search', 'retrieval', 'imagen', 'learnlm'];
-        const flashModels = models
-          .filter(m => {
-            const methods = m.supportedGenerationMethods || [];
-            const hasGenerate = methods.includes('generateContent');
-            const name = (m.name || '').toLowerCase();
-            const isFlash = name.includes('flash');
-            const isExcluded = excludedKeywords.some(kw => name.includes(kw));
-            return hasGenerate && isFlash && !isExcluded;
-          })
-          .map(m => m.name.replace(/^models\//, ''));
-
-        if (flashModels.length > 0) {
-          flashModels.sort((a, b) => {
-            const matchA = a.match(/gemini-(\d+(?:\.\d+)?)/i);
-            const matchB = b.match(/gemini-(\d+(?:\.\d+)?)/i);
-            const verA = matchA ? parseFloat(matchA[1]) : 0;
-            const verB = matchB ? parseFloat(matchB[1]) : 0;
-            if (verB !== verA) return verB - verA;
-            return a.length - b.length;
-          });
-
-          const candidates = Array.from(new Set([...flashModels, ...fallbacks]));
-          const bestModel = candidates[0];
-          try {
-            localStorage.setItem('gemini_discovered_model', bestModel);
-            localStorage.setItem('gemini_discovered_ts', String(Date.now()));
-            localStorage.setItem('gemini_discovered_list', JSON.stringify(candidates));
-          } catch (_) {}
-          return bestModel;
-        }
-      }
-    } catch (e) {
-      console.warn('[Gemini] Không thể truy vấn /models:', e);
-    }
-
-    return fallbacks[0];
-  },
-
-  async getGeminiAutoCrop() {
-    try {
-      const setting = await db.settings.get('geminiAutoCrop');
-      if (setting && setting.value !== undefined) return !!setting.value;
-      const ls = localStorage.getItem('gemini_auto_crop');
+      const ls = localStorage.getItem('ocr_auto_amount');
       if (ls !== null) return ls === 'true';
     } catch (_) {}
     return true;
   },
 
-  async getGeminiAutoAmount() {
+  async getOCRAutoCategory() {
     try {
-      const setting = await db.settings.get('geminiAutoAmount');
+      const setting = await db.settings.get('ocrAutoCategory');
       if (setting && setting.value !== undefined) return !!setting.value;
-      const ls = localStorage.getItem('gemini_auto_amount');
+      const ls = localStorage.getItem('ocr_auto_category');
       if (ls !== null) return ls === 'true';
     } catch (_) {}
     return true;
   },
 
-  async getGeminiAutoItems() {
+  async getOCRAutoItems() {
     try {
-      const setting = await db.settings.get('geminiAutoItems');
+      const setting = await db.settings.get('ocrAutoItems');
       if (setting && setting.value !== undefined) return !!setting.value;
-      const ls = localStorage.getItem('gemini_auto_items');
+      const ls = localStorage.getItem('ocr_auto_items');
       if (ls !== null) return ls === 'true';
     } catch (_) {}
     return true;
   },
 
-  async getGeminiAutoCategory() {
+  async getOCROfflineQr() {
     try {
-      const setting = await db.settings.get('geminiAutoCategory');
+      const setting = await db.settings.get('ocrOfflineQr');
       if (setting && setting.value !== undefined) return !!setting.value;
-      const ls = localStorage.getItem('gemini_auto_category');
+      const ls = localStorage.getItem('ocr_offline_qr');
       if (ls !== null) return ls === 'true';
     } catch (_) {}
     return true;
   },
 
-  async getGeminiAutoScan() {
+  async getOCRAutoScan() {
     try {
-      const setting = await db.settings.get('geminiAutoScan');
+      const setting = await db.settings.get('ocrAutoScan');
       if (setting && setting.value !== undefined) return !!setting.value;
-      const ls = localStorage.getItem('gemini_auto_scan');
+      const ls = localStorage.getItem('ocr_auto_scan');
       if (ls !== null) return ls === 'true';
     } catch (_) {}
-    return false; // Mặc định tắt tự quét ngay khi upload để người dùng bấm Quét hoặc xem ảnh trước
+    return false;
   },
 
-  async getGeminiOfflineQr() {
-    try {
-      const setting = await db.settings.get('geminiOfflineQr');
-      if (setting && setting.value !== undefined) return !!setting.value;
-      const ls = localStorage.getItem('gemini_offline_qr');
-      if (ls !== null) return ls === 'true';
-    } catch (_) {}
-    return true;
-  },
+  async loadOCRSettings() {
+    const autoAmountToggle = document.getElementById('settings-ocr-auto-amount');
+    const autoCategoryToggle = document.getElementById('settings-ocr-auto-category');
+    const autoItemsToggle = document.getElementById('settings-ocr-auto-items');
+    const offlineQrToggle = document.getElementById('settings-ocr-offline-qr');
+    const autoScanToggle = document.getElementById('settings-ocr-auto-scan');
 
-  async loadGeminiSettings() {
-    const keyInput = document.getElementById('settings-gemini-api-key');
-    const badge = document.getElementById('ai-key-status-badge');
-    const envSourceAlert = document.getElementById('ai-key-env-source-alert');
-    const clearBtn = document.getElementById('btn-clear-gemini-key');
-    const enabledToggle = document.getElementById('settings-gemini-enabled');
-    const modelSelect = document.getElementById('settings-gemini-model');
-    const customInput = document.getElementById('settings-gemini-model-custom');
-    const autoAmountToggle = document.getElementById('settings-gemini-auto-amount');
-    const autoItemsToggle = document.getElementById('settings-gemini-auto-items');
-    const autoCategoryToggle = document.getElementById('settings-gemini-auto-category');
-    const autoScanToggle = document.getElementById('settings-gemini-auto-scan');
-    const offlineQrToggle = document.getElementById('settings-gemini-offline-qr');
+    const autoAmount = await this.getOCRAutoAmount();
+    const autoCategory = await this.getOCRAutoCategory();
+    const autoItems = await this.getOCRAutoItems();
+    const offlineQr = await this.getOCROfflineQr();
+    const autoScan = await this.getOCRAutoScan();
 
-    const apiKey = await this.getGeminiApiKey();
-    const isEnabled = await this.getGeminiEnabled();
-    const model = await this.getGeminiModel();
-    const autoAmount = await this.getGeminiAutoAmount();
-    const autoItems = await this.getGeminiAutoItems();
-    const autoCategory = await this.getGeminiAutoCategory();
-    const autoScan = await this.getGeminiAutoScan();
-    const offlineQr = await this.getGeminiOfflineQr();
-
-    if (enabledToggle) enabledToggle.checked = isEnabled;
     if (autoAmountToggle) autoAmountToggle.checked = autoAmount;
-    if (autoItemsToggle) autoItemsToggle.checked = autoItems;
     if (autoCategoryToggle) autoCategoryToggle.checked = autoCategory;
-    if (autoScanToggle) autoScanToggle.checked = autoScan;
+    if (autoItemsToggle) autoItemsToggle.checked = autoItems;
     if (offlineQrToggle) offlineQrToggle.checked = offlineQr;
-
-    if (modelSelect) {
-      const hasStandardOpt = Array.from(modelSelect.options).some(o => o.value === model);
-      if (hasStandardOpt) {
-        modelSelect.value = model;
-        if (customInput) customInput.style.display = 'none';
-      } else {
-        modelSelect.value = 'custom';
-        if (customInput) {
-          customInput.style.display = 'block';
-          customInput.value = model;
-        }
-      }
-    }
-
-    let isFromEnv = false;
-    if (window.EnvConfig) {
-      const envKey = window.EnvConfig.get('GEMINI_API_KEY') || window.EnvConfig.get('VITE_GEMINI_API_KEY');
-      if (envKey && envKey.trim()) isFromEnv = true;
-    }
-
-    if (keyInput) keyInput.value = apiKey;
-
-    if (envSourceAlert) {
-      envSourceAlert.style.display = (isFromEnv && apiKey) ? 'block' : 'none';
-    }
-
-    if (badge) {
-      if (!isEnabled) {
-        badge.textContent = 'Đang tắt';
-        badge.className = 'settings-status-pill pill-gray';
-      } else if (apiKey) {
-        badge.textContent = isFromEnv ? '✓ Sẵn sàng (Docker)' : '✓ Sẵn sàng';
-        badge.className = 'settings-status-pill pill-green';
-      } else {
-        badge.textContent = 'Chưa cấu hình Key';
-        badge.className = 'settings-status-pill pill-yellow';
-      }
-    }
-
-    if (clearBtn) {
-      clearBtn.style.display = apiKey ? 'inline-flex' : 'none';
-    }
+    if (autoScanToggle) autoScanToggle.checked = autoScan;
 
     if (window.lucide) lucide.createIcons();
   },
 
-  async saveGeminiSettings(showToastMsg = true) {
-    const keyInput = document.getElementById('settings-gemini-api-key');
-    const enabledToggle = document.getElementById('settings-gemini-enabled');
-    const modelSelect = document.getElementById('settings-gemini-model');
-    const customInput = document.getElementById('settings-gemini-model-custom');
-    const autoAmountToggle = document.getElementById('settings-gemini-auto-amount');
-    const autoItemsToggle = document.getElementById('settings-gemini-auto-items');
-    const autoCategoryToggle = document.getElementById('settings-gemini-auto-category');
-    const autoScanToggle = document.getElementById('settings-gemini-auto-scan');
-    const offlineQrToggle = document.getElementById('settings-gemini-offline-qr');
+  async saveOCRSettings(showToastMsg = true) {
+    const autoAmountToggle = document.getElementById('settings-ocr-auto-amount');
+    const autoCategoryToggle = document.getElementById('settings-ocr-auto-category');
+    const autoItemsToggle = document.getElementById('settings-ocr-auto-items');
+    const offlineQrToggle = document.getElementById('settings-ocr-offline-qr');
+    const autoScanToggle = document.getElementById('settings-ocr-auto-scan');
 
-    const rawKey = keyInput ? keyInput.value.trim() : '';
-    const enabled = enabledToggle ? enabledToggle.checked : true;
-    let model = 'gemini-3.8-flash';
-    if (modelSelect) {
-      if (modelSelect.value === 'custom') {
-        model = (customInput && customInput.value.trim()) ? customInput.value.trim() : 'gemini-3.8-flash';
-      } else {
-        model = modelSelect.value;
-      }
-    }
     const autoAmount = autoAmountToggle ? autoAmountToggle.checked : true;
-    const autoItems = autoItemsToggle ? autoItemsToggle.checked : true;
     const autoCategory = autoCategoryToggle ? autoCategoryToggle.checked : true;
-    const autoScan = autoScanToggle ? autoScanToggle.checked : false;
+    const autoItems = autoItemsToggle ? autoItemsToggle.checked : true;
     const offlineQr = offlineQrToggle ? offlineQrToggle.checked : true;
+    const autoScan = autoScanToggle ? autoScanToggle.checked : false;
 
     try {
-      await db.settings.put({ key: 'geminiApiKey', value: rawKey });
-      await db.settings.put({ key: 'geminiEnabled', value: enabled });
-      await db.settings.put({ key: 'geminiModel', value: model });
-      await db.settings.put({ key: 'geminiAutoAmount', value: autoAmount });
-      await db.settings.put({ key: 'geminiAutoItems', value: autoItems });
-      await db.settings.put({ key: 'geminiAutoCategory', value: autoCategory });
-      await db.settings.put({ key: 'geminiAutoScan', value: autoScan });
-      await db.settings.put({ key: 'geminiOfflineQr', value: offlineQr });
+      await db.settings.put({ key: 'ocrAutoAmount', value: autoAmount });
+      await db.settings.put({ key: 'ocrAutoCategory', value: autoCategory });
+      await db.settings.put({ key: 'ocrAutoItems', value: autoItems });
+      await db.settings.put({ key: 'ocrOfflineQr', value: offlineQr });
+      await db.settings.put({ key: 'ocrAutoScan', value: autoScan });
 
-      localStorage.setItem('gemini_api_key', rawKey);
-      localStorage.setItem('gemini_enabled', enabled ? 'true' : 'false');
-      localStorage.setItem('gemini_model', model);
-      localStorage.setItem('gemini_auto_amount', autoAmount ? 'true' : 'false');
-      localStorage.setItem('gemini_auto_items', autoItems ? 'true' : 'false');
-      localStorage.setItem('gemini_auto_category', autoCategory ? 'true' : 'false');
-      localStorage.setItem('gemini_auto_scan', autoScan ? 'true' : 'false');
-      localStorage.setItem('gemini_offline_qr', offlineQr ? 'true' : 'false');
+      localStorage.setItem('ocr_auto_amount', autoAmount ? 'true' : 'false');
+      localStorage.setItem('ocr_auto_category', autoCategory ? 'true' : 'false');
+      localStorage.setItem('ocr_auto_items', autoItems ? 'true' : 'false');
+      localStorage.setItem('ocr_offline_qr', offlineQr ? 'true' : 'false');
+      localStorage.setItem('ocr_auto_scan', autoScan ? 'true' : 'false');
 
-      await this.loadGeminiSettings();
+      await this.loadOCRSettings();
       await this.updateHubBadges();
-
-      if (window.UITransactions && typeof window.UITransactions.updateAIStatus === 'function') {
-        window.UITransactions.updateAIStatus();
-      }
 
       if (showToastMsg) {
-        showToast('Đã lưu cài đặt AI và xử lý hóa đơn thành công!', 'success');
+        showToast('Đã lưu cài đặt nhận diện OCR ngoại tuyến!', 'success');
       }
     } catch (err) {
-      console.error('Lỗi lưu cấu hình Gemini:', err);
-      showToast('Lỗi khi lưu cấu hình: ' + err.message, 'error');
+      console.error('Lỗi lưu cài đặt OCR:', err);
+      showToast('Lỗi khi lưu cài đặt: ' + err.message, 'error');
     }
   },
 
-  toggleGeminiKeyVisibility() {
-    const keyInput = document.getElementById('settings-gemini-api-key');
-    const icon = document.getElementById('icon-toggle-gemini-key');
-    if (!keyInput) return;
-    if (keyInput.type === 'password') {
-      keyInput.type = 'text';
-      if (icon) icon.setAttribute('data-lucide', 'eye-off');
-    } else {
-      keyInput.type = 'password';
-      if (icon) icon.setAttribute('data-lucide', 'eye');
-    }
-    if (window.lucide) lucide.createIcons();
-  },
-
-  async clearGeminiKey() {
-    const ok = await showConfirm({
-      title: 'Xoá Gemini API Key',
-      message: 'Bạn có chắc chắn muốn xoá mã khoá API Gemini đã lưu trên máy này?',
-      confirmText: 'Xoá Key',
-      cancelText: 'Huỷ',
-      icon: 'trash-2'
-    });
-    if (!ok) return;
-
-    try {
-      await db.settings.delete('geminiApiKey');
-      localStorage.removeItem('gemini_api_key');
-      localStorage.removeItem('gemini_discovered_model');
-      localStorage.removeItem('gemini_discovered_list');
-      const keyInput = document.getElementById('settings-gemini-api-key');
-      if (keyInput) keyInput.value = '';
-      await this.loadGeminiSettings();
-      await this.updateHubBadges();
-      if (window.UITransactions && typeof window.UITransactions.updateAIStatus === 'function') {
-        window.UITransactions.updateAIStatus();
-      }
-      showToast('Đã xoá khoá API Gemini', 'info');
-    } catch (err) {
-      showToast('Lỗi khi xoá: ' + err.message, 'error');
-    }
-  },
-
-  async testGeminiApiKey() {
-    let apiKey = await this.getGeminiApiKey();
-    const keyInput = document.getElementById('settings-gemini-api-key');
-    if (keyInput && keyInput.value.trim()) {
-      apiKey = keyInput.value.trim();
-    }
-    if (!apiKey) {
-      showToast('Vui lòng nhập hoặc lưu Gemini API Key trước khi kiểm tra!', 'warning');
-      return;
-    }
-
-    const testModel = await this.getGeminiModel() || 'gemini-3.8-flash';
-    showToast(`Đang kiểm tra kết nối với mô hình ${testModel}...`, 'info');
-
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${testModel}:generateContent?key=${apiKey}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(12000) : undefined,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Ping test connection. Respond with OK.' }] }]
-        })
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        const msg = errData?.error?.message || `Mã phản hồi HTTP ${res.status}`;
-        throw new Error(msg);
-      }
-
-      showToast(`✓ Kết nối thành công với ${testModel}!`, 'success');
-      await this.saveGeminiSettings(false);
-      await this.loadGeminiSettings();
-      await this.updateHubBadges();
-    } catch (err) {
-      console.error('Lỗi kiểm tra Gemini Key:', err);
-      showToast('Kiểm tra thất bại: ' + err.message, 'error');
-    }
-  }
+  // Compatibility aliases for legacy calls
+  async getGeminiAutoAmount() { return this.getOCRAutoAmount(); },
+  async getGeminiAutoCategory() { return this.getOCRAutoCategory(); },
+  async getGeminiAutoItems() { return this.getOCRAutoItems(); },
+  async getGeminiOfflineQr() { return this.getOCROfflineQr(); },
+  async getGeminiAutoScan() { return this.getOCRAutoScan(); },
+  async getGeminiAutoCrop() { return true; },
+  async getGeminiEnabled() { return true; },
+  async getGeminiApiKey() { return ''; },
+  async getGeminiModel() { return 'offline-ocr'; },
+  async loadGeminiSettings() { return this.loadOCRSettings(); },
+  async saveGeminiSettings(showToast = true) { return this.saveOCRSettings(showToast); }
 };
 
 window.UISettings = UISettings;
