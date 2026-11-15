@@ -40,9 +40,6 @@ services:
       - VITE_GOOGLE_WORKER_URL=${VITE_GOOGLE_WORKER_URL:-${GOOGLE_WORKER_URL:-}}
       - VITE_GOOGLE_CLIENT_SECRET=${VITE_GOOGLE_CLIENT_SECRET:-${GOOGLE_CLIENT_SECRET:-}}
       - VITE_DROPBOX_APP_KEY=${VITE_DROPBOX_APP_KEY:-${DROPBOX_APP_KEY:-}}
-      # Trợ lý AI Quét hoá đơn (Google Gemini Vision API)
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-${VITE_GEMINI_API_KEY:-}}
-      - VITE_GEMINI_API_KEY=${VITE_GEMINI_API_KEY:-${GEMINI_API_KEY:-}}
       - VITE_AUTO_SYNC_ENABLED=${VITE_AUTO_SYNC_ENABLED:-true}
     volumes:
       # Lưu trữ cơ sở dữ liệu SQLite và bản sao lưu bền vững trên máy chủ

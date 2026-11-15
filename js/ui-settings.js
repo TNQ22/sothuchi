@@ -3380,6 +3380,16 @@ const UISettings = {
     return true;
   },
 
+  async getOCRAutoDateTime() {
+    try {
+      const setting = await db.settings.get('ocrAutoDateTime');
+      if (setting && setting.value !== undefined) return !!setting.value;
+      const ls = localStorage.getItem('ocr_auto_datetime');
+      if (ls !== null) return ls === 'true';
+    } catch (_) {}
+    return true;
+  },
+
   async getOCRAutoCategory() {
     try {
       const setting = await db.settings.get('ocrAutoCategory');
@@ -3422,18 +3432,21 @@ const UISettings = {
 
   async loadOCRSettings() {
     const autoAmountToggle = document.getElementById('settings-ocr-auto-amount');
+    const autoDateTimeToggle = document.getElementById('settings-ocr-auto-datetime');
     const autoCategoryToggle = document.getElementById('settings-ocr-auto-category');
     const autoItemsToggle = document.getElementById('settings-ocr-auto-items');
     const offlineQrToggle = document.getElementById('settings-ocr-offline-qr');
     const autoScanToggle = document.getElementById('settings-ocr-auto-scan');
 
     const autoAmount = await this.getOCRAutoAmount();
+    const autoDateTime = await this.getOCRAutoDateTime();
     const autoCategory = await this.getOCRAutoCategory();
     const autoItems = await this.getOCRAutoItems();
     const offlineQr = await this.getOCROfflineQr();
     const autoScan = await this.getOCRAutoScan();
 
     if (autoAmountToggle) autoAmountToggle.checked = autoAmount;
+    if (autoDateTimeToggle) autoDateTimeToggle.checked = autoDateTime;
     if (autoCategoryToggle) autoCategoryToggle.checked = autoCategory;
     if (autoItemsToggle) autoItemsToggle.checked = autoItems;
     if (offlineQrToggle) offlineQrToggle.checked = offlineQr;
@@ -3444,12 +3457,14 @@ const UISettings = {
 
   async saveOCRSettings(showToastMsg = true) {
     const autoAmountToggle = document.getElementById('settings-ocr-auto-amount');
+    const autoDateTimeToggle = document.getElementById('settings-ocr-auto-datetime');
     const autoCategoryToggle = document.getElementById('settings-ocr-auto-category');
     const autoItemsToggle = document.getElementById('settings-ocr-auto-items');
     const offlineQrToggle = document.getElementById('settings-ocr-offline-qr');
     const autoScanToggle = document.getElementById('settings-ocr-auto-scan');
 
     const autoAmount = autoAmountToggle ? autoAmountToggle.checked : true;
+    const autoDateTime = autoDateTimeToggle ? autoDateTimeToggle.checked : true;
     const autoCategory = autoCategoryToggle ? autoCategoryToggle.checked : true;
     const autoItems = autoItemsToggle ? autoItemsToggle.checked : true;
     const offlineQr = offlineQrToggle ? offlineQrToggle.checked : true;
@@ -3457,12 +3472,14 @@ const UISettings = {
 
     try {
       await db.settings.put({ key: 'ocrAutoAmount', value: autoAmount });
+      await db.settings.put({ key: 'ocrAutoDateTime', value: autoDateTime });
       await db.settings.put({ key: 'ocrAutoCategory', value: autoCategory });
       await db.settings.put({ key: 'ocrAutoItems', value: autoItems });
       await db.settings.put({ key: 'ocrOfflineQr', value: offlineQr });
       await db.settings.put({ key: 'ocrAutoScan', value: autoScan });
 
       localStorage.setItem('ocr_auto_amount', autoAmount ? 'true' : 'false');
+      localStorage.setItem('ocr_auto_datetime', autoDateTime ? 'true' : 'false');
       localStorage.setItem('ocr_auto_category', autoCategory ? 'true' : 'false');
       localStorage.setItem('ocr_auto_items', autoItems ? 'true' : 'false');
       localStorage.setItem('ocr_offline_qr', offlineQr ? 'true' : 'false');
@@ -3482,6 +3499,7 @@ const UISettings = {
 
   // Compatibility aliases for legacy calls
   async getGeminiAutoAmount() { return this.getOCRAutoAmount(); },
+  async getGeminiAutoDateTime() { return this.getOCRAutoDateTime(); },
   async getGeminiAutoCategory() { return this.getOCRAutoCategory(); },
   async getGeminiAutoItems() { return this.getOCRAutoItems(); },
   async getGeminiOfflineQr() { return this.getOCROfflineQr(); },

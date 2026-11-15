@@ -1649,6 +1649,12 @@ class App {
         case 'modal-custom-calendar':
           if (window.UICalendar) window.UICalendar.close();
           break;
+        case 'modal-crop-image':
+          if (window.UITransactions) window.UITransactions.closeCropModal();
+          break;
+        case 'modal-image-viewer':
+          if (window.UITransactions) window.UITransactions.closeImageViewer();
+          break;
         default:
           overlay.classList.remove('open');
           break;
@@ -1670,12 +1676,12 @@ class App {
       let isPointerDownOutside = false;
 
       overlay.addEventListener('pointerdown', (e) => {
-        const inside = e.target.closest('.modal-dialog, .keypad-popup-sheet, .custom-cal-container');
+        const inside = e.target.closest('.modal-dialog, .keypad-popup-sheet, .custom-cal-container, .crop-modal-dialog, .image-viewer-dialog');
         isPointerDownOutside = !inside;
       });
 
       overlay.addEventListener('click', (e) => {
-        const inside = e.target.closest('.modal-dialog, .keypad-popup-sheet, .custom-cal-container');
+        const inside = e.target.closest('.modal-dialog, .keypad-popup-sheet, .custom-cal-container, .crop-modal-dialog, .image-viewer-dialog');
         if (isPointerDownOutside && !inside) {
           e.preventDefault();
           e.stopPropagation();
@@ -1690,7 +1696,7 @@ class App {
     document.addEventListener('pointerdown', (e) => {
       const openModal = document.querySelector('.modal-overlay.open, .keypad-popup-overlay.open, .custom-cal-overlay.open');
       if (openModal) {
-        const inside = e.target.closest('.modal-dialog, .keypad-popup-sheet, .custom-cal-container');
+        const inside = e.target.closest('.modal-dialog, .keypad-popup-sheet, .custom-cal-container, .crop-modal-dialog, .image-viewer-dialog');
         if (!inside && (e.target === openModal || openModal.contains(e.target))) {
           globalOutsideTarget = openModal;
         } else {
@@ -1703,7 +1709,7 @@ class App {
 
     document.addEventListener('click', (e) => {
       if (globalOutsideTarget && globalOutsideTarget.classList.contains('open')) {
-        const inside = e.target.closest('.modal-dialog, .keypad-popup-sheet, .custom-cal-container');
+        const inside = e.target.closest('.modal-dialog, .keypad-popup-sheet, .custom-cal-container, .crop-modal-dialog, .image-viewer-dialog');
         if (!inside) {
           this.dismissModal(globalOutsideTarget);
         }
@@ -1723,7 +1729,8 @@ class App {
       const el = (e.target && e.target.nodeType === 1) ? e.target : e.target?.parentElement;
       const overlay = el ? el.closest('.modal-overlay.open') : document.querySelector('.modal-overlay.open');
       if (!overlay) return;
-      const dialog = overlay.querySelector('.modal-dialog');
+      if (overlay.getAttribute('data-no-swipe-dismiss') === 'true' || overlay.id === 'modal-crop-image' || overlay.id === 'modal-image-viewer') return;
+      const dialog = overlay.querySelector('.modal-dialog, .crop-modal-dialog, .image-viewer-dialog');
       if (!dialog) return;
 
       if (el) {

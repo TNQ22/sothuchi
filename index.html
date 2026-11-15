@@ -2345,7 +2345,10 @@
                   <!-- 4. Cloudflare Worker Bridge -->
                   <div style="border-top: 1px dashed var(--border-color); padding-top: 12px;">
                     <button type="button" id="btn-toggle-google-advanced" class="btn-text" style="font-size: 0.8rem; color: var(--primary); display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: none; cursor: pointer; padding: 0; text-align: left; gap: 8px;">
-                      <span>Cloudflare Worker (Duy trì đăng nhập tài khoản Google vĩnh viễn trên iPhone)</span>
+                      <span style="display: flex; align-items: center; gap: 6px;">
+                        <i data-lucide="zap" style="width: 14px; height: 14px; flex-shrink: 0;"></i>
+                        <span>Cloudflare Worker (Duy trì đăng nhập tài khoản Google vĩnh viễn trên iPhone)</span>
+                      </span>
                       <i data-lucide="chevron-down" id="google-advanced-chevron" style="width: 16px; height: 16px; color: var(--text-muted); transition: transform 0.2s, color 0.2s; flex-shrink: 0;"></i>
                     </button>
                     <div id="google-advanced-box" style="display: none; margin-top: 10px; padding: 12px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-sm); font-size: 0.8rem;">
@@ -3084,6 +3087,18 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </label>
                 </div>
 
+                <!-- Tự động điền ngày & giờ -->
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
+                  <div>
+                    <div style="font-weight: 600; font-size: 0.86rem;">Tự động điền ngày & giờ</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">Trích xuất ngày tháng và giờ in trên hoá đơn để điền vào ngày giờ giao dịch</div>
+                  </div>
+                  <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
+                    <input type="checkbox" id="settings-ocr-auto-datetime" checked onchange="UISettings.saveOCRSettings(false)">
+                    <span class="app-switch-slider slider round"></span>
+                  </label>
+                </div>
+
                 <!-- Tự động chọn danh mục bằng OCR -->
                 <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
                   <div>
@@ -3628,58 +3643,9 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                     <i data-lucide="file-text"></i>
                   </div>
                   <div class="tx-info-content input-clearable-wrapper has-textarea">
-                    <textarea id="tx-note-input" class="tx-clean-input" rows="1" placeholder="Ghi chú (tùy chọn, Enter xuống dòng)..."></textarea>
+                    <textarea id="tx-note-input" class="tx-clean-input" rows="1" placeholder="Ghi chú..."></textarea>
                     <button type="button" class="btn-clear-input" id="btn-clear-tx-note" title="Xóa ghi chú" aria-label="Xóa ghi chú">
                       <i data-lucide="x"></i>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Hàng 4.5: Đính kèm ảnh hoá đơn & Quét AI thông minh -->
-                <div class="tx-attachment-section" id="tx-attachment-section">
-                  <div class="tx-attachment-header">
-                    <div class="tx-attachment-title">
-                      <i data-lucide="receipt" style="width: 15px; height: 15px; color: var(--primary);"></i>
-                      <span>Ảnh hoá đơn</span>
-                      <span id="tx-attachment-badge" class="tx-attachment-badge" style="display: none;">0 ảnh</span>
-                    </div>
-                    <div id="tx-ai-status-pill" class="tx-ai-status-pill" onclick="UITransactions.openAISettingsShortcut()" title="Cài đặt Nhận diện OCR">
-                      <i data-lucide="scan-text" style="width: 12px; height: 12px;"></i>
-                      <span id="tx-ai-status-text">OCR Offline</span>
-                    </div>
-                  </div>
-
-                  <!-- 2 nút Thao tác: Chọn từ thư viện & Chụp ảnh (Căng đều 100%) -->
-                  <div class="tx-attachment-actions-grid">
-                    <button type="button" class="tx-attach-action-btn" onclick="UITransactions.triggerImagePicker('gallery')" title="Chọn ảnh hoá đơn từ thư viện ảnh">
-                      <i data-lucide="image"></i>
-                      <span>Thư viện</span>
-                    </button>
-                    <button type="button" class="tx-attach-action-btn" onclick="UITransactions.triggerImagePicker('camera')" title="Chụp ảnh hoá đơn bằng máy ảnh">
-                      <i data-lucide="camera"></i>
-                      <span>Chụp ảnh</span>
-                    </button>
-                  </div>
-
-                  <!-- Input file ngầm định -->
-                  <input type="file" id="tx-image-input-gallery" accept="image/*" style="display: none;" onchange="UITransactions.handleImageFileSelect(event)">
-                  <input type="file" id="tx-image-input-camera" accept="image/*" capture="environment" style="display: none;" onchange="UITransactions.handleImageFileSelect(event)">
-
-                  <!-- Khung hiển thị danh sách ảnh hoá đơn đã đính kèm -->
-                  <div id="tx-images-list" class="tx-images-list" style="display: none;"></div>
-
-                  <!-- Khung trạng thái / nút bấm Quét OCR Offline -->
-                  <div id="tx-ai-scan-banner" class="tx-ai-scan-banner" style="display: none;">
-                    <button type="button" id="btn-tx-ai-scan" class="btn-ai-scan-magic" onclick="UITransactions.scanReceiptWithOCR()">
-                      <div class="btn-ai-scan-content">
-                        <i data-lucide="scan-line" class="icon-sparkle-spin"></i>
-                        <span id="btn-ai-scan-text">Quét hoá đơn (OCR Offline)</span>
-                      </div>
-                      <span class="ai-badge-free">100% Offline</span>
-                    </button>
-                    <button type="button" id="btn-tx-ai-cancel" class="btn-ai-scan-cancel" onclick="UITransactions.cancelAIScan()" style="display: none;" title="Huỷ quét hoá đơn">
-                      <i data-lucide="x"></i>
-                      <span>Huỷ</span>
                     </button>
                   </div>
                 </div>
@@ -3695,7 +3661,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
-                <!-- Mục Thêm Chi Tiết (Phí giao dịch & Đi vay để trả) -->
+                <!-- Mục Thêm Chi Tiết (Phí giao dịch & Đi vay để trả & Ảnh đính kèm) -->
                 <div class="collapsible-section" style="margin-top: 4px; padding-top: 6px;">
                   <button type="button" id="btn-toggle-extra-details" class="collapsible-header-btn" onclick="UITransactions.toggleExtraDetails()">
                     <div style="display: flex; align-items: center; gap: 6px;">
@@ -3735,6 +3701,38 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                       <input type="hidden" id="tx-borrow-person-input" value="">
                       <div id="borrow-due-date-row" style="display: none; margin-top: 8px; padding-left: 26px; cursor: pointer;" onclick="UITransactions.openBorrowDueDatePicker()">
                         <input type="text" id="tx-borrow-due-date-input" class="form-control" style="font-size: 0.85rem; cursor: pointer; pointer-events: none;" placeholder="Ngày trả nợ" readonly>
+                      </div>
+                    </div>
+
+                    <!-- Đính kèm ảnh hoá đơn (Thư viện & Chụp ảnh) -->
+                    <div class="tx-attachment-section" id="tx-attachment-section" style="margin-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 10px;">
+                      <div class="tx-attachment-actions-grid">
+                        <button type="button" class="tx-attach-action-btn" onclick="UITransactions.triggerImagePicker('gallery')" title="Chọn ảnh hoá đơn từ thư viện ảnh">
+                          <i data-lucide="image"></i>
+                          <span>Thư viện</span>
+                        </button>
+                        <button type="button" class="tx-attach-action-btn" onclick="UITransactions.triggerImagePicker('camera')" title="Chụp ảnh hoá đơn bằng máy ảnh">
+                          <i data-lucide="camera"></i>
+                          <span>Chụp ảnh</span>
+                        </button>
+                      </div>
+
+                      <!-- Input file ngầm định -->
+                      <input type="file" id="tx-image-input-gallery" accept="image/*" multiple style="display: none;" onchange="UITransactions.handleImageFileSelect(event)">
+                      <input type="file" id="tx-image-input-camera" accept="image/*" capture="environment" style="display: none;" onchange="UITransactions.handleImageFileSelect(event)">
+
+                      <!-- Khung hiển thị danh sách ảnh hoá đơn đã đính kèm -->
+                      <div id="tx-images-list" class="tx-images-list" style="display: none;"></div>
+
+                      <!-- Khung trạng thái / nút bấm Quét OCR Offline -->
+                      <div id="tx-ai-scan-banner" class="tx-ai-scan-banner" style="display: none;">
+                        <button type="button" id="btn-tx-ai-scan" class="btn-ai-scan-magic" onclick="UITransactions.scanReceiptWithOCR()">
+                          <div class="btn-ai-scan-content">
+                            <i data-lucide="scan-line" class="icon-sparkle-spin"></i>
+                            <span id="btn-ai-scan-text">Quét hoá đơn (OCR Offline)</span>
+                          </div>
+                          <span class="ai-badge-free">100% Offline</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -7319,8 +7317,8 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   </div>
 
   <!-- Modal: Xem ảnh hoá đơn phóng to (Image Viewer) -->
-  <div id="modal-image-viewer" class="modal-overlay" style="z-index: 100060; display: none;" onclick="if (event.target === this) UITransactions.closeImageViewer()">
-    <div class="image-viewer-dialog">
+  <div id="modal-image-viewer" class="modal-overlay" data-no-swipe-dismiss="true" style="z-index: 100060; display: none;" onclick="if (event.target === this) UITransactions.closeImageViewer()">
+    <div class="image-viewer-dialog modal-dialog" onclick="event.stopPropagation()">
       <button type="button" class="image-viewer-close-btn" onclick="UITransactions.closeImageViewer()" title="Đóng">
         <i data-lucide="x" style="width: 20px; height: 20px;"></i>
       </button>
@@ -7329,8 +7327,8 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   </div>
 
   <!-- Modal: Cắt & Căn Chỉnh Hoá Đơn (iPhone Photos App Style) -->
-  <div id="modal-crop-image" class="modal-overlay modal-crop-ios-overlay" style="z-index: 100060; display: none;" onclick="if (event.target === this) UITransactions.closeCropModal()">
-    <div class="crop-modal-dialog ios-theme">
+  <div id="modal-crop-image" class="modal-overlay modal-crop-ios-overlay" data-no-swipe-dismiss="true" style="z-index: 100060; display: none;" onclick="if (event.target === this) UITransactions.closeCropModal()">
+    <div class="crop-modal-dialog ios-theme modal-dialog" onclick="event.stopPropagation()">
       <!-- Top Bar: Hủy (X) | Quick Actions (Lật ngang, Xoay 90°, Trọn ảnh) | Xong (Nút vàng check) -->
       <div class="ios-crop-topbar">
         <button type="button" class="ios-circle-btn btn-cancel" onclick="UITransactions.closeCropModal()" title="Hủy">
@@ -7452,19 +7450,19 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=3.0.44"></script>
-  <script src="./js/ui-transactions.js?v=3.0.64"></script>
+  <script src="./js/ui-transactions.js?v=3.0.66"></script>
   <script src="./js/ui-debts.js?v=3.0.44"></script>
   <script src="./js/ui-accounts.js?v=3.0.59"></script>
   <script src="./js/ui-share.js?v=3.0.63"></script>
   <script src="./js/ui-budgets.js?v=3.0.57"></script>
   <script src="./js/ui-analytics.js?v=3.0.44"></script>
-  <script src="./js/ui-settings.js?v=3.0.67"></script>
+  <script src="./js/ui-settings.js?v=3.0.68"></script>
   <script src="./js/server-auth-modals.js?v=3.0.44"></script>
 
   <!-- Main Entry Coordinator -->
   <script src="./js/ui-admin.js?v=3.0.44"></script>
   <script src="./js/pull-to-refresh.js?v=3.0.44"></script>
-  <script src="./js/app.js?v=3.0.64"></script>
+  <script src="./js/app.js?v=3.0.65"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
   <script>
