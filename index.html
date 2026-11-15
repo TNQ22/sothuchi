@@ -2344,13 +2344,17 @@
 
                   <!-- 4. Cloudflare Worker Bridge -->
                   <div style="border-top: 1px dashed var(--border-color); padding-top: 12px;">
-                    <button type="button" id="btn-toggle-google-advanced" class="btn-text" style="font-size: 0.8rem; color: var(--primary); display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: none; cursor: pointer; padding: 0; text-align: left;">
-                      <span>Cloudflare Worker (Đồng bộ vĩnh viễn trên iPhone)</span>
+                    <button type="button" id="btn-toggle-google-advanced" class="btn-text" style="font-size: 0.8rem; color: var(--primary); display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: none; cursor: pointer; padding: 0; text-align: left; gap: 8px;">
+                      <span>Cloudflare Worker (Duy trì đăng nhập tài khoản Google vĩnh viễn trên iPhone)</span>
                       <i data-lucide="chevron-down" id="google-advanced-chevron" style="width: 16px; height: 16px; color: var(--text-muted); transition: transform 0.2s, color 0.2s; flex-shrink: 0;"></i>
                     </button>
                     <div id="google-advanced-box" style="display: none; margin-top: 10px; padding: 12px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-sm); font-size: 0.8rem;">
-                      <p style="margin: 0 0 10px 0; color: var(--text-secondary); line-height: 1.4;">
+                      <p style="margin: 0 0 10px 0; color: var(--text-secondary); line-height: 1.5;">
                         Lưu trữ <strong>Refresh Token vĩnh viễn</strong> trên iPhone, tự động đồng bộ ngầm mà không bị hỏi lại.
+                        <a href="https://github.com/TNQ22/sothuchi/blob/main/cloudflare/README.md" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; margin-left: 2px;">
+                          <span>Xem hướng dẫn trên GitHub</span>
+                          <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
+                        </a>
                       </p>
                       <div class="form-group" style="margin-bottom: 8px;">
                         <label class="form-label" style="font-size: 0.76rem;">URL Cloudflare Worker:</label>

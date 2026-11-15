@@ -425,7 +425,7 @@ class GoogleDriveSync {
         closeActionBtn.onclick = (e) => {
           e.preventDefault();
           e.stopPropagation();
-          this.cleanupGoogleIframes();
+          overlay.remove();
           if (typeof options.onClose === 'function') options.onClose();
         };
       }
@@ -435,13 +435,13 @@ class GoogleDriveSync {
     return overlay;
   }
 
-  // Tự động phát hiện khi có iframe Google / Google Picker bị kẹt (lỗi cookie/phiên) và thay thế bằng bảng "Cần làm mới đăng nhập" kèm nút Đăng nhập lại
+  // Luôn gắn nút "✕" nổi thoát khẩn cấp nếu có iframe đăng nhập Google (GIS) bị kẹt che màn hình
   setupGoogleIframeDismissWatcher() {
     if (this._iframeDismissWatcherActive) return;
     this._iframeDismissWatcherActive = true;
 
     const checkAndAttachDismissBtn = () => {
-      const iframes = document.querySelectorAll('iframe[src*="accounts.google.com"], iframe[src*="docs.google.com"], iframe[src*="picker"], .picker-dialog');
+      const iframes = document.querySelectorAll('iframe[src*="accounts.google.com"]');
       const hasVisibleIframe = Array.from(iframes).some(f => {
         try {
           const style = window.getComputedStyle(f);
@@ -452,11 +452,10 @@ class GoogleDriveSync {
       });
 
       let btn = document.getElementById('google-iframe-dismiss-btn');
-      let pickerBtn = document.getElementById('google-picker-close-btn');
 
       if (hasVisibleIframe) {
-        // 1. Nút "✕" đóng khẩn cấp
-        if (!btn && !pickerBtn) {
+        // Nút "✕" đóng khẩn cấp
+        if (!btn) {
           btn = document.createElement('button');
           btn.id = 'google-iframe-dismiss-btn';
           btn.setAttribute('aria-label', 'Đóng cửa sổ Google');
@@ -488,15 +487,8 @@ class GoogleDriveSync {
           };
           document.body.appendChild(btn);
         }
-
-        // 2. Banner đè bên dưới: "Phiên đăng nhập cần làm mới" kèm nút [Đăng nhập lại]
-        this.showGoogleReauthOverlay();
       } else {
         if (btn) btn.remove();
-        if (!pickerBtn) {
-          const overlay = document.getElementById('google-iframe-reauth-overlay');
-          if (overlay) overlay.remove();
-        }
       }
     };
 
@@ -3057,19 +3049,6 @@ class GoogleDriveSync {
       if (typeof onClose === 'function') onClose();
     };
     document.body.appendChild(btn);
-
-    // Hiển thị banner trợ giúp đăng nhập lại nếu Google Picker bị lỗi/chặn cookie
-    this.showGoogleReauthOverlay({
-      onClose: () => {
-        this._removePickerCloseButton();
-        if (typeof onClose === 'function') onClose();
-      },
-      onReauthSuccess: () => {
-        if (window.ReceiveShareModal && typeof window.ReceiveShareModal.pickGoogleDriveDirectly === 'function') {
-          setTimeout(() => window.ReceiveShareModal.pickGoogleDriveDirectly(), 300);
-        }
-      }
-    });
 
     // Bắt sự kiện click vào backdrop xám bên ngoài của Google Picker để đóng
     const bgWatcher = setInterval(() => {
