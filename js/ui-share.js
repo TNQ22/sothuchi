@@ -1282,7 +1282,9 @@ const ReceiveShareModal = {
         if (typeof showAlert === 'function') {
           await showAlert({
             title: 'Chưa Tìm Thấy Tệp Chia Sẻ',
-            message: 'Không tìm thấy tệp sổ/ví nào được chia sẻ với email Google của bạn.<br><br>Nếu bạn được chia sẻ qua Liên kết (Link), hãy dùng nút <strong>"Nhập link nhận chia sẻ"</strong> để dán link vào nhé!',
+            message: `Không tìm thấy tệp sổ/ví nào được chia sẻ với email Google của bạn.<br><br>
+            • Nếu người gửi chia sẻ qua Link: Hãy bấm nút <strong>"Nhập link nhận chia sẻ"</strong> (biểu tượng 🔗) để dán link vào nhận ngay.<br><br>
+            • Nếu bạn muốn ứng dụng tự động quét và đồng bộ mọi tệp chia sẻ: Vào <strong>Cài đặt &rarr; Google Drive &rarr; Bật "Toàn quyền truy cập Drive (Full Scope)"</strong>.`,
             icon: 'info'
           });
         } else if (typeof showToast === 'function') {
@@ -1402,9 +1404,27 @@ const ReceiveShareModal = {
     await this.promptWithToken(`gdrive_${fileId}`);
   },
 
-  // Chọn tệp chia sẻ từ Google Picker
+  // Chọn tệp chia sẻ từ Google Drive
   async pickGoogleDrive() {
-    await this.pickGoogleDriveDirectly();
+    const isIOSorSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
+      Boolean(window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) ||
+      /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+    if (isIOSorSafari) {
+      // Trên iPhone / iPad / Safari / PWA:
+      // Apple WebKit chặn cookie bên thứ 3 trong iframe, khiến Google Picker iframe luôn bị lỗi:
+      // "Không thể truy cập vào Tài khoản Google của bạn".
+      // Quét trực tiếp bằng Google Drive REST API siêu nhanh, không dùng iframe và không bao giờ lỗi cookie!
+      return await this.pickGoogleDriveFromList();
+    }
+
+    // Trên các trình duyệt PC khác (Chrome desktop...):
+    try {
+      await this.pickGoogleDriveDirectly();
+    } catch (_) {
+      await this.pickGoogleDriveFromList();
+    }
   },
 
   async promptWithToken(token, key = null) {
