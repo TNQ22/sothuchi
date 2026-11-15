@@ -3011,6 +3011,119 @@ class GoogleDriveSync {
 
   _showPickerCloseButton(onClose) {
     this._removePickerCloseButton();
+    const bar = document.createElement('div');
+    bar.id = 'google-picker-floating-bar';
+    bar.style.cssText = `
+      position: fixed !important;
+      top: 12px !important;
+      left: 12px !important;
+      right: 12px !important;
+      z-index: 2147483647 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 8px !important;
+      pointer-events: none !important;
+    `;
+
+    // Nhóm nút bên trái: Đăng Nhập Lại & Quét Trực Tiếp
+    const leftActions = document.createElement('div');
+    leftActions.style.cssText = `
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      pointer-events: auto !important;
+    `;
+
+    // Nút 1: Đăng Nhập Lại Google (Mở popup độc lập để làm mới phiên cookie Safari)
+    const reauthBtn = document.createElement('button');
+    reauthBtn.type = 'button';
+    reauthBtn.id = 'btn-picker-reauth';
+    reauthBtn.title = 'Mở cửa sổ đăng nhập lại tài khoản Google nếu bị lỗi cookie';
+    reauthBtn.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+      <span>Đăng Nhập Lại</span>
+    `;
+    reauthBtn.style.cssText = `
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 4px !important;
+      padding: 6px 11px !important;
+      background: rgba(15, 23, 42, 0.94) !important;
+      backdrop-filter: blur(8px) !important;
+      -webkit-backdrop-filter: blur(8px) !important;
+      color: #60a5fa !important;
+      border: 1.5px solid rgba(96, 165, 250, 0.45) !important;
+      border-radius: 20px !important;
+      font-size: 11.5px !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.5) !important;
+      -webkit-tap-highlight-color: transparent !important;
+      white-space: nowrap !important;
+    `;
+    reauthBtn.onclick = async (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this._removePickerCloseButton();
+      if (typeof onClose === 'function') onClose();
+      try {
+        if (typeof showToast === 'function') showToast('Đang mở màn hình đăng nhập Google...', 'info');
+        await this.requestToken({ interactive: true, prompt: 'select_account', forceSelect: true });
+        if (typeof showToast === 'function') showToast('Đăng nhập Google thành công! Đang tải lại Picker...', 'success');
+        setTimeout(() => {
+          if (window.ReceiveShareModal && typeof window.ReceiveShareModal.pickGoogleDriveDirectly === 'function') {
+            window.ReceiveShareModal.pickGoogleDriveDirectly();
+          }
+        }, 350);
+      } catch (err) {
+        if (typeof showToast === 'function') showToast(err?.message || 'Chưa hoàn tất đăng nhập', 'warning');
+      }
+    };
+
+    // Nút 2: Quét Tệp Trực Tiếp (REST API - Miễn nhiễm hoàn toàn với lỗi cookie iframe)
+    const scanBtn = document.createElement('button');
+    scanBtn.type = 'button';
+    scanBtn.id = 'btn-picker-scan-direct';
+    scanBtn.title = 'Quét tệp chia sẻ trực tiếp qua REST API (Dùng Cloudflare Worker, không cần cookie)';
+    scanBtn.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+      <span>Quét Trực Tiếp</span>
+    `;
+    scanBtn.style.cssText = `
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 4px !important;
+      padding: 6px 11px !important;
+      background: rgba(15, 23, 42, 0.94) !important;
+      backdrop-filter: blur(8px) !important;
+      -webkit-backdrop-filter: blur(8px) !important;
+      color: #34d399 !important;
+      border: 1.5px solid rgba(52, 211, 153, 0.45) !important;
+      border-radius: 20px !important;
+      font-size: 11.5px !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.5) !important;
+      -webkit-tap-highlight-color: transparent !important;
+      white-space: nowrap !important;
+    `;
+    scanBtn.onclick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this._removePickerCloseButton();
+      if (typeof onClose === 'function') onClose();
+      setTimeout(() => {
+        if (window.ReceiveShareModal && typeof window.ReceiveShareModal.pickGoogleDriveFromList === 'function') {
+          window.ReceiveShareModal.pickGoogleDriveFromList();
+        }
+      }, 150);
+    };
+
+    leftActions.appendChild(reauthBtn);
+    leftActions.appendChild(scanBtn);
+
+    // Nút 3: Nút ✕ Đóng
     const btn = document.createElement('button');
     btn.id = 'google-picker-close-btn';
     btn.type = 'button';
@@ -3018,18 +3131,15 @@ class GoogleDriveSync {
     btn.setAttribute('aria-label', 'Đóng hộp thoại Picker');
     btn.setAttribute('title', 'Đóng hộp thoại');
     btn.style.cssText = `
-      position: fixed !important;
-      top: 14px !important;
-      right: 14px !important;
-      z-index: 2147483647 !important;
-      width: 44px !important;
-      height: 44px !important;
+      pointer-events: auto !important;
+      width: 36px !important;
+      height: 36px !important;
       border-radius: 50% !important;
       background: #0f172a !important;
       color: #ffffff !important;
-      border: 2px solid rgba(255, 255, 255, 0.4) !important;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7) !important;
-      font-size: 22px !important;
+      border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6) !important;
+      font-size: 18px !important;
       font-weight: 700 !important;
       line-height: 1 !important;
       display: flex !important;
@@ -3039,6 +3149,7 @@ class GoogleDriveSync {
       user-select: none !important;
       -webkit-tap-highlight-color: transparent !important;
       transition: all 0.2s ease !important;
+      flex-shrink: 0 !important;
     `;
     btn.onmouseover = () => { btn.style.background = '#ef4444'; };
     btn.onmouseout = () => { btn.style.background = '#0f172a'; };
@@ -3048,7 +3159,10 @@ class GoogleDriveSync {
       this._removePickerCloseButton();
       if (typeof onClose === 'function') onClose();
     };
-    document.body.appendChild(btn);
+
+    bar.appendChild(leftActions);
+    bar.appendChild(btn);
+    document.body.appendChild(bar);
 
     // Bắt sự kiện click vào backdrop xám bên ngoài của Google Picker để đóng
     const bgWatcher = setInterval(() => {
@@ -3067,6 +3181,8 @@ class GoogleDriveSync {
   }
 
   _removePickerCloseButton() {
+    const bar = document.getElementById('google-picker-floating-bar');
+    if (bar) bar.remove();
     const btn = document.getElementById('google-picker-close-btn');
     if (btn) btn.remove();
     const overlay = document.getElementById('google-iframe-reauth-overlay');
