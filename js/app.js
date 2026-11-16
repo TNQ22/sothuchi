@@ -1126,6 +1126,12 @@ class App {
       return;
     }
 
+    if (this.currentView === 'finance-detail') {
+      const target = (this.previousView && this.previousView !== 'finance-detail') ? this.previousView : 'dashboard';
+      this.switchView(target, true);
+      return;
+    }
+
     // new-transaction → CHỈ trở về khi đang sửa giao dịch HOẶC khi mở từ menu 3 chấm của tài khoản
     if (this.currentView === 'new-transaction') {
       const txId = document.getElementById('tx-id-input')?.value;

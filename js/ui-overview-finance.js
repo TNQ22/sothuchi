@@ -53,7 +53,9 @@ const UIOverviewFinance = {
 
       // Nếu vuốt ngang sang phải tối thiểu 60px và góc chéo < 60px
       if (deltaX > 60 && deltaY < 60) {
-        if (window.app && typeof window.app.switchView === 'function') {
+        if (window.app && typeof window.app.goBack === 'function') {
+          window.app.goBack();
+        } else if (window.app && typeof window.app.switchView === 'function') {
           window.app.switchView('dashboard');
         }
       }
