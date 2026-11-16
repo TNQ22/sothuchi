@@ -5528,14 +5528,18 @@ body.dark .switch .slider {
 .networth-card-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  position: relative;
+  min-height: 36px;
   margin-bottom: 8px;
 }
 
 .networth-label-wrap {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  text-align: center;
 }
 
 .networth-label {
@@ -5544,6 +5548,7 @@ body.dark .switch .slider {
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  text-align: center;
 }
 
 .networth-privacy-btn {
@@ -5565,6 +5570,10 @@ body.dark .switch .slider {
 }
 
 .networth-add-circle-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  margin-top: -18px;
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -5591,6 +5600,10 @@ body.dark .switch .slider {
 
 .networth-amount-row {
   margin: 4px 0 14px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
 }
 
 .networth-big-val {
@@ -5601,6 +5614,7 @@ body.dark .switch .slider {
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
   display: block;
+  text-align: center;
 }
 
 .networth-breakdown-row {
@@ -11956,14 +11970,16 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   margin-bottom: 20px;
-  flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .accounts-segmented-tabs {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  width: 100%;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-full);
@@ -11973,10 +11989,13 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
 }
 
 .accounts-seg-tab {
+  flex: 1 1 0;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 6px 14px;
+  padding: 8px 6px;
   border-radius: var(--radius-full);
   border: none;
   background: transparent;
@@ -11986,6 +12005,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
+  text-align: center;
 }
 
 .accounts-seg-tab:hover {
@@ -12350,18 +12370,12 @@ body.dark .account-role-badge.editor {
 .accounts-filter-bar {
   display: flex !important;
   align-items: center !important;
-  justify-content: flex-start !important;
+  justify-content: space-between !important;
   gap: 6px !important;
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
-  flex-wrap: nowrap !important;
-  white-space: nowrap !important;
   width: 100% !important;
   box-sizing: border-box !important;
   margin: 10px 0 16px 0 !important;
-  padding: 2px 2px 8px 2px !important;
+  padding: 2px 0 8px 0 !important;
   user-select: none !important;
   -webkit-user-select: none !important;
 }
@@ -12370,6 +12384,8 @@ body.dark .account-role-badge.editor {
 }
 
 .accounts-seg-tab {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
   appearance: none !important;
   -webkit-appearance: none !important;
   background: var(--bg-surface, rgba(255, 255, 255, 0.05)) !important;
@@ -12378,18 +12394,30 @@ body.dark .account-role-badge.editor {
   color: var(--text-secondary) !important;
   font-size: 0.78rem !important;
   font-weight: 600 !important;
-  padding: 7px 13px !important;
+  padding: 8px 4px !important;
   border-radius: 9999px !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
+  justify-content: center !important;
+  gap: 5px !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;
   white-space: nowrap !important;
-  flex-shrink: 0 !important;
   line-height: 1.2 !important;
   font-family: inherit !important;
   user-select: none !important;
+  text-align: center !important;
+}
+
+.accounts-seg-tab span {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.accounts-seg-tab i,
+.accounts-seg-tab svg {
+  flex-shrink: 0 !important;
 }
 
 .accounts-seg-tab:hover {

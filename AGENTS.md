@@ -73,12 +73,20 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
 
 ### 2.7. Chuẩn Giao Diện Thẻ Tài Chính Hiện Có, Tiện Ích & Chi Tiết Tài Chính (BẮT BUỘC)
 - **Thẻ Tổng Quan Tài Chính Hiện Có (Dashboard & Detail Hero Card):**
+  - **Trên Dashboard:** Chỉ hiển thị tiêu đề `TÀI CHÍNH HIỆN CÓ` và số tiền chính giữa (`.finance-overview-amount-row`). Không hiển thị thanh chia cột `Tổng có | Tổng nợ` trên Dashboard để giữ giao diện thanh thoát, trực quan.
+  - **Khi chạm mở trang Chi tiết:** Mới hiển thị đầy đủ thẻ chi tiết với `Tài chính hiện có`, thanh chia `Tổng có | Tổng nợ`, bộ lọc tab và danh sách chi tiết từng loại tài khoản.
   - **Không dùng icon khiên và không dùng nút "Chi tiết >":** Giữ thẻ phẳng, tối giản, sang trọng. Người dùng có thể chạm trực tiếp vào bất kỳ vị trí nào trên thẻ để mở trang chi tiết.
   - **Căn giữa toàn bộ:** Tiêu đề `TÀI CHÍNH HIỆN CÓ` nằm ở giữa trên cùng của thẻ (`justify-content: center; text-align: center;`), số tiền chính (`.finance-overview-amount-row`), cột `Tổng có` (`.col-have`) và `Tổng nợ` (`.col-debt`) đều được căn giữa cân đối 100%.
+  - **Vị trí nút Con mắt (Ẩn/Hiện số tiền) & Nút Làm mới (Tỷ giá):**
+    - **Con mắt ẩn số tiền:** Cố định ở góc phải trên Header (`.tx-header-right`), đồng bộ với icon ẩn/hiện số tiền toàn ứng dụng.
+    - **Nút Làm mới:** Đặt ở góc phải của thẻ Hero Card (`.networth-privacy-btn` trong `.finance-overview-header`) để làm mới tỷ giá và giá tài sản.
   - **Logic Tài Sản Ròng / Tài Chính Hiện Có (Chuẩn Hệ Thống):**
     - `Tài chính hiện có`: Chính là **Tài sản ròng** (`netWorth = grandTotalAssets + totalLend - totalBorrow`).
-    - `Tổng có`: Là **tổng các tài khoản như cũ** (`grandTotalAssets` = tổng tài khoản ngân hàng/tiền mặt/ví + sổ tiết kiệm + tích lũy + tài sản đầu tư).
+    - `Tổng có`: Là **tổng các tài khoản như cũ + Khoản cho vay** (`grandTotalAssets + totalLend`).
     - `Tổng nợ`: Là **sổ nợ thôi** (`totalBorrow` = nợ cá nhân đi vay + sổ vay ngân hàng).
+  - **Tính Toán Tài Sản (Vàng, Ngoại tệ, Crypto, BĐS...):**
+    - Giá trị tài sản bắt buộc luôn được tính chính xác theo công thức: `totalCurrentValue = quantity * currentPrice`.
+    - Khi làm mới hoặc cập nhật giá thị trường, không được làm mất hoặc reset `quantity` (ví dụ: vàng 2 chỉ phải nhân đúng với đơn giá của 2 chỉ, không được để quantity mặc định về 1).
   - **Quy Tắc Màu Sắc Bắt Buộc:**
     - **Dương thì xanh ngọc** (`#10b981` / `var(--income)`), áp dụng cho Tổng có, các khoản thu/tài sản, và các ví/tài khoản có số dư dương.
     - **Riêng Tài chính hiện có** (số lớn chính giữa thẻ Hero Card): **màu trắng** (`#ffffff`), nếu âm thì chuyển sang **màu đỏ** (`#f43f5e`).
@@ -94,7 +102,7 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
 - **Trang Chi Tiết Tài Chính Hiện Có (`view-finance-detail`):**
   - **Tiêu đề Header đồng nhất 1 font/kiểu chữ:** Hiển thị 2 dòng căn giữa cùng kích thước font, cùng kiểu chữ và độ đậm: dòng 1 `Chi Tiết`, dòng 2 `Tài Chính Hiện Có` (`.finance-detail-header-line1`, `.finance-detail-header-line2`). Không phối nhiều font khác biệt gây rối mắt.
   - **Phân chia 2 phần rõ ràng:**
-    - Nhóm `TỔNG CÓ`: Hiển thị toàn bộ các tài khoản ngân hàng, tiền mặt, ví chi tiêu như cũ; tiếp theo là tài khoản đầu tư & ngoại tệ, và sổ tiết kiệm & tích lũy.
+    - Nhóm `TỔNG CÓ`: Hiển thị 1. Tài khoản ngân hàng, tiền mặt, ví chi tiêu; 2. Tài khoản đầu tư & ngoại tệ; 3. Sổ tiết kiệm & tích lũy; 4. Khoản cho vay (Nợ cần thu).
     - Nhóm `TỔNG NỢ`: Hiển thị sổ nợ gồm nợ cá nhân (đi vay / mượn nợ) và sổ vay ngân hàng.
   - **Thanh tab bộ lọc (Tất cả | Tổng có | Tổng nợ):** Căng đều 100% bề ngang (`flex: 1 1 0; min-width: 0;`), chữ có ellipsis chống tràn viền.
 - **Xuất Lề Sát Cạnh (Edge-to-Edge Max Display Area):**

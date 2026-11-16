@@ -13,6 +13,7 @@ const UIBillSplit = {
   customShares: {}, // { 'Nam': 1, 'Hoàng': 2 }
   mode: 'standalone', // 'standalone' | 'transaction'
   tripMembersCache: [],
+  openedFrom: null,
 
   init() {
     this.bindEvents();
@@ -23,32 +24,57 @@ const UIBillSplit = {
   },
 
   /**
-   * Mở modal chia tiền từ mục Tiện ích (Standalone)
+   * Khởi tạo trang chia tiền độc lập (Dedicated Sub-page trong Cài Đặt)
    */
-  openStandaloneModal(prefillAmount = 0, defaultTitle = '') {
+  initStandalonePage(prefillAmount = 0, defaultTitle = '') {
     this.mode = 'standalone';
-    this.totalAmount = Number(prefillAmount) || 0;
-    this.payer = 'Tôi';
-    this.splitType = 'equal';
-    this.customAmounts = {};
-    this.customShares = {};
+    if (prefillAmount && Number(prefillAmount) > 0) {
+      this.totalAmount = Number(prefillAmount);
+    }
+    this.payer = this.payer || 'Tôi';
+    this.splitType = this.splitType || 'equal';
+    this.customAmounts = this.customAmounts || {};
+    this.customShares = this.customShares || {};
 
-    // Khởi tạo thành viên mặc định nếu trống
     if (!this.currentParticipants || this.currentParticipants.length === 0) {
       this.currentParticipants = ['Tôi', 'Bạn 1', 'Bạn 2'];
     }
 
-    const modal = document.getElementById('modal-bill-split');
-    if (!modal) return;
-
     const titleInput = document.getElementById('split-title-input');
     const amountInput = document.getElementById('split-amount-input');
-    if (titleInput) titleInput.value = defaultTitle;
-    if (amountInput) amountInput.value = this.totalAmount > 0 ? this.totalAmount : '';
+    if (titleInput && defaultTitle) titleInput.value = defaultTitle;
+    if (amountInput && this.totalAmount > 0) {
+      amountInput.value = this.totalAmount;
+    }
 
     this.renderModal();
-    modal.classList.add('open');
-    modal.classList.add('active');
+  },
+
+  /**
+   * Mở trang chia tiền nhóm độc lập (Dedicated Page) thay vì modal popup
+   */
+  openStandalonePage(prefillAmount = 0, defaultTitle = '') {
+    if (window.app && window.app.currentView === 'dashboard') {
+      this.openedFrom = 'dashboard';
+    } else {
+      this.openedFrom = null;
+    }
+
+    if (window.app && window.app.currentView !== 'settings') {
+      window.app.switchView('settings');
+    }
+
+    if (window.UISettings) {
+      window.UISettings.openSection('bill-split');
+      this.initStandalonePage(prefillAmount, defaultTitle);
+    }
+  },
+
+  /**
+   * Tương thích ngược: Mở trang chia tiền từ mục Tiện ích (Standalone)
+   */
+  openStandaloneModal(prefillAmount = 0, defaultTitle = '') {
+    this.openStandalonePage(prefillAmount, defaultTitle);
   },
 
   /**
@@ -94,21 +120,21 @@ const UIBillSplit = {
       }
     }
 
-    const modal = document.getElementById('modal-bill-split');
-    if (!modal) return;
-
-    const titleInput = document.getElementById('split-title-input');
-    const amountInput = document.getElementById('split-amount-input');
     const noteVal = document.getElementById('tx-note-input')?.value || '';
-    if (titleInput) titleInput.value = noteVal || 'Chi tiêu nhóm';
-    if (amountInput) amountInput.value = this.totalAmount > 0 ? this.totalAmount : '';
-
-    this.renderModal();
-    modal.classList.add('open');
-    modal.classList.add('active');
+    this.openedFrom = 'new-transaction';
+    if (window.app) window.app.switchView('settings');
+    if (window.UISettings) {
+      window.UISettings.openSection('bill-split');
+      this.initStandalonePage(this.totalAmount, noteVal || 'Chi tiêu nhóm');
+      this.mode = 'transaction';
+    }
   },
 
   closeModal() {
+    if (this.mode === 'standalone' && window.UISettings && window.UISettings.currentSection === 'bill-split') {
+      window.UISettings.backToHub();
+      return;
+    }
     const modal = document.getElementById('modal-bill-split');
     if (modal) {
       modal.classList.remove('open');

@@ -423,7 +423,13 @@ class App {
       privacyBtnIcon.innerHTML = enabled 
         ? '<i data-lucide="eye-off" style="width: 20px; height: 20px; color: var(--warning);"></i>'
         : '<i data-lucide="eye" style="width: 20px; height: 20px;"></i>';
-      if (window.lucide) lucide.createIcons();
+    }
+
+    const detailPrivacyBtn = document.getElementById('btn-privacy-toggle-detail');
+    if (detailPrivacyBtn) {
+      detailPrivacyBtn.innerHTML = enabled 
+        ? '<i data-lucide="eye-off" style="width: 20px; height: 20px; color: var(--warning);"></i>'
+        : '<i data-lucide="eye" style="width: 20px; height: 20px;"></i>';
     }
 
     const networthEyeIcon = document.getElementById('account-privacy-eye-icon');
@@ -1109,6 +1115,17 @@ class App {
       return;
     }
 
+    if (this.currentView === 'trip-detail') {
+      this.switchView('trips-manager', true);
+      return;
+    }
+
+    if (this.currentView === 'trips-manager') {
+      const target = (this.previousView && this.previousView !== 'trips-manager') ? this.previousView : 'dashboard';
+      this.switchView(target, true);
+      return;
+    }
+
     // new-transaction → CHỈ trở về khi đang sửa giao dịch HOẶC khi mở từ menu 3 chấm của tài khoản
     if (this.currentView === 'new-transaction') {
       const txId = document.getElementById('tx-id-input')?.value;
@@ -1160,6 +1177,9 @@ class App {
     // 3. Các màn hình con/biểu mẫu khác luôn hỗ trợ quay lại
     const backEligibleViews = [
       'transactions',
+      'trips-manager',
+      'trip-detail',
+      'finance-detail',
       'category-picker',
       'template-manager',
       'template-editor',

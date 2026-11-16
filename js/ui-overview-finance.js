@@ -183,8 +183,9 @@ const UIOverviewFinance = {
         accumulations = rawAcc.filter(a => !a._isSharedItem || a.includeInReport);
       }
 
-      // 2. Phân loại Tổng Nợ: Sổ nợ thôi (Đi vay / Mượn nợ cá nhân + Sổ vay ngân hàng)
+      // 2. Phân loại Tổng Nợ: Sổ nợ thôi (Đi vay / Mượn nợ cá nhân + Sổ vay ngân hàng) và Khoản cho vay
       const debts = await db.debts.where('isDeleted').equals(0).toArray();
+      const lendDebts = debts.filter(d => d.type === 'lend' && d.status !== 'settled');
       const borrowDebts = debts.filter(d => d.type === 'borrow' && d.status !== 'settled');
 
       // - Sổ vay ngân hàng (Loans)
@@ -195,7 +196,8 @@ const UIOverviewFinance = {
       }
 
       // 3. Tính toán các con số
-      const totalCo = nw.grandTotalAssets || 0;
+      // Tổng có trong chi tiết = Tổng các tài khoản (ví, tiết kiệm, tích lũy, đầu tư) + Khoản cho vay (nợ cần thu)
+      const totalCo = (nw.grandTotalAssets || 0) + (nw.totalLend || 0);
       const totalNo = nw.totalBorrow || 0;
       const taiChinhHienCo = nw.netWorth !== undefined ? nw.netWorth : (totalCo - totalNo);
 
@@ -256,6 +258,7 @@ const UIOverviewFinance = {
       this.renderBankAndCashList(bankAndCashAccounts);
       this.renderInvestmentsList(assets);
       this.renderSavingsAndAccList(savings, accumulations);
+      this.renderLendDebtsList(lendDebts);
 
       // 5. Render Danh Sách TỔNG NỢ (Sổ nợ thôi)
       this.renderDebtsList(borrowDebts);
@@ -341,7 +344,9 @@ const UIOverviewFinance = {
 
     const html = assets.map(a => {
       const typeInfo = typeLabels[a.assetType] || typeLabels.other;
-      const totalValVnd = a.totalCurrentValue !== undefined ? a.totalCurrentValue : Math.round((a.currentPrice || 0) * (a.quantity || 1));
+      const qty = a.quantity !== undefined && !isNaN(Number(a.quantity)) ? Number(a.quantity) : 1;
+      const curP = a.currentPrice !== undefined && !isNaN(Number(a.currentPrice)) ? Number(a.currentPrice) : (a.buyPrice || 0);
+      const totalValVnd = Math.round(qty * curP);
       const isUsd = a.subType === 'USD' || (a.unit && a.unit.toUpperCase() === 'USD');
       const qtyText = a.quantity ? `${new Intl.NumberFormat('vi-VN').format(a.quantity)} ${a.unit || a.subType || ''}` : '';
 
@@ -526,6 +531,49 @@ const UIOverviewFinance = {
           <div class="finance-item-amount-wrap">
             <span class="finance-item-amount stat-amount debt-text">-${new Intl.NumberFormat('vi-VN').format(rem)}đ</span>
             <span class="finance-item-action-hint">Chi tiết <i data-lucide="chevron-right" style="width: 12px; height: 12px; vertical-align: middle;"></i></span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  },
+
+  renderLendDebtsList(debts) {
+    const container = document.getElementById('finance-list-lend-debts');
+    const subhead = document.getElementById('finance-subhead-lend');
+    if (!container) return;
+
+    if (!debts || debts.length === 0) {
+      if (subhead) subhead.style.display = 'none';
+      container.style.display = 'none';
+      container.innerHTML = '';
+      return;
+    }
+
+    if (subhead) subhead.style.display = 'block';
+    container.style.display = 'block';
+
+    const html = debts.map(d => {
+      const initial = (d.personName || 'N').trim().charAt(0).toUpperCase();
+
+      return `
+        <div class="finance-item-card" onclick="UIOverviewFinance.handleDebtClick(${d.id})" role="button" tabindex="0">
+          <div class="finance-item-icon-wrap" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700;">
+            ${escapeHTML(initial)}
+          </div>
+          <div class="finance-item-info">
+            <div class="finance-item-title-row">
+              <span class="finance-item-name" title="${escapeHTML(d.personName)}">Người nợ: ${escapeHTML(d.personName)}</span>
+              <span class="finance-type-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">Nợ cần thu</span>
+            </div>
+            <div class="finance-item-sub-row">
+              <span class="finance-item-desc">${d.dueDate ? `Hạn thu: ${d.dueDate}` : 'Chưa có ngày hẹn'} ${d.note ? `• ${escapeHTML(d.note)}` : ''}</span>
+            </div>
+          </div>
+          <div class="finance-item-amount-wrap">
+            <span class="finance-item-amount stat-amount income-text">+${new Intl.NumberFormat('vi-VN').format(d.remainingAmount)}đ</span>
+            <span class="finance-item-action-hint">Thu nợ <i data-lucide="chevron-right" style="width: 12px; height: 12px; vertical-align: middle;"></i></span>
           </div>
         </div>
       `;

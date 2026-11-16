@@ -1436,12 +1436,17 @@ async function addAsset(data) {
 
 async function updateAsset(id, data) {
   const now = Date.now();
-  const quantity = Number(data.quantity !== undefined ? data.quantity : 1);
-  const currentPrice = Number(data.currentPrice !== undefined ? data.currentPrice : 0);
+  const existing = await db.assets.get(Number(id));
+  if (!existing) return;
+
+  const quantity = Number(data.quantity !== undefined ? data.quantity : (existing.quantity !== undefined ? existing.quantity : 1));
+  const currentPrice = Number(data.currentPrice !== undefined ? data.currentPrice : (existing.currentPrice !== undefined ? existing.currentPrice : 0));
   const totalCurrentValue = Math.round(quantity * currentPrice);
 
   await db.assets.update(Number(id), {
     ...data,
+    quantity,
+    currentPrice,
     totalCurrentValue,
     updatedAt: now
   });
@@ -1821,7 +1826,16 @@ async function getNetWorth() {
       const assetList = await db.assets.where('isDeleted').equals(0).toArray();
       totalAssets = assetList
         .filter(a => a.status !== 'liquidated' && a.includeInNetWorth !== 0 && (!a._isSharedItem || a.includeInReport))
-        .reduce((sum, a) => sum + (a.totalCurrentValue !== undefined ? a.totalCurrentValue : ((a.currentPrice || 0) * (a.quantity || 1))), 0);
+        .reduce((sum, a) => {
+          const qty = a.quantity !== undefined && !isNaN(Number(a.quantity)) ? Number(a.quantity) : 1;
+          const curP = a.currentPrice !== undefined && !isNaN(Number(a.currentPrice)) ? Number(a.currentPrice) : (a.buyPrice || 0);
+          const val = Math.round(qty * curP);
+          // Tự động sửa lại totalCurrentValue nếu từng bị lưu sai do bug trước đó
+          if (a.id && a.totalCurrentValue !== val) {
+            db.assets.update(a.id, { totalCurrentValue: val, updatedAt: Date.now() }).catch(() => {});
+          }
+          return sum + val;
+        }, 0);
     }
   } catch (e) {
     console.warn('Assets read error:', e);
