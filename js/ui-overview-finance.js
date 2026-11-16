@@ -18,12 +18,12 @@ const UIOverviewFinance = {
       const totalAssetsEl = document.getElementById('stat-finance-total-assets');
       const totalDebtsEl = document.getElementById('stat-finance-total-debts');
 
-      // Tổng có: Tất cả các ví/tài khoản (ngân hàng, đầu tư, tiết kiệm, tích lũy, tài sản)
-      const totalCo = nw.grandTotalAssets || 0;
-      // Tổng nợ: Nợ phải trả (mượn nợ cá nhân + nợ vay ngân hàng)
-      const totalNo = nw.totalBorrow || 0;
-      // Tài chính hiện có: Tổng có - Tổng nợ
-      const taiChinhHienCo = totalCo - totalNo;
+      // Tổng có: Tất cả các tài sản thực có (ví dương, tiết kiệm, tích lũy, đầu tư, cho vay)
+      const totalCo = nw.totalCo !== undefined ? nw.totalCo : (nw.grandTotalAssets || 0);
+      // Tổng nợ: Tất cả nghĩa vụ tài chính (mượn nợ cá nhân, nợ vay ngân hàng, ví số dư âm/thấu chi)
+      const totalNo = nw.totalNo !== undefined ? nw.totalNo : (nw.totalBorrow || 0);
+      // Tài chính hiện có (Tài sản ròng) = Tổng có - Tổng nợ
+      const taiChinhHienCo = nw.netWorth !== undefined ? nw.netWorth : (totalCo - totalNo);
 
       if (currentFinanceEl) {
         currentFinanceEl.textContent = `${new Intl.NumberFormat('vi-VN').format(taiChinhHienCo)}đ`;
@@ -80,8 +80,11 @@ const UIOverviewFinance = {
       const activeAccounts = accounts.filter(a => !a.isArchived);
 
       // 1. Phân loại tài khoản Tổng Có
-      // - Tài khoản ngân hàng, tiền mặt, ví điện tử
-      const bankAndCashAccounts = activeAccounts;
+      // - Tài khoản ngân hàng, tiền mặt, ví điện tử có số dư >= 0
+      const bankAndCashAccounts = activeAccounts.filter(a => (a.balance || 0) >= 0);
+
+      // - Tài khoản có số dư âm (thấu chi / thẻ tín dụng âm tiền) -> Chuyển vào Tổng Nợ
+      const negativeAccounts = activeAccounts.filter(a => (a.balance || 0) < 0);
 
       // - Tài khoản đầu tư & Tài sản (Crypto, Ngoại tệ USD/EUR, Vàng bạc, BĐS...)
       let assets = [];
@@ -104,8 +107,9 @@ const UIOverviewFinance = {
       }
 
       // 2. Phân loại Tổng Nợ
-      // - Nợ phải trả cá nhân (Đi vay / Mượn nợ)
+      // - Nợ phải trả cá nhân (Đi vay / Mượn nợ) và Khoản cho vay (Nợ cần thu)
       const debts = await db.debts.where('isDeleted').equals(0).toArray();
+      const lendDebts = debts.filter(d => d.type === 'lend' && d.status !== 'settled');
       const borrowDebts = debts.filter(d => d.type === 'borrow' && d.status !== 'settled');
 
       // - Sổ vay ngân hàng (Loans)
@@ -116,9 +120,9 @@ const UIOverviewFinance = {
       }
 
       // 3. Tính toán các con số
-      const totalCo = nw.grandTotalAssets || 0;
-      const totalNo = nw.totalBorrow || 0;
-      const taiChinhHienCo = totalCo - totalNo;
+      const totalCo = nw.totalCo !== undefined ? nw.totalCo : (nw.grandTotalAssets || 0);
+      const totalNo = nw.totalNo !== undefined ? nw.totalNo : (nw.totalBorrow || 0);
+      const taiChinhHienCo = nw.netWorth !== undefined ? nw.netWorth : (totalCo - totalNo);
 
       // Cập nhật Header Hero Card trong trang chi tiết
       const detailMainVal = document.getElementById('finance-detail-main-val');
@@ -150,8 +154,10 @@ const UIOverviewFinance = {
       this.renderBankAndCashList(bankAndCashAccounts);
       this.renderInvestmentsList(assets);
       this.renderSavingsAndAccList(savings, accumulations);
+      this.renderLendDebtsList(lendDebts);
 
       // 5. Render Danh Sách TỔNG NỢ
+      this.renderNegativeAccountsList(negativeAccounts);
       this.renderDebtsList(borrowDebts);
       this.renderLoansList(loans);
 
@@ -420,6 +426,97 @@ const UIOverviewFinance = {
           <div class="finance-item-amount-wrap">
             <span class="finance-item-amount stat-amount debt-text">-${new Intl.NumberFormat('vi-VN').format(rem)}đ</span>
             <span class="finance-item-action-hint">Chi tiết <i data-lucide="chevron-right" style="width: 12px; height: 12px; vertical-align: middle;"></i></span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  },
+
+  renderNegativeAccountsList(accounts) {
+    const container = document.getElementById('finance-list-negative-accounts');
+    const subhead = document.getElementById('finance-subhead-negative-accounts');
+    if (!container) return;
+
+    if (!accounts || accounts.length === 0) {
+      if (subhead) subhead.style.display = 'none';
+      container.style.display = 'none';
+      container.innerHTML = '';
+      return;
+    }
+
+    if (subhead) subhead.style.display = 'block';
+    container.style.display = 'block';
+
+    const html = accounts.map(a => {
+      const prov = window.UIAccounts && window.UIAccounts.PROVIDERS ? window.UIAccounts.PROVIDERS.find(p => p.code === a.providerCode || p.code === a.bankCode) : null;
+      const logoHtml = window.UIAccounts ? window.UIAccounts.renderLogoBadge(a, 36) : `<div class="account-icon-fallback"><i data-lucide="credit-card"></i></div>`;
+      const cur = a.currency || 'VND';
+      const isUSD = cur === 'USD';
+      const curSymbol = isUSD ? '$' : (cur === 'EUR' ? '€' : (cur === 'JPY' ? '¥' : 'đ'));
+      const debtAmountFormatted = `${new Intl.NumberFormat('vi-VN').format(Math.abs(a.balance))}${curSymbol}`;
+
+      return `
+        <div class="finance-item-card debt-card-item" onclick="UIOverviewFinance.handleAccountClick(${a.id})" role="button" tabindex="0">
+          <div class="finance-item-icon-wrap">
+            ${logoHtml}
+          </div>
+          <div class="finance-item-info">
+            <div class="finance-item-title-row">
+              <span class="finance-item-name" title="${escapeHTML(a.name)}">${escapeHTML(a.name)}</span>
+              <span class="finance-type-badge debt-badge">Dư nợ / Thấu chi</span>
+            </div>
+            <div class="finance-item-sub-row">
+              <span class="finance-item-desc">${a.description ? escapeHTML(a.description) : (prov ? escapeHTML(prov.name) : 'Tài khoản âm tiền')}</span>
+            </div>
+          </div>
+          <div class="finance-item-amount-wrap">
+            <span class="finance-item-amount stat-amount debt-text">-${debtAmountFormatted}</span>
+            <span class="finance-item-action-hint">Lịch sử <i data-lucide="chevron-right" style="width: 12px; height: 12px; vertical-align: middle;"></i></span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  },
+
+  renderLendDebtsList(debts) {
+    const container = document.getElementById('finance-list-lend-debts');
+    const subhead = document.getElementById('finance-subhead-lend');
+    if (!container) return;
+
+    if (!debts || debts.length === 0) {
+      if (subhead) subhead.style.display = 'none';
+      container.style.display = 'none';
+      container.innerHTML = '';
+      return;
+    }
+
+    if (subhead) subhead.style.display = 'block';
+    container.style.display = 'block';
+
+    const html = debts.map(d => {
+      const initial = (d.personName || 'N').trim().charAt(0).toUpperCase();
+
+      return `
+        <div class="finance-item-card" onclick="UIOverviewFinance.handleDebtClick(${d.id})" role="button" tabindex="0">
+          <div class="finance-item-icon-wrap" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700;">
+            ${escapeHTML(initial)}
+          </div>
+          <div class="finance-item-info">
+            <div class="finance-item-title-row">
+              <span class="finance-item-name" title="${escapeHTML(d.personName)}">Người nợ: ${escapeHTML(d.personName)}</span>
+              <span class="finance-type-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">Nợ cần thu</span>
+            </div>
+            <div class="finance-item-sub-row">
+              <span class="finance-item-desc">${d.dueDate ? `Hạn thu: ${d.dueDate}` : 'Chưa có ngày hẹn'} ${d.note ? `• ${escapeHTML(d.note)}` : ''}</span>
+            </div>
+          </div>
+          <div class="finance-item-amount-wrap">
+            <span class="finance-item-amount stat-amount income-text">+${new Intl.NumberFormat('vi-VN').format(d.remainingAmount)}đ</span>
+            <span class="finance-item-action-hint">Thu nợ <i data-lucide="chevron-right" style="width: 12px; height: 12px; vertical-align: middle;"></i></span>
           </div>
         </div>
       `;

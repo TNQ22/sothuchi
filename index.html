@@ -1291,15 +1291,8 @@
       <main id="view-dashboard" class="page-view">
         <!-- Thẻ Tổng Quan: Tài chính hiện có (Tổng có | Tổng nợ) - Chạm mở trang chi tiết -->
         <div class="finance-overview-card" onclick="UIOverviewFinance.openDetailPage()" role="button" tabindex="0" title="Chạm để xem chi tiết tất cả ví, tài khoản & khoản nợ">
-          <div class="finance-overview-header">
-            <div class="finance-overview-title-wrap">
-              <div class="finance-overview-icon"><i data-lucide="shield-check"></i></div>
-              <span class="finance-overview-title">Tài chính hiện có</span>
-            </div>
-            <div class="finance-overview-action">
-              <span>Chi tiết</span>
-              <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
-            </div>
+          <div class="finance-overview-header" style="justify-content: center; text-align: center;">
+            <span class="finance-overview-title" style="letter-spacing: 0.05em;">TÀI CHÍNH HIỆN CÓ</span>
           </div>
           <div class="finance-overview-amount-row">
             <span id="stat-finance-current" class="finance-overview-amount stat-amount">0đ</span>
@@ -5207,7 +5200,10 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               </button>
             </div>
             <div class="tx-header-center">
-              <span class="tx-page-header-title finance-detail-header-title"><strong>Chi Tiết</strong><span class="sub-title">Tài Chính Hiện Có</span></span>
+              <div class="finance-detail-header-title">
+                <div class="finance-detail-header-line1">Chi Tiết</div>
+                <div class="finance-detail-header-line2">Tài Chính Hiện Có</div>
+              </div>
             </div>
             <div class="tx-header-right">
               <button type="button" class="btn-icon tx-header-btn" onclick="UIAccounts.refreshAllLivePrices(); UIOverviewFinance.renderDetail();" title="Làm mới tỷ giá & giá tài sản">
@@ -5219,12 +5215,9 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           <div class="finance-detail-view-body">
             <!-- Hero Summary Card -->
             <div class="finance-overview-card" style="cursor: default;">
-              <div class="finance-overview-header">
-                <div class="finance-overview-title-wrap">
-                  <div class="finance-overview-icon"><i data-lucide="shield-check"></i></div>
-                  <span class="finance-overview-title">TÀI CHÍNH HIỆN CÓ</span>
-                </div>
-                <button type="button" class="networth-privacy-btn" onclick="window.app.togglePrivacyMode()" title="Ẩn/Hiện số tiền">
+              <div class="finance-overview-header" style="justify-content: center; position: relative;">
+                <span class="finance-overview-title" style="letter-spacing: 0.05em;">TÀI CHÍNH HIỆN CÓ</span>
+                <button type="button" class="networth-privacy-btn" onclick="window.app.togglePrivacyMode()" title="Ẩn/Hiện số tiền" style="position: absolute; right: 0;">
                   <i data-lucide="eye" style="width: 18px; height: 18px;"></i>
                 </button>
               </div>
@@ -5270,7 +5263,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <span id="finance-detail-assets-subtotal" class="finance-group-badge income stat-amount">0đ</span>
               </div>
 
-              <!-- 1.1: Tài khoản ngân hàng, Tiền mặt & Ví điện tử -->
+              <!-- 1.1: Tài khoản ngân hàng, Tiền mặt & Ví điện tử (Số dư >= 0) -->
               <div class="finance-group-subhead">1. Tài khoản ngân hàng & Ví chi tiêu</div>
               <div id="finance-list-bank-accounts"></div>
 
@@ -5281,6 +5274,10 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               <!-- 1.3: Sổ tiết kiệm & Sổ tích lũy -->
               <div class="finance-group-subhead" style="margin-top: 14px;">3. Sổ tiết kiệm & Sổ tích lũy</div>
               <div id="finance-list-savings-acc"></div>
+
+              <!-- 1.4: Khoản cho vay (Tiền người khác nợ mình) -->
+              <div id="finance-subhead-lend" class="finance-group-subhead" style="margin-top: 14px; display: none;">4. Khoản cho vay (Nợ cần thu)</div>
+              <div id="finance-list-lend-debts" style="display: none;"></div>
             </div>
 
             <!-- PHẦN 2: TỔNG NỢ -->
@@ -5293,12 +5290,16 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <span id="finance-detail-debts-subtotal" class="finance-group-badge debt stat-amount">0đ</span>
               </div>
 
+              <!-- 2.0: Ví số dư âm / Thẻ tín dụng thấu chi -->
+              <div id="finance-subhead-negative-accounts" class="finance-group-subhead" style="display: none;">1. Thẻ tín dụng & Ví số dư âm</div>
+              <div id="finance-list-negative-accounts" style="display: none;"></div>
+
               <!-- 2.1: Nợ phải trả cá nhân (Đi vay / Mượn nợ) -->
-              <div class="finance-group-subhead">1. Nợ cá nhân (Đi vay / Mượn nợ)</div>
+              <div id="finance-subhead-debts" class="finance-group-subhead" style="margin-top: 14px;">2. Nợ cá nhân (Đi vay / Mượn nợ)</div>
               <div id="finance-list-debts"></div>
 
               <!-- 2.2: Sổ vay ngân hàng -->
-              <div class="finance-group-subhead" style="margin-top: 14px;">2. Sổ vay ngân hàng</div>
+              <div class="finance-group-subhead" style="margin-top: 14px;">3. Sổ vay ngân hàng</div>
               <div id="finance-list-loans"></div>
             </div>
           </div>
