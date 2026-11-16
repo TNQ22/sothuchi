@@ -9,6 +9,7 @@
 
 const UISettings = {
   currentSection: null,
+  hubScrollTop: 0,
 
   init() {
     this.bindEvents();
@@ -55,6 +56,12 @@ const UISettings = {
     const titleEl = document.getElementById('settings-detail-header-title');
 
     if (!hubView || !detailView) return;
+
+    // Lưu vị trí cuộn hiện tại của Hub để khi quay lại (bấm nút Back hoặc vuốt trở về) có thể phục hồi chính xác
+    const settingsView = document.getElementById('view-settings');
+    this.hubScrollTop = (settingsView && settingsView.scrollTop > 0)
+      ? settingsView.scrollTop
+      : (window.scrollY || document.documentElement.scrollTop || 0);
 
     hubView.style.display = 'none';
     detailView.style.display = 'block';
@@ -114,8 +121,7 @@ const UISettings = {
       titleEl.innerHTML = titleMap[sectionId];
     }
 
-    // Cuộn lên đầu trang
-    const settingsView = document.getElementById('view-settings');
+    // Cuộn lên đầu trang cho trang con
     if (settingsView) settingsView.scrollTop = 0;
     window.scrollTo(0, 0);
 
@@ -134,9 +140,27 @@ const UISettings = {
     const panels = document.querySelectorAll('.settings-detail-panel');
     panels.forEach(p => p.classList.remove('active'));
 
+    // Phục hồi chính xác vị trí cuộn trước đó của Hub
     const settingsView = document.getElementById('view-settings');
-    if (settingsView) settingsView.scrollTop = 0;
-    window.scrollTo(0, 0);
+    const savedY = (typeof this.hubScrollTop === 'number' && this.hubScrollTop >= 0) ? this.hubScrollTop : 0;
+    if (settingsView) {
+      settingsView.scrollTop = savedY;
+      requestAnimationFrame(() => {
+        settingsView.scrollTop = savedY;
+      });
+      setTimeout(() => {
+        if (settingsView) settingsView.scrollTop = savedY;
+      }, 50);
+    }
+    if (savedY > 0) {
+      window.scrollTo(0, savedY);
+    } else {
+      window.scrollTo(0, 0);
+    }
+
+    if (window.app && window.app.scrollPositions) {
+      window.app.scrollPositions['settings'] = savedY;
+    }
 
     this.updateHubBadges();
     if (window.lucide) lucide.createIcons();

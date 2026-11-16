@@ -39,6 +39,7 @@ const UITransactions = {
   isScanningAI: false,
   isNoteManuallyEdited: false,
   lastAutoNoteValue: '',
+  _lastScannedItemsText: '',
   cropState: {
     sourceImg: null,
     targetIndex: -1,
@@ -650,6 +651,7 @@ const UITransactions = {
       if (noteInput) {
         noteInput.addEventListener('input', () => {
           this.autoResizeNoteInput();
+          this.hideNoteProtectedAlert();
           const val = noteInput.value.trim();
           if (val === '') {
             this.isNoteManuallyEdited = false;
@@ -678,6 +680,46 @@ const UITransactions = {
     const newH = Math.max(28, el.scrollHeight);
     el.style.height = (newH > 180 ? 180 : newH) + 'px';
     el.style.overflowY = el.scrollHeight > 180 ? 'auto' : 'hidden';
+  },
+
+  showNoteProtectedAlert() {
+    const el = document.getElementById('tx-note-protected-alert');
+    if (el) {
+      el.style.display = 'flex';
+      if (window.lucide) lucide.createIcons();
+    }
+    const noteInput = document.getElementById('tx-note-input');
+    if (noteInput) {
+      noteInput.classList.add('is-protected-note');
+      try {
+        noteInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch (_) {}
+    }
+  },
+
+  hideNoteProtectedAlert() {
+    const el = document.getElementById('tx-note-protected-alert');
+    if (el) el.style.display = 'none';
+    const noteInput = document.getElementById('tx-note-input');
+    if (noteInput) noteInput.classList.remove('is-protected-note');
+  },
+
+  forceOverwriteScannedNote(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (this._lastScannedItemsText) {
+      const noteInput = document.getElementById('tx-note-input');
+      if (noteInput) {
+        noteInput.value = this._lastScannedItemsText;
+        this.lastAutoNoteValue = noteInput.value;
+        this.isNoteManuallyEdited = false;
+        this.autoResizeNoteInput();
+        this.hideNoteProtectedAlert();
+        showToast('✓ Đã ghi đè danh sách món từ OCR vào ghi chú', 'success');
+      }
+    }
   },
 
   /* ==================== POPUP NUMERIC KEYPAD ==================== */
@@ -834,10 +876,13 @@ const UITransactions = {
     }
 
     const btnTemplates = document.getElementById('btn-keypad-templates');
+    const keypadModeActions = document.getElementById('keypad-mode-actions');
     if (target === 'amount') {
       if (btnTemplates) btnTemplates.style.display = 'inline-flex';
+      if (keypadModeActions) keypadModeActions.style.display = 'inline-flex';
     } else {
       if (btnTemplates) btnTemplates.style.display = 'none';
+      if (keypadModeActions) keypadModeActions.style.display = 'none';
     }
     this.toggleKeypadTemplates(false);
     this.bindKeypadEvents();
@@ -856,6 +901,7 @@ const UITransactions = {
     }
 
     modal.classList.add('open');
+    if (window.lucide) lucide.createIcons();
   },
 
   closeKeypad(skipSave = false) {
@@ -4474,6 +4520,8 @@ const UITransactions = {
     form.reset();
     this.isNoteManuallyEdited = false;
     this.lastAutoNoteValue = '';
+    this._lastScannedItemsText = '';
+    this.hideNoteProtectedAlert();
     document.getElementById('tx-id-input').value = '';
     document.getElementById('tx-amount-input').value = '0';
     const amountVal = document.getElementById('tx-amount-text');
@@ -5577,6 +5625,10 @@ const UITransactions = {
     if (payeeClearBtn) payeeClearBtn.style.display = tx.person ? 'inline-flex' : 'none';
     if (splitDataInput) splitDataInput.value = tx.splitDetails ? JSON.stringify(tx.splitDetails) : '';
 
+    if (tx.tripId || tx.person) {
+      this.toggleExtraDetails(true);
+    }
+
     // Chế độ sửa: hiện nút Hủy + Xóa
     this.setEditMode(true, tx.id);
 
@@ -5670,7 +5722,7 @@ const UITransactions = {
       statusPill.style.display = 'inline-flex';
       statusPill.style.background = 'rgba(13, 148, 136, 0.15)';
       statusPill.style.color = 'var(--primary)';
-      if (statusText) statusText.textContent = 'OCR Offline';
+      if (statusText) statusText.textContent = 'OCR';
     }
 
     if (scanBanner) {
@@ -5704,6 +5756,11 @@ const UITransactions = {
         galleryInput.click();
       }
     }
+  },
+
+  triggerKeypadImagePicker(source) {
+    this.closeKeypad();
+    this.triggerImagePicker(source);
   },
 
   async handleImageFileSelect(event) {
@@ -6741,7 +6798,7 @@ const UITransactions = {
       throw new Error('Thư viện OCR chưa sẵn sàng');
     }
 
-    this.setAIScanningState(true, 'Đang chuẩn bị bộ quét chữ offline...');
+    this.setAIScanningState(true, 'Đang chuẩn bị quét...');
 
     // 1. Tiền xử lý ảnh (tăng tương phản để làm rõ nét chữ in nhiệt)
     const preprocessCanvas = await new Promise((resolve) => {
@@ -6794,9 +6851,9 @@ const UITransactions = {
         logger: (m) => {
           if (m.status === 'recognizing text' && typeof m.progress === 'number') {
             const pct = Math.round(m.progress * 100);
-            this.setAIScanningState(true, `OCR Offline nhận diện chữ số: ${pct}%...`);
+            this.setAIScanningState(true, `Nhận diện chữ số: ${pct}%...`);
           } else if (m.status) {
-            this.setAIScanningState(true, `Đang xử lý hoá đơn (${m.status})...`);
+            this.setAIScanningState(true, 'Đang nhận diện hoá đơn...');
           }
         }
       }
@@ -7307,19 +7364,27 @@ const UITransactions = {
       }
 
       // 3. Điền danh sách món & giá vào ghi chú (Ghi đè nếu máy tự chèn hoặc ô trống, chặn & cảnh báo nếu đã nhập tay)
+      let noteProtected = false;
       if (autoItems && billItemsList.length > 0) {
         const noteInput = document.getElementById('tx-note-input');
         if (noteInput) {
           const currentNote = noteInput.value.trim();
-          const isManual = this.isNoteManuallyEdited && currentNote !== '' && currentNote !== (this.lastAutoNoteValue || '').trim();
+          const newScannedText = billItemsList.join('\n\n');
+          this._lastScannedItemsText = newScannedText;
+
+          // Điều kiện người dùng đã nhập tay hoặc đã sửa ghi chú:
+          // Nếu ô ghi chú có nội dung và khác với nội dung máy từng tự điền
+          const isManual = currentNote !== '' && currentNote !== (this.lastAutoNoteValue || '').trim();
 
           if (isManual) {
-            showToast('Ghi chú đã được bạn nhập thủ công trước đó nên không thể ghi đè!', 'warning');
+            noteProtected = true;
+            this.showNoteProtectedAlert();
           } else {
-            noteInput.value = billItemsList.join('\n\n');
+            noteInput.value = newScannedText;
             this.lastAutoNoteValue = noteInput.value;
             this.isNoteManuallyEdited = false;
             this.autoResizeNoteInput();
+            this.hideNoteProtectedAlert();
             infoCount++;
           }
         }
@@ -7336,7 +7401,12 @@ const UITransactions = {
         }
       }
 
-      if (infoCount > 0) {
+      if (noteProtected) {
+        const amtMsg = totalAmount > 0 ? `${new Intl.NumberFormat('vi-VN').format(totalAmount)}đ` : '';
+        const catMsg = matchedCatName ? ` • Danh mục: ${matchedCatName}` : '';
+        const baseMsg = amtMsg ? `✓ Đã nhận diện ${amtMsg}${catMsg}` : (isMultiBill ? `✓ Đã quét ${this.attachedImages.length} hoá đơn` : '✓ Đã nhận diện hoá đơn');
+        showToast(`${baseMsg} • ⚠️ Giữ nguyên ghi chú do bạn tự nhập`, 'warning', 4500);
+      } else if (infoCount > 0) {
         const catMsg = matchedCatName ? ` • Danh mục: ${matchedCatName}` : '';
         const amtMsg = totalAmount > 0 ? `${new Intl.NumberFormat('vi-VN').format(totalAmount)}đ` : '';
         const dtMsg = firstDate ? ` • Ngày: ${firstDate}` : '';

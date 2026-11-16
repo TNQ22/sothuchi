@@ -26,7 +26,7 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png?v=3.0.25">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=3.0.33">
+  <link rel="stylesheet" href="./css/style.css?v=3.0.35">
   <link rel="stylesheet" href="./css/admin-panel.css?v=3.0.25">
   <link rel="stylesheet" href="./css/ui-trips-finance.css?v=3.0.72">
 
@@ -1317,40 +1317,6 @@
           </div>
         </div>
 
-        <!-- Stat Cards -->
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-header">
-              <span class="stat-title">TÀI SẢN RÒNG</span>
-              <div class="stat-icon net-worth"><i data-lucide="trending-up"></i></div>
-            </div>
-            <div id="stat-net-worth" class="stat-amount">0đ</div>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-header">
-              <span class="stat-title">TỔNG TÀI KHOẢN</span>
-              <div class="stat-icon income"><i data-lucide="wallet"></i></div>
-            </div>
-            <div id="stat-total-balance" class="stat-amount income-text">0đ</div>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-header">
-              <span class="stat-title">CHO VAY</span>
-              <div class="stat-icon income"><i data-lucide="arrow-up-right"></i></div>
-            </div>
-            <div id="stat-total-lend" class="stat-amount income-text">0đ</div>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-header">
-              <span class="stat-title">ĐI VAY</span>
-              <div class="stat-icon debt"><i data-lucide="arrow-down-left"></i></div>
-            </div>
-            <div id="stat-total-borrow" class="stat-amount debt-text">0đ</div>
-          </div>
-        </div>
 
         <!-- Charts Grid -->
         <!-- Non-intrusive Dashboard Budget Alert -->
@@ -1365,7 +1331,7 @@
             </div>
           </div>
 
-          <!-- Tiện ích bên dưới Biến Động Thu - Chi Trong Năm (chỉ liệt kê không ghi đề mục) -->
+          <!-- Tiện ích bên dưới Biến Động Thu - Chi Trong Năm (3 tiện ích chính căn đều) -->
           <div class="dashboard-utilities-panel">
             <div class="quick-utilities-grid">
               <div class="quick-utility-card" onclick="UIBillSplit.openStandaloneModal()" role="button" tabindex="0">
@@ -1388,23 +1354,13 @@
                 </div>
               </div>
 
-              <div class="quick-utility-card" onclick="window.UISettings && window.UISettings.openSection('ocr-scanner')" role="button" tabindex="0">
+              <div class="quick-utility-card" onclick="window.UIOverviewFinance && window.UIOverviewFinance.openOCRScannerSheet()" role="button" tabindex="0">
                 <div class="quick-utility-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
                   <i data-lucide="scan-text"></i>
                 </div>
                 <div class="quick-utility-info">
                   <span class="quick-utility-name">Quét hoá đơn (OCR)</span>
                   <span class="quick-utility-desc">Nhận diện tự động</span>
-                </div>
-              </div>
-
-              <div class="quick-utility-card" onclick="window.UISettings && window.UISettings.openSection('export-csv')" role="button" tabindex="0">
-                <div class="quick-utility-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
-                  <i data-lucide="file-spreadsheet"></i>
-                </div>
-                <div class="quick-utility-info">
-                  <span class="quick-utility-name">Xuất Excel (CSV)</span>
-                  <span class="quick-utility-desc">Báo cáo & sao lưu</span>
                 </div>
               </div>
             </div>
@@ -3736,21 +3692,15 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </div>
                 </div>
 
-                <!-- Hàng: Người nhận (Đã gỡ nút chia tiền để chuyển vào Chuyến đi/Sự kiện) -->
-                <div class="tx-info-row" id="tx-payee-row" onclick="UITransactions.openPayeePrompt()" style="cursor: pointer;">
-                  <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
-                    <i data-lucide="user"></i>
+                <!-- Cảnh báo khi giữ nguyên ghi chú nhập tay (không ghi đè tự động) -->
+                <div id="tx-note-protected-alert" class="tx-note-protected-alert" style="display: none;">
+                  <div class="tx-note-protected-content">
+                    <i data-lucide="shield-alert" style="width: 16px; height: 16px; flex-shrink: 0; color: #f59e0b;"></i>
+                    <span>Giữ nguyên ghi chú bạn đã nhập (không ghi đè)</span>
                   </div>
-                  <div class="tx-info-content" style="min-width: 0;">
-                    <div style="font-size: 0.74rem; color: var(--text-muted); font-weight: 500;">Người nhận</div>
-                    <div id="tx-payee-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Chưa chọn ai</div>
-                    <input type="hidden" id="tx-person-input" value="">
-                    <input type="hidden" id="tx-split-data-input" value="">
-                  </div>
-                  <button type="button" class="btn-clear-input" id="btn-clear-tx-payee" style="display: none; position: static; margin-right: 4px;" onclick="UITransactions.clearPayee(event)" title="Xóa người nhận">
-                    <i data-lucide="x"></i>
+                  <button type="button" class="btn-force-overwrite-note" onclick="UITransactions.forceOverwriteScannedNote(event)">
+                    Ghi đè bằng OCR
                   </button>
-                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
                 <!-- Hàng 5: Ngày thu nợ / Ngày trả nợ (Nằm phía trên Thêm chi tiết, chỉ icon và chú thích nền) -->
@@ -3764,7 +3714,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
-                <!-- Mục Thêm Chi Tiết (Chuyến đi/Sự kiện & Phí giao dịch & Đi vay để trả & Ảnh đính kèm) -->
+                <!-- Mục Thêm Chi Tiết (Chuyến đi/Sự kiện & Người nhận & Phí giao dịch & Đi vay để trả & Ảnh đính kèm) -->
                 <div class="collapsible-section" style="margin-top: 4px; padding-top: 6px;">
                   <button type="button" id="btn-toggle-extra-details" class="collapsible-header-btn" onclick="UITransactions.toggleExtraDetails()">
                     <div style="display: flex; align-items: center; gap: 6px;">
@@ -3785,6 +3735,23 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                         <input type="hidden" id="tx-trip-id-input" value="">
                       </div>
                       <button type="button" class="btn-clear-input" id="btn-clear-tx-trip" style="display: none; position: static; margin-right: 4px;" onclick="UITrips.clearTripSelection(event)" title="Hủy chọn chuyến đi">
+                        <i data-lucide="x"></i>
+                      </button>
+                      <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                    </div>
+
+                    <!-- Hàng: Người nhận (Nằm ngay dưới Chuyến đi/Sự kiện) -->
+                    <div class="tx-info-row" id="tx-payee-row" onclick="UITransactions.openPayeePrompt()" style="cursor: pointer; margin-bottom: 8px;">
+                      <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                        <i data-lucide="user"></i>
+                      </div>
+                      <div class="tx-info-content" style="min-width: 0;">
+                        <div style="font-size: 0.74rem; color: var(--text-muted); font-weight: 500;">Người nhận</div>
+                        <div id="tx-payee-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Chưa chọn ai</div>
+                        <input type="hidden" id="tx-person-input" value="">
+                        <input type="hidden" id="tx-split-data-input" value="">
+                      </div>
+                      <button type="button" class="btn-clear-input" id="btn-clear-tx-payee" style="display: none; position: static; margin-right: 4px;" onclick="UITransactions.clearPayee(event)" title="Xóa người nhận">
                         <i data-lucide="x"></i>
                       </button>
                       <i data-lucide="chevron-right" class="tx-info-chevron"></i>
@@ -5240,7 +5207,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               </button>
             </div>
             <div class="tx-header-center">
-              <span class="tx-page-header-title">Chi Tiết Tài Chính Hiện Có</span>
+              <span class="tx-page-header-title finance-detail-header-title"><strong>Chi Tiết</strong><span class="sub-title">Tài Chính Hiện Có</span></span>
             </div>
             <div class="tx-header-right">
               <button type="button" class="btn-icon tx-header-btn" onclick="UIAccounts.refreshAllLivePrices(); UIOverviewFinance.renderDetail();" title="Làm mới tỷ giá & giá tài sản">
@@ -5578,12 +5545,20 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         </button>
       </div>
 
-      <!-- Thanh chọn chế độ Ghi chép mẫu (nằm dưới ô hiển thị tiền) -->
+      <!-- Thanh chọn chế độ Ghi chép mẫu & Phím tắt ảnh/chụp nhanh -->
       <div class="keypad-mode-bar">
         <button type="button" id="btn-keypad-templates" class="keypad-mode-pill" onclick="UITransactions.toggleKeypadTemplates()" title="Ghi chép mẫu">
           <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i>
           <span>Ghi chép mẫu</span>
         </button>
+        <div class="keypad-mode-actions" id="keypad-mode-actions">
+          <button type="button" class="keypad-mode-icon-btn" onclick="UITransactions.triggerKeypadImagePicker('gallery')" title="Thư viện ảnh" aria-label="Thư viện ảnh">
+            <i data-lucide="image"></i>
+          </button>
+          <button type="button" class="keypad-mode-icon-btn" onclick="UITransactions.triggerKeypadImagePicker('camera')" title="Chụp ảnh hoá đơn" aria-label="Chụp ảnh hoá đơn">
+            <i data-lucide="camera"></i>
+          </button>
+        </div>
       </div>
 
       <!-- 5x4 Keypad Grid (Calculator Mode matching IMG_0015) -->
@@ -8010,7 +7985,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=3.0.44"></script>
-  <script src="./js/ui-transactions.js?v=3.0.73"></script>
+  <script src="./js/ui-transactions.js?v=3.0.75"></script>
   <script src="./js/ui-debts.js?v=3.0.44"></script>
   <script src="./js/ui-accounts.js?v=3.0.59"></script>
   <script src="./js/ui-share.js?v=3.0.63"></script>

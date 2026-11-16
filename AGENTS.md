@@ -71,6 +71,21 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
   - **Thuộc tính bắt buộc:** Tất cả các icon button, nút rút gọn chữ bắt buộc phải khai báo thuộc tính `title` hoặc `aria-label` (hoặc `data-tooltip`) rõ ràng, xúc tích.
   - **Trải nghiệm hiển thị:** Hiển thị tên nút dạng Tooltip / Micro-toast nổi nhỏ gọn với phong cách thương hiệu (nền tối, viền ngọc bích, bo góc), tự động biến mất khi nhấc tay (`touchend`), di chuyển ngón tay (`touchmove`), hoặc sau 1.5 giây.
 
+### 2.7. Chuẩn Giao Diện Thẻ Tài Chính Hiện Có, Tiện Ích & Chi Tiết Tài Chính (BẮT BUỘC)
+- **Thẻ Tổng Quan Tài Chính Hiện Có (Dashboard & Detail Hero Card):**
+  - **Căn giữa toàn bộ số liệu:** Số tiền chính `TÀI CHÍNH HIỆN CÓ` (`.finance-overview-amount-row`), cột `Tổng có` (`.col-have`) và `Tổng nợ` (`.col-debt`) phải luôn được căn giữa (`text-align: center; justify-content: center; align-items: center;`).
+  - **Không dùng 4 thẻ thống kê phụ cũ trên Dashboard:** Không hiển thị cụm 4 thẻ cũ (Tài sản ròng, Tổng tài khoản, Cho vay, Đi vay) vì gây rối mắt và trùng lặp thông tin với Thẻ Tài Chính Hiện Có.
+- **Cụm Tiện Ích Nhanh trên Dashboard (Quick Utilities):**
+  - **Không bị tràn ngang:** Bố trí 3 tiện ích chính căn đều dạng lưới 3 cột cân xứng (`grid-template-columns: repeat(3, 1fr)`), không để phát sinh thanh cuộn ngang bị cắt lẹm.
+  - **3 tiện ích cốt lõi:** `Chia tiền nhóm` (Bill split), `Chuyến đi/Sự kiện` (Trips), và `Quét hoá đơn (OCR)`. Bỏ các mục dư thừa như `Xuất Excel` (đã có trong Cài Đặt và Chuyến đi).
+  - **Quét hoá đơn (OCR):** Khi bấm vào từ Dashboard, phải mở Action Sheet chọn: Chụp ảnh hoá đơn (Camera) / Chọn ảnh từ thư viện (Gallery) / Cài đặt nhận diện OCR, tự động kích hoạt quá trình quét và điền giao dịch nhanh chóng.
+- **Trang Chi Tiết Tài Chính Hiện Có (`view-finance-detail`):**
+  - **Tiêu đề Header:** Tiêu đề ở giữa luôn hiển thị 2 dòng: Chữ đậm `Chi Tiết` ở dòng trên, và dòng dưới là `TÀI CHÍNH HIỆN CÓ` (chữ nhỏ, mờ nhẹ, căn giữa).
+  - **Thanh tab bộ lọc (Tất cả | Tổng có | Tổng nợ):** Căng đều 100% bề ngang (`flex: 1 1 0; min-width: 0;`), chữ có ellipsis chống tràn viền.
+- **Xuất Lề Sát Cạnh (Edge-to-Edge Max Display Area):**
+  - Giảm thiểu tối đa padding viền ngoài (`padding: 8px 2px` hoặc `4px 2px`) để các ô danh sách (`.finance-group-card`, `.finance-item-card`) mở rộng tối đa diện tích hiển thị trên điện thoại.
+  - Phần hiển thị số tiền và tên tài khoản có không gian rộng rãi, không bị co ép hay che khuất.
+
 ---
 
 ## 3. NGUYÊN TẮC VIẾT CODE & BẢO TRÌ

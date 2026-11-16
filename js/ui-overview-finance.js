@@ -463,6 +463,109 @@ const UIOverviewFinance = {
     if (window.UIAccounts && typeof window.UIAccounts.openItemActionSheet === 'function') {
       window.UIAccounts.openItemActionSheet('loan', Number(loanId));
     }
+  },
+
+  // Tiện ích Quét hoá đơn (OCR) từ Dashboard
+  openOCRScannerSheet() {
+    let sheet = document.getElementById('modal-dashboard-ocr-sheet');
+    if (!sheet) {
+      sheet = document.createElement('div');
+      sheet.id = 'modal-dashboard-ocr-sheet';
+      sheet.className = 'modal-overlay action-sheet-overlay';
+      sheet.innerHTML = `
+        <div class="modal-dialog action-sheet-dialog" onclick="event.stopPropagation()">
+          <div class="action-sheet-header">
+            <div class="action-sheet-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+              <i data-lucide="scan-text"></i>
+            </div>
+            <div class="action-sheet-info">
+              <h4 class="action-sheet-title">Quét Hoá Đơn (OCR Offline)</h4>
+              <p class="action-sheet-subtitle">Nhận diện tự động số tiền & nội dung</p>
+            </div>
+            <button type="button" class="btn-icon" onclick="UIOverviewFinance.closeOCRScannerSheet()"><i data-lucide="x"></i></button>
+          </div>
+          <div class="action-sheet-body">
+            <button type="button" class="action-sheet-item" onclick="UIOverviewFinance.triggerOCRAction('camera')">
+              <div class="action-sheet-item-icon" style="background: rgba(13, 148, 136, 0.15); color: #14b8a6;">
+                <i data-lucide="camera" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Chụp ảnh hoá đơn mới</span>
+                <span class="action-sheet-item-desc">Mở máy ảnh quét ngay hoá đơn</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
+
+            <button type="button" class="action-sheet-item" onclick="UIOverviewFinance.triggerOCRAction('gallery')">
+              <div class="action-sheet-item-icon" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
+                <i data-lucide="image" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Chọn ảnh từ thư viện</span>
+                <span class="action-sheet-item-desc">Tải ảnh chụp hoá đơn đã lưu trong máy</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
+
+            <button type="button" class="action-sheet-item" onclick="UIOverviewFinance.triggerOCRAction('settings')">
+              <div class="action-sheet-item-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                <i data-lucide="sliders" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div class="action-sheet-item-text">
+                <span class="action-sheet-item-title">Cài đặt nhận diện OCR</span>
+                <span class="action-sheet-item-desc">Tùy chọn tự động điền số tiền, ngày, danh mục</span>
+              </div>
+              <i data-lucide="chevron-right" class="action-sheet-chevron"></i>
+            </button>
+          </div>
+          <div class="action-sheet-footer">
+            <button type="button" class="btn-secondary" style="width: 100%; justify-content: center;" onclick="UIOverviewFinance.closeOCRScannerSheet()">Đóng</button>
+          </div>
+        </div>
+      `;
+      sheet.addEventListener('click', (e) => {
+        if (e.target === sheet) this.closeOCRScannerSheet();
+      });
+      document.body.appendChild(sheet);
+    }
+
+    sheet.classList.add('active');
+    sheet.classList.add('open');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  closeOCRScannerSheet() {
+    const sheet = document.getElementById('modal-dashboard-ocr-sheet');
+    if (sheet) {
+      sheet.classList.remove('active');
+      sheet.classList.remove('open');
+    }
+  },
+
+  async triggerOCRAction(action) {
+    this.closeOCRScannerSheet();
+    if (action === 'settings') {
+      if (window.app && window.app.switchView) {
+        window.app.switchView('settings');
+      }
+      if (window.UISettings && typeof window.UISettings.openSection === 'function') {
+        window.UISettings.openSection('ocr-scanner');
+      }
+      return;
+    }
+
+    // Mở trang tạo giao dịch và kích hoạt chụp/chọn ảnh
+    if (window.app && window.app.switchView) {
+      window.app.switchView('new-transaction');
+    }
+    if (window.UITransactions && typeof window.UITransactions.openAddModal === 'function') {
+      await window.UITransactions.openAddModal('expense');
+    }
+    setTimeout(() => {
+      if (window.UITransactions && typeof window.UITransactions.triggerImagePicker === 'function') {
+        window.UITransactions.triggerImagePicker(action);
+      }
+    }, 250);
   }
 };
 

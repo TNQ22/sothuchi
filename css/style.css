@@ -3614,8 +3614,41 @@ textarea.tx-clean-input {
 .keypad-mode-bar {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  padding: 2px 0 4px 0;
+  justify-content: space-between;
+  padding: 2px 0 6px 0;
+}
+.keypad-mode-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.keypad-mode-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.keypad-mode-icon-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(13, 148, 136, 0.12);
+}
+.keypad-mode-icon-btn:active {
+  transform: scale(0.92);
+}
+.keypad-mode-icon-btn i,
+.keypad-mode-icon-btn svg {
+  width: 16px;
+  height: 16px;
 }
 #keypad-live-val.is-selected {
   background: var(--primary);
@@ -14601,6 +14634,70 @@ body.light .ptr-circle-badge,
 
 .is-scanning .icon-sparkle-spin {
   animation: sparkleSpin 1.4s linear infinite;
+}
+
+/* Cảnh báo giữ nguyên ghi chú nhập tay khi quét hoá đơn */
+.tx-note-protected-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 4px 14px 10px 14px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md, 10px);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: 0.8rem;
+  color: #fbbf24;
+  animation: pulseAmberAlert 0.35s ease-out;
+}
+
+.tx-note-protected-content {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+.btn-force-overwrite-note {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: #f59e0b;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 0.74rem;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.btn-force-overwrite-note:hover {
+  background: #d97706;
+  transform: translateY(-0.5px);
+}
+
+.tx-clean-input.is-protected-note {
+  border: 1.5px solid #f59e0b !important;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25) !important;
+  border-radius: var(--radius-sm, 6px);
+  animation: shakeNoteInput 0.45s ease-in-out;
+}
+
+@keyframes shakeNoteInput {
+  0%, 100% { transform: translateX(0); }
+  15%, 45%, 75% { transform: translateX(-4px); }
+  30%, 60%, 90% { transform: translateX(4px); }
+}
+
+@keyframes pulseAmberAlert {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Modal Cắt & Căn Chỉnh Hoá Đơn (Interactive Touch Crop) */
