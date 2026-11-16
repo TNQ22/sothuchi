@@ -47,6 +47,7 @@ const UIBillSplit = {
     if (amountInput) amountInput.value = this.totalAmount > 0 ? this.totalAmount : '';
 
     this.renderModal();
+    modal.classList.add('open');
     modal.classList.add('active');
   },
 
@@ -103,12 +104,16 @@ const UIBillSplit = {
     if (amountInput) amountInput.value = this.totalAmount > 0 ? this.totalAmount : '';
 
     this.renderModal();
+    modal.classList.add('open');
     modal.classList.add('active');
   },
 
   closeModal() {
     const modal = document.getElementById('modal-bill-split');
-    if (modal) modal.classList.remove('active');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.classList.remove('active');
+    }
   },
 
   addParticipant(name) {

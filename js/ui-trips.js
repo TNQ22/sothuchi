@@ -63,7 +63,7 @@ const UITrips = {
           <p style="font-size: 0.95rem; font-weight: 600; margin-top: 10px;">${this.currentTab === 'completed' ? 'Chưa có chuyến đi nào đã kết thúc' : 'Chưa có chuyến đi hoặc sự kiện nào'}</p>
           <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">Tạo chuyến đi du lịch, dã ngoại, hội khóa hoặc sự kiện để theo dõi chi tiêu và chia tiền nhóm.</p>
           <button type="button" class="btn-primary" style="margin-top: 14px; padding: 8px 16px; font-size: 0.85rem;" onclick="UITrips.openTripModal()">
-            <i data-lucide="plus" style="width: 16px; height: 16px;"></i> + Tạo Chuyến Đi / Sự Kiện Mới
+            <i data-lucide="plus" style="width: 16px; height: 16px;"></i> Tạo Chuyến Đi/Sự Kiện Mới
           </button>
         </div>
       `;
@@ -140,7 +140,13 @@ const UITrips = {
             <button type="button" class="btn-trip-action-link" onclick="UITrips.openTripDetail(${trip.id}, 'split')">
               <i data-lucide="arrow-right-left" style="width: 13px; height: 13px;"></i> Chia tiền nhóm
             </button>
-            <div style="display: flex; gap: 6px;">
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button type="button" class="btn-trip-icon-opt" onclick="UITrips.exportExcel(${trip.id})" title="Xuất Excel (CSV)">
+                <i data-lucide="file-spreadsheet" style="width: 14px; height: 14px; color: #10b981;"></i>
+              </button>
+              <button type="button" class="btn-trip-icon-opt" onclick="UITrips.exportPDF(${trip.id})" title="Xuất PDF">
+                <i data-lucide="printer" style="width: 14px; height: 14px; color: #0ea5e9;"></i>
+              </button>
               <button type="button" class="btn-trip-icon-opt" onclick="UITrips.openTripModal(${trip.id})" title="Chỉnh sửa">
                 <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i>
               </button>
@@ -194,15 +200,19 @@ const UITrips = {
       if (membersInput) membersInput.value = 'Tôi, Bạn 1, Bạn 2';
       if (noteInput) noteInput.value = '';
       if (statusSelect) statusSelect.value = 'active';
-      if (titleHeader) titleHeader.textContent = 'Tạo Chuyến Đi / Sự Kiện Mới';
+      if (titleHeader) titleHeader.textContent = 'Tạo Chuyến Đi/Sự Kiện Mới';
     }
 
+    modal.classList.add('open');
     modal.classList.add('active');
   },
 
   closeTripModal() {
     const modal = document.getElementById('modal-trip-form');
-    if (modal) modal.classList.remove('active');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.classList.remove('active');
+    }
   },
 
   async submitTripForm() {
@@ -236,18 +246,27 @@ const UITrips = {
 
     try {
       const savedId = await saveTrip(payload);
-      showToast(idVal ? 'Đã cập nhật chuyến đi!' : 'Đã tạo chuyến đi mới thành công!', 'success');
+      showToast(idVal ? 'Đã cập nhật chuyến đi/sự kiện!' : 'Đã tạo chuyến đi/sự kiện mới thành công!', 'success');
       this.closeTripModal();
       await this.loadTrips();
 
-      // Cập nhật selector nếu đang mở
+      // Cập nhật selector nếu đang mở trong Form ghi chép
+      const pickerModal = document.getElementById('modal-trip-picker');
+      const isPickerOpen = pickerModal && (pickerModal.classList.contains('open') || pickerModal.classList.contains('active'));
+      if (isPickerOpen) {
+        this.renderTripPicker();
+        if (savedId) {
+          this.selectTripForTx(savedId);
+        }
+      }
+
       this.renderManager();
       if (this.currentTripId && Number(this.currentTripId) === Number(savedId)) {
         this.renderTripDetail();
       }
     } catch (e) {
       console.warn('submitTripForm error:', e);
-      showToast('Lỗi khi lưu chuyến đi', 'error');
+      showToast('Lỗi khi lưu chuyến đi: ' + (e.message || e), 'error');
     }
   },
 
@@ -1103,6 +1122,55 @@ const UITrips = {
   },
 
   /* ==================== 5. CHỌN CHUYẾN ĐI TRONG FORM THU CHI ==================== */
+  renderTripPicker() {
+    const listContainer = document.getElementById('trip-picker-list');
+    const currentSelectedId = document.getElementById('tx-trip-id-input')?.value;
+
+    if (!listContainer) return;
+
+    if (!this.tripsCache || this.tripsCache.length === 0) {
+      listContainer.innerHTML = `
+        <div class="empty-list-placeholder-sm" style="padding: 20px;">
+          <span>Chưa có chuyến đi nào</span>
+          <button type="button" class="btn-primary" style="margin-top: 10px; font-size: 0.8rem; padding: 6px 12px;" onclick="UITrips.openTripModal()">
+            <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Tạo Chuyến Đi/Sự Kiện Mới
+          </button>
+        </div>
+      `;
+    } else {
+      const html = `
+        <!-- Tùy chọn Không chọn chuyến đi -->
+        <div class="trip-picker-item ${!currentSelectedId ? 'active' : ''}" onclick="UITrips.selectTripForTx(null)">
+          <div class="trip-picker-icon" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8;">
+            <i data-lucide="x"></i>
+          </div>
+          <div class="trip-picker-info">
+            <span class="trip-picker-name">Không thuộc chuyến đi / sự kiện nào</span>
+          </div>
+          ${!currentSelectedId ? '<i data-lucide="check" class="trip-picker-check"></i>' : ''}
+        </div>
+
+        ${this.tripsCache.map(t => {
+          const isSelected = String(t.id) === String(currentSelectedId);
+          return `
+            <div class="trip-picker-item ${isSelected ? 'active' : ''}" onclick="UITrips.selectTripForTx(${t.id})">
+              <div class="trip-picker-icon">
+                <i data-lucide="palmtree"></i>
+              </div>
+              <div class="trip-picker-info">
+                <span class="trip-picker-name">${escapeHTML(t.name)}</span>
+                <span class="trip-picker-sub">${t.members?.length || 0} thành viên ${t.startDate ? `• ${t.startDate}` : ''}</span>
+              </div>
+              ${isSelected ? '<i data-lucide="check" class="trip-picker-check"></i>' : ''}
+            </div>
+          `;
+        }).join('')}
+      `;
+      listContainer.innerHTML = html;
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
   /**
    * Mở popup chọn chuyến đi từ form Ghi chép
    */
@@ -1111,59 +1179,17 @@ const UITrips = {
     const modal = document.getElementById('modal-trip-picker');
     if (!modal) return;
 
-    const listContainer = document.getElementById('trip-picker-list');
-    const currentSelectedId = document.getElementById('tx-trip-id-input')?.value;
-
-    if (listContainer) {
-      if (this.tripsCache.length === 0) {
-        listContainer.innerHTML = `
-          <div class="empty-list-placeholder-sm" style="padding: 20px;">
-            <span>Chưa có chuyến đi nào</span>
-            <button type="button" class="btn-primary" style="margin-top: 10px; font-size: 0.8rem; padding: 6px 12px;" onclick="UITrips.openTripModal()">
-              + Tạo Chuyến Đi Mới
-            </button>
-          </div>
-        `;
-      } else {
-        const html = `
-          <!-- Tùy chọn Không chọn chuyến đi -->
-          <div class="trip-picker-item ${!currentSelectedId ? 'active' : ''}" onclick="UITrips.selectTripForTx(null)">
-            <div class="trip-picker-icon" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8;">
-              <i data-lucide="x"></i>
-            </div>
-            <div class="trip-picker-info">
-              <span class="trip-picker-name">Không thuộc chuyến đi / sự kiện nào</span>
-            </div>
-            ${!currentSelectedId ? '<i data-lucide="check" class="trip-picker-check"></i>' : ''}
-          </div>
-
-          ${this.tripsCache.map(t => {
-            const isSelected = String(t.id) === String(currentSelectedId);
-            return `
-              <div class="trip-picker-item ${isSelected ? 'active' : ''}" onclick="UITrips.selectTripForTx(${t.id})">
-                <div class="trip-picker-icon">
-                  <i data-lucide="palmtree"></i>
-                </div>
-                <div class="trip-picker-info">
-                  <span class="trip-picker-name">${escapeHTML(t.name)}</span>
-                  <span class="trip-picker-sub">${t.members?.length || 0} thành viên ${t.startDate ? `• ${t.startDate}` : ''}</span>
-                </div>
-                ${isSelected ? '<i data-lucide="check" class="trip-picker-check"></i>' : ''}
-              </div>
-            `;
-          }).join('')}
-        `;
-        listContainer.innerHTML = html;
-      }
-    }
-
+    this.renderTripPicker();
+    modal.classList.add('open');
     modal.classList.add('active');
-    if (window.lucide) lucide.createIcons();
   },
 
   closeTripPicker() {
     const modal = document.getElementById('modal-trip-picker');
-    if (modal) modal.classList.remove('active');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.classList.remove('active');
+    }
   },
 
   selectTripForTx(tripId) {
@@ -1181,18 +1207,9 @@ const UITrips = {
         }
         if (tripClearBtn) tripClearBtn.style.display = 'inline-flex';
 
-        // Gợi ý thành viên của chuyến đi vào Chi cho ai
-        if (trip.members && trip.members.length > 0) {
-          const payeeDisplay = document.getElementById('tx-payee-display');
-          const personInput = document.getElementById('tx-person-input');
-          const currentPerson = personInput?.value;
-
-          // Nếu chưa nhập người tham gia thì tự động lấy thành viên chuyến đi
-          if (!currentPerson || !currentPerson.trim()) {
-            const memberNames = trip.members.join(', ');
-            if (personInput) personInput.value = memberNames;
-            if (payeeDisplay) payeeDisplay.textContent = memberNames;
-          }
+        // Tự động mở rộng phần Thêm chi tiết để người dùng thấy rõ chuyến đi đã chọn
+        if (window.UITransactions && typeof window.UITransactions.toggleExtraDetails === 'function') {
+          window.UITransactions.toggleExtraDetails(true);
         }
       }
     } else {

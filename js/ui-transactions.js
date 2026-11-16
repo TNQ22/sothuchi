@@ -37,6 +37,8 @@ const UITransactions = {
   /* Đính kèm ảnh hoá đơn & Quét AI */
   attachedImages: [],
   isScanningAI: false,
+  isNoteManuallyEdited: false,
+  lastAutoNoteValue: '',
   cropState: {
     sourceImg: null,
     targetIndex: -1,
@@ -646,7 +648,15 @@ const UITransactions = {
 
       const noteInput = document.getElementById('tx-note-input');
       if (noteInput) {
-        noteInput.addEventListener('input', () => this.autoResizeNoteInput());
+        noteInput.addEventListener('input', () => {
+          this.autoResizeNoteInput();
+          const val = noteInput.value.trim();
+          if (val === '') {
+            this.isNoteManuallyEdited = false;
+          } else if (val !== (this.lastAutoNoteValue || '').trim()) {
+            this.isNoteManuallyEdited = true;
+          }
+        });
         noteInput.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
             // Cho phép Enter xuống dòng tự nhiên, ngăn chặn submit form
@@ -3179,18 +3189,52 @@ const UITransactions = {
     this.saveDraft();
   },
 
-  toggleExtraDetails() {
+  toggleExtraDetails(forceOpen = null) {
     const body = document.getElementById('extra-details-body');
     const chevron = document.getElementById('extra-details-chevron');
     if (!body) return;
     const isHidden = body.style.display === 'none' || !body.style.display;
-    if (isHidden) {
+    const shouldOpen = forceOpen !== null ? forceOpen : isHidden;
+    if (shouldOpen) {
       body.style.display = 'block';
       if (chevron) chevron.style.transform = 'rotate(180deg)';
     } else {
       body.style.display = 'none';
       if (chevron) chevron.style.transform = 'rotate(0deg)';
     }
+    this.saveDraft();
+  },
+
+  async openPayeePrompt() {
+    const personInput = document.getElementById('tx-person-input');
+    const payeeDisplay = document.getElementById('tx-payee-display');
+    const clearBtn = document.getElementById('btn-clear-tx-payee');
+    const currentVal = personInput?.value || '';
+
+    let name = null;
+    if (typeof showPrompt === 'function') {
+      name = await showPrompt('Người nhận / Chi cho ai:', currentVal, 'Nhập tên người nhận...');
+    } else {
+      name = prompt('Người nhận / Chi cho ai:', currentVal);
+    }
+
+    if (name !== null) {
+      name = name.trim();
+      if (personInput) personInput.value = name;
+      if (payeeDisplay) payeeDisplay.textContent = name || 'Chưa chọn ai';
+      if (clearBtn) clearBtn.style.display = name ? 'inline-flex' : 'none';
+      this.saveDraft();
+    }
+  },
+
+  clearPayee(e) {
+    if (e) e.stopPropagation();
+    const personInput = document.getElementById('tx-person-input');
+    const payeeDisplay = document.getElementById('tx-payee-display');
+    const clearBtn = document.getElementById('btn-clear-tx-payee');
+    if (personInput) personInput.value = '';
+    if (payeeDisplay) payeeDisplay.textContent = 'Chưa chọn ai';
+    if (clearBtn) clearBtn.style.display = 'none';
     this.saveDraft();
   },
 
@@ -4428,6 +4472,8 @@ const UITransactions = {
     if (!form) return;
 
     form.reset();
+    this.isNoteManuallyEdited = false;
+    this.lastAutoNoteValue = '';
     document.getElementById('tx-id-input').value = '';
     document.getElementById('tx-amount-input').value = '0';
     const amountVal = document.getElementById('tx-amount-text');
@@ -4487,6 +4533,8 @@ const UITransactions = {
 
     const payeeDisplay = document.getElementById('tx-payee-display');
     if (payeeDisplay) payeeDisplay.textContent = 'Chưa chọn ai';
+    const payeeClearBtn = document.getElementById('btn-clear-tx-payee');
+    if (payeeClearBtn) payeeClearBtn.style.display = 'none';
     const splitDataInput = document.getElementById('tx-split-data-input');
     if (splitDataInput) splitDataInput.value = '';
 
@@ -5457,6 +5505,8 @@ const UITransactions = {
 
     document.getElementById('tx-note-input').value = tx.note || '';
     this.autoResizeNoteInput();
+    this.isNoteManuallyEdited = !!(tx.note && tx.note.trim());
+    this.lastAutoNoteValue = '';
 
     // Fee
     const feeInput = document.getElementById('tx-fee-input');
@@ -5508,6 +5558,7 @@ const UITransactions = {
         tripNameDisplay.classList.add('has-trip');
       }
       if (tripClearBtn) tripClearBtn.style.display = 'inline-flex';
+      this.toggleExtraDetails(true);
     } else {
       if (tripInput) tripInput.value = '';
       if (tripNameDisplay) {
@@ -5519,9 +5570,11 @@ const UITransactions = {
 
     const payeeDisplay = document.getElementById('tx-payee-display');
     const personInput = document.getElementById('tx-person-input');
+    const payeeClearBtn = document.getElementById('btn-clear-tx-payee');
     const splitDataInput = document.getElementById('tx-split-data-input');
     if (personInput) personInput.value = tx.person || '';
     if (payeeDisplay) payeeDisplay.textContent = tx.person || 'Chưa chọn ai';
+    if (payeeClearBtn) payeeClearBtn.style.display = tx.person ? 'inline-flex' : 'none';
     if (splitDataInput) splitDataInput.value = tx.splitDetails ? JSON.stringify(tx.splitDetails) : '';
 
     // Chế độ sửa: hiện nút Hủy + Xóa
@@ -5545,6 +5598,7 @@ const UITransactions = {
     if (window.UITrips) {
       window.UITrips.selectTripForTx(Number(tripId));
     }
+    this.toggleExtraDetails(true);
   },
 
   /* ==================== DELETE TRANSACTION ==================== */
@@ -5620,7 +5674,7 @@ const UITransactions = {
     }
 
     if (scanBanner) {
-      scanBanner.style.display = this.attachedImages.length > 0 ? 'block' : 'none';
+      scanBanner.style.display = this.attachedImages.length > 0 ? 'flex' : 'none';
     }
 
     if (window.lucide) lucide.createIcons();
@@ -5735,7 +5789,7 @@ const UITransactions = {
     }
 
     if (scanBanner) {
-      scanBanner.style.display = this.attachedImages.length > 0 ? 'block' : 'none';
+      scanBanner.style.display = this.attachedImages.length > 0 ? 'flex' : 'none';
     }
 
     if (this.attachedImages.length > 0) {
@@ -6467,6 +6521,8 @@ const UITransactions = {
 
     const isTableHeader = (line) => {
       const norm = removeAccents(line);
+      // Bất kỳ dòng nào chứa từ khóa tiêu đề cột
+      if (/(?:don\s*gia|thanh\s*tien|so\s*luong|ten\s*hang|mat\s*hang|unit\s*price|quantity)/i.test(norm)) return true;
       let matches = 0;
       const kwList = ['don gia', 'so luong', 'thanh tien', 'bill', 'time', 'date', 'table', 'bang', 'stt', 'item', 'price', 'qty', 'amount'];
       for (const kw of kwList) {
@@ -6493,13 +6549,27 @@ const UITransactions = {
 
     const isPromoOrCouponLine = (line) => {
       const norm = removeAccents(line);
-      return /^(?:pmh|phieu\s*mua\s*hang|phieu\s*giam\s*gia|qua\s*tang|tang\s*kem|mien\s*phi\s*cong)\b/i.test(norm);
+      return /(?:pmh|phieu\s*mua\s*hang|phieu\s*giam\s*gia|qua\s*tang|tang\s*kem|mien\s*phi|voucher|coupon|khuyen\s*mai|don\s*hang\s*tu|tri\s*gia)\b/i.test(norm);
+    };
+
+    // Làm sạch tên mặt hàng
+    const cleanItemTitle = (str) => {
+      let s = (str || '').trim();
+      // Xoá ký tự rác đầu dòng: _ . - * ~ | • © v.v.
+      s = s.replace(/^[_.\-*~|•©\s]+/, '');
+      // Xoá tiền tố BE hoặc từ 1-2 ký tự rác trước số lượng hoặc tên: ví dụ "BE 00x " hoặc "BE "
+      s = s.replace(/^(?:BE|8E|B[.\s]|l[.\s]|I[.\s])\s+/i, '');
+      // Xoá số thứ tự đầu dòng: "1. ", "2) "
+      s = s.replace(/^[0-9]+[.)]\s*/, '');
+      // Xoá tiền tệ / mã ở đuôi
+      s = s.replace(/[:\-_]+$/, '').replace(/\((?:vnd|vnđ|d)\s*\d+\)/i, '').trim();
+      return s;
     };
 
     const maxItemPrice = (detectedAmount && detectedAmount > 1000) ? Math.round(detectedAmount * 1.1) : 500000000;
 
     const extractValidPrices = (line) => {
-      if (isHeaderLine(line)) return [];
+      if (isHeaderLine(line) || isTableHeader(line) || isPromoOrCouponLine(line)) return [];
       const matches = [...line.matchAll(/\b(\d{1,3}(?:[.,]\d{3})+|\d{4,9})\b/g)];
       const valid = [];
       for (const m of matches) {
@@ -6511,11 +6581,15 @@ const UITransactions = {
         const isDateSepAdjacent = /[/\-]\s*$/.test(prefix) || /^\s*[/\-]/.test(suffix);
         if (isDateSepAdjacent) continue;
 
+        // Nếu ngay trước số là "trị giá", "đơn hàng từ" -> không phải giá bán
+        const normPrefix = removeAccents(prefix);
+        if (/(?:tri\s*gia|don\s*hang\s*tu|giam|tang)\s*[:\s]*$/i.test(normPrefix)) continue;
+
         const hasSep = raw.includes('.') || raw.includes(',');
         const num = parseInt(raw.replace(/[.,]/g, ''), 10);
 
-        // Bỏ qua mã bưu chính hoặc số điện thoại (6, 10 hoặc 11 chữ số không có dấu phân cách)
-        if (!hasSep && (raw.length === 6 || raw.length === 10 || raw.length === 11)) continue;
+        // Bỏ qua số điện thoại (10 hoặc 11 chữ số bắt đầu bằng 0 và không có dấu chấm/phẩy)
+        if (!hasSep && (raw.length === 10 || raw.length === 11) && raw.startsWith('0')) continue;
 
         if (num >= 1000 && num <= maxItemPrice) {
           valid.push({ text: raw, val: num, index: m.index });
@@ -6544,11 +6618,10 @@ const UITransactions = {
         if (isHeaderLine(line)) continue;
       }
 
-      // Bỏ qua dòng phiếu mua hàng / khuyến mãi có đơn giá 0đ
+      // Bỏ qua dòng phiếu mua hàng / khuyến mãi
       if (isPromoOrCouponLine(line)) {
         if (i + 1 < textLines.length && isZeroPriceRow(textLines[i + 1])) {
           i++;
-          continue;
         }
         continue;
       }
@@ -6563,20 +6636,18 @@ const UITransactions = {
         let textBefore = line.substring(0, prices.length >= 2 ? firstPrice.index : lastPrice.index).trim();
         let qty = '';
 
-        // Kiểm tra số lượng ở đầu tên món: 1.00x ... hoặc 2x ...
-        const leadQtyMatch = textBefore.match(/^(\d+(?:\.\d+)?)\s*x\s*(.+)$/i);
+        // Kiểm tra số lượng ở đầu tên món: "1.00x ...", "2x ...", hoặc "BE 00x ..."
+        const leadQtyMatch = textBefore.match(/^(?:[a-zA-Z]{1,3}\s*)?(\d+(?:\.\d+)?)\s*x\s*(.+)$/i);
         if (leadQtyMatch) {
-          qty = Math.round(Number(leadQtyMatch[1])) || '';
+          qty = Math.round(Number(leadQtyMatch[1])) || 1;
           textBefore = leadQtyMatch[2].trim();
         } else {
-          // Nếu có 2 giá trở lên trên cùng 1 dòng: "Cà phê sữa đá 35.000 2 70.000"
           if (prices.length >= 2) {
             const between = line.substring(firstPrice.index + firstPrice.text.length, lastPrice.index).trim();
             const betweenMatch = between.match(/\b([1-9]\d{0,2})\b/);
             if (betweenMatch) qty = parseInt(betweenMatch[1], 10);
           }
           if (!qty) {
-            // Kiểm tra số lượng đứng trước đơn giá: "Bánh mì trứng 2 30.000" hoặc "... 2 x"
             const qtyMatch = textBefore.match(/(?:^|\s)(?:x\s*(\d+)|\b(\d+)\s*x|\bSL[:\s]*(\d+)|\b([1-9]\d{0,2}))$/i);
             if (qtyMatch) {
               qty = parseInt(qtyMatch[1] || qtyMatch[2] || qtyMatch[3] || qtyMatch[4], 10);
@@ -6585,9 +6656,9 @@ const UITransactions = {
           }
         }
 
-        let cleanName = textBefore.replace(/^[0-9•\-*.]+\s*/, '').replace(/[:\-_]+$/, '').replace(/\((?:vnd|vnđ|d)\s*\d+\)/i, '').trim();
+        let cleanName = cleanItemTitle(textBefore);
 
-        if (!isPureNumberOrNoise(cleanName) && !isHeaderLine(cleanName) && !isFooterOrTotal(cleanName) && !isPromoOrCouponLine(cleanName)) {
+        if (!isPureNumberOrNoise(cleanName) && !isHeaderLine(cleanName) && !isTableHeader(cleanName) && !isFooterOrTotal(cleanName) && !isPromoOrCouponLine(cleanName)) {
           const finalQty = qty && Number(qty) > 0 ? Number(qty) : 1;
           const qtyStr = ` (x${finalQty})`;
           items.push(`• ${cleanName}${qtyStr}: ${new Intl.NumberFormat('vi-VN').format(lastPrice.val)}đ`);
@@ -6596,23 +6667,23 @@ const UITransactions = {
         }
       }
 
-      // 2. Dạng 2 hoặc 3 dòng:
-      // Dòng i: Tên món
-      // Dòng i+1: Giá tiền (hoặc Phụ đề tiếng Anh / size, và dòng i+2 là giá tiền)
+      // 2. Dạng 2 hoặc 3 dòng
       if (i + 1 < textLines.length) {
         const nextLine = textLines[i + 1].trim();
         let nextPrices = extractValidPrices(nextLine);
         let consumed = 1;
         let extraTitle = '';
 
+        // Nếu dòng i+1 là phụ đề (ví dụ "Kombucha Lemon") và dòng i+2 là giá tiền
         if (nextPrices.length === 0 && i + 2 < textLines.length) {
           const thirdLine = textLines[i + 2].trim();
           const thirdPrices = extractValidPrices(thirdLine);
-          if (thirdPrices.length > 0 && !isFooterOrTotal(thirdLine)) {
+          if (thirdPrices.length > 0 && !isFooterOrTotal(thirdLine) && !isPromoOrCouponLine(nextLine)) {
             nextPrices = thirdPrices;
             consumed = 2;
-            if (!isPureNumberOrNoise(nextLine) && !isHeaderLine(nextLine)) {
-              extraTitle = ` (${nextLine})`;
+            if (!isPureNumberOrNoise(nextLine) && !isHeaderLine(nextLine) && !isTableHeader(nextLine)) {
+              const cleanSub = cleanItemTitle(nextLine);
+              if (cleanSub) extraTitle = ` (${cleanSub})`;
             }
           }
         }
@@ -6622,14 +6693,14 @@ const UITransactions = {
           let cleanName = line.trim();
           let qty = '';
 
-          // 1. Kiểm tra số lượng ở đầu tên món: 1.00x ... hoặc 2x ...
-          const leadQtyMatch = cleanName.match(/^(\d+(?:\.\d+)?)\s*x\s*(.+)$/i);
+          // Kiểm tra số lượng ở đầu tên món: 1.00x ... hoặc 2x ... hoặc BE 00x ...
+          const leadQtyMatch = cleanName.match(/^(?:[a-zA-Z]{1,3}\s*)?(\d+(?:\.\d+)?)\s*x\s*(.+)$/i);
           if (leadQtyMatch) {
-            qty = Math.round(Number(leadQtyMatch[1])) || '';
+            qty = Math.round(Number(leadQtyMatch[1])) || 1;
             cleanName = leadQtyMatch[2].trim();
           }
 
-          // 2. Kiểm tra dòng giá dạng bảng nhiều cột (Đơn giá - Số lượng - Thành tiền): "8,990,000   1   8,990,000"
+          // Bảng nhiều cột: "8,990,000   1   8,990,000"
           if (!qty && nextPrices.length >= 2) {
             const between = nextLine.substring(nextPrices[0].index + nextPrices[0].text.length, nextPrices[nextPrices.length - 1].index).trim();
             const betweenMatch = between.match(/\b([1-9]\d{0,2})\b/);
@@ -6642,13 +6713,12 @@ const UITransactions = {
             }
           }
 
-          // 3. Kiểm tra ký hiệu số lượng x / SL: "2 x 35.000" hoặc "SL: 2"
           if (!qty) {
-            const qtyMatch = nextLine.match(/(?:x\s*(\d+)|(?:^|\s)(\d+)\s*x|\bSL[:\s]*(\d+)|(?:^|\s)([1-9]\d{0,2})\s+(?:\d{1,3}(?:[.,]\d{3})+|\d{4,9}))/i);
+            const qtyMatch = nextLine.match(/(?:x\s*(\\d+)|(?:^|\s)(\d+)\s*x|\bSL[:\s]*(\d+)|(?:^|\s)([1-9]\d{0,2})\s+(?:\d{1,3}(?:[.,]\d{3})+|\d{4,9}))/i);
             if (qtyMatch) qty = parseInt(qtyMatch[1] || qtyMatch[2] || qtyMatch[3] || qtyMatch[4], 10);
           }
 
-          cleanName = cleanName.replace(/^[0-9•\-*.]+\s*/, '').replace(/[:\-_]+$/, '').replace(/\((?:vnd|vnđ|d)\s*\d+\)/i, '').trim();
+          cleanName = cleanItemTitle(cleanName);
           cleanName += extraTitle;
 
           if (!isPureNumberOrNoise(cleanName) && !isHeaderLine(cleanName) && !isFooterOrTotal(cleanName) && !isTableHeader(cleanName) && !isPromoOrCouponLine(cleanName)) {
@@ -6752,7 +6822,8 @@ const UITransactions = {
       const hasSep = rawStr.includes('.') || rawStr.includes(',');
       const num = parseInt(rawStr.replace(/[.,]/g, ''), 10);
       if (isNaN(num) || num < 1000) return null;
-      if (!hasSep && (rawStr.length === 6 || rawStr.length === 10 || rawStr.length === 11)) return null;
+      // Bỏ qua số điện thoại (10 hoặc 11 chữ số bắt đầu bằng 0 và không có dấu chấm/phẩy)
+      if (!hasSep && (rawStr.length === 10 || rawStr.length === 11) && rawStr.startsWith('0')) return null;
       return num;
     };
 
@@ -6858,10 +6929,10 @@ const UITransactions = {
     if (btn) {
       if (isScanning) {
         btn.classList.add('is-scanning');
-        if (textEl) textEl.textContent = customText || 'Đang quét hoá đơn (OCR Offline)...';
+        if (textEl) textEl.textContent = customText || 'Đang quét hoá đơn...';
       } else {
         btn.classList.remove('is-scanning');
-        if (textEl) textEl.textContent = 'Quét hoá đơn (OCR Offline)';
+        if (textEl) textEl.textContent = 'Quét hoá đơn';
       }
     }
   },
@@ -7102,8 +7173,6 @@ const UITransactions = {
       return;
     }
 
-    const lastImg = this.attachedImages[this.attachedImages.length - 1];
-
     let autoAmount = true;
     let autoDateTime = true;
     let autoItems = true;
@@ -7123,57 +7192,90 @@ const UITransactions = {
     }
 
     this._userAbortedAI = false;
-    this.setAIScanningState(true, 'Đang chuẩn bị quét hoá đơn offline...');
+    const isMultiBill = this.attachedImages.length > 1;
 
     try {
-      // 1. Thử quét mã VietQR / hoá đơn điện tử QR
-      if (offlineQrEnabled) {
-        try {
-          const qrResult = await this.scanReceiptQrOffline(lastImg);
-          if (qrResult && qrResult.amount) {
-            if (autoAmount) {
-              const formattedAmount = new Intl.NumberFormat('vi-VN').format(qrResult.amount);
-              const amountInput = document.getElementById('tx-amount-input');
-              const amountText = document.getElementById('tx-amount-text');
-              if (amountInput) amountInput.value = formattedAmount;
-              if (amountText) amountText.textContent = formattedAmount;
-            }
-            if (autoItems && qrResult.note) {
-              const noteInput = document.getElementById('tx-note-input');
-              if (noteInput && !noteInput.value.trim()) {
-                noteInput.value = qrResult.note;
-                this.autoResizeNoteInput();
+      let totalAmount = 0;
+      let billItemsList = [];
+      let firstDate = null;
+      let firstTime = null;
+      let allTexts = [];
+      let scannedSuccessCount = 0;
+
+      for (let idx = 0; idx < this.attachedImages.length; idx++) {
+        if (this._userAbortedAI) break;
+        const imgDataUrl = this.attachedImages[idx];
+        const billLabel = isMultiBill ? `hoá đơn ${idx + 1}/${this.attachedImages.length}` : 'hoá đơn';
+
+        this.setAIScanningState(true, `Đang xử lý ${billLabel}...`);
+
+        let billAmount = null;
+        let billItems = [];
+        let billDate = null;
+        let billTime = null;
+        let billText = '';
+
+        // 1. Thử quét mã VietQR / hoá đơn điện tử QR trên ảnh này
+        if (offlineQrEnabled) {
+          try {
+            const qrResult = await this.scanReceiptQrOffline(imgDataUrl);
+            if (qrResult && qrResult.amount) {
+              billAmount = qrResult.amount;
+              if (qrResult.note) {
+                billItems = [qrResult.note];
+                billText = qrResult.note;
               }
             }
-            if (autoCategory && qrResult.note) {
-              const matchedCat = await this.categorizeFromOCRText(qrResult.note);
-              if (matchedCat) {
-                await this.selectCategory(matchedCat);
-              }
-            }
-            showToast(`✓ Đã đọc số tiền từ mã QR: ${new Intl.NumberFormat('vi-VN').format(qrResult.amount)}đ`, 'success');
+          } catch (_) {}
+        }
+
+        // 2. Quét bằng Tesseract OCR nếu chưa có hoặc bổ sung
+        if (!billAmount || billItems.length === 0) {
+          if (typeof Tesseract === 'undefined') {
+            showToast('Thư viện OCR chưa sẵn sàng hoặc đang tải trong nền', 'warning');
             return;
           }
-        } catch (_) {}
+          const ocrRes = await this.scanReceiptWithOfflineOCR(imgDataUrl);
+          if (ocrRes) {
+            if (!billAmount && ocrRes.amount) billAmount = ocrRes.amount;
+            if (ocrRes.items && ocrRes.items.length > 0) billItems = ocrRes.items;
+            if (ocrRes.date) billDate = ocrRes.date;
+            if (ocrRes.time) billTime = ocrRes.time;
+            if (ocrRes.text) billText = (billText ? billText + '\n' : '') + ocrRes.text;
+          }
+        }
+
+        if (billAmount || billItems.length > 0) {
+          scannedSuccessCount++;
+        }
+
+        if (billAmount) {
+          totalAmount += billAmount;
+        }
+
+        if (billItems.length > 0) {
+          if (isMultiBill) {
+            billItemsList.push(`[Hoá đơn ${idx + 1}]:\n` + billItems.join('\n'));
+          } else {
+            billItemsList.push(billItems.join('\n'));
+          }
+        }
+
+        if (!firstDate && billDate) firstDate = billDate;
+        if (!firstTime && billTime) firstTime = billTime;
+        if (billText) allTexts.push(billText);
       }
 
-      // 2. Quét hoá đơn bằng Tesseract OCR (vie + eng ngoại tuyến)
-      if (typeof Tesseract === 'undefined') {
-        showToast('Thư viện OCR chưa sẵn sàng hoặc đang tải trong nền', 'warning');
-        return;
-      }
-
-      const ocrRes = await this.scanReceiptWithOfflineOCR(lastImg);
-      if (!ocrRes) {
+      if (scannedSuccessCount === 0 && totalAmount === 0 && billItemsList.length === 0) {
         showToast('Không thể nhận diện nội dung từ hoá đơn', 'warning');
         return;
       }
 
       let infoCount = 0;
 
-      // 1. Điền số tiền
-      if (autoAmount && ocrRes.amount) {
-        const formattedAmount = new Intl.NumberFormat('vi-VN').format(ocrRes.amount);
+      // 1. Điền số tiền (Tự động SUM nếu nhiều hoá đơn)
+      if (autoAmount && totalAmount > 0) {
+        const formattedAmount = new Intl.NumberFormat('vi-VN').format(totalAmount);
         const amountInput = document.getElementById('tx-amount-input');
         const amountText = document.getElementById('tx-amount-text');
         if (amountInput) amountInput.value = formattedAmount;
@@ -7182,17 +7284,17 @@ const UITransactions = {
       }
 
       // 2. Điền Ngày & Giờ từ hoá đơn
-      if (autoDateTime && (ocrRes.date || ocrRes.time)) {
+      if (autoDateTime && (firstDate || firstTime)) {
         const dateInput = document.getElementById('tx-date-input');
         const timeInput = document.getElementById('tx-time-input');
         const nativeDt = document.getElementById('tx-datetime-native');
 
-        if (ocrRes.date && dateInput) {
-          dateInput.value = ocrRes.date;
+        if (firstDate && dateInput) {
+          dateInput.value = firstDate;
           infoCount++;
         }
-        if (ocrRes.time && timeInput) {
-          timeInput.value = ocrRes.time;
+        if (firstTime && timeInput) {
+          timeInput.value = firstTime;
           infoCount++;
         }
 
@@ -7204,20 +7306,29 @@ const UITransactions = {
         this.updateDateTimeDisplays(curDate, curTime);
       }
 
-      // 3. Điền danh sách món & giá vào ghi chú
-      if (autoItems && Array.isArray(ocrRes.items) && ocrRes.items.length > 0) {
+      // 3. Điền danh sách món & giá vào ghi chú (Ghi đè nếu máy tự chèn hoặc ô trống, chặn & cảnh báo nếu đã nhập tay)
+      if (autoItems && billItemsList.length > 0) {
         const noteInput = document.getElementById('tx-note-input');
-        if (noteInput && !noteInput.value.trim()) {
-          noteInput.value = ocrRes.items.join('\n');
-          this.autoResizeNoteInput();
-          infoCount++;
+        if (noteInput) {
+          const currentNote = noteInput.value.trim();
+          const isManual = this.isNoteManuallyEdited && currentNote !== '' && currentNote !== (this.lastAutoNoteValue || '').trim();
+
+          if (isManual) {
+            showToast('Ghi chú đã được bạn nhập thủ công trước đó nên không thể ghi đè!', 'warning');
+          } else {
+            noteInput.value = billItemsList.join('\n\n');
+            this.lastAutoNoteValue = noteInput.value;
+            this.isNoteManuallyEdited = false;
+            this.autoResizeNoteInput();
+            infoCount++;
+          }
         }
       }
 
-      // 4. Tự động khớp và chọn danh mục bằng kết quả OCR (đối chiếu đa item)
+      // 4. Tự động khớp và chọn danh mục bằng kết quả OCR
       let matchedCatName = '';
-      if (autoCategory && ocrRes.text) {
-        const matchedCat = await this.categorizeFromOCRText(ocrRes.text, ocrRes.items);
+      if (autoCategory && allTexts.length > 0) {
+        const matchedCat = await this.categorizeFromOCRText(allTexts.join('\n'), billItemsList);
         if (matchedCat) {
           await this.selectCategory(matchedCat);
           matchedCatName = matchedCat.name;
@@ -7227,9 +7338,13 @@ const UITransactions = {
 
       if (infoCount > 0) {
         const catMsg = matchedCatName ? ` • Danh mục: ${matchedCatName}` : '';
-        const amtMsg = ocrRes.amount ? `${new Intl.NumberFormat('vi-VN').format(ocrRes.amount)}đ` : '';
-        const dtMsg = ocrRes.date ? ` • Ngày: ${ocrRes.date}` : '';
-        showToast(`✓ Nhận diện OCR thành công! ${amtMsg}${dtMsg}${catMsg}`, 'success');
+        const amtMsg = totalAmount > 0 ? `${new Intl.NumberFormat('vi-VN').format(totalAmount)}đ` : '';
+        const dtMsg = firstDate ? ` • Ngày: ${firstDate}` : '';
+        if (isMultiBill) {
+          showToast(`✓ Đã quét & tự cộng ${this.attachedImages.length} hoá đơn! Tổng tiền: ${amtMsg}${catMsg}`, 'success');
+        } else {
+          showToast(`✓ Nhận diện OCR thành công! ${amtMsg}${dtMsg}${catMsg}`, 'success');
+        }
       } else {
         showToast('Đã quét xong nhưng chữ số trên hoá đơn chưa đủ rõ để bóc tách tự động', 'info');
       }

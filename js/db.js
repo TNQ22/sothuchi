@@ -1985,6 +1985,9 @@ window.wipeAndResetLocalDatabase = wipeAndResetLocalDatabase;
 
 /* ==================== QUẢN LÝ CHUYẾN ĐI & SỰ KIỆN (TRIPS) ==================== */
 async function getTrips(includeDeleted = false) {
+  if (!db.isOpen()) {
+    try { await db.open(); } catch (_) {}
+  }
   if (!db.trips) return [];
   try {
     const list = await db.trips.toArray();
@@ -1996,6 +1999,9 @@ async function getTrips(includeDeleted = false) {
 }
 
 async function getTripById(id) {
+  if (!db.isOpen()) {
+    try { await db.open(); } catch (_) {}
+  }
   if (!db.trips) return null;
   try {
     return await db.trips.get(Number(id));
@@ -2006,6 +2012,9 @@ async function getTripById(id) {
 }
 
 async function saveTrip(tripData) {
+  if (!db.isOpen()) {
+    try { await db.open(); } catch (_) {}
+  }
   if (!db.trips) return null;
   const now = Date.now();
   const payload = {
@@ -2054,6 +2063,9 @@ async function getTripTransactions(tripId) {
 
 /* ==================== QUẢN LÝ CHIA TIỀN NHÓM (SPLITS) ==================== */
 async function getSplits(tripId = null) {
+  if (!db.isOpen()) {
+    try { await db.open(); } catch (_) {}
+  }
   if (!db.splits) return [];
   try {
     const all = (await db.splits.toArray()).filter(s => !s.isDeleted);
@@ -2068,6 +2080,9 @@ async function getSplits(tripId = null) {
 }
 
 async function saveSplit(splitData) {
+  if (!db.isOpen()) {
+    try { await db.open(); } catch (_) {}
+  }
   if (!db.splits) return null;
   const now = Date.now();
   const payload = {

@@ -14499,6 +14499,7 @@ body.light .ptr-circle-badge,
   margin-top: 10px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -14513,7 +14514,7 @@ body.light .ptr-circle-badge,
   color: var(--text-primary, #f8fafc);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   cursor: pointer;
   transition: all 0.25s ease;
   box-shadow: 0 0 16px rgba(13, 148, 136, 0.15);
@@ -14569,6 +14570,7 @@ body.light .ptr-circle-badge,
 .btn-ai-scan-content {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   font-weight: 600;
   font-size: 0.86rem;

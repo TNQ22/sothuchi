@@ -1051,3 +1051,16 @@
   color: var(--text-muted, #94a3b8);
   font-size: 0.84rem;
 }
+
+/* Modal Overlay compatibility (.open & .active) */
+.modal-overlay.open,
+.modal-overlay.active {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+.modal-overlay.open .modal-dialog,
+.modal-overlay.active .modal-dialog {
+  transform: scale(1) !important;
+}

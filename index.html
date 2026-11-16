@@ -26,9 +26,9 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png?v=3.0.25">
 
   <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="./css/style.css?v=3.0.32">
+  <link rel="stylesheet" href="./css/style.css?v=3.0.33">
   <link rel="stylesheet" href="./css/admin-panel.css?v=3.0.25">
-  <link rel="stylesheet" href="./css/ui-trips-finance.css?v=3.0.70">
+  <link rel="stylesheet" href="./css/ui-trips-finance.css?v=3.0.72">
 
   <!-- Offline Icons Library (Loaded synchronously in head for instant icon rendering) -->
   <script src="./vendor/lucide.min.js"></script>
@@ -1383,7 +1383,7 @@
                   <i data-lucide="palmtree"></i>
                 </div>
                 <div class="quick-utility-info">
-                  <span class="quick-utility-name">Chuyến đi sự kiện</span>
+                  <span class="quick-utility-name">Chuyến đi/Sự kiện</span>
                   <span class="quick-utility-desc">Tour, chi phí & Excel/PDF</span>
                 </div>
               </div>
@@ -2118,14 +2118,14 @@
             <div class="settings-group">
               <div class="settings-group-label">TIỆN ÍCH & TRỢ LÝ THÔNG MINH</div>
               <div class="settings-nav-card">
-                <!-- Mục 6.3: Chuyến Đi & Sự Kiện -->
+                <!-- Mục 6.3: Chuyến đi/Sự kiện -->
                 <div class="settings-nav-item" onclick="UITrips.openManager()">
                   <div class="settings-item-icon-box" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
                     <i data-lucide="palmtree"></i>
                   </div>
                   <div class="settings-item-content">
                     <div class="settings-item-title-row">
-                      <span class="settings-item-title">Chuyến Đi & Sự Kiện</span>
+                      <span class="settings-item-title">Chuyến đi/Sự kiện</span>
                       <span class="settings-status-pill pill-blue">Mới</span>
                     </div>
                     <div class="settings-item-desc">Quản lý tour du lịch, chi phí & tích hợp chia tiền nhóm (Xuất Excel, PDF)</div>
@@ -3161,19 +3161,10 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                  PANEL 7.5: NHẬN DIỆN HOÁ ĐƠN (OCR OFFLINE)
                  ========================================== -->
             <div id="panel-ocr-scanner" class="settings-detail-panel">
-              <!-- Header info card -->
-              <div class="settings-card-clean" style="margin-bottom: 12px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="scan-text" style="width: 18px; height: 18px; color: var(--primary);"></i>
-                    <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">Nhận Diện Hoá Đơn (OCR Offline)</span>
-                  </div>
-                  <span class="badge" style="font-size: 0.72rem; padding: 3px 8px; background: rgba(16, 185, 129, 0.15); color: #10b981; border-radius: 9999px; font-weight: 600;">100% Ngoại Tuyến</span>
-                </div>
-                <p class="settings-lead-text" style="font-size: 0.82rem; margin-bottom: 0;">
-                  Công nghệ quét ký tự quang học Tesseract OCR và mã QR chạy trực tiếp trên thiết bị của bạn. Không cần internet, không tốn phí API, bảo mật tuyệt đối 100%.
-                </p>
-              </div>
+              <!-- Chú thích dưới tiêu đề -->
+              <p class="settings-lead-text" style="font-size: 0.82rem; margin: 0 4px 14px 4px; line-height: 1.5; color: var(--text-secondary);">
+                Công nghệ quét ký tự quang học Tesseract OCR và mã QR chạy trực tiếp trên thiết bị của bạn. Không cần internet, không tốn phí API, bảo mật tuyệt đối 100%.
+              </p>
 
               <!-- Thẻ Tuỳ chọn Quét Hoá Đơn & Bóc Tách Thông Tin -->
               <div class="settings-card-clean" style="margin-bottom: 12px;">
@@ -3252,19 +3243,10 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 </div>
               </div>
 
-              <!-- Thẻ Giới thiệu OCR Ngoại Tuyến -->
-              <div class="settings-card-clean">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-                  <i data-lucide="shield-check" style="width: 16px; height: 16px; color: #10b981;"></i>
-                  <span style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary);">Ưu Điểm Chế Độ Ngoại Tuyến (Offline)</span>
-                </div>
-                <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.6;">
-                  <div style="margin-bottom: 6px;">• <strong>Bảo mật tối đa:</strong> Ảnh chụp hoá đơn được xử lý trực tiếp trên chip của máy, không bao giờ được gửi qua internet.</div>
-                  <div style="margin-bottom: 6px;">• <strong>Không cần API Key:</strong> Không phải đăng ký tài khoản Google hay lo lắng về việc khoá API.</div>
-                  <div style="margin-bottom: 6px;">• <strong>Tốc độ phản hồi:</strong> Quét mã VietQR chỉ mất dưới 50ms, đọc OCR chữ số hoá đơn chỉ vài giây.</div>
-                  <div style="background: rgba(13, 148, 136, 0.08); border-radius: 8px; padding: 8px 10px; color: var(--primary); font-weight: 500;">
-                    💡 <strong>Mẹo chụp ảnh:</strong> Chụp hoá đơn thẳng góc, đủ ánh sáng và dùng công cụ Cắt &amp; Căn Chỉnh kiểu iPhone để xoay ngay ngắn giúp OCR đọc chuẩn nhất!
-                  </div>
+              <!-- Mẹo chụp ảnh OCR -->
+              <div class="settings-card-clean" style="margin-bottom: 14px; background: rgba(13, 148, 136, 0.08); border: 1px solid rgba(13, 148, 136, 0.25);">
+                <div style="font-size: 0.8rem; color: var(--primary); font-weight: 500; line-height: 1.55;">
+                  💡 <strong>Mẹo chụp ảnh:</strong> Chụp hoá đơn thẳng góc, đủ ánh sáng và dùng công cụ Cắt &amp; Căn Chỉnh kiểu iPhone để xoay ngay ngắn giúp OCR đọc chuẩn nhất!
                 </div>
               </div>
             </div>
@@ -3754,37 +3736,20 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </div>
                 </div>
 
-                <!-- Hàng 4.1: Chuyến đi sự kiện (Nằm TRÊN Chi cho ai trong thu chi) -->
-                <div class="tx-info-row" id="tx-trip-row" onclick="UITrips.openTripPicker()" style="cursor: pointer;">
-                  <div class="tx-info-icon-bubble" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
-                    <i data-lucide="palmtree"></i>
-                  </div>
-                  <div class="tx-info-content" style="min-width: 0;">
-                    <div style="font-size: 0.74rem; color: var(--text-muted); font-weight: 500;">Chuyến đi / Sự kiện</div>
-                    <div id="tx-trip-name-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Chưa chọn chuyến đi</div>
-                    <input type="hidden" id="tx-trip-id-input" value="">
-                  </div>
-                  <button type="button" class="btn-clear-input" id="btn-clear-tx-trip" style="display: none; position: static; margin-right: 4px;" onclick="UITrips.clearTripSelection(event)" title="Hủy chọn chuyến đi">
-                    <i data-lucide="x"></i>
-                  </button>
-                  <i data-lucide="chevron-right" class="tx-info-chevron"></i>
-                </div>
-
-                <!-- Hàng 4.2: Chi cho ai (Nằm DƯỚI Chuyến đi sự kiện, tích hợp Chia tiền nhóm) -->
-                <div class="tx-info-row" id="tx-payee-row" onclick="UIBillSplit.openFromTransaction()" style="cursor: pointer;">
+                <!-- Hàng: Người nhận (Đã gỡ nút chia tiền để chuyển vào Chuyến đi/Sự kiện) -->
+                <div class="tx-info-row" id="tx-payee-row" onclick="UITransactions.openPayeePrompt()" style="cursor: pointer;">
                   <div class="tx-info-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
-                    <i data-lucide="users"></i>
+                    <i data-lucide="user"></i>
                   </div>
                   <div class="tx-info-content" style="min-width: 0;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-                      <span style="font-size: 0.74rem; color: var(--text-muted); font-weight: 500;">Chi cho ai</span>
-                      <button type="button" class="btn-split-badge" onclick="event.stopPropagation(); UIBillSplit.openFromTransaction();" title="Mở chia tiền nhóm">
-                        <i data-lucide="arrow-right-left" style="width: 11px; height: 11px;"></i> Chia tiền nhóm
-                      </button>
-                    </div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted); font-weight: 500;">Người nhận</div>
                     <div id="tx-payee-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Chưa chọn ai</div>
+                    <input type="hidden" id="tx-person-input" value="">
                     <input type="hidden" id="tx-split-data-input" value="">
                   </div>
+                  <button type="button" class="btn-clear-input" id="btn-clear-tx-payee" style="display: none; position: static; margin-right: 4px;" onclick="UITransactions.clearPayee(event)" title="Xóa người nhận">
+                    <i data-lucide="x"></i>
+                  </button>
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
@@ -3799,7 +3764,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
                 </div>
 
-                <!-- Mục Thêm Chi Tiết (Phí giao dịch & Đi vay để trả & Ảnh đính kèm) -->
+                <!-- Mục Thêm Chi Tiết (Chuyến đi/Sự kiện & Phí giao dịch & Đi vay để trả & Ảnh đính kèm) -->
                 <div class="collapsible-section" style="margin-top: 4px; padding-top: 6px;">
                   <button type="button" id="btn-toggle-extra-details" class="collapsible-header-btn" onclick="UITransactions.toggleExtraDetails()">
                     <div style="display: flex; align-items: center; gap: 6px;">
@@ -3809,6 +3774,22 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                     <i id="extra-details-chevron" data-lucide="chevron-down" style="width: 15px; height: 15px; transition: transform 0.2s;"></i>
                   </button>
                   <div id="extra-details-body" class="collapsible-body" style="display: none;">
+                    <!-- Hàng: Chuyến đi/Sự kiện (Nằm trên cùng Thêm chi tiết) -->
+                    <div class="tx-info-row" id="tx-trip-row" onclick="UITrips.openTripPicker()" style="cursor: pointer; margin-top: 6px; margin-bottom: 8px;">
+                      <div class="tx-info-icon-bubble" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
+                        <i data-lucide="palmtree"></i>
+                      </div>
+                      <div class="tx-info-content" style="min-width: 0;">
+                        <div style="font-size: 0.74rem; color: var(--text-muted); font-weight: 500;">Chuyến đi/Sự kiện</div>
+                        <div id="tx-trip-name-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Chưa chọn chuyến đi</div>
+                        <input type="hidden" id="tx-trip-id-input" value="">
+                      </div>
+                      <button type="button" class="btn-clear-input" id="btn-clear-tx-trip" style="display: none; position: static; margin-right: 4px;" onclick="UITrips.clearTripSelection(event)" title="Hủy chọn chuyến đi">
+                        <i data-lucide="x"></i>
+                      </button>
+                      <i data-lucide="chevron-right" class="tx-info-chevron"></i>
+                    </div>
+
                     <!-- Phí giao dịch (Chạm để mở bàn phím số tuỳ chỉnh) -->
                     <div class="form-group" style="margin-top: 8px;">
                       <label class="form-label" style="font-size: 0.78rem;">Phí giao dịch</label>
@@ -3867,7 +3848,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                         <button type="button" id="btn-tx-ai-scan" class="btn-ai-scan-magic" onclick="UITransactions.scanReceiptWithOCR()">
                           <div class="btn-ai-scan-content">
                             <i data-lucide="scan-line" class="icon-sparkle-spin"></i>
-                            <span id="btn-ai-scan-text">Quét hoá đơn (OCR Offline)</span>
+                            <span id="btn-ai-scan-text">Quét hoá đơn</span>
                           </div>
                         </button>
                       </div>
@@ -5357,7 +5338,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         </div>
       </section>
 
-      <!-- View: Quản Lý Chuyến Đi & Sự Kiện -->
+      <!-- View: Quản Lý Chuyến Đi/Sự Kiện -->
       <section id="view-trips-manager" class="page-view tx-page-view">
         <div class="tx-page-card-wrapper">
           <div class="tx-page-header">
@@ -5367,10 +5348,10 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               </button>
             </div>
             <div class="tx-header-center">
-              <span class="tx-page-header-title">Chuyến Đi & Sự Kiện</span>
+              <span class="tx-page-header-title">Chuyến đi/Sự kiện</span>
             </div>
             <div class="tx-header-right">
-              <button type="button" class="btn-icon tx-header-btn" onclick="UITrips.openTripModal()" title="Thêm chuyến đi / sự kiện mới">
+              <button type="button" class="btn-icon tx-header-btn" onclick="UITrips.openTripModal()" title="Thêm chuyến đi/sự kiện mới">
                 <i data-lucide="plus" style="width: 20px; height: 20px;"></i>
               </button>
             </div>
@@ -5399,7 +5380,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         </div>
       </section>
 
-      <!-- View: Chi Tiết Chuyến Đi & Chia Tiền Nhóm -->
+      <!-- View: Chi Tiết Chuyến Đi/Sự Kiện & Chia Tiền Nhóm -->
       <section id="view-trip-detail" class="page-view tx-page-view">
         <div class="tx-page-card-wrapper">
           <div class="tx-page-header">
@@ -5409,7 +5390,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               </button>
             </div>
             <div class="tx-header-center">
-              <span id="trip-detail-title" class="tx-page-header-title">Chi Tiết Chuyến Đi</span>
+              <span id="trip-detail-title" class="tx-page-header-title">Chi Tiết Chuyến Đi/Sự Kiện</span>
             </div>
             <div class="tx-header-right" style="display: flex; gap: 4px;">
               <button type="button" class="btn-icon tx-header-btn" onclick="UITrips.exportExcel()" title="Xuất báo cáo Excel (CSV UTF-8)">
@@ -5451,6 +5432,16 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   <span class="stat-title">NGÂN SÁCH CÒN</span>
                   <div id="trip-stat-remaining" class="stat-amount" style="font-size: 1.25rem;">0đ</div>
                 </div>
+              </div>
+
+              <!-- Hàng phím tắt Xuất dữ liệu Excel & PDF nổi bật -->
+              <div style="display: flex; gap: 8px; margin-top: 10px;">
+                <button type="button" class="btn-secondary" style="flex: 1; height: 38px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 10px;" onclick="UITrips.exportExcel()">
+                  <i data-lucide="file-spreadsheet" style="width: 15px; height: 15px; color: #10b981;"></i> Xuất Excel
+                </button>
+                <button type="button" class="btn-secondary" style="flex: 1; height: 38px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 10px;" onclick="UITrips.exportPDF()">
+                  <i data-lucide="printer" style="width: 15px; height: 15px; color: #0ea5e9;"></i> Xuất PDF
+                </button>
               </div>
             </div>
 
@@ -7905,7 +7896,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(14, 165, 233, 0.18); color: #0ea5e9; display: flex; align-items: center; justify-content: center;">
             <i data-lucide="palmtree" style="width: 18px; height: 18px;"></i>
           </div>
-          <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-primary);">Chọn Chuyến Đi / Sự Kiện</h3>
+          <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-primary);">Chọn Chuyến Đi/Sự Kiện</h3>
         </div>
         <button type="button" class="btn-icon" onclick="UITrips.closeTripPicker()" title="Đóng">
           <i data-lucide="x" style="width: 20px; height: 20px;"></i>
@@ -7921,13 +7912,13 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           Bỏ chọn chuyến đi
         </button>
         <button type="button" class="btn-primary" style="font-size: 0.82rem; padding: 8px 14px;" onclick="UITrips.openTripModal()">
-          <i data-lucide="plus" style="width: 14px; height: 14px;"></i> + Tạo Chuyến Đi Mới
+          <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Tạo Chuyến Đi/Sự Kiện Mới
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Modal: Tạo / Chỉnh Sửa Chuyến Đi & Sự Kiện -->
+  <!-- Modal: Tạo / Chỉnh Sửa Chuyến Đi/Sự Kiện -->
   <div id="modal-trip-form" class="modal-overlay" onclick="if (event.target === this) UITrips.closeTripModal()">
     <div class="modal-dialog" style="max-width: 500px; width: 100%; border-radius: 16px; overflow: hidden; background: var(--bg-surface, #1e293b);" onclick="event.stopPropagation()">
       <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.08);">
@@ -7935,7 +7926,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(14, 165, 233, 0.18); color: #0ea5e9; display: flex; align-items: center; justify-content: center;">
             <i data-lucide="palmtree" style="width: 18px; height: 18px;"></i>
           </div>
-          <h3 id="trip-form-modal-title" style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-primary);">Tạo Chuyến Đi / Sự Kiện Mới</h3>
+          <h3 id="trip-form-modal-title" style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-primary);">Tạo Chuyến Đi/Sự Kiện Mới</h3>
         </div>
         <button type="button" class="btn-icon" onclick="UITrips.closeTripModal()" title="Đóng">
           <i data-lucide="x" style="width: 20px; height: 20px;"></i>
@@ -7991,7 +7982,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           Hủy
         </button>
         <button type="button" class="btn-primary" style="flex: 1; padding: 10px; font-size: 0.85rem;" onclick="UITrips.submitTripForm()">
-          <i data-lucide="check" style="width: 15px; height: 15px;"></i> Lưu Chuyến Đi
+          <i data-lucide="check" style="width: 15px; height: 15px;"></i> Lưu Chuyến Đi/Sự Kiện
         </button>
       </div>
     </div>
@@ -8019,16 +8010,16 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
 
   <!-- UI Views Modules -->
   <script src="./js/ui-calendar.js?v=3.0.44"></script>
-  <script src="./js/ui-transactions.js?v=3.0.69"></script>
+  <script src="./js/ui-transactions.js?v=3.0.73"></script>
   <script src="./js/ui-debts.js?v=3.0.44"></script>
   <script src="./js/ui-accounts.js?v=3.0.59"></script>
   <script src="./js/ui-share.js?v=3.0.63"></script>
   <script src="./js/ui-budgets.js?v=3.0.57"></script>
   <script src="./js/ui-analytics.js?v=3.0.44"></script>
   <script src="./js/ui-settings.js?v=3.0.68"></script>
-  <script src="./js/ui-overview-finance.js?v=3.0.70"></script>
-  <script src="./js/ui-bill-split.js?v=3.0.70"></script>
-  <script src="./js/ui-trips.js?v=3.0.70"></script>
+  <script src="./js/ui-overview-finance.js?v=3.0.72"></script>
+  <script src="./js/ui-bill-split.js?v=3.0.72"></script>
+  <script src="./js/ui-trips.js?v=3.0.72"></script>
   <script src="./js/server-auth-modals.js?v=3.0.44"></script>
 
   <!-- Main Entry Coordinator -->
