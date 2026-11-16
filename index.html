@@ -5274,32 +5274,24 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               <!-- 1.3: Sổ tiết kiệm & Sổ tích lũy -->
               <div class="finance-group-subhead" style="margin-top: 14px;">3. Sổ tiết kiệm & Sổ tích lũy</div>
               <div id="finance-list-savings-acc"></div>
-
-              <!-- 1.4: Khoản cho vay (Tiền người khác nợ mình) -->
-              <div id="finance-subhead-lend" class="finance-group-subhead" style="margin-top: 14px; display: none;">4. Khoản cho vay (Nợ cần thu)</div>
-              <div id="finance-list-lend-debts" style="display: none;"></div>
             </div>
 
-            <!-- PHẦN 2: TỔNG NỢ -->
+            <!-- PHẦN 2: TỔNG NỢ (SỔ NỢ) -->
             <div id="finance-detail-debts-section" class="finance-group-card">
               <div class="finance-group-header">
                 <div class="finance-group-title">
                   <i data-lucide="minus-circle" style="color: #f43f5e; width: 18px; height: 18px;"></i>
-                  <span>TỔNG NỢ: NỢ PHẢI TRẢ</span>
+                  <span>TỔNG NỢ: SỔ NỢ PHẢI TRẢ</span>
                 </div>
                 <span id="finance-detail-debts-subtotal" class="finance-group-badge debt stat-amount">0đ</span>
               </div>
 
-              <!-- 2.0: Ví số dư âm / Thẻ tín dụng thấu chi -->
-              <div id="finance-subhead-negative-accounts" class="finance-group-subhead" style="display: none;">1. Thẻ tín dụng & Ví số dư âm</div>
-              <div id="finance-list-negative-accounts" style="display: none;"></div>
-
-              <!-- 2.1: Nợ phải trả cá nhân (Đi vay / Mượn nợ) -->
-              <div id="finance-subhead-debts" class="finance-group-subhead" style="margin-top: 14px;">2. Nợ cá nhân (Đi vay / Mượn nợ)</div>
+              <!-- 2.1: Nợ cá nhân (Đi vay / Mượn nợ) -->
+              <div id="finance-subhead-debts" class="finance-group-subhead">1. Nợ cá nhân (Đi vay / Mượn nợ)</div>
               <div id="finance-list-debts"></div>
 
               <!-- 2.2: Sổ vay ngân hàng -->
-              <div class="finance-group-subhead" style="margin-top: 14px;">3. Sổ vay ngân hàng</div>
+              <div class="finance-group-subhead" style="margin-top: 14px;">2. Sổ vay ngân hàng</div>
               <div id="finance-list-loans"></div>
             </div>
           </div>

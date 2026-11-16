@@ -75,10 +75,17 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
 - **Thẻ Tổng Quan Tài Chính Hiện Có (Dashboard & Detail Hero Card):**
   - **Không dùng icon khiên và không dùng nút "Chi tiết >":** Giữ thẻ phẳng, tối giản, sang trọng. Người dùng có thể chạm trực tiếp vào bất kỳ vị trí nào trên thẻ để mở trang chi tiết.
   - **Căn giữa toàn bộ:** Tiêu đề `TÀI CHÍNH HIỆN CÓ` nằm ở giữa trên cùng của thẻ (`justify-content: center; text-align: center;`), số tiền chính (`.finance-overview-amount-row`), cột `Tổng có` (`.col-have`) và `Tổng nợ` (`.col-debt`) đều được căn giữa cân đối 100%.
-  - **Logic Tài Sản Ròng / Tài Chính Hiện Có:**
-    - `Tổng có` (Tài sản có): Phải luôn là số dương, tính từ tổng các ví có số dư >= 0 + Sổ tiết kiệm + Sổ tích lũy + Tài sản đầu tư + Tiền cho vay (nợ cần thu). Không bao giờ để Tổng có bị âm.
-    - `Tổng nợ` (Nghĩa vụ nợ): Tính từ tổng các ví có số dư âm (thấu chi / thẻ tín dụng âm tiền) + Tiền mượn nợ cá nhân (đi vay) + Sổ vay ngân hàng.
-    - `Tài chính hiện có (Tài sản ròng)` = `Tổng có` - `Tổng nợ`. Đảm bảo phản ánh đúng thực trạng tài sản ròng của người dùng.
+  - **Logic Tài Sản Ròng / Tài Chính Hiện Có (Chuẩn Hệ Thống):**
+    - `Tài chính hiện có`: Chính là **Tài sản ròng** (`netWorth = grandTotalAssets + totalLend - totalBorrow`).
+    - `Tổng có`: Là **tổng các tài khoản như cũ** (`grandTotalAssets` = tổng tài khoản ngân hàng/tiền mặt/ví + sổ tiết kiệm + tích lũy + tài sản đầu tư).
+    - `Tổng nợ`: Là **sổ nợ thôi** (`totalBorrow` = nợ cá nhân đi vay + sổ vay ngân hàng).
+  - **Quy Tắc Màu Sắc Bắt Buộc:**
+    - **Dương thì xanh ngọc** (`#10b981` / `var(--income)`), áp dụng cho Tổng có, các khoản thu/tài sản, và các ví/tài khoản có số dư dương.
+    - **Riêng Tài chính hiện có** (số lớn chính giữa thẻ Hero Card): **màu trắng** (`#ffffff`), nếu âm thì chuyển sang **màu đỏ** (`#f43f5e`).
+    - **Âm thì màu đỏ** (`#f43f5e` / `var(--expense)`), áp dụng cho các ví âm tiền, tài sản ròng âm, tổng có âm.
+    - **Tổng nợ**: Nếu có nợ (> 0đ) hiển thị màu đỏ; nếu không nợ (0đ) hiển thị màu xanh ngọc.
+  - **Hỗ Trợ Vuốt Trở Về (Swipe Back):**
+    - Trang Chi tiết Tài chính hiện có (`view-finance-detail`) bắt buộc hỗ trợ cử chỉ vuốt cảm ứng từ cạnh trái sang phải để nhanh chóng quay trở về trang Tổng Quan (Dashboard).
 - **Thanh Tiện Ích Nhanh trên Dashboard (Quick Utilities - Kéo ngang mượt mà):**
   - **Vuốt kéo ngang (Horizontal Scrollable):** Thanh tiện ích phải được thiết lập dạng cuộn ngang (`display: flex; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; touch-action: pan-x pan-y;`), ẩn thanh cuộn xấu, hỗ trợ vuốt mượt mà trên điện thoại.
   - **Kích thước thẻ:** Mỗi thẻ tiện ích có độ rộng cố định (`flex: 0 0 170px`), bố trí icon bên trái và tên + mô tả bên phải, cho phép người dùng kéo ngang mượt mà mà không bao giờ bị cắt chữ hay kẹt giao diện.
@@ -86,9 +93,9 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
   - **Quét hoá đơn (OCR):** Bấm vào mở Action Sheet cho phép chọn: Chụp ảnh hoá đơn (Camera) / Chọn ảnh từ thư viện (Gallery) / Cài đặt nhận diện OCR, tự động kích hoạt quá trình quét và điền giao dịch nhanh chóng.
 - **Trang Chi Tiết Tài Chính Hiện Có (`view-finance-detail`):**
   - **Tiêu đề Header đồng nhất 1 font/kiểu chữ:** Hiển thị 2 dòng căn giữa cùng kích thước font, cùng kiểu chữ và độ đậm: dòng 1 `Chi Tiết`, dòng 2 `Tài Chính Hiện Có` (`.finance-detail-header-line1`, `.finance-detail-header-line2`). Không phối nhiều font khác biệt gây rối mắt.
-  - **Phân tách danh sách rõ ràng:**
-    - Nhóm `TỔNG CÓ`: Chỉ hiển thị ví có số dư >= 0, tài khoản đầu tư, sổ tiết kiệm, và các khoản cho vay (nợ cần thu).
-    - Nhóm `TỔNG NỢ`: Hiển thị rõ các ví/thẻ số dư âm (thấu chi), khoản nợ cá nhân đi vay, và sổ vay ngân hàng.
+  - **Phân chia 2 phần rõ ràng:**
+    - Nhóm `TỔNG CÓ`: Hiển thị toàn bộ các tài khoản ngân hàng, tiền mặt, ví chi tiêu như cũ; tiếp theo là tài khoản đầu tư & ngoại tệ, và sổ tiết kiệm & tích lũy.
+    - Nhóm `TỔNG NỢ`: Hiển thị sổ nợ gồm nợ cá nhân (đi vay / mượn nợ) và sổ vay ngân hàng.
   - **Thanh tab bộ lọc (Tất cả | Tổng có | Tổng nợ):** Căng đều 100% bề ngang (`flex: 1 1 0; min-width: 0;`), chữ có ellipsis chống tràn viền.
 - **Xuất Lề Sát Cạnh (Edge-to-Edge Max Display Area):**
   - Giảm thiểu tối đa padding viền ngoài (`padding: 8px 2px` hoặc `4px 2px`) để các ô danh sách (`.finance-group-card`, `.finance-item-card`) mở rộng tối đa diện tích hiển thị trên điện thoại.

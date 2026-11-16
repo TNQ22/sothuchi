@@ -93,6 +93,11 @@
   text-align: center;
 }
 
+.finance-overview-amount.debt-text,
+.finance-overview-amount.is-negative {
+  color: #f43f5e !important;
+}
+
 .finance-overview-split-row {
   display: flex;
   align-items: center;
@@ -139,8 +144,18 @@
   color: #10b981;
 }
 
+.finance-split-col.col-have .finance-split-val.debt-text,
+.finance-split-col.col-have .finance-split-val.is-negative {
+  color: #f43f5e !important;
+}
+
 .finance-split-col.col-debt .finance-split-val {
   color: #f43f5e;
+}
+
+.finance-split-col.col-debt .finance-split-val.income-text,
+.finance-split-col.col-debt .finance-split-val.is-zero {
+  color: #10b981 !important;
 }
 
 /* 2. DASHBOARD QUICK UTILITIES (BEN DƯỚI BIẾN ĐỘNG THU CHI TRONG NĂM - KÉO NGANG MƯỢT MÀ) */
@@ -354,9 +369,19 @@
   color: #10b981;
 }
 
+.finance-group-badge.income.is-negative {
+  background: rgba(244, 63, 94, 0.15);
+  color: #f43f5e;
+}
+
 .finance-group-badge.debt {
   background: rgba(244, 63, 94, 0.15);
   color: #f43f5e;
+}
+
+.finance-group-badge.debt.is-zero {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
 }
 
 .finance-group-subhead {

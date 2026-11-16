@@ -9,6 +9,55 @@ const UIOverviewFinance = {
 
   async init() {
     this.renderDashboardCard();
+    this.initSwipeBack();
+  },
+
+  initSwipeBack() {
+    const view = document.getElementById('view-finance-detail');
+    if (!view || this._swipeBackBound) return;
+    this._swipeBackBound = true;
+
+    let startX = 0;
+    let startY = 0;
+    let isTracking = false;
+
+    view.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      // Cho phép vuốt từ mép trái màn hình (tối đa 35% chiều rộng hoặc 120px)
+      if (touch.clientX < Math.max(100, window.innerWidth * 0.35)) {
+        startX = touch.clientX;
+        startY = touch.clientY;
+        isTracking = true;
+      }
+    }, { passive: true });
+
+    view.addEventListener('touchmove', (e) => {
+      if (!isTracking || e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - startX;
+      const deltaY = touch.clientY - startY;
+
+      // Nếu kéo dọc nhiều hơn vuốt ngang thì hủy thao tác vuốt trở về
+      if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 20) {
+        isTracking = false;
+      }
+    }, { passive: true });
+
+    view.addEventListener('touchend', (e) => {
+      if (!isTracking) return;
+      isTracking = false;
+      const touch = e.changedTouches[0];
+      const deltaX = touch.clientX - startX;
+      const deltaY = Math.abs(touch.clientY - startY);
+
+      // Nếu vuốt ngang sang phải tối thiểu 60px và góc chéo < 60px
+      if (deltaX > 60 && deltaY < 60) {
+        if (window.app && typeof window.app.switchView === 'function') {
+          window.app.switchView('dashboard');
+        }
+      }
+    }, { passive: true });
   },
 
   async renderDashboardCard() {
@@ -18,21 +67,51 @@ const UIOverviewFinance = {
       const totalAssetsEl = document.getElementById('stat-finance-total-assets');
       const totalDebtsEl = document.getElementById('stat-finance-total-debts');
 
-      // Tổng có: Tất cả các tài sản thực có (ví dương, tiết kiệm, tích lũy, đầu tư, cho vay)
-      const totalCo = nw.totalCo !== undefined ? nw.totalCo : (nw.grandTotalAssets || 0);
-      // Tổng nợ: Tất cả nghĩa vụ tài chính (mượn nợ cá nhân, nợ vay ngân hàng, ví số dư âm/thấu chi)
-      const totalNo = nw.totalNo !== undefined ? nw.totalNo : (nw.totalBorrow || 0);
-      // Tài chính hiện có (Tài sản ròng) = Tổng có - Tổng nợ
+      // Tổng có: Tất cả các ví/tài khoản (ngân hàng, đầu tư, tiết kiệm, tích lũy, tài sản) như cũ
+      const totalCo = nw.grandTotalAssets || 0;
+      // Tổng nợ: Sổ nợ thôi (mượn nợ cá nhân + vay ngân hàng)
+      const totalNo = nw.totalBorrow || 0;
+      // Tài chính hiện có: Tài sản ròng
       const taiChinhHienCo = nw.netWorth !== undefined ? nw.netWorth : (totalCo - totalNo);
 
       if (currentFinanceEl) {
         currentFinanceEl.textContent = `${new Intl.NumberFormat('vi-VN').format(taiChinhHienCo)}đ`;
+        // Riêng Tài chính hiện có: Dương thì màu trắng, Âm thì màu đỏ
+        if (taiChinhHienCo < 0) {
+          currentFinanceEl.style.color = '#f43f5e';
+          currentFinanceEl.classList.add('debt-text');
+        } else {
+          currentFinanceEl.style.color = '#ffffff';
+          currentFinanceEl.classList.remove('debt-text');
+        }
       }
+
       if (totalAssetsEl) {
         totalAssetsEl.textContent = `${new Intl.NumberFormat('vi-VN').format(totalCo)}đ`;
+        // Dương thì xanh ngọc, Âm thì màu đỏ
+        if (totalCo < 0) {
+          totalAssetsEl.style.color = '#f43f5e';
+          totalAssetsEl.classList.remove('income-text');
+          totalAssetsEl.classList.add('debt-text');
+        } else {
+          totalAssetsEl.style.color = '#10b981';
+          totalAssetsEl.classList.remove('debt-text');
+          totalAssetsEl.classList.add('income-text');
+        }
       }
+
       if (totalDebtsEl) {
         totalDebtsEl.textContent = `${new Intl.NumberFormat('vi-VN').format(totalNo)}đ`;
+        // Nợ > 0 thì màu đỏ, nợ = 0 thì màu xanh ngọc
+        if (totalNo > 0) {
+          totalDebtsEl.style.color = '#f43f5e';
+          totalDebtsEl.classList.remove('income-text');
+          totalDebtsEl.classList.add('debt-text');
+        } else {
+          totalDebtsEl.style.color = '#10b981';
+          totalDebtsEl.classList.remove('debt-text');
+          totalDebtsEl.classList.add('income-text');
+        }
       }
 
       if (window.app && window.app.isPrivacyMode) {
@@ -47,6 +126,7 @@ const UIOverviewFinance = {
   openDetailPage() {
     if (window.app) {
       window.app.switchView('finance-detail');
+      this.initSwipeBack();
       this.renderDetail();
     }
   },
@@ -75,16 +155,13 @@ const UIOverviewFinance = {
 
   async renderDetail() {
     try {
+      this.initSwipeBack();
       const nw = await getNetWorth();
       const accounts = await db.accounts.where('isDeleted').equals(0).toArray();
       const activeAccounts = accounts.filter(a => !a.isArchived);
 
-      // 1. Phân loại tài khoản Tổng Có
-      // - Tài khoản ngân hàng, tiền mặt, ví điện tử có số dư >= 0
-      const bankAndCashAccounts = activeAccounts.filter(a => (a.balance || 0) >= 0);
-
-      // - Tài khoản có số dư âm (thấu chi / thẻ tín dụng âm tiền) -> Chuyển vào Tổng Nợ
-      const negativeAccounts = activeAccounts.filter(a => (a.balance || 0) < 0);
+      // 1. Phân loại tài khoản Tổng Có: toàn bộ các tài khoản ngân hàng, tiền mặt, ví điện tử như cũ
+      const bankAndCashAccounts = activeAccounts;
 
       // - Tài khoản đầu tư & Tài sản (Crypto, Ngoại tệ USD/EUR, Vàng bạc, BĐS...)
       let assets = [];
@@ -106,10 +183,8 @@ const UIOverviewFinance = {
         accumulations = rawAcc.filter(a => !a._isSharedItem || a.includeInReport);
       }
 
-      // 2. Phân loại Tổng Nợ
-      // - Nợ phải trả cá nhân (Đi vay / Mượn nợ) và Khoản cho vay (Nợ cần thu)
+      // 2. Phân loại Tổng Nợ: Sổ nợ thôi (Đi vay / Mượn nợ cá nhân + Sổ vay ngân hàng)
       const debts = await db.debts.where('isDeleted').equals(0).toArray();
-      const lendDebts = debts.filter(d => d.type === 'lend' && d.status !== 'settled');
       const borrowDebts = debts.filter(d => d.type === 'borrow' && d.status !== 'settled');
 
       // - Sổ vay ngân hàng (Loans)
@@ -120,8 +195,8 @@ const UIOverviewFinance = {
       }
 
       // 3. Tính toán các con số
-      const totalCo = nw.totalCo !== undefined ? nw.totalCo : (nw.grandTotalAssets || 0);
-      const totalNo = nw.totalNo !== undefined ? nw.totalNo : (nw.totalBorrow || 0);
+      const totalCo = nw.grandTotalAssets || 0;
+      const totalNo = nw.totalBorrow || 0;
       const taiChinhHienCo = nw.netWorth !== undefined ? nw.netWorth : (totalCo - totalNo);
 
       // Cập nhật Header Hero Card trong trang chi tiết
@@ -131,33 +206,58 @@ const UIOverviewFinance = {
 
       if (detailMainVal) {
         detailMainVal.textContent = `${new Intl.NumberFormat('vi-VN').format(taiChinhHienCo)}đ`;
+        if (taiChinhHienCo < 0) {
+          detailMainVal.style.color = '#f43f5e';
+          detailMainVal.classList.add('debt-text');
+        } else {
+          detailMainVal.style.color = '#ffffff';
+          detailMainVal.classList.remove('debt-text');
+        }
       }
       if (detailTotalAssets) {
         detailTotalAssets.textContent = `${new Intl.NumberFormat('vi-VN').format(totalCo)}đ`;
+        if (totalCo < 0) {
+          detailTotalAssets.style.color = '#f43f5e';
+          detailTotalAssets.classList.remove('income-text');
+          detailTotalAssets.classList.add('debt-text');
+        } else {
+          detailTotalAssets.style.color = '#10b981';
+          detailTotalAssets.classList.remove('debt-text');
+          detailTotalAssets.classList.add('income-text');
+        }
       }
       if (detailTotalDebts) {
         detailTotalDebts.textContent = `${new Intl.NumberFormat('vi-VN').format(totalNo)}đ`;
+        if (totalNo > 0) {
+          detailTotalDebts.style.color = '#f43f5e';
+          detailTotalDebts.classList.remove('income-text');
+          detailTotalDebts.classList.add('debt-text');
+        } else {
+          detailTotalDebts.style.color = '#10b981';
+          detailTotalDebts.classList.remove('debt-text');
+          detailTotalDebts.classList.add('income-text');
+        }
       }
 
       // Cập nhật Subtotals
       const subtotalAssetsEl = document.getElementById('finance-detail-assets-subtotal');
       if (subtotalAssetsEl) {
         subtotalAssetsEl.textContent = `${new Intl.NumberFormat('vi-VN').format(totalCo)}đ`;
+        subtotalAssetsEl.classList.toggle('is-negative', totalCo < 0);
       }
 
       const subtotalDebtsEl = document.getElementById('finance-detail-debts-subtotal');
       if (subtotalDebtsEl) {
         subtotalDebtsEl.textContent = `${new Intl.NumberFormat('vi-VN').format(totalNo)}đ`;
+        subtotalDebtsEl.classList.toggle('is-zero', totalNo === 0);
       }
 
       // 4. Render Danh Sách TỔNG CÓ
       this.renderBankAndCashList(bankAndCashAccounts);
       this.renderInvestmentsList(assets);
       this.renderSavingsAndAccList(savings, accumulations);
-      this.renderLendDebtsList(lendDebts);
 
-      // 5. Render Danh Sách TỔNG NỢ
-      this.renderNegativeAccountsList(negativeAccounts);
+      // 5. Render Danh Sách TỔNG NỢ (Sổ nợ thôi)
       this.renderDebtsList(borrowDebts);
       this.renderLoansList(loans);
 
@@ -426,97 +526,6 @@ const UIOverviewFinance = {
           <div class="finance-item-amount-wrap">
             <span class="finance-item-amount stat-amount debt-text">-${new Intl.NumberFormat('vi-VN').format(rem)}đ</span>
             <span class="finance-item-action-hint">Chi tiết <i data-lucide="chevron-right" style="width: 12px; height: 12px; vertical-align: middle;"></i></span>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    container.innerHTML = html;
-  },
-
-  renderNegativeAccountsList(accounts) {
-    const container = document.getElementById('finance-list-negative-accounts');
-    const subhead = document.getElementById('finance-subhead-negative-accounts');
-    if (!container) return;
-
-    if (!accounts || accounts.length === 0) {
-      if (subhead) subhead.style.display = 'none';
-      container.style.display = 'none';
-      container.innerHTML = '';
-      return;
-    }
-
-    if (subhead) subhead.style.display = 'block';
-    container.style.display = 'block';
-
-    const html = accounts.map(a => {
-      const prov = window.UIAccounts && window.UIAccounts.PROVIDERS ? window.UIAccounts.PROVIDERS.find(p => p.code === a.providerCode || p.code === a.bankCode) : null;
-      const logoHtml = window.UIAccounts ? window.UIAccounts.renderLogoBadge(a, 36) : `<div class="account-icon-fallback"><i data-lucide="credit-card"></i></div>`;
-      const cur = a.currency || 'VND';
-      const isUSD = cur === 'USD';
-      const curSymbol = isUSD ? '$' : (cur === 'EUR' ? '€' : (cur === 'JPY' ? '¥' : 'đ'));
-      const debtAmountFormatted = `${new Intl.NumberFormat('vi-VN').format(Math.abs(a.balance))}${curSymbol}`;
-
-      return `
-        <div class="finance-item-card debt-card-item" onclick="UIOverviewFinance.handleAccountClick(${a.id})" role="button" tabindex="0">
-          <div class="finance-item-icon-wrap">
-            ${logoHtml}
-          </div>
-          <div class="finance-item-info">
-            <div class="finance-item-title-row">
-              <span class="finance-item-name" title="${escapeHTML(a.name)}">${escapeHTML(a.name)}</span>
-              <span class="finance-type-badge debt-badge">Dư nợ / Thấu chi</span>
-            </div>
-            <div class="finance-item-sub-row">
-              <span class="finance-item-desc">${a.description ? escapeHTML(a.description) : (prov ? escapeHTML(prov.name) : 'Tài khoản âm tiền')}</span>
-            </div>
-          </div>
-          <div class="finance-item-amount-wrap">
-            <span class="finance-item-amount stat-amount debt-text">-${debtAmountFormatted}</span>
-            <span class="finance-item-action-hint">Lịch sử <i data-lucide="chevron-right" style="width: 12px; height: 12px; vertical-align: middle;"></i></span>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    container.innerHTML = html;
-  },
-
-  renderLendDebtsList(debts) {
-    const container = document.getElementById('finance-list-lend-debts');
-    const subhead = document.getElementById('finance-subhead-lend');
-    if (!container) return;
-
-    if (!debts || debts.length === 0) {
-      if (subhead) subhead.style.display = 'none';
-      container.style.display = 'none';
-      container.innerHTML = '';
-      return;
-    }
-
-    if (subhead) subhead.style.display = 'block';
-    container.style.display = 'block';
-
-    const html = debts.map(d => {
-      const initial = (d.personName || 'N').trim().charAt(0).toUpperCase();
-
-      return `
-        <div class="finance-item-card" onclick="UIOverviewFinance.handleDebtClick(${d.id})" role="button" tabindex="0">
-          <div class="finance-item-icon-wrap" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700;">
-            ${escapeHTML(initial)}
-          </div>
-          <div class="finance-item-info">
-            <div class="finance-item-title-row">
-              <span class="finance-item-name" title="${escapeHTML(d.personName)}">Người nợ: ${escapeHTML(d.personName)}</span>
-              <span class="finance-type-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">Nợ cần thu</span>
-            </div>
-            <div class="finance-item-sub-row">
-              <span class="finance-item-desc">${d.dueDate ? `Hạn thu: ${d.dueDate}` : 'Chưa có ngày hẹn'} ${d.note ? `• ${escapeHTML(d.note)}` : ''}</span>
-            </div>
-          </div>
-          <div class="finance-item-amount-wrap">
-            <span class="finance-item-amount stat-amount income-text">+${new Intl.NumberFormat('vi-VN').format(d.remainingAmount)}đ</span>
-            <span class="finance-item-action-hint">Thu nợ <i data-lucide="chevron-right" style="width: 12px; height: 12px; vertical-align: middle;"></i></span>
           </div>
         </div>
       `;

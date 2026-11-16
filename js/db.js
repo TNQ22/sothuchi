@@ -1846,31 +1846,23 @@ async function getNetWorth() {
   const totalLend = activeDebts.filter(d => d.type === 'lend' && d.status !== 'settled').reduce((s, d) => s + d.remainingAmount, 0);
   const totalBorrow = activeDebts.filter(d => d.type === 'borrow' && d.status !== 'settled').reduce((s, d) => s + d.remainingAmount, 0) + totalLoans;
 
-  // Phân tách số dư tài khoản dương (Tài sản có) và số dư âm (Nợ thấu chi / Thẻ tín dụng)
-  const activeAccounts = accounts.filter(a => !a.isArchived && (!a._isSharedItem || a.includeInReport));
-  const positiveAccountsBalance = activeAccounts.filter(a => (a.balance || 0) > 0).reduce((sum, a) => sum + a.balance, 0);
-  const negativeAccountsBalance = activeAccounts.filter(a => (a.balance || 0) < 0).reduce((sum, a) => sum + Math.abs(a.balance), 0);
+  // Tổng có: Tổng các tài khoản/tài sản như cũ (ví, tiết kiệm, tích lũy, tài sản đầu tư)
+  const grandTotalAssets = totalAccountBalance + totalSavings + totalAccumulations + totalAssets;
 
-  // Tổng có: Tất cả các tài sản thực có (ví dương, tiết kiệm, tích lũy, tài sản đầu tư, tiền cho vay)
-  const totalCo = positiveAccountsBalance + totalSavings + totalAccumulations + totalAssets + totalLend;
-  // Tổng nợ: Tất cả nghĩa vụ tài chính nợ (ví số dư âm/thấu chi, mượn nợ cá nhân, vay ngân hàng)
-  const totalNo = negativeAccountsBalance + totalBorrow;
-  // Tài sản ròng (Tài chính hiện có) = Tổng có - Tổng nợ
-  const netWorth = totalCo - totalNo;
+  // Tài chính hiện có (Tài sản ròng) = Tổng có + Cho vay - Sổ nợ
+  const netWorth = grandTotalAssets + totalLend - totalBorrow;
 
   return {
     totalAccountBalance,
-    positiveAccountsBalance,
-    negativeAccountsBalance,
     totalSavings,
     totalAccumulations,
     totalAssets,
     totalLoans,
+    grandTotalAssets,
+    totalCo: grandTotalAssets,
+    totalNo: totalBorrow,
     totalLend,
     totalBorrow,
-    grandTotalAssets: totalCo,
-    totalCo,
-    totalNo,
     netWorth
   };
 }
