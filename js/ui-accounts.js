@@ -3147,6 +3147,7 @@ const UIAccounts = {
       if (idInput) idInput.value = item.id;
       document.getElementById('asset-name-input').value = item.name || '';
       document.getElementById('asset-is-gift-input').checked = !!item.isGift;
+      this.handleAssetGiftToggle(!!item.isGift);
       this.setDateInputValue('asset-buy-date-input', item.buyDate || todayStr);
       const qVal = item.quantity !== undefined && item.quantity !== null ? item.quantity : 0;
       document.getElementById('asset-quantity-input').value = qVal;
@@ -3778,8 +3779,10 @@ const UIAccounts = {
   handleAssetGiftToggle(isGift) {
     const buyRow = document.getElementById('asset-buyprice-row');
     const buyInput = document.getElementById('asset-buyprice-input');
+    const buyText = document.getElementById('asset-buyprice-text');
     if (isGift) {
       if (buyInput) buyInput.value = '0';
+      if (buyText) buyText.textContent = '0';
       if (buyRow) buyRow.style.opacity = '0.5';
     } else {
       if (buyRow) buyRow.style.opacity = '1';
@@ -3830,6 +3833,7 @@ const UIAccounts = {
     try {
       const id = document.getElementById('asset-id-input')?.value;
       const assetType = document.getElementById('asset-type-input')?.value || 'real_estate';
+      const name = document.getElementById('asset-name-input')?.value?.trim();
       const unitSelect = document.getElementById('asset-unit-select')?.value;
       const customUnit = document.getElementById('asset-unit-input')?.value?.trim();
       const unit = (unitSelect && unitSelect !== 'CUSTOM' ? unitSelect : customUnit) || 'm²';
@@ -3846,12 +3850,20 @@ const UIAccounts = {
         }
       }
       if (!subType) subType = unit;
-      const name = document.getElementById('asset-name-input')?.value?.trim();
-      const isGift = document.getElementById('asset-is-gift-input')?.checked ? 1 : 0;
+      let isGift = document.getElementById('asset-is-gift-input')?.checked ? 1 : 0;
       const buyDate = this.getDateInputValue('asset-buy-date-input');
       const qtyVal = document.getElementById('asset-quantity-input')?.value?.trim();
       const quantity = qtyVal !== '' && !isNaN(Number(qtyVal)) ? Number(qtyVal) : 0;
-      const buyPrice = isGift ? 0 : Number(document.getElementById('asset-buyprice-input')?.value || 0);
+      const rawBuyPrice = Number(document.getElementById('asset-buyprice-input')?.value || 0);
+
+      // Nếu người dùng đã nhập giá mua cụ thể > 0, tự động bỏ đánh dấu 'Được cho / tặng'
+      if (rawBuyPrice > 0 && isGift) {
+        isGift = 0;
+        const giftEl = document.getElementById('asset-is-gift-input');
+        if (giftEl) giftEl.checked = false;
+        this.handleAssetGiftToggle(false);
+      }
+      const buyPrice = isGift ? 0 : rawBuyPrice;
       const currentPrice = Number(document.getElementById('asset-currentprice-input')?.value || 0);
       const extraCosts = Number(document.getElementById('asset-extracosts-input')?.value || 0);
       const sourceAccountId = document.getElementById('asset-source-account-select')?.value || null;

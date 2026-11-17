@@ -1436,17 +1436,29 @@ async function addAsset(data) {
 
 async function updateAsset(id, data) {
   const now = Date.now();
-  const existing = await db.assets.get(Number(id));
+  let existing = await db.assets.get(Number(id));
+  if (!existing && db.assets) {
+    existing = await db.assets.get(String(id));
+  }
   if (!existing) return;
 
+  const targetId = existing.id;
+  const isGift = data.isGift !== undefined ? (data.isGift ? 1 : 0) : (existing.isGift ? 1 : 0);
   const quantity = Number(data.quantity !== undefined ? data.quantity : (existing.quantity !== undefined ? existing.quantity : 1));
+  const buyPrice = isGift ? 0 : Number(data.buyPrice !== undefined ? data.buyPrice : (existing.buyPrice !== undefined ? existing.buyPrice : 0));
   const currentPrice = Number(data.currentPrice !== undefined ? data.currentPrice : (existing.currentPrice !== undefined ? existing.currentPrice : 0));
+  const extraCosts = Number(data.extraCosts !== undefined ? data.extraCosts : (existing.extraCosts !== undefined ? existing.extraCosts : 0));
+  const totalBuyValue = Math.round(isGift ? extraCosts : (quantity * buyPrice + extraCosts));
   const totalCurrentValue = Math.round(quantity * currentPrice);
 
-  await db.assets.update(Number(id), {
+  await db.assets.update(targetId, {
     ...data,
+    isGift,
     quantity,
+    buyPrice,
     currentPrice,
+    extraCosts,
+    totalBuyValue,
     totalCurrentValue,
     updatedAt: now
   });

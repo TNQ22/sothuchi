@@ -1056,6 +1056,15 @@ const UITransactions = {
       const rawNum = finalFormatted.replace(/\./g, '');
       if (input) input.value = rawNum;
       if (text) text.textContent = finalFormatted;
+      if (Number(rawNum) > 0) {
+        const giftInput = document.getElementById('asset-is-gift-input');
+        if (giftInput && giftInput.checked) {
+          giftInput.checked = false;
+          if (window.UIAccounts && typeof window.UIAccounts.handleAssetGiftToggle === 'function') {
+            window.UIAccounts.handleAssetGiftToggle(false);
+          }
+        }
+      }
       if (window.UIAccounts && typeof window.UIAccounts.calcAssetPreview === 'function') {
         window.UIAccounts.calcAssetPreview();
       }
