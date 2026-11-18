@@ -111,7 +111,7 @@
   margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 /* Mobile Entity Cards (Users / Vaults) */

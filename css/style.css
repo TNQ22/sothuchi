@@ -537,7 +537,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   letter-spacing: -0.2px;
   line-height: 1.2;
   margin: 0;
@@ -1019,7 +1019,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   display: block;
 }
 
@@ -1049,7 +1049,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .account-balance-wrapper {
@@ -1194,7 +1194,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .tx-account-filter-clear-btn {
@@ -1401,7 +1401,7 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   min-width: 0;
 }
 
@@ -3524,7 +3524,7 @@ textarea.tx-clean-input {
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   width: 100%;
   max-width: 100%;
   padding: 0 2px;
@@ -3673,7 +3673,7 @@ textarea.tx-clean-input {
   transition: all 0.15s ease;
   max-width: 300px;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   white-space: nowrap;
 }
 .keypad-mode-bar {
@@ -4926,7 +4926,7 @@ body:has(#view-template-manager.active) .template-fab-btn {
 
 .action-sheet-share-tag .share-tag-text {
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   white-space: nowrap;
   min-width: 0;
 }
@@ -4938,7 +4938,7 @@ body:has(#view-template-manager.active) .template-fab-btn {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .action-sheet-body {
@@ -5296,7 +5296,7 @@ body.dark .switch .slider {
   color: var(--text-muted);
   max-width: 160px;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   white-space: nowrap;
 }
 /* Account Form View - Phong cách trang ghi chép thu chi & ảnh tham khảo */
@@ -5329,7 +5329,7 @@ body.dark .switch .slider {
   display: inline-block;
   max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   vertical-align: middle;
 }
 
@@ -5558,7 +5558,7 @@ body.dark .switch .slider {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .bank-provider-card-sub {
@@ -5566,7 +5566,7 @@ body.dark .switch .slider {
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 
@@ -6114,7 +6114,7 @@ body.dark .switch .slider {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .group-card-sub {
@@ -6447,7 +6447,7 @@ body.dark .switch .slider {
   letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .accounts-group-subtitle {
@@ -6459,7 +6459,7 @@ body.dark .switch .slider {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 /* Asset Sub-Group (Khung lồng cấp 2) */
@@ -6510,7 +6510,7 @@ body.dark .switch .slider {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .asset-type-header-stats {
@@ -6596,7 +6596,7 @@ body.dark .switch .slider {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   display: block;
   width: 100%;
   max-width: 100%;
@@ -6611,7 +6611,7 @@ body.dark .switch .slider {
   margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 /* Nút tùy chọn 3 chấm gọn gàng không chiếm diện tích */
@@ -6662,7 +6662,7 @@ body.dark .switch .slider {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   display: block;
 }
 
@@ -6684,7 +6684,7 @@ body.dark .switch .slider {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   max-width: 100%;
   display: inline-block;
 }
@@ -6868,14 +6868,14 @@ html, body {
 .accounts-group-title {
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
   max-width: 100% !important;
 }
 
 .accounts-group-subtitle {
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
   max-width: 100% !important;
 }
 
@@ -6925,7 +6925,7 @@ html, body {
 .asset-type-title {
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
   max-width: 100% !important;
 }
 
@@ -6940,7 +6940,7 @@ html, body {
 .asset-type-subtotal {
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
   display: inline-block !important;
   max-width: 100% !important;
 }
@@ -7000,7 +7000,7 @@ html, body {
   min-width: 0 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
   box-sizing: border-box !important;
 }
 
@@ -7050,7 +7050,7 @@ html, body {
   max-width: 100% !important;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
 }
 
 /* Right-align asset unit select and wrapper */
@@ -7231,7 +7231,7 @@ html, body {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   text-align: left;
 }
 
@@ -7370,7 +7370,7 @@ html, body {
 .btn-time-display span {
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .tx-time-summary-row {
@@ -7512,7 +7512,7 @@ html, body {
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .cal-filter-mode-btn:hover {
@@ -8270,7 +8270,7 @@ html, body {
   font-size: 0.9rem;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .budget-locked-item-actions {
@@ -8460,7 +8460,7 @@ html, body {
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   width: 100%;
   margin-bottom: 2px;
 }
@@ -8472,7 +8472,7 @@ html, body {
   letter-spacing: -0.02em;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   width: 100%;
 }
 
@@ -8569,7 +8569,7 @@ html, body {
 .actual-cat-name {
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   font-size: 0.74rem;
 }
 
@@ -9444,7 +9444,7 @@ body.dark .account-report-badge.excluded {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   text-align: left;
 }
 
@@ -9547,7 +9547,7 @@ body.dark .account-report-badge.excluded {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   text-align: left;
 }
 
@@ -9608,7 +9608,7 @@ body.dark .account-report-badge.excluded {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .keypad-budget-cat-spent {
@@ -9617,7 +9617,7 @@ body.dark .account-report-badge.excluded {
   margin-top: 1px;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .keypad-budget-presets {
@@ -9950,7 +9950,7 @@ body.dark .account-report-badge.excluded {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .rebalance-item-right {
@@ -10290,7 +10290,7 @@ body.dark .account-report-badge.excluded {
   font-size: 0.86rem;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   min-width: 0;
 }
 
@@ -10827,7 +10827,7 @@ body.dark .account-report-badge.excluded {
   color: var(--text-primary, #f8fafc);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   line-height: 1.25;
 }
 
@@ -11050,7 +11050,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
  color: var(--text-primary);
  white-space: nowrap;
  overflow: hidden;
- text-overflow: ellipsis;
+ text-overflow: clip;
 }
 
 .google-user-email {
@@ -11058,7 +11058,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
  color: var(--text-muted);
  white-space: nowrap;
  overflow: hidden;
- text-overflow: ellipsis;
+ text-overflow: clip;
 }
 
 .google-role-badge {
@@ -11226,7 +11226,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 /* ==========================================================================
@@ -11384,7 +11384,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   color: var(--text-primary) !important;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
 }
 
 .settings-item-desc {
@@ -11393,7 +11393,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   margin-top: 2px !important;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
 }
 
 /* Arrow - Push tight to right edge */
@@ -11682,7 +11682,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .share-item-type-badge {
@@ -11916,7 +11916,7 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .share-member-name {
@@ -12384,7 +12384,7 @@ body.dark .account-role-badge.editor {
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   line-height: 1.35;
   letter-spacing: -0.01em;
 }
@@ -12521,7 +12521,7 @@ body.dark .account-role-badge.editor {
 .accounts-seg-tab span {
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
 }
 
 .accounts-seg-tab i,
@@ -12712,7 +12712,7 @@ body.dark .account-role-badge.editor {
   border-radius: 9999px !important;
   max-width: 100% !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
 }
 
 .share-server-status-pill .status-dot {
@@ -13000,7 +13000,7 @@ body.dark .account-role-badge.editor {
   color: #f8fafc !important;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
 }
 
 .share-member-name {
@@ -13008,7 +13008,7 @@ body.dark .account-role-badge.editor {
   color: #94a3b8 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
 }
 
 .share-member-right {
@@ -13330,7 +13330,7 @@ body.light .ptr-circle-badge,
   color: var(--text-primary) !important;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
   line-height: 1.25 !important;
 }
 
@@ -13339,7 +13339,7 @@ body.light .ptr-circle-badge,
   color: var(--text-muted) !important;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
   line-height: 1.25 !important;
 }
 
@@ -13462,7 +13462,7 @@ body.light .ptr-circle-badge,
   font-size: 0.74rem !important;
   color: var(--text-muted) !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
   white-space: nowrap !important;
   flex: 1 !important;
   min-width: 0 !important;
@@ -13565,7 +13565,7 @@ body.light .ptr-circle-badge,
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .server-vault-name-text.active-name {
@@ -13823,7 +13823,7 @@ body.light .ptr-circle-badge,
   font-weight: 600;
   color: var(--text-primary, #f8fafc);
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   white-space: nowrap;
   line-height: 1.2;
 }
@@ -13832,7 +13832,7 @@ body.light .ptr-circle-badge,
   font-size: 0.70rem;
   color: var(--text-muted, #94a3b8);
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   white-space: nowrap;
   line-height: 1.2;
 }
@@ -14347,7 +14347,7 @@ body.light .ptr-circle-badge,
   color: var(--text-primary, #f8fafc) !important;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
 }
 
 .share-service-status-pill {

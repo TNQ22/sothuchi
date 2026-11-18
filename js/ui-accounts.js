@@ -1409,7 +1409,7 @@ const UIAccounts = {
             <td style="color: var(--text-muted); font-size: 0.74rem;">${tx.date}</td>
             <td style="font-weight: 700; color: ${color};">${amtStr}</td>
             <td><span style="background: ${color}22; color: ${color}; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">${isInc ? 'Thu' : 'Chi'}</span></td>
-            <td style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; color: var(--text-secondary);" title="${escapeHTML(tx.note)}">${escapeHTML(tx.note)}</td>
+            <td style="max-width: 140px; overflow: hidden; text-overflow: clip; color: var(--text-secondary);" title="${escapeHTML(tx.note)}">${escapeHTML(tx.note)}</td>
           </tr>
         `;
       }).join('');
@@ -1556,7 +1556,7 @@ const UIAccounts = {
       return `
         <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
           <div style="flex: 1; min-width: 0; padding-right: 8px;">
-            <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(log.filename)}">
+            <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;" title="${escapeHTML(log.filename)}">
               📄 ${escapeHTML(log.filename)}
             </div>
             <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
@@ -5195,10 +5195,10 @@ const UIAccounts = {
                 </div>
                 <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
                   <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
-                    <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(l.name)}">${escapeHTML(l.name)}</div>
+                    <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: clip; font-weight: 700; min-width: 0;" title="${escapeHTML(l.name)}">${escapeHTML(l.name)}</div>
                     ${this.renderSharedRoleBadge(l)}
                   </div>
-                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: clip;">
                     <span class="rate-badge" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">${l.interestRate || 0}%/năm</span>
                     <span class="term-badge">${l.termMonths ? l.termMonths + ' tháng' : ''}</span>
                     <span style="font-size: 0.72rem; color: var(--text-muted);">${dueDayText}</span>
@@ -5858,10 +5858,10 @@ const UIAccounts = {
             </div>
             <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
               <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
-                <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(s.name)}">${escapeHTML(s.name)}</div>
+                <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: clip; font-weight: 700; min-width: 0;" title="${escapeHTML(s.name)}">${escapeHTML(s.name)}</div>
                 ${this.renderSharedRoleBadge(s)}
               </div>
-              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;">
+              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: clip; display: flex; align-items: center; gap: 4px;">
                 ${this.renderSharedLockBadge(s)}
                 <span class="rate-badge">${s.interestRate || 0}%/năm</span>
                 <span class="term-badge">${s.termMonths ? s.termMonths + ' tháng' : 'Không kỳ hạn'}</span>
@@ -5904,7 +5904,7 @@ const UIAccounts = {
             </div>
             <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
               <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
-                <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
+                <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: clip; font-weight: 700; min-width: 0;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
                 ${this.renderSharedRoleBadge(item)}
               </div>
               <div class="group-card-sub" style="display: flex; align-items: center; gap: 4px;">
@@ -5959,10 +5959,10 @@ const UIAccounts = {
             </div>
             <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
               <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
-                <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(l.name)}">${escapeHTML(l.name)}</div>
+                <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: clip; font-weight: 700; min-width: 0;" title="${escapeHTML(l.name)}">${escapeHTML(l.name)}</div>
                 ${this.renderSharedRoleBadge(l)}
               </div>
-              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;">
+              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: clip; display: flex; align-items: center; gap: 4px;">
                 ${this.renderSharedLockBadge(l)}
                 <span class="rate-badge" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">${l.interestRate || 0}%/năm</span>
                 <span class="term-badge">${l.termMonths ? l.termMonths + ' tháng' : 'Vay linh hoạt'}</span>
@@ -6026,14 +6026,14 @@ const UIAccounts = {
             </div>
             <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
               <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
-                <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
+                <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: clip; font-weight: 700; min-width: 0;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
                 ${this.renderSharedRoleBadge(item)}
               </div>
-              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0;">
+              <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: clip; display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0;">
                 ${this.renderSharedLockBadge(item)}
                 <span class="term-badge" style="flex-shrink: 0;">${meta.label}</span>
-                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${qty} ${escapeHTML(item.unit || '')}</span>
-                ${item.location ? `<span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">• ${escapeHTML(item.location)}</span>` : ''}
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0;">${qty} ${escapeHTML(item.unit || '')}</span>
+                ${item.location ? `<span style="white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0;">• ${escapeHTML(item.location)}</span>` : ''}
               </div>
             </div>
           </div>
@@ -6045,10 +6045,10 @@ const UIAccounts = {
         <div class="group-card-body" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 6px; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; overflow: hidden;">
           <div style="min-width: 0; flex: 1 1 auto; overflow: hidden;">
             <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Giá trị thị trường</span>
-            <span class="group-card-amount stat-amount" style="color: #a855f7; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${new Intl.NumberFormat('vi-VN').format(totalCur)}đ</span>
+            <span class="group-card-amount stat-amount" style="color: #a855f7; display: block; white-space: nowrap; overflow: hidden; text-overflow: clip;">${new Intl.NumberFormat('vi-VN').format(totalCur)}đ</span>
           </div>
           <div class="group-card-stat" style="min-width: 0; flex-shrink: 0; max-width: 55%; overflow: hidden; text-align: right;">
-            <span class="pnl-badge ${isProf ? 'profit' : 'loss'} stat-amount" style="display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${sign}${new Intl.NumberFormat('vi-VN').format(pnl)}đ (${sign}${pnlPct}%)</span>
+            <span class="pnl-badge ${isProf ? 'profit' : 'loss'} stat-amount" style="display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: clip;">${sign}${new Intl.NumberFormat('vi-VN').format(pnl)}đ (${sign}${pnlPct}%)</span>
           </div>
         </div>
       </div>
@@ -6442,10 +6442,10 @@ const UIAccounts = {
                 </div>
                 <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
                   <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
-                    <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(s.name)}">${escapeHTML(s.name)}</div>
+                    <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: clip; font-weight: 700; min-width: 0;" title="${escapeHTML(s.name)}">${escapeHTML(s.name)}</div>
                     ${this.renderSharedRoleBadge(s)}
                   </div>
-                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: clip;">
                     <span class="rate-badge">${s.interestRate || 0}%/năm</span>
                     <span class="term-badge">${s.termMonths ? s.termMonths + ' tháng' : 'Không kỳ hạn'}</span>
                     ${s.excludeFromReport ? '<span class="account-badge exclude"><i data-lucide="eye-off" style="width:10px;height:10px;"></i> Ẩn báo cáo</span>' : ''}
@@ -6552,7 +6552,7 @@ const UIAccounts = {
                 </div>
                 <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
                   <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
-                    <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
+                    <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: clip; font-weight: 700; min-width: 0;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
                     ${this.renderSharedRoleBadge(item)}
                   </div>
                   <div class="group-card-sub">
@@ -6662,13 +6662,13 @@ const UIAccounts = {
                 </div>
                 <div class="group-card-info-wrap" style="flex: 1 1 0%; min-width: 0; max-width: 100%; width: 0; overflow: hidden; box-sizing: border-box;">
                   <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
-                    <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; min-width: 0;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
+                    <div class="group-card-name" style="white-space: nowrap; overflow: hidden; text-overflow: clip; font-weight: 700; min-width: 0;" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</div>
                     ${this.renderSharedRoleBadge(item)}
                   </div>
-                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0;">
+                  <div class="group-card-sub" style="white-space: nowrap; overflow: hidden; text-overflow: clip; display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0;">
                     <span class="term-badge" style="flex-shrink: 0;">${meta.label}</span>
-                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${qty} ${escapeHTML(item.unit || '')}</span>
-                    ${item.location ? `<span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">• ${escapeHTML(item.location)}</span>` : ''}
+                    <span style="white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0;">${qty} ${escapeHTML(item.unit || '')}</span>
+                    ${item.location ? `<span style="white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0;">• ${escapeHTML(item.location)}</span>` : ''}
                   </div>
                 </div>
               </div>
@@ -6680,10 +6680,10 @@ const UIAccounts = {
             <div class="group-card-body" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 6px; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; overflow: hidden;">
               <div style="min-width: 0; flex: 1 1 auto; overflow: hidden;">
                 <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Giá trị thị trường</span>
-                <span class="group-card-amount stat-amount" style="color: #a855f7; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${new Intl.NumberFormat('vi-VN').format(totalCur)}đ</span>
+                <span class="group-card-amount stat-amount" style="color: #a855f7; display: block; white-space: nowrap; overflow: hidden; text-overflow: clip;">${new Intl.NumberFormat('vi-VN').format(totalCur)}đ</span>
               </div>
               <div class="group-card-stat" style="min-width: 0; flex-shrink: 0; max-width: 55%; overflow: hidden; text-align: right;">
-                <span class="pnl-badge ${isProf ? 'profit' : 'loss'} stat-amount" style="display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${sign}${new Intl.NumberFormat('vi-VN').format(pnl)}đ (${sign}${pnlPct}%)</span>
+                <span class="pnl-badge ${isProf ? 'profit' : 'loss'} stat-amount" style="display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: clip;">${sign}${new Intl.NumberFormat('vi-VN').format(pnl)}đ (${sign}${pnlPct}%)</span>
               </div>
             </div>
           </div>
@@ -6703,14 +6703,14 @@ const UIAccounts = {
                 <i data-lucide="${meta.icon}" style="width: 16px; height: 16px;"></i>
               </div>
               <div class="asset-type-name-info" style="display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden;">
-                <span class="asset-type-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">${meta.label}</span>
+                <span class="asset-type-title" style="white-space: nowrap; overflow: hidden; text-overflow: clip; max-width: 100%;">${meta.label}</span>
                 <span class="group-count-badge" style="flex-shrink: 0;">${items.length}</span>
               </div>
             </div>
             <div class="asset-type-header-stats" style="flex-shrink: 0; max-width: 95px; overflow: hidden; text-align: right; display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
-              <span class="asset-type-subtotal stat-amount" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: inline-block;">${new Intl.NumberFormat('vi-VN').format(groupCurTotal)}đ</span>
+              <span class="asset-type-subtotal stat-amount" style="white-space: nowrap; overflow: hidden; text-overflow: clip; max-width: 100%; display: inline-block;">${new Intl.NumberFormat('vi-VN').format(groupCurTotal)}đ</span>
               ${groupBuyTotal > 0 ? `
-                <span class="asset-type-pnl stat-amount ${isGroupProf ? 'profit' : 'loss'}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
+                <span class="asset-type-pnl stat-amount ${isGroupProf ? 'profit' : 'loss'}" style="white-space: nowrap; overflow: hidden; text-overflow: clip; max-width: 100%;">
                   ${groupSign}${new Intl.NumberFormat('vi-VN').format(groupPnl)}đ
                 </span>
               ` : ''}

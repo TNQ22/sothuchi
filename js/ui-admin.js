@@ -391,11 +391,11 @@ window.UIAdmin = {
               <img src="${avatarSrc}" alt="Avatar" class="admin-user-avatar-round">
               <div style="min-width: 0; flex: 1;">
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                  <strong style="font-size: 0.88rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${this.escapeHTML(u.name || 'Người dùng')}</strong>
+                  <strong style="font-size: 0.88rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">${this.escapeHTML(u.name || 'Người dùng')}</strong>
                   ${badgeAccount}
                   ${badgeStatus}
                 </div>
-                <div style="font-size: 0.74rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;">
+                <div style="font-size: 0.74rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: clip; margin-top: 1px;">
                   ${this.escapeHTML(u.email || 'Không có email')}
                 </div>
               </div>

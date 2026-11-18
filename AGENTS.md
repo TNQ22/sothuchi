@@ -53,7 +53,7 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
 - **Từng ô / thẻ phiên bản mở rộng sát viền (Flush Card Items):** Trong thân modal (`modal-body`), giảm tối đa padding ngang của container (chỉ để `2px - 4px`), để từng ô thẻ danh sách (`card item`) trải rộng 100% sát 2 bên viền của modal dialog, không thụt sâu vào trong gây co hẹp diện tích hiển thị tên dữ liệu.
 - **Bỏ icon trang trí thừa bên trái:** Trong các thẻ danh sách (như danh sách tệp, bản sao lưu, mục chọn), không chèn icon khối vuông lớn bên trái nếu không cần thiết, để nhường toàn bộ bề ngang cho tiêu đề và tên dữ liệu.
 - **Không lặp tiền tố dư thừa (No Redundant Prefixes):** Khi thẻ đã có Badge/Tag phân loại (như `[Bản lịch sử]`, `[Drive]`), tuyệt đối không lặp lại tiền tố vào tên dữ liệu (như "Bản lịch sử: ...", "Sổ chính: ...") làm che khuất tên tệp thật.
-- **Tên dữ liệu trải dài 100% dòng trên:** Tên dữ liệu/tệp phải nằm trọn vẹn ở dòng trên cùng, kéo dài hết bề ngang của thẻ (`width: 100%`, `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`), không bị nút hay icon bên cạnh chèn ép.
+- **Tên dữ liệu trải dài 100% dòng trên:** Tên dữ liệu/tệp phải nằm trọn vẹn ở dòng trên cùng, kéo dài hết bề ngang của thẻ (`width: 100%`, `white-space: nowrap; overflow: hidden; text-overflow: clip;`), không bị nút hay icon bên cạnh chèn ép.
 - **Nút thao tác chuyển xuống cạnh dưới (Bottom Action):** Nút hành động (như Khôi phục, Tải về, Xoá) chuyển xuống hàng dưới cùng hàng với Tag + Thời gian. Ưu tiên nút icon gọn gàng (`icon button`), bỏ chữ rườm rà để tiết kiệm diện tích tối đa.
 
 ### 2.6. Chống Link Preview / Callout trên Safari & Trình duyệt - Long-Press Tooltip (BẮT BUỘC)
@@ -104,7 +104,7 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
   - **Phân chia 2 phần rõ ràng:**
     - Nhóm `TỔNG CÓ`: Hiển thị 1. Tài khoản ngân hàng, tiền mặt, ví chi tiêu; 2. Tài khoản đầu tư & ngoại tệ; 3. Sổ tiết kiệm & tích lũy; 4. Khoản cho vay (Nợ cần thu).
     - Nhóm `TỔNG NỢ`: Hiển thị sổ nợ gồm nợ cá nhân (đi vay / mượn nợ) và sổ vay ngân hàng.
-  - **Thanh tab bộ lọc (Tất cả | Tổng có | Tổng nợ):** Căng đều 100% bề ngang (`flex: 1 1 0; min-width: 0;`), chữ có ellipsis chống tràn viền.
+  - **Thanh tab bộ lọc (Tất cả | Tổng có | Tổng nợ):** Căng đều 100% bề ngang (`flex: 1 1 0; min-width: 0;`), chữ ẩn ký tự khi tràn viền (`text-overflow: clip`) chống tràn viền, không dùng dấu ba chấm `...`.
 - **Xuất Lề Sát Cạnh (Edge-to-Edge Max Display Area):**
   - Giảm thiểu tối đa padding viền ngoài (`padding: 8px 2px` hoặc `4px 2px`) để các ô danh sách (`.finance-group-card`, `.finance-item-card`) mở rộng tối đa diện tích hiển thị trên điện thoại.
   - Phần hiển thị số tiền và tên tài khoản có không gian rộng rãi, không bị co ép hay che khuất.
@@ -148,17 +148,31 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
   - Khung bao canvas (`.chart-container`, `.expense-breakdown-chart-box`) và chính thẻ `<canvas>` bắt buộc phải có `width: 100% !important; max-width: 100% !important; min-width: 0 !important; overflow: hidden !important;` để Chart.js tự động tính toán kích thước chuẩn theo màn hình.
   - **Cơ cấu chi tiêu (Donut chart & Legend):**
     - Đường kính Donut chart trên mobile tối đa `120px` (trên màn hình hẹp `<= 380px` là `106px`).
-    - Khối legend bên phải phải có `flex: 1 1 0%; min-width: 0; overflow: hidden;`. Tên danh mục `.expense-legend-name` bắt buộc có `text-overflow: ellipsis; white-space: nowrap; overflow: hidden; min-width: 0;` để phần trăm bên phải không bao giờ bị đẩy tràn viền.
+    - Khối legend bên phải phải có `flex: 1 1 0%; min-width: 0; overflow: hidden;`. Tên danh mục `.expense-legend-name` bắt buộc có `text-overflow: clip; white-space: nowrap; overflow: hidden; min-width: 0;` để hiển thị tối đa ký tự và phần trăm bên phải không bao giờ bị đẩy tràn viền.
   - **Biến động Thu - Chi trong năm (Bar chart 12 tháng):**
     - Chiều cao container khống chế gọn gàng `height: 250px !important;`.
     - Trục X/Y dùng font chữ `10px`, `maxRotation: 0` để 24 cột bar co giãn đều đặn không tràn viền.
 - **Ràng Buộc Flexbox Cho Hàng Danh Sách Có Badge / Số Tiền Bên Phải:**
   - Mọi hàng có cấu trúc Trái (Icon + Tên) và Phải (Số tiền / Badge / Lịch sử) như `.finance-group-header`, `.finance-item-card`, `.accounts-group-header`:
-    - Phần bên trái: `flex: 1 1 0%; min-width: 0; overflow: hidden;`, chữ bên trong phải có `text-overflow: ellipsis; white-space: nowrap;`.
+    - Phần bên trái: `flex: 1 1 0%; min-width: 0; overflow: hidden;`, chữ bên trong phải có `text-overflow: clip; white-space: nowrap;`.
     - Phần bên phải: `flex-shrink: 0; max-width: 48%; min-width: 0; text-align: right;`.
     - Không bao giờ để nội dung bên trái đẩy dồn phần tử bên phải tràn ra ngoài mép màn hình.
 - **Quy Trình Kiểm Tra & Nâng Cấp Cache PWA:**
   - Mỗi khi sửa đổi CSS, JS hoặc HTML giao diện, bắt buộc chạy kiểm tra cú pháp `node -c <file.js>` (nếu có JS) và **tăng phiên bản cache trong [sw.js](file:///C:/Users/TNQ/Documents/3T%20Code/So%20Thu%20Chi/sw.js)** (ví dụ: `v3.2.6 -> v3.2.7`) để điện thoại tự động tải bản giao diện mới nhất.
+
+### 2.9. Quy Tắc Triệt Tiêu Dấu Ba Chấm `...` - Dùng `text-overflow: clip` Để Hiển Thị Thêm Ký Tự Có Nghĩa (BẮT BUỘC)
+- **Vấn đề của `text-overflow: ellipsis` (`...`):**
+  - Ký tự ba chấm `...` / `…` chiếm từ 15px - 25px bề ngang container (tương đương 2 đến 4 ký tự chữ cái).
+  - Trên màn hình di động hẹp (375px - 414px), việc hy sinh 3-4 ký tự chỉ để vẽ dấu ba chấm làm mất đi các thông tin nhận diện cốt lõi (ví dụ: `Chia tiền nhóm` bị biến thành `Chia tiền nh...`, `Chuyến đi/Sự kiện` thành `Chuyến đi/S...`).
+- **Quy tắc thiết kế bắt buộc:**
+  - **Tuyệt đối KHÔNG dùng `text-overflow: ellipsis`** trên bất kỳ nhãn, tiêu đề, tab, thẻ tiện ích, danh mục hoặc số tiền nào trong ứng dụng.
+  - **Bắt buộc dùng `text-overflow: clip`** kết hợp với `overflow: hidden; white-space: nowrap;`:
+    ```css
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip; /* hoặc text-overflow: clip !important; */
+    ```
+  - **Hiệu quả:** Trình duyệt sẽ hiển thị toàn bộ ký tự trọn vẹn sát tận mép đường biên của ô/thẻ, cho phép người dùng đọc thêm được vài ký tự có nghĩa quý giá thay vì hiển thị dấu ba chấm `...`. Khi bị tràn, các ký tự vượt ngưỡng sẽ tự động ẩn phẳng (clip) một cách tinh tế và không gây xô lệch hay cuộn trang.
 
 ---
 

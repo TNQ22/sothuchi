@@ -1333,7 +1333,7 @@ const ReceiveShareModal = {
         return `
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); margin-bottom: 8px;">
             <div style="min-width: 0; flex: 1;">
-              <div style="font-weight: 600; font-size: 0.92rem; color: var(--text-primary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${esc(cleanName)}">
+              <div style="font-weight: 600; font-size: 0.92rem; color: var(--text-primary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: clip;" title="${esc(cleanName)}">
                 ${esc(cleanName)}
               </div>
               <div style="font-size: 0.76rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">

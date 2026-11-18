@@ -686,7 +686,7 @@
                   ${badgeAccount}
                   ${badgeStatus}
                 </div>
-                <div style="font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;">
+                <div style="font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: clip; margin-top: 2px;">
                   ${this.escapeHTML(u.email || 'Không có email')} &bull; <span style="font-family: monospace;">${u.id}</span>
                 </div>
                 <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px; display: flex; gap: 12px; flex-wrap: wrap;">

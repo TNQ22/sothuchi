@@ -1330,7 +1330,7 @@ const UISettings = {
                 <i data-lucide="user-check" style="width: 14px; height: 14px; color: #10b981;"></i>
               </div>
               <div style="min-width: 0; flex: 1;">
-                <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${esc(s.email || s.user_email || "")}</div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: clip; white-space: nowrap;">${esc(s.email || s.user_email || "")}</div>
                 <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
                   <span class="sync-vault-role-pill ${roleClass}">${roleText}</span>
                 </div>
@@ -2930,7 +2930,7 @@ const UISettings = {
                     <i data-lucide="${icon}" style="width: 20px; height: 20px;"></i>
                   </div>
                   <div style="min-width: 0; flex: 1;">
-                    <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">
                       ${esc(acc.name)}
                     </div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">
@@ -3054,7 +3054,7 @@ const UISettings = {
                   <i data-lucide="${cat?.icon || (tx.type === 'transfer' ? 'arrow-right-left' : (tx.type === 'income' ? 'banknote' : 'shopping-bag'))}" style="width: 18px; height: 18px;"></i>
                 </div>
                 <div style="min-width: 0; flex: 1;">
-                  <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">
                     ${esc(title)}
                   </div>
                   <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">

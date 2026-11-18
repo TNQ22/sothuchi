@@ -259,7 +259,7 @@
   color: var(--text-primary, #f8fafc);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   width: 100%;
   text-align: left !important;
 }
@@ -269,7 +269,7 @@
   color: var(--text-muted, #94a3b8);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   width: 100%;
   text-align: left !important;
 }
@@ -359,7 +359,7 @@
 .finance-filter-tab span {
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
   min-width: 0 !important;
 }
 
@@ -415,7 +415,7 @@
 .finance-group-title span {
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
   min-width: 0 !important;
 }
 
@@ -459,7 +459,7 @@
   letter-spacing: 0.03em;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .finance-item-card {
@@ -528,7 +528,7 @@
   font-weight: 700;
   color: var(--text-primary, #f8fafc);
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   white-space: nowrap;
   min-width: 0;
   flex: 1 1 auto;
@@ -564,14 +564,14 @@
   color: var(--text-muted, #94a3b8);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   margin-top: 2px;
   min-width: 0;
 }
 
 .finance-item-desc {
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   white-space: nowrap;
   display: block;
   min-width: 0;
@@ -591,7 +591,7 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .finance-item-sub-val {
@@ -600,7 +600,7 @@
   color: var(--text-muted, #94a3b8);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .finance-item-action-hint {
@@ -888,7 +888,7 @@
   margin: 0 0 4px 0;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .trip-card-meta {
@@ -1095,7 +1095,7 @@
   color: var(--text-primary, #f8fafc);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .trip-expense-sub {

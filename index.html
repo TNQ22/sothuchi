@@ -236,7 +236,7 @@
   color: var(--text-primary, #f8fafc) !important;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
 }
 
 .settings-item-desc {
@@ -245,7 +245,7 @@
   margin-top: 2px !important;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
 }
 
 /* Arrow - Push tight to right edge */
@@ -715,7 +715,7 @@
   border-radius: 9999px !important;
   max-width: 100% !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
 }
 
 .share-server-status-pill .status-dot {
@@ -967,7 +967,7 @@
   color: #f8fafc !important;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
 }
 
 .share-member-name {
@@ -975,7 +975,7 @@
   color: #94a3b8 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  text-overflow: clip !important;
 }
 
 .share-member-right {
@@ -1861,7 +1861,7 @@
               <div id="cat-history-bubble" class="actual-cat-icon" style="width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
                 <i id="cat-history-icon" data-lucide="tag" style="width: 16px; height: 16px;"></i>
               </div>
-              <span id="cat-history-title" style="font-weight: 700; font-size: 1.05rem; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Chi Tiết Hạng Mục</span>
+              <span id="cat-history-title" style="font-weight: 700; font-size: 1.05rem; color: var(--text-primary); text-overflow: clip; overflow: hidden; white-space: nowrap;">Chi Tiết Hạng Mục</span>
             </div>
             <div class="tx-header-right">
               <div style="width: 36px; height: 36px;"></div>
@@ -3681,7 +3681,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   <div class="tx-info-content" style="min-width: 0;">
                     <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
                       <span id="tx-account-dir-tag" class="tx-transfer-dir-tag from" style="display: none;">Từ tài khoản</span>
-                      <div id="tx-account-label" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">Chọn tài khoản</div>
+                      <div id="tx-account-label" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: clip; white-space: nowrap; min-width: 0; flex: 1;">Chọn tài khoản</div>
                     </div>
                     <div id="tx-account-balance" style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.2; font-variant-numeric: tabular-nums;">Số dư: 0đ</div>
                     <!-- Hidden native select for form submission -->
@@ -3707,7 +3707,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                     <div class="tx-info-content" style="min-width: 0;">
                       <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
                         <span class="tx-transfer-dir-tag to">Đến tài khoản</span>
-                        <div id="tx-to-account-label" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">Chọn tài khoản nhận</div>
+                        <div id="tx-to-account-label" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: clip; white-space: nowrap; min-width: 0; flex: 1;">Chọn tài khoản nhận</div>
                       </div>
                       <div id="tx-to-account-balance" style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.2; font-variant-numeric: tabular-nums;">Số dư: 0đ</div>
                       <!-- Hidden native select for destination account -->
@@ -3837,7 +3837,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                       </div>
                       <div class="tx-info-content" style="min-width: 0;">
                         <div style="font-size: 0.74rem; color: var(--text-muted); font-weight: 500;">Chuyến đi/Sự kiện</div>
-                        <div id="tx-trip-name-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Chưa chọn chuyến đi</div>
+                        <div id="tx-trip-name-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: clip; white-space: nowrap;">Chưa chọn chuyến đi</div>
                         <input type="hidden" id="tx-trip-id-input" value="">
                       </div>
                       <button type="button" class="btn-clear-input" id="btn-clear-tx-trip" style="display: none; position: static; margin-right: 4px;" onclick="UITrips.clearTripSelection(event)" title="Hủy chọn chuyến đi">
@@ -3853,7 +3853,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                       </div>
                       <div class="tx-info-content" style="min-width: 0;">
                         <div style="font-size: 0.74rem; color: var(--text-muted); font-weight: 500;">Người nhận</div>
-                        <div id="tx-payee-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Chưa chọn ai</div>
+                        <div id="tx-payee-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: clip; white-space: nowrap;">Chưa chọn ai</div>
                         <input type="hidden" id="tx-person-input" value="">
                         <input type="hidden" id="tx-split-data-input" value="">
                       </div>
@@ -4165,7 +4165,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </div>
                   <div class="tx-info-content" style="min-width: 0;">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
-                      <div id="tpl-account-label" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">Chưa chọn tài khoản</div>
+                      <div id="tpl-account-label" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: clip; white-space: nowrap; min-width: 0; flex: 1;">Chưa chọn tài khoản</div>
                       <button type="button" class="btn-icon" id="btn-clear-tpl-account" style="display: none; width: 22px; height: 22px; flex-shrink: 0;" onclick="UITransactions.clearTemplateAccount(event)" title="Bỏ chọn tài khoản">
                         <i data-lucide="x" style="width: 13px; height: 13px;"></i>
                       </button>
@@ -4354,7 +4354,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </div>
                   <div class="tx-info-content">
                     <div style="font-size: 0.74rem; color: var(--text-muted); font-weight: 500;">Logo ngân hàng / Ví</div>
-                    <div id="acc-provider-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Chưa chọn (Mặc định)</div>
+                    <div id="acc-provider-display" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">Chưa chọn (Mặc định)</div>
                     <input type="hidden" id="acc-bank-code-input" value="">
                   </div>
                   <i data-lucide="chevron-right" class="tx-info-chevron"></i>
@@ -4634,7 +4634,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </div>
                   <div class="tx-info-content" style="min-width: 0;">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Nguồn tiền (Trích từ ví)</div>
-                    <div id="saving-source-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Không trích tiền (Đã có sẵn)</div>
+                    <div id="saving-source-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">Không trích tiền (Đã có sẵn)</div>
                     <div id="saving-source-account-balance" style="font-size: 0.76rem; color: var(--text-muted);">Không trừ số dư ví</div>
                     <input type="hidden" id="saving-source-account-select" value="">
                   </div>
@@ -4767,7 +4767,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </div>
                   <div class="tx-info-content" style="min-width: 0;">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Trích tiền khởi điểm từ ví</div>
-                    <div id="acc-source-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Không trích tiền (Đã có sẵn)</div>
+                    <div id="acc-source-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">Không trích tiền (Đã có sẵn)</div>
                     <div id="acc-source-account-balance" style="font-size: 0.76rem; color: var(--text-muted);">Không trừ số dư ví</div>
                     <input type="hidden" id="acc-source-account-select" value="">
                   </div>
@@ -4996,7 +4996,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </div>
                   <div class="tx-info-content" style="min-width: 0;">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Tài khoản nhận giải ngân</div>
-                    <div id="loan-disburse-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Không cộng vào ví (Đã có sẵn)</div>
+                    <div id="loan-disburse-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">Không cộng vào ví (Đã có sẵn)</div>
                     <div id="loan-disburse-account-balance" style="font-size: 0.76rem; color: var(--text-muted);">Không làm thay đổi số dư ví</div>
                     <input type="hidden" id="loan-disburse-account-select" value="">
                   </div>
@@ -5155,7 +5155,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                     <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="UIAccounts.openAssetQuantityKeypad()">
                       <div id="asset-qty-label" style="font-size: 0.74rem; color: var(--text-muted);">Số lượng *</div>
                       <div style="display: flex; align-items: baseline; gap: 4px; margin-top: 2px;">
-                        <span id="asset-quantity-text" style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%;">0</span>
+                        <span id="asset-quantity-text" style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip; display: block; max-width: 100%;">0</span>
                       </div>
                       <input type="hidden" id="asset-quantity-input" value="0">
                     </div>
@@ -5233,7 +5233,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </div>
                   <div class="tx-info-content" style="min-width: 0;">
                     <div style="font-size: 0.74rem; color: var(--text-muted);">Nguồn tiền thanh toán</div>
-                    <div id="asset-source-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Không trích tiền ví (Đã trả ngoài sổ)</div>
+                    <div id="asset-source-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">Không trích tiền ví (Đã trả ngoài sổ)</div>
                     <div id="asset-source-account-balance" style="font-size: 0.76rem; color: var(--text-muted);">Không trừ số dư ví</div>
                     <input type="hidden" id="asset-source-account-select" value="">
                   </div>
@@ -6667,7 +6667,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <i data-lucide="wallet"></i>
               </div>
               <div class="tx-info-content" style="min-width: 0; margin-left: 10px;">
-                <div id="settle-target-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Chọn tài khoản nhận...</div>
+                <div id="settle-target-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">Chọn tài khoản nhận...</div>
                 <div id="settle-target-account-balance" style="font-size: 0.76rem; color: var(--text-muted);">--</div>
                 <input type="hidden" id="settle-saving-target-account" value="" required>
               </div>
@@ -6736,7 +6736,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <i data-lucide="wallet"></i>
               </div>
               <div class="tx-info-content" style="min-width: 0; margin-left: 10px;">
-                <div id="pay-loan-source-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Không trích tiền ví</div>
+                <div id="pay-loan-source-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">Không trích tiền ví</div>
                 <div id="pay-loan-source-account-balance" style="font-size: 0.76rem; color: var(--text-muted);">Không trừ số dư tài khoản</div>
                 <input type="hidden" id="pay-loan-source-account-input" value="">
               </div>
@@ -6791,7 +6791,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <i data-lucide="arrow-down-left"></i>
               </div>
               <div class="tx-info-content" style="min-width: 0; margin-left: 10px;">
-                <div id="deposit-source-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Không trích/chuyển ví</div>
+                <div id="deposit-source-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">Không trích/chuyển ví</div>
                 <div id="deposit-source-account-balance" style="font-size: 0.76rem; color: var(--text-muted);">Không thay đổi số dư ví</div>
                 <input type="hidden" id="deposit-acc-source-select" value="">
               </div>
@@ -6841,7 +6841,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <i data-lucide="wallet"></i>
               </div>
               <div class="tx-info-content" style="min-width: 0; margin-left: 10px;">
-                <div id="liquidate-target-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Chọn tài khoản nhận...</div>
+                <div id="liquidate-target-account-name" style="font-size: 0.92rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: clip;">Chọn tài khoản nhận...</div>
                 <div id="liquidate-target-account-balance" style="font-size: 0.76rem; color: var(--text-muted);">--</div>
                 <input type="hidden" id="liquidate-asset-target-account" value="" required>
               </div>
@@ -7049,7 +7049,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
           <div id="avail-options-icon" class="actual-cat-icon" style="width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;"></div>
           <div style="min-width: 0;">
-            <h3 id="avail-options-title" class="modal-title" style="margin: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Tùy chọn</h3>
+            <h3 id="avail-options-title" class="modal-title" style="margin: 0; text-overflow: clip; overflow: hidden; white-space: nowrap;">Tùy chọn</h3>
             <span id="avail-options-subtitle" style="font-size: 0.78rem; font-weight: 600;"></span>
           </div>
         </div>
@@ -7118,7 +7118,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
             </button>
             <div style="min-width: 0;">
-              <h3 id="rebalance-step2-title" class="modal-title" style="margin: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Chọn Nguồn Bù</h3>
+              <h3 id="rebalance-step2-title" class="modal-title" style="margin: 0; text-overflow: clip; overflow: hidden; white-space: nowrap;">Chọn Nguồn Bù</h3>
               <span id="rebalance-step2-subtitle" style="font-size: 0.75rem; color: var(--expense); font-weight: 600;">Chi vượt: 0 ₫</span>
             </div>
           </div>
@@ -7376,7 +7376,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <span id="share-service-current-icon" class="share-service-badge-icon" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; width: 22px !important; height: 22px !important; flex-shrink: 0 !important;">
                   <i data-lucide="server" style="width: 18px; height: 18px; color: #10b981;"></i>
                 </span>
-                <span id="share-service-current-label" style="font-size: 0.84rem !important; font-weight: 700 !important; color: var(--text-primary, #f8fafc) !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;">Máy Chủ Riêng (Self-Hosted)</span>
+                <span id="share-service-current-label" style="font-size: 0.84rem !important; font-weight: 700 !important; color: var(--text-primary, #f8fafc) !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important;">Máy Chủ Riêng (Self-Hosted)</span>
               </div>
               <div class="share-service-btn-right" style="display: flex !important; align-items: center !important; gap: 6px !important; flex-shrink: 0 !important;">
                 <span id="share-service-current-status" class="share-service-status-pill connected" style="font-size: 0.68rem !important; font-weight: 700 !important; padding: 2px 8px !important; border-radius: 9999px !important; white-space: nowrap !important; background: rgba(16, 185, 129, 0.16); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">Đã kết nối</span>

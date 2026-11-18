@@ -225,7 +225,7 @@ const UITransactions = {
             <div class="tx-header-acc-option-left">
               ${logoBadge}
               <div class="tx-header-acc-option-info" style="align-items: flex-start; text-align: left;">
-                <span class="tx-header-acc-option-name" style="display: flex; align-items: center; gap: 4px; overflow: hidden; text-align: left;"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(acc.name)}</span>${shareTag}</span>
+                <span class="tx-header-acc-option-name" style="display: flex; align-items: center; gap: 4px; overflow: hidden; text-align: left;"><span style="white-space: nowrap; overflow: hidden; text-overflow: clip;">${escapeHTML(acc.name)}</span>${shareTag}</span>
                 <span class="tx-header-acc-option-balance" style="color: ${balColor}; text-align: left;">Số dư: ${balFormatted}${subNoteStr}</span>
               </div>
             </div>
@@ -1791,13 +1791,13 @@ const UITransactions = {
               <i data-lucide="${itemIcon}" style="width:19px;height:19px;"></i>
             </div>
             <div style="min-width:0;flex:1;">
-              <div style="font-weight:600;font-size:0.9rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              <div style="font-weight:600;font-size:0.9rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow: clip;">
                 ${escapeHTML(t.title)}
               </div>
               <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">
                 ${escapeHTML(catName)} • ${amtStr}
               </div>
-              ${t.note ? `<div style="font-size:0.74rem;color:var(--primary);margin-top:3px;display:flex;align-items:center;gap:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i data-lucide="file-text" style="width:12px;height:12px;flex-shrink:0;"></i> <span>${escapeHTML(t.note)}</span> <span style="color:var(--text-muted);font-size:0.7rem;">(→ ${escapeHTML(this.resolveTemplateVariables(t.note))})</span></div>` : ''}
+              ${t.note ? `<div style="font-size:0.74rem;color:var(--primary);margin-top:3px;display:flex;align-items:center;gap:4px;overflow:hidden;text-overflow: clip;white-space:nowrap;"><i data-lucide="file-text" style="width:12px;height:12px;flex-shrink:0;"></i> <span>${escapeHTML(t.note)}</span> <span style="color:var(--text-muted);font-size:0.7rem;">(→ ${escapeHTML(this.resolveTemplateVariables(t.note))})</span></div>` : ''}
             </div>
           </div>
 
@@ -2261,7 +2261,7 @@ const UITransactions = {
       const roleBadge = (window.UIAccounts && typeof window.UIAccounts.renderSharedRoleBadge === 'function')
         ? window.UIAccounts.renderSharedRoleBadge(acc)
         : '';
-      label.innerHTML = `<span style=\"white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\">${escapeHTML(acc.name)}</span> ${roleBadge} ${shareBadge}`;
+      label.innerHTML = `<span style=\"white-space: nowrap; overflow: hidden; text-overflow: clip;\">${escapeHTML(acc.name)}</span> ${roleBadge} ${shareBadge}`;
       label.style.display = 'flex';
       label.style.alignItems = 'center';
       label.style.gap = '4px';
@@ -3564,7 +3564,7 @@ const UITransactions = {
                style="${isSelected ? 'background:rgba(255,255,255,0.08);' : ''} ${isReadOnly ? 'opacity:0.55; cursor:not-allowed;' : ''}">
             ${badgeHtml}
             <div style="flex:1; min-width:0;">
-              <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary); display: flex; align-items: center; gap: 4px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(a.name)}</span>${roleBadge}${shareTag}</div>
+              <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary); display: flex; align-items: center; gap: 4px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: clip;">${escapeHTML(a.name)}</span>${roleBadge}${shareTag}</div>
               <div style="font-size:0.78rem; color:var(--text-muted);">${bal}₫${subNoteStr}</div>
             </div>
             ${isSelected ? '<i data-lucide="check" style="width:16px;height:16px;color:var(--primary);flex-shrink:0;"></i>' : ''}
@@ -3609,7 +3609,7 @@ const UITransactions = {
                style="${isSelected ? 'background:rgba(255,255,255,0.08);' : ''} ${isReadOnly ? 'opacity:0.55; cursor:not-allowed;' : ''}">
             ${badgeHtml}
             <div style="flex:1; min-width:0;">
-              <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary); display: flex; align-items: center; gap: 4px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(a.name)}</span>${roleBadge}${shareTag}</div>
+              <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary); display: flex; align-items: center; gap: 4px; overflow: hidden;"><span style="white-space: nowrap; overflow: hidden; text-overflow: clip;">${escapeHTML(a.name)}</span>${roleBadge}${shareTag}</div>
               <div style="font-size:0.78rem; color:var(--text-muted);">${bal}₫${subNoteStr}</div>
             </div>
             ${isSelected ? '<i data-lucide="check" style="width:16px;height:16px;color:var(--primary);flex-shrink:0;"></i>' : ''}

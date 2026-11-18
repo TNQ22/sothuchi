@@ -1171,7 +1171,7 @@ const UIBudgets = {
           </tbody>
           <tfoot>
             <tr>
-              <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Tổng (${expenseCategories.length})</td>
+              <td style="overflow: hidden; text-overflow: clip; white-space: nowrap;">Tổng (${expenseCategories.length})</td>
               <td class="${this.getAmountFontClass(this.formatMoney(totalBudgeted))}" style="text-align: right; color: var(--primary); font-weight: 700;">${this.formatMoney(totalBudgeted)}</td>
               <td class="${this.getAmountFontClass(totalSpent > 0 ? '-' + this.formatMoney(totalSpent) : '0đ')}" style="text-align: right; color: var(--text-secondary); font-weight: 700;">${totalSpent > 0 ? `-${this.formatMoney(totalSpent)}` : '0đ'}</td>
               <td style="text-align: right;">
@@ -3020,7 +3020,7 @@ const UIBudgets = {
             return `
               <div class="cat-history-item" onclick="if (window.UITransactions) UITransactions.openEditModal(${t.id});" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color); cursor: pointer; transition: background 0.15s ease;">
                 <div style="min-width: 0; flex: 1; padding-right: 12px;">
-                  <div style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                  <div style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); text-overflow: clip; overflow: hidden; white-space: nowrap;">
                     ${escapeHTML(t.note || cat.name)}
                   </div>
                   <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 3px;">
