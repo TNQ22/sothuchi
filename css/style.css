@@ -1220,9 +1220,35 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
 /* Dashboard Grid (Charts & Recent Transactions) */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  grid-template-areas:
+    "trend breakdown"
+    "utils breakdown";
   gap: 20px;
   margin-bottom: 24px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  align-items: start;
+}
+
+.dashboard-grid > .card-panel:first-child {
+  grid-area: trend;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dashboard-grid > .dashboard-utilities-panel {
+  grid-area: utils;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dashboard-grid > .card-panel:last-child {
+  grid-area: breakdown;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .card-panel {
@@ -1233,6 +1259,10 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-sm);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .panel-header {
@@ -1240,6 +1270,8 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
+  min-width: 0;
+  width: 100%;
 }
 
 .panel-title {
@@ -1248,12 +1280,24 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .chart-container {
   position: relative;
-  width: 100%;
-  height: 280px;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: 250px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.chart-container canvas {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  display: block !important;
 }
 
 /* Quick Filter Pills */
@@ -2032,7 +2076,21 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
 /* Responsive Media Queries */
 @media (max-width: 900px) {
   .dashboard-grid {
-    grid-template-columns: 1fr;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    margin-bottom: 16px !important;
+  }
+
+  .dashboard-grid > * {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
   }
 }
 
@@ -2112,11 +2170,12 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
     min-height: 0 !important;
     height: 100% !important;
     overflow-y: auto !important;
+    overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior-y: none !important;
     padding: 12px 7px 20px 7px !important;
     box-sizing: border-box !important;
-    max-width: 100% !important;
+    max-width: 100vw !important;
     width: 100% !important;
   }
 
@@ -10158,12 +10217,17 @@ body.dark .account-report-badge.excluded {
   justify-content: space-between;
   gap: 16px;
   padding: 10px 4px;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
 }
 
 .expense-breakdown-chart-box {
   position: relative;
-  width: 146px;
-  height: 146px;
+  width: 140px;
+  height: 140px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -10173,14 +10237,16 @@ body.dark .account-report-badge.excluded {
 .expense-breakdown-chart-box canvas {
   width: 100% !important;
   height: 100% !important;
+  max-width: 100% !important;
 }
 
 .expense-breakdown-legend {
-  flex: 1;
+  flex: 1 1 0%;
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 8px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .expense-legend-row {
@@ -10193,6 +10259,9 @@ body.dark .account-report-badge.excluded {
   padding: 3px 6px;
   border-radius: var(--radius-sm);
   transition: background-color 0.15s ease, opacity 0.15s ease;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .expense-legend-row:hover {
@@ -10202,14 +10271,15 @@ body.dark .account-report-badge.excluded {
 .expense-legend-left {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .expense-legend-dot {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 4px;
   flex-shrink: 0;
 }
@@ -10217,35 +10287,54 @@ body.dark .account-report-badge.excluded {
 .expense-legend-name {
   color: var(--text-secondary);
   font-weight: 500;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .expense-legend-pct {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
   text-align: right;
   margin-left: auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .expense-breakdown-wrapper {
+    gap: 12px !important;
+    padding: 6px 0 !important;
+  }
+  .expense-breakdown-chart-box {
+    width: 120px !important;
+    height: 120px !important;
+  }
+  .expense-legend-name {
+    font-size: 0.82rem !important;
+  }
+  .expense-legend-pct {
+    font-size: 0.88rem !important;
+  }
 }
 
 @media (max-width: 380px) {
   .expense-breakdown-wrapper {
-    gap: 10px;
+    gap: 8px !important;
   }
   .expense-breakdown-chart-box {
-    width: 124px;
-    height: 124px;
+    width: 106px !important;
+    height: 106px !important;
   }
   .expense-legend-name {
-    font-size: 0.82rem;
+    font-size: 0.76rem !important;
   }
   .expense-legend-pct {
-    font-size: 0.88rem;
+    font-size: 0.82rem !important;
   }
 }
 
@@ -10270,6 +10359,20 @@ body.dark .account-report-badge.excluded {
 @media (max-width: 768px) {
   #view-dashboard.page-view {
     padding: 12px 7px 24px 7px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .card-panel {
+    padding: 14px 10px !important;
+    border-radius: var(--radius-md, 14px) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
 
   .card-panel-recent-tx {

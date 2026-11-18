@@ -170,9 +170,12 @@
 
 /* 2. DASHBOARD QUICK UTILITIES (BEN DƯỚI BIẾN ĐỘNG THU CHI TRONG NĂM - KÉO NGANG MƯỢT MÀ) */
 .dashboard-utilities-panel {
-  margin-bottom: 16px;
-  width: 100%;
-  overflow: hidden;
+  margin-bottom: 14px;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
 .quick-utilities-grid {
@@ -185,8 +188,10 @@
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   gap: 10px;
-  width: 100%;
-  box-sizing: border-box;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
   padding: 4px 2px 8px 2px;
   touch-action: pan-x pan-y !important;
 }
