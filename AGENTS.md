@@ -109,6 +109,57 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
   - Giảm thiểu tối đa padding viền ngoài (`padding: 8px 2px` hoặc `4px 2px`) để các ô danh sách (`.finance-group-card`, `.finance-item-card`) mở rộng tối đa diện tích hiển thị trên điện thoại.
   - Phần hiển thị số tiền và tên tài khoản có không gian rộng rãi, không bị co ép hay che khuất.
 
+### 2.8. Quy Tắc Tuyệt Đối Chống Tràn Màn Hình Ngang Trên Mobile (Zero Horizontal Overflow) (BẮT BUỘC)
+- **Khóa cứng toàn bộ View & Container (`overflow-x: hidden`):**
+  - Mọi view chính và view con (`#view-dashboard`, `.page-view.active`, `.tx-page-view`, `.tx-page-card-wrapper`) trên mobile (`<= 768px`) bắt buộc phải có:
+    ```css
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    ```
+  - Tuyệt đối không để xảy ra tình trạng cuộn ngang ngoài ý muốn trên toàn trang hoặc lòi góc thẻ ra mép phải màn hình.
+- **CSS Grid vs Flexbox trên Mobile (`<= 900px`):**
+  - **Nguyên nhân cốt lõi gây lỗi tràn:** Trong CSS Grid, track `1fr` thực chất là `minmax(auto, 1fr)`. Nếu trong grid có bất kỳ phần tử con nào có nội dung dài (như thanh tiện ích cuộn ngang 3 thẻ `~530px`), cột grid sẽ tự động bị kéo phình to bằng `min-content` (530px), làm tất cả các thẻ khác trong cùng cột (biểu đồ Thu-Chi, Cơ cấu chi tiêu) bị kéo dãn vượt qua màn hình điện thoại (390px).
+  - **Quy tắc bắt buộc:** Trên màn hình di động/tablet (`@media (max-width: 900px)`), các container dạng grid như `.dashboard-grid` **bắt buộc phải chuyển sang Flexbox dọc**:
+    ```css
+    @media (max-width: 900px) {
+      .dashboard-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+      }
+      .dashboard-grid > * {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+      }
+    }
+    ```
+  - Trên Desktop (`> 900px`), sử dụng `grid-template-areas` với `minmax(0, 1fr)` để phân tách cột rõ ràng, không để track grid bị phình to.
+- **Padding Thẻ Panel Trên Mobile (`.card-panel`):**
+  - Desktop dùng `padding: 20px;`, nhưng trên mobile (`<= 768px`) **bắt buộc thu hẹp xuống `padding: 14px 10px !important;`** để tiết kiệm 40px không gian chiều ngang quý giá theo đúng triết lý Edge-to-Edge.
+  - Luôn khai báo `width: 100% !important; max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; overflow: hidden !important;`.
+- **Ràng Buộc Kích Thước Biểu Đồ Chart.js & Canvas:**
+  - Khung bao canvas (`.chart-container`, `.expense-breakdown-chart-box`) và chính thẻ `<canvas>` bắt buộc phải có `width: 100% !important; max-width: 100% !important; min-width: 0 !important; overflow: hidden !important;` để Chart.js tự động tính toán kích thước chuẩn theo màn hình.
+  - **Cơ cấu chi tiêu (Donut chart & Legend):**
+    - Đường kính Donut chart trên mobile tối đa `120px` (trên màn hình hẹp `<= 380px` là `106px`).
+    - Khối legend bên phải phải có `flex: 1 1 0%; min-width: 0; overflow: hidden;`. Tên danh mục `.expense-legend-name` bắt buộc có `text-overflow: ellipsis; white-space: nowrap; overflow: hidden; min-width: 0;` để phần trăm bên phải không bao giờ bị đẩy tràn viền.
+  - **Biến động Thu - Chi trong năm (Bar chart 12 tháng):**
+    - Chiều cao container khống chế gọn gàng `height: 250px !important;`.
+    - Trục X/Y dùng font chữ `10px`, `maxRotation: 0` để 24 cột bar co giãn đều đặn không tràn viền.
+- **Ràng Buộc Flexbox Cho Hàng Danh Sách Có Badge / Số Tiền Bên Phải:**
+  - Mọi hàng có cấu trúc Trái (Icon + Tên) và Phải (Số tiền / Badge / Lịch sử) như `.finance-group-header`, `.finance-item-card`, `.accounts-group-header`:
+    - Phần bên trái: `flex: 1 1 0%; min-width: 0; overflow: hidden;`, chữ bên trong phải có `text-overflow: ellipsis; white-space: nowrap;`.
+    - Phần bên phải: `flex-shrink: 0; max-width: 48%; min-width: 0; text-align: right;`.
+    - Không bao giờ để nội dung bên trái đẩy dồn phần tử bên phải tràn ra ngoài mép màn hình.
+- **Quy Trình Kiểm Tra & Nâng Cấp Cache PWA:**
+  - Mỗi khi sửa đổi CSS, JS hoặc HTML giao diện, bắt buộc chạy kiểm tra cú pháp `node -c <file.js>` (nếu có JS) và **tăng phiên bản cache trong [sw.js](file:///C:/Users/TNQ/Documents/3T%20Code/So%20Thu%20Chi/sw.js)** (ví dụ: `v3.2.6 -> v3.2.7`) để điện thoại tự động tải bản giao diện mới nhất.
+
 ---
 
 ## 3. NGUYÊN TẮC VIẾT CODE & BẢO TRÌ
