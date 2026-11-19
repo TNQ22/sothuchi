@@ -10,7 +10,7 @@
 
 const UIBudgets = {
   currentMonth: new Date().toISOString().slice(0, 7), // YYYY-MM
-  currentMode: 'simple', // 'simple' | 'detailed'
+  currentMode: 'detailed', // 'detailed' | 'simple'
   applicableWallets: 'ALL', // 'ALL' | [accountId, ...]
   quickEditTarget: null,
   dismissedAlertSignatures: new Set(),
@@ -22,9 +22,12 @@ const UIBudgets = {
       const savedMode = await db.settings.get('budget_mode');
       if (savedMode && (savedMode.value === 'simple' || savedMode.value === 'detailed')) {
         this.currentMode = savedMode.value;
+      } else {
+        this.currentMode = 'detailed';
       }
     } catch (e) {
       console.warn('Error loading budget mode:', e);
+      this.currentMode = 'detailed';
     }
 
     // 2. Load saved applicable wallets
@@ -359,7 +362,7 @@ const UIBudgets = {
   },
 
   async handleSettingsSubmit() {
-    const selectedMode = document.querySelector('input[name="budget-setting-mode"]:checked')?.value || 'simple';
+    const selectedMode = document.querySelector('input[name="budget-setting-mode"]:checked')?.value || 'detailed';
     this.currentMode = selectedMode;
 
     const toggle = document.getElementById('budget-setting-rollover-toggle');

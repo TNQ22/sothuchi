@@ -1122,46 +1122,46 @@
 
       <ul class="nav-links">
         <li class="nav-item">
-          <a href="#" data-view="dashboard">
+          <button type="button" class="nav-link-btn" data-view="dashboard" title="Tổng Quan">
             <i data-lucide="layout-dashboard"></i>
             <span>Tổng Quan</span>
-          </a>
+          </button>
         </li>
         <li class="nav-item">
-          <a href="#" data-view="transactions">
+          <button type="button" class="nav-link-btn" data-view="transactions" title="Sổ Giao Dịch">
             <i data-lucide="receipt"></i>
             <span>Sổ Giao Dịch</span>
-          </a>
+          </button>
         </li>
         <li class="nav-item">
-          <a href="#" data-view="debts">
+          <button type="button" class="nav-link-btn" data-view="debts" title="Sổ Vay Nợ">
             <i data-lucide="handshake"></i>
             <span>Sổ Vay Nợ</span>
-          </a>
+          </button>
         </li>
         <li class="nav-item">
-          <a href="#" data-view="accounts">
+          <button type="button" class="nav-link-btn" data-view="accounts" title="Tài Khoản">
             <i data-lucide="wallet"></i>
             <span>Tài Khoản</span>
-          </a>
+          </button>
         </li>
         <li class="nav-item">
-          <a href="#" data-view="budgets">
+          <button type="button" class="nav-link-btn" data-view="budgets" title="Ngân Sách">
             <i data-lucide="piggy-bank"></i>
             <span>Ngân Sách</span>
-          </a>
+          </button>
         </li>
         <li class="nav-item">
-          <a href="#" data-view="analytics">
+          <button type="button" class="nav-link-btn" data-view="analytics" title="Báo Cáo & Biểu Đồ">
             <i data-lucide="pie-chart"></i>
             <span>Báo Cáo & Biểu Đồ</span>
-          </a>
+          </button>
         </li>
         <li class="nav-item">
-          <a href="#" data-view="settings">
+          <button type="button" class="nav-link-btn" data-view="settings" title="Cài Đặt & Drive">
             <i data-lucide="settings"></i>
             <span>Cài Đặt & Drive</span>
-          </a>
+          </button>
         </li>
       </ul>
 
@@ -1226,7 +1226,7 @@
               <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
             </button>
           </div>
-          <div id="budget-header-subtitle" class="budget-header-subtitle" onclick="UIBudgets.handleSubtitleClick(event)" ondblclick="UIBudgets.handleMonthHeaderDblClick(event)" title="Bấm để đổi chế độ (chạm nhanh 2 lần về tháng hiện tại)">Ngân sách tổng</div>
+          <div id="budget-header-subtitle" class="budget-header-subtitle" onclick="UIBudgets.handleSubtitleClick(event)" ondblclick="UIBudgets.handleMonthHeaderDblClick(event)" title="Bấm để đổi chế độ (chạm nhanh 2 lần về tháng hiện tại)">Ngân sách chi tiết</div>
         </div>
 
         <!-- Header Search Bar che toàn bộ thanh tiêu đề khi mở tìm kiếm -->
@@ -1705,11 +1705,11 @@
 
       <!-- View: Budgets (Quản lý Ngân sách đa chế độ) -->
       <section id="view-budgets" class="page-view">
-        <!-- Mode 1 Container: Ngân sách Tổng & Khóa mục chi -->
-        <div id="budget-simple-container" class="budget-mode-pane active"></div>
-
         <!-- Mode 2 Container: Chi tiết dạng bảng Actual Budget -->
-        <div id="budget-detailed-container" class="budget-mode-pane" style="display: none;"></div>
+        <div id="budget-detailed-container" class="budget-mode-pane active"></div>
+
+        <!-- Mode 1 Container: Ngân sách Tổng & Khóa mục chi -->
+        <div id="budget-simple-container" class="budget-mode-pane" style="display: none;"></div>
       </section>
 
       <!-- View: Budget Form (Thiết lập ngân sách trang mới) -->
@@ -2074,7 +2074,7 @@
                 </div>
 
                 <!-- Mục 6.4: Chia Tiền Nhóm -->
-                <div class="settings-nav-item" onclick="UISettings.openSection('bill-split')">
+                <div class="settings-nav-item" onclick="UIBillSplit.openStandalonePage()">
                   <div class="settings-item-icon-box" style="background: rgba(13, 148, 136, 0.15); color: #14b8a6;">
                     <i data-lucide="arrow-right-left"></i>
                   </div>
@@ -3383,116 +3383,6 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </div>
                   <div id="admin-emails-list-container"></div>
                 </div>
-              </div>
-            </div>
-
-            <!-- ==========================================
-                 PANEL 9: CHIA TIỀN NHÓM (DEDICATED PAGE)
-                 ========================================== -->
-            <div id="panel-bill-split" class="settings-detail-panel">
-              <!-- Chú thích dưới tiêu đề -->
-              <p class="settings-lead-text" style="font-size: 0.82rem; margin: 0 4px 14px 4px; line-height: 1.5; color: var(--text-secondary);">
-                Tính toán phân bổ chi phí tiệc tùng, ăn uống, dã ngoại và tự động tạo các khoản nợ cần thu trong Sổ Nợ.
-              </p>
-
-              <!-- Thẻ 1: Thông tin hoá đơn & Số tiền -->
-              <div class="settings-card-clean" style="margin-bottom: 12px;">
-                <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                  <i data-lucide="receipt" style="width: 16px; height: 16px; color: var(--primary);"></i>
-                  <span>Thông Tin Hoá Đơn &amp; Số Tiền</span>
-                </div>
-
-                <div class="form-group" style="margin-bottom: 12px;">
-                  <label class="form-label" style="font-size: 0.78rem; font-weight: 600;">Nội dung hoá đơn / chi tiêu</label>
-                  <input type="text" id="split-title-input" class="form-control" placeholder="VD: Ăn lẩu cuối tuần, Tiền taxi, Tiệc sinh nhật..." style="font-size: 0.9rem;">
-                </div>
-
-                <div class="form-group" style="margin-bottom: 4px;">
-                  <label class="form-label" style="font-size: 0.78rem; font-weight: 600;">Tổng số tiền cần chia</label>
-                  <div style="position: relative;">
-                    <input type="text" inputmode="numeric" id="split-amount-input" class="form-control" placeholder="0" style="font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; padding-right: 32px;" oninput="UIBillSplit.handleAmountChange(this.value)">
-                    <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted);">đ</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Thẻ 2: Người thanh toán & Thành viên -->
-              <div class="settings-card-clean" style="margin-bottom: 12px;">
-                <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                  <i data-lucide="users" style="width: 16px; height: 16px; color: #3b82f6;"></i>
-                  <span>Người Thanh Toán &amp; Thành Viên</span>
-                </div>
-
-                <!-- Người trả tiền -->
-                <div class="form-group" style="margin-bottom: 14px;">
-                  <label class="form-label" style="font-size: 0.78rem; font-weight: 600;">Ai là người thanh toán cả bill?</label>
-                  <select id="split-payer-select" class="form-control" style="font-size: 0.88rem;" onchange="UIBillSplit.setPayer(this.value)"></select>
-                </div>
-
-                <!-- Người tham gia -->
-                <div class="form-group" style="margin-bottom: 4px;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <label class="form-label" style="font-size: 0.78rem; font-weight: 600; margin: 0;">Danh sách thành viên tham gia</label>
-                    <span style="font-size: 0.72rem; color: var(--text-muted);">Nhập tên &amp; Enter</span>
-                  </div>
-                  <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-                    <input type="text" id="split-new-member-input" class="form-control" placeholder="Nhập tên thành viên..." style="font-size: 0.85rem;" onkeydown="if(event.key==='Enter'){event.preventDefault(); UIBillSplit.addParticipant(this.value); this.value='';}">
-                    <button type="button" class="btn-primary" style="padding: 0 16px; font-size: 0.82rem; white-space: nowrap;" onclick="const inp=document.getElementById('split-new-member-input'); UIBillSplit.addParticipant(inp.value); inp.value='';">
-                      + Thêm
-                    </button>
-                  </div>
-                  <div id="split-participants-tags" class="split-members-tags-wrapper"></div>
-                </div>
-              </div>
-
-              <!-- Thẻ 3: Hình thức chia & Bảng phân bổ -->
-              <div class="settings-card-clean" style="margin-bottom: 12px;">
-                <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                  <i data-lucide="pie-chart" style="width: 16px; height: 16px; color: #10b981;"></i>
-                  <span>Hình Thức Chia &amp; Phân Bổ</span>
-                </div>
-
-                <!-- Kiểu chia -->
-                <div class="form-group" style="margin-bottom: 14px;">
-                  <div class="split-type-tabs">
-                    <button type="button" class="split-type-tab active" data-type="equal" onclick="UIBillSplit.setSplitType('equal')">
-                      <i data-lucide="divide" style="width: 14px; height: 14px;"></i> Chia đều
-                    </button>
-                    <button type="button" class="split-type-tab" data-type="custom" onclick="UIBillSplit.setSplitType('custom')">
-                      <i data-lucide="sliders-horizontal" style="width: 14px; height: 14px;"></i> Số tiền
-                    </button>
-                    <button type="button" class="split-type-tab" data-type="shares" onclick="UIBillSplit.setSplitType('shares')">
-                      <i data-lucide="pie-chart" style="width: 14px; height: 14px;"></i> Theo phần
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Danh sách phân bổ chi phí -->
-                <div class="form-group" style="margin-bottom: 10px;">
-                  <label class="form-label" style="font-size: 0.78rem; font-weight: 600; margin-bottom: 6px;">Bảng phân bổ chi phí từng người</label>
-                  <div id="split-breakdown-list"></div>
-                </div>
-
-                <!-- Tóm tắt thanh toán bù trừ -->
-                <div id="split-summary-box" class="split-summary-box" style="display: none;"></div>
-
-                <!-- Checkbox: Tự động tạo nợ cần thu -->
-                <div style="display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 10px 12px; background: rgba(13, 148, 136, 0.08); border: 1px solid rgba(13, 148, 136, 0.2); border-radius: 10px;">
-                  <input type="checkbox" id="split-auto-debt-checkbox" checked style="width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;">
-                  <label for="split-auto-debt-checkbox" style="font-size: 0.82rem; color: var(--text-primary); cursor: pointer; margin: 0; font-weight: 500;">
-                    Tự động tạo các khoản nợ cần thu vào Sổ Nợ (khi người trả là "Tôi")
-                  </label>
-                </div>
-              </div>
-
-              <!-- Thao tác cuối trang -->
-              <div style="display: flex; gap: 10px; margin-top: 14px; margin-bottom: 24px; flex-wrap: wrap;">
-                <button type="button" class="btn-secondary" style="flex: 1; min-width: 160px; padding: 12px; font-size: 0.88rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px;" onclick="UIBillSplit.copyShareText()">
-                  <i data-lucide="copy" style="width: 16px; height: 16px;"></i> Sao Chép Gửi Zalo
-                </button>
-                <button type="button" class="btn-primary" style="flex: 1.2; min-width: 180px; padding: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px;" onclick="UIBillSplit.saveStandaloneRecord()">
-                  <i data-lucide="check" style="width: 16px; height: 16px;"></i> Lưu Đợt Chia Tiền
-                </button>
               </div>
             </div>
 
@@ -5558,34 +5448,164 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
         </div>
       </section>
 
+      <!-- View: Chia Tiền Nhóm / Tính Tiền Nhóm (Dedicated Page) -->
+      <section id="view-bill-split" class="page-view tx-page-view">
+        <div class="tx-page-card-wrapper">
+          <div class="tx-page-header">
+            <div class="tx-header-left">
+              <button type="button" class="btn-icon tx-header-btn" onclick="window.app.goBack()" title="Quay lại">
+                <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+            <div class="tx-header-center">
+              <span class="tx-page-header-title" style="display: inline-flex; align-items: center; gap: 6px;">
+                <i data-lucide="arrow-right-left" style="width: 18px; height: 18px; color: #14b8a6;"></i> Tính Tiền Nhóm
+              </span>
+            </div>
+            <div class="tx-header-right">
+              <button type="button" class="btn-icon tx-header-btn" onclick="UIBillSplit.saveStandaloneRecord()" title="Lưu đợt chia tiền">
+                <i data-lucide="check" style="width: 20px; height: 20px; color: var(--primary);"></i>
+              </button>
+            </div>
+          </div>
+
+          <div style="padding: 12px 6px 80px 6px; max-width: 800px; margin: 0 auto;">
+            <!-- Chú thích dưới tiêu đề -->
+            <p class="settings-lead-text" style="font-size: 0.82rem; margin: 0 4px 14px 4px; line-height: 1.5; color: var(--text-secondary);">
+              Tính toán phân bổ chi phí tiệc tùng, ăn uống, dã ngoại và tự động tạo các khoản nợ cần thu trong Sổ Nợ.
+            </p>
+
+            <!-- Thẻ 1: Thông tin hoá đơn & Số tiền -->
+            <div class="settings-card-clean" style="margin-bottom: 12px;">
+              <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="receipt" style="width: 16px; height: 16px; color: var(--primary);"></i>
+                <span>Thông Tin Hoá Đơn &amp; Số Tiền</span>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label" style="font-size: 0.78rem; font-weight: 600;">Nội dung hoá đơn / chi tiêu</label>
+                <input type="text" id="split-title-input" class="form-control" placeholder="VD: Ăn lẩu cuối tuần, Tiền taxi, Tiệc sinh nhật..." style="font-size: 0.9rem;">
+              </div>
+
+              <div class="form-group" style="margin-bottom: 4px;">
+                <label class="form-label" style="font-size: 0.78rem; font-weight: 600;">Tổng số tiền cần chia</label>
+                <div style="position: relative;">
+                  <input type="text" inputmode="numeric" id="split-amount-input" class="form-control" placeholder="0" style="font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; padding-right: 32px;" oninput="UIBillSplit.handleAmountChange(this.value)">
+                  <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted);">đ</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Thẻ 2: Người thanh toán & Thành viên -->
+            <div class="settings-card-clean" style="margin-bottom: 12px;">
+              <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="users" style="width: 16px; height: 16px; color: #3b82f6;"></i>
+                <span>Người Thanh Toán &amp; Thành Viên</span>
+              </div>
+
+              <!-- Người trả tiền -->
+              <div class="form-group" style="margin-bottom: 14px;">
+                <label class="form-label" style="font-size: 0.78rem; font-weight: 600;">Ai là người thanh toán cả bill?</label>
+                <select id="split-payer-select" class="form-control" style="font-size: 0.88rem;" onchange="UIBillSplit.setPayer(this.value)"></select>
+              </div>
+
+              <!-- Người tham gia -->
+              <div class="form-group" style="margin-bottom: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <label class="form-label" style="font-size: 0.78rem; font-weight: 600; margin: 0;">Danh sách thành viên tham gia</label>
+                  <span style="font-size: 0.72rem; color: var(--text-muted);">Nhập tên &amp; Enter</span>
+                </div>
+                <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                  <input type="text" id="split-new-member-input" class="form-control" placeholder="Nhập tên thành viên..." style="font-size: 0.85rem;" onkeydown="if(event.key==='Enter'){event.preventDefault(); UIBillSplit.addParticipant(this.value); this.value='';}">
+                  <button type="button" class="btn-primary" style="padding: 0 16px; font-size: 0.82rem; white-space: nowrap;" onclick="const inp=document.getElementById('split-new-member-input'); UIBillSplit.addParticipant(inp.value); inp.value='';">
+                    + Thêm
+                  </button>
+                </div>
+                <div id="split-participants-tags" class="split-members-tags-wrapper"></div>
+              </div>
+            </div>
+
+            <!-- Thẻ 3: Hình thức chia & Bảng phân bổ -->
+            <div class="settings-card-clean" style="margin-bottom: 12px;">
+              <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="pie-chart" style="width: 16px; height: 16px; color: #10b981;"></i>
+                <span>Hình Thức Chia &amp; Phân Bổ</span>
+              </div>
+
+              <!-- Kiểu chia -->
+              <div class="form-group" style="margin-bottom: 14px;">
+                <div class="split-type-tabs">
+                  <button type="button" class="split-type-tab active" data-type="equal" onclick="UIBillSplit.setSplitType('equal')">
+                    <i data-lucide="divide" style="width: 14px; height: 14px;"></i> Chia đều
+                  </button>
+                  <button type="button" class="split-type-tab" data-type="custom" onclick="UIBillSplit.setSplitType('custom')">
+                    <i data-lucide="sliders-horizontal" style="width: 14px; height: 14px;"></i> Số tiền
+                  </button>
+                  <button type="button" class="split-type-tab" data-type="shares" onclick="UIBillSplit.setSplitType('shares')">
+                    <i data-lucide="pie-chart" style="width: 14px; height: 14px;"></i> Theo phần
+                  </button>
+                </div>
+              </div>
+
+              <!-- Danh sách phân bổ chi phí -->
+              <div class="form-group" style="margin-bottom: 10px;">
+                <label class="form-label" style="font-size: 0.78rem; font-weight: 600; margin-bottom: 6px;">Bảng phân bổ chi phí từng người</label>
+                <div id="split-breakdown-list"></div>
+              </div>
+
+              <!-- Tóm tắt thanh toán bù trừ -->
+              <div id="split-summary-box" class="split-summary-box" style="display: none;"></div>
+
+              <!-- Checkbox: Tự động tạo nợ cần thu -->
+              <div style="display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 10px 12px; background: rgba(13, 148, 136, 0.08); border: 1px solid rgba(13, 148, 136, 0.2); border-radius: 10px;">
+                <input type="checkbox" id="split-auto-debt-checkbox" checked style="width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;">
+                <label for="split-auto-debt-checkbox" style="font-size: 0.82rem; color: var(--text-primary); cursor: pointer; margin: 0; font-weight: 500;">
+                  Tự động tạo các khoản nợ cần thu vào Sổ Nợ (khi người trả là "Tôi")
+                </label>
+              </div>
+            </div>
+
+            <!-- Thao tác cuối trang -->
+            <div style="display: flex; gap: 10px; margin-top: 14px; margin-bottom: 24px; flex-wrap: wrap;">
+              <button type="button" class="btn-secondary" style="flex: 1; min-width: 160px; padding: 12px; font-size: 0.88rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px;" onclick="UIBillSplit.copyShareText()">
+                <i data-lucide="copy" style="width: 16px; height: 16px;"></i> Sao Chép Gửi Zalo
+              </button>
+              <button type="button" class="btn-primary" style="flex: 1.2; min-width: 180px; padding: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px;" onclick="UIBillSplit.saveStandaloneRecord()">
+                <i data-lucide="check" style="width: 16px; height: 16px;"></i> Lưu Đợt Chia Tiền
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
 
     <!-- Mobile Bottom Navigation Bar -->
     <nav class="mobile-bottom-nav">
-      <a href="#" class="mobile-nav-item" data-view="dashboard">
+      <button type="button" class="mobile-nav-item" data-view="dashboard" title="Tổng quan">
         <i data-lucide="layout-dashboard" style="width: 20px; height: 20px;"></i>
         <span>Tổng quan</span>
-      </a>
-      <a href="#" class="mobile-nav-item" data-view="accounts">
+      </button>
+      <button type="button" class="mobile-nav-item" data-view="accounts" title="Tài khoản">
         <i data-lucide="wallet" style="width: 20px; height: 20px;"></i>
         <span>Tài khoản</span>
-      </a>
+      </button>
       
       <!-- Central Floating Action Button (Hình tròn) -->
-      <div id="fab-add-tx" class="mobile-nav-item fab-item active" data-view="new-transaction">
+      <div id="fab-add-tx" class="mobile-nav-item fab-item active" data-view="new-transaction" title="Thêm giao dịch mới">
         <button type="button" class="fab-btn mobile-fab-center" title="Thêm giao dịch mới">
           <i data-lucide="plus" style="width: 24px; height: 24px;"></i>
         </button>
       </div>
 
-      <a href="#" class="mobile-nav-item" data-view="budgets">
+      <button type="button" class="mobile-nav-item" data-view="budgets" title="Ngân sách">
         <i data-lucide="piggy-bank" style="width: 20px; height: 20px;"></i>
         <span>Ngân sách</span>
-      </a>
-      <a href="#" class="mobile-nav-item" data-view="settings">
+      </button>
+      <button type="button" class="mobile-nav-item" data-view="settings" title="Cài đặt">
         <i data-lucide="settings" style="width: 20px; height: 20px;"></i>
         <span>Cài đặt</span>
-      </a>
+      </button>
     </nav>
 
     <!-- Nút tròn nổi FAB (+) góc phải bên dưới trang Quản lý mẫu ghi chép (gốc cố định vững chắc, không bao giờ nhảy khi chạm) -->
@@ -6184,21 +6204,8 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label" style="font-weight: 700; margin-bottom: 10px;">Chế Độ Quản Lý Ngân Sách</label>
             
-            <div class="budget-setting-mode-card" id="setting-mode-simple-card" onclick="UIBudgets.selectSettingMode('simple')">
-              <input type="radio" name="budget-setting-mode" value="simple" checked style="display: none;">
-              <div class="budget-setting-mode-content">
-                <div class="budget-setting-mode-title">
-                  <i data-lucide="target" style="color: var(--primary); width: 16px; height: 16px;"></i>
-                  <span>Ngân sách Tổng & Khóa mục</span>
-                </div>
-                <div class="budget-setting-mode-desc">
-                  Đặt trần chi tiêu tổng của tháng, khóa riêng các khoản quan trọng và kiểm soát số tiền chi tiêu an toàn mỗi ngày.
-                </div>
-              </div>
-            </div>
-
-            <div class="budget-setting-mode-card" id="setting-mode-detailed-card" onclick="UIBudgets.selectSettingMode('detailed')">
-              <input type="radio" name="budget-setting-mode" value="detailed" style="display: none;">
+            <div class="budget-setting-mode-card active" id="setting-mode-detailed-card" onclick="UIBudgets.selectSettingMode('detailed')">
+              <input type="radio" name="budget-setting-mode" value="detailed" checked style="display: none;">
               <div class="budget-setting-mode-content">
                 <div class="budget-setting-mode-title">
                   <i data-lucide="table" style="color: #0ea5e9; width: 16px; height: 16px;"></i>
@@ -6225,6 +6232,19 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                       <span class="app-switch-slider slider round"></span>
                     </label>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="budget-setting-mode-card" id="setting-mode-simple-card" onclick="UIBudgets.selectSettingMode('simple')">
+              <input type="radio" name="budget-setting-mode" value="simple" style="display: none;">
+              <div class="budget-setting-mode-content">
+                <div class="budget-setting-mode-title">
+                  <i data-lucide="target" style="color: var(--primary); width: 16px; height: 16px;"></i>
+                  <span>Ngân sách Tổng & Khóa mục</span>
+                </div>
+                <div class="budget-setting-mode-desc">
+                  Đặt trần chi tiêu tổng của tháng, khóa riêng các khoản quan trọng và kiểm soát số tiền chi tiêu an toàn mỗi ngày.
                 </div>
               </div>
             </div>
@@ -8010,16 +8030,16 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
   <script src="./js/ui-share.js?v=3.0.63"></script>
   <script src="./js/ui-budgets.js?v=3.0.57"></script>
   <script src="./js/ui-analytics.js?v=3.0.44"></script>
-  <script src="./js/ui-settings.js?v=3.0.68"></script>
+  <script src="./js/ui-settings.js?v=3.0.69"></script>
   <script src="./js/ui-overview-finance.js?v=3.0.72"></script>
-  <script src="./js/ui-bill-split.js?v=3.0.72"></script>
+  <script src="./js/ui-bill-split.js?v=3.0.73"></script>
   <script src="./js/ui-trips.js?v=3.0.72"></script>
   <script src="./js/server-auth-modals.js?v=3.0.44"></script>
 
   <!-- Main Entry Coordinator -->
   <script src="./js/ui-admin.js?v=3.0.44"></script>
   <script src="./js/pull-to-refresh.js?v=3.0.44"></script>
-  <script src="./js/app.js?v=3.0.65"></script>
+  <script src="./js/app.js?v=3.0.66"></script>
 
   <!-- Direct Storage & Cache Management Handlers (Guaranteed Execution) -->
   <script>

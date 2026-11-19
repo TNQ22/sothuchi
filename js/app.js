@@ -515,7 +515,7 @@ class App {
     };
 
     // Desktop Nav Items
-    document.querySelectorAll('.nav-item a').forEach(link => {
+    document.querySelectorAll('.nav-item a, .nav-item button, .nav-item .nav-link-btn').forEach(link => {
       link.addEventListener('click', (e) => handleNavClick(link, e));
       if (link.dataset.view === 'budgets') {
         link.addEventListener('dblclick', (e) => {
@@ -608,7 +608,9 @@ class App {
     // Nếu đang ở sẵn trang Cài đặt:
     if (this.currentView === 'settings') {
       if (window.UISettings) {
-        if (window.UISettings.currentSection) {
+        const detailView = document.getElementById('settings-detail-view');
+        const isDetailVisible = detailView && detailView.style.display !== 'none';
+        if (window.UISettings.currentSection || isDetailVisible) {
           // 1 chạm khi đang ở trang con -> Quay lại màn hình Cài Đặt chính
           window.UISettings.backToHub();
         } else {
@@ -720,7 +722,7 @@ class App {
     }
     const primaryViews = ['dashboard', 'accounts', 'budgets', 'settings', 'transactions', 'debts', 'analytics'];
     const isPrimary = primaryViews.includes(viewId);
-    const isTxPage = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history', 'finance-detail', 'trips-manager', 'trip-detail'].includes(viewId);
+    const isTxPage = ['new-transaction', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history', 'finance-detail', 'trips-manager', 'trip-detail', 'bill-split'].includes(viewId);
 
     // Instantly hide/show the header in JS FIRST — before any class/DOM changes.
     // CSS :has() and body-class selectors update asynchronously (next paint frame),
@@ -740,7 +742,7 @@ class App {
 
     const mobileBottomNav = document.querySelector('.mobile-bottom-nav');
     if (mobileBottomNav) {
-      const hideNavViews = ['budget-form', 'budget-category-form', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-cat-history', 'finance-detail', 'trips-manager', 'trip-detail'];
+      const hideNavViews = ['budget-form', 'budget-category-form', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-cat-history', 'finance-detail', 'trips-manager', 'trip-detail', 'bill-split'];
       if (hideNavViews.includes(viewId)) {
         mobileBottomNav.style.setProperty('display', 'none', 'important');
       } else {
@@ -759,7 +761,7 @@ class App {
     }
 
     // 2. Lưu previousView trước khi chuyển vào các trang con (danh mục, biểu mẫu tài khoản, ...)
-    const formSubViews = ['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history', 'finance-detail', 'trips-manager', 'trip-detail'];
+    const formSubViews = ['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history', 'finance-detail', 'trips-manager', 'trip-detail', 'bill-split'];
     if (formSubViews.includes(viewId) && !formSubViews.includes(this.currentView)) {
       this.previousView = this.currentView;
     } else if (viewId === 'transactions') {
@@ -810,11 +812,12 @@ class App {
     document.body.classList.toggle('view-account-provider', viewId === 'account-provider');
     document.body.classList.toggle('view-template-manager', viewId === 'template-manager');
     document.body.classList.toggle('view-template-editor', viewId === 'template-editor');
+    document.body.classList.toggle('view-bill-split', viewId === 'bill-split');
 
 
     // Update active nav links
     document.querySelectorAll('.nav-item').forEach(item => {
-      const link = item.querySelector('a');
+      const link = item.querySelector('a, button, .nav-link-btn');
       item.classList.toggle('active', link && link.dataset.view === viewId);
     });
 
@@ -826,7 +829,7 @@ class App {
 
     // Show/hide view pages
     document.querySelectorAll('.page-view').forEach(page => {
-      const isActive = page.id === `view-${viewId}`;
+      const isActive = page.id === `view-${viewId}` || (viewId === 'bill-split' && page.id === 'view-bill-split');
       page.classList.toggle('active', isActive);
       if (page.classList.contains('tx-page-view') || page.id === 'view-transactions') {
         page.style.transform = '';
@@ -858,7 +861,10 @@ class App {
       'asset-form': 'Quản Lý Tài Sản',
       'budget-form': 'Thiết Lập Ngân Sách',
       'budget-category-form': 'Hạn Mức Danh Mục',
-      'budget-cat-history': 'Lịch Sử Chi Tiêu'
+      'budget-cat-history': 'Lịch Sử Chi Tiêu',
+      'trips-manager': 'Chuyến Đi & Sự Kiện',
+      'trip-detail': 'Chi Tiết Chuyến Đi',
+      'bill-split': 'Tính Tiền Nhóm'
     };
     const titleEl = document.getElementById('header-page-title');
     const appHeaderCenter = document.getElementById('app-header-center');
@@ -1019,7 +1025,9 @@ class App {
 
     // Settings Sub-page → back to Settings Hub
     if (this.currentView === 'settings') {
-      if (window.UISettings && window.UISettings.currentSection) {
+      const detailView = document.getElementById('settings-detail-view');
+      const isDetailVisible = detailView && detailView.style.display !== 'none';
+      if ((window.UISettings && window.UISettings.currentSection) || isDetailVisible) {
         window.UISettings.backToHub();
         return;
       }
@@ -1132,6 +1140,12 @@ class App {
       return;
     }
 
+    if (this.currentView === 'bill-split') {
+      const target = (this.previousView && this.previousView !== 'bill-split') ? this.previousView : 'dashboard';
+      this.switchView(target, true);
+      return;
+    }
+
     // new-transaction → CHỈ trở về khi đang sửa giao dịch HOẶC khi mở từ menu 3 chấm của tài khoản
     if (this.currentView === 'new-transaction') {
       const txId = document.getElementById('tx-id-input')?.value;
@@ -1171,7 +1185,9 @@ class App {
   canGoBack() {
     // 1. Cài đặt: Chỉ cho phép trở về khi đang ở màn hình con (sub-panel)
     if (this.currentView === 'settings') {
-      return !!(window.UISettings && window.UISettings.currentSection);
+      const detailView = document.getElementById('settings-detail-view');
+      const isDetailVisible = detailView && detailView.style.display !== 'none';
+      return !!((window.UISettings && window.UISettings.currentSection) || isDetailVisible);
     }
 
     // 2. Ghi chép: Chỉ cho phép trở về khi đang SỬA giao dịch hoặc mở từ menu tài khoản
@@ -1186,6 +1202,7 @@ class App {
       'trips-manager',
       'trip-detail',
       'finance-detail',
+      'bill-split',
       'category-picker',
       'template-manager',
       'template-editor',
@@ -1908,6 +1925,13 @@ function enableHorizontalDragScroll(selector) {
     }, true);
   });
 }
+
+// Chống triệt để Safari / WebKit mở pop-up preview hoặc callout menu mặc định khi nhấn giữ
+window.addEventListener('contextmenu', (e) => {
+  if (e.target.closest('button, a, .mobile-nav-item, .nav-item, .nav-link-btn, [role="button"], .btn, .btn-icon, .fab-btn')) {
+    e.preventDefault();
+  }
+}, { capture: true });
 
 document.addEventListener('DOMContentLoaded', () => {
   enableHorizontalDragScroll('.accounts-filter-bar, .admin-pill-bar, .tx-type-filter-bar');

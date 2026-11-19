@@ -544,6 +544,9 @@ async function initDatabase() {
 
   const currency = await db.settings.get('currency');
   if (!currency) await db.settings.put({ key: 'currency', value: 'VND' });
+
+  const budgetMode = await db.settings.get('budget_mode');
+  if (!budgetMode) await db.settings.put({ key: 'budget_mode', value: 'detailed' });
 }
 
 // Sinh ID dạng số duy nhất toàn cầu dựa trên microsecond để chống xung đột ID giữa các trình duyệt/thiết bị

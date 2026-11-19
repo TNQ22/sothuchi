@@ -90,6 +90,14 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Chống triệt để Safari Link Preview / Peek & Pop & Context Menu Callout */
+a, button, [role="button"], .mobile-nav-item, .nav-item, .nav-link-btn, .btn, .btn-icon, .fab-btn, .tab-btn {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none !important;
+}
+
 html, body {
   width: 100%;
   min-height: 100%;
@@ -186,11 +194,19 @@ input, textarea, select, button {
   overflow-y: auto;
 }
 
-.nav-item a {
+.nav-item a,
+.nav-item button,
+.nav-item .nav-link-btn {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
   color: var(--text-secondary);
   text-decoration: none;
   border-radius: var(--radius-md);
@@ -198,14 +214,22 @@ input, textarea, select, button {
   font-size: 0.95rem;
   transition: all 0.2s ease;
   position: relative;
+  -webkit-touch-callout: none !important;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none !important;
 }
 
-.nav-item a:hover {
+.nav-item a:hover,
+.nav-item button:hover,
+.nav-item .nav-link-btn:hover {
   background: var(--bg-card);
   color: var(--text-primary);
 }
 
-.nav-item.active a {
+.nav-item.active a,
+.nav-item.active button,
+.nav-item.active .nav-link-btn {
   background: var(--primary);
   color: #ffffff;
   box-shadow: 0 4px 14px rgba(13, 148, 136, 0.4);
@@ -1922,10 +1946,17 @@ body.light .header-brand-logo-btn.role-viewer .header-vault-subtext {
   font-weight: 500;
   flex: 1;
   padding: 4px 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  cursor: pointer;
   transition: color 0.2s;
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none !important;
+  -webkit-user-drag: none !important;
 }
 
 .mobile-nav-item.active {
@@ -15400,3 +15431,4 @@ body.light .ptr-circle-badge,
   transform: scale(0.92);
   background: rgba(30, 41, 59, 0.95);
 }
+

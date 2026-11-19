@@ -54,20 +54,10 @@ const UIBillSplit = {
    * Mở trang chia tiền nhóm độc lập (Dedicated Page) thay vì modal popup
    */
   openStandalonePage(prefillAmount = 0, defaultTitle = '') {
-    if (window.app && window.app.currentView === 'dashboard') {
-      this.openedFrom = 'dashboard';
-    } else {
-      this.openedFrom = null;
+    if (window.app) {
+      window.app.switchView('bill-split');
     }
-
-    if (window.app && window.app.currentView !== 'settings') {
-      window.app.switchView('settings');
-    }
-
-    if (window.UISettings) {
-      window.UISettings.openSection('bill-split');
-      this.initStandalonePage(prefillAmount, defaultTitle);
-    }
+    this.initStandalonePage(prefillAmount, defaultTitle);
   },
 
   /**
@@ -121,18 +111,14 @@ const UIBillSplit = {
     }
 
     const noteVal = document.getElementById('tx-note-input')?.value || '';
-    this.openedFrom = 'new-transaction';
-    if (window.app) window.app.switchView('settings');
-    if (window.UISettings) {
-      window.UISettings.openSection('bill-split');
-      this.initStandalonePage(this.totalAmount, noteVal || 'Chi tiêu nhóm');
-      this.mode = 'transaction';
-    }
+    if (window.app) window.app.switchView('bill-split');
+    this.initStandalonePage(this.totalAmount, noteVal || 'Chi tiêu nhóm');
+    this.mode = 'transaction';
   },
 
   closeModal() {
-    if (this.mode === 'standalone' && window.UISettings && window.UISettings.currentSection === 'bill-split') {
-      window.UISettings.backToHub();
+    if (window.app && window.app.currentView === 'bill-split') {
+      window.app.goBack();
       return;
     }
     const modal = document.getElementById('modal-bill-split');
