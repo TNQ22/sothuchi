@@ -174,6 +174,17 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
     ```
   - **Hiệu quả:** Trình duyệt sẽ hiển thị toàn bộ ký tự trọn vẹn sát tận mép đường biên của ô/thẻ, cho phép người dùng đọc thêm được vài ký tự có nghĩa quý giá thay vì hiển thị dấu ba chấm `...`. Khi bị tràn, các ký tự vượt ngưỡng sẽ tự động ẩn phẳng (clip) một cách tinh tế và không gây xô lệch hay cuộn trang.
 
+### 2.10. Chuẩn Giao Diện Mục Được Chia Sẻ Ở Tab Tài Khoản (`#view-accounts`) (BẮT BUỘC)
+- **Thanh tab bộ lọc (Tất cả | Cá nhân | Được chia sẻ):**
+  - Căng đều 100% bề ngang (`flex: 1 1 0; min-width: 0;`), chữ bắt buộc có `text-overflow: clip !important; overflow: hidden !important; white-space: nowrap !important;`.
+  - Tuyệt đối không để tab `Được chia sẻ` bị co ép thành dấu ba chấm `...` hay tràn vỡ giao diện trên mọi màn hình di động.
+- **Khung nhóm Mục Được Chia Sẻ (`.shared-highlight-section`):**
+  - **Xuất lề sát cạnh (Edge-to-Edge display):** Giảm thiểu padding container trên mobile (`padding: 12px 6px !important;`), mở rộng tối đa không gian hiển thị cho các thẻ danh sách bên trong tương tự như thẻ Tài chính hiện có.
+  - Header nhóm (`.accounts-group-header`): Icon gọn gàng 34px, tiêu đề `Mục được chia sẻ với bạn` và số tiền tổng hợp hiển thị rõ ràng, khối action bên phải (`.accounts-group-actions`) có `flex-shrink: 0`, khối tiêu đề bên trái (`.accounts-group-title-wrap`) có `flex: 1 1 0%; min-width: 0; overflow: hidden;` không giới hạn cứng bề ngang để nhường tối đa diện tích cho tiêu đề.
+- **Triệt tiêu toàn bộ dấu ba chấm `...` trên các thẻ chia sẻ:**
+  - Tên tài khoản chia sẻ (`.account-name`), tên sổ tiết kiệm, sổ tích lũy, sổ vay, quản lý tài sản, badge quyền (`.account-role-badge`), tag kỳ hạn/lãi suất (`.term-badge`, `.rate-badge`), tên người chia sẻ (`Từ: ...`), mô tả và số tiền đều phải dùng `text-overflow: clip` để hiển thị tối đa ký tự có nghĩa tràn sát mép viền, tuyệt đối không dùng `text-overflow: ellipsis`.
+  - Phân loại trực quan bằng viền xanh dương nổi bật (`#3b82f6` / `#60a5fa`) và badge quyền trực quan (`Chỉnh sửa` / `Chỉ xem`) mà không làm co hẹp tên tài khoản.
+
 ---
 
 ## 3. NGUYÊN TẮC VIẾT CODE & BẢO TRÌ

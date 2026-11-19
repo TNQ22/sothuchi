@@ -6699,7 +6699,8 @@ body.dark .switch .slider {
   }
 
   /* Khung bao ngoài của từng nhóm tài sản - mở rộng tối đa ra 2 bên */
-  .accounts-group-container {
+  .accounts-group-container,
+  .shared-highlight-section {
     padding: 12px 6px !important; /* Bóp nhỏ lề 2 bên sát viền */
     margin-top: 14px !important;
     border-radius: 14px !important;
@@ -6855,7 +6856,6 @@ html, body {
 .accounts-group-title-wrap {
   flex: 1 1 0% !important;
   min-width: 0 !important;
-  max-width: calc(100% - 75px) !important;
   overflow: hidden !important;
 }
 
@@ -12115,6 +12115,13 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   text-align: center;
+  overflow: hidden;
+}
+
+.accounts-seg-tab span {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
 }
 
 .accounts-seg-tab:hover {
@@ -12152,7 +12159,16 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   border-radius: var(--radius-lg);
   margin-top: 10px;
   margin-bottom: 20px;
-  padding: 14px 12px !important;
+  padding: 14px 12px;
+}
+
+@media (max-width: 768px) {
+  .shared-highlight-section {
+    padding: 12px 6px !important;
+    margin-top: 10px !important;
+    margin-bottom: 14px !important;
+    border-radius: 14px !important;
+  }
 }
 
 [data-theme="dark"] .shared-highlight-section {
@@ -12466,6 +12482,9 @@ body.dark .account-role-badge.editor {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin: 10px 0 6px 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
 }
 
 .shared-group-category-title:first-child {
