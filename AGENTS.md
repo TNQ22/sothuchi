@@ -185,6 +185,27 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
   - Tên tài khoản chia sẻ (`.account-name`), tên sổ tiết kiệm, sổ tích lũy, sổ vay, quản lý tài sản, badge quyền (`.account-role-badge`), tag kỳ hạn/lãi suất (`.term-badge`, `.rate-badge`), tên người chia sẻ (`Từ: ...`), mô tả và số tiền đều phải dùng `text-overflow: clip` để hiển thị tối đa ký tự có nghĩa tràn sát mép viền, tuyệt đối không dùng `text-overflow: ellipsis`.
   - Phân loại trực quan bằng viền xanh dương nổi bật (`#3b82f6` / `#60a5fa`) và badge quyền trực quan (`Chỉnh sửa` / `Chỉ xem`) mà không làm co hẹp tên tài khoản.
 
+### 2.11. Chuẩn Giao Diện Tab Cài Đặt (`#view-settings`) (BẮT BUỘC)
+- **Xuất Lề Sát Cạnh (Edge-to-Edge Max Display Area):**
+  - Giảm thiểu tối đa padding viền bao trên mobile (`@media (max-width: 768px)`):
+    - Khung view chính `#view-settings.page-view`: `padding: 8px 3px 20px 3px !important; width: 100% !important; max-width: 100vw !important; overflow-x: hidden !important;`.
+    - Thẻ container `.settings-container`: `padding: 0 2px 4px 2px !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important;`.
+    - Thẻ card sạch `.settings-card-clean`: `padding: 12px 8px !important;`.
+    - Khung danh sách sổ `.server-vault-section-box`: `padding: 10px 8px !important;`.
+  - Mở rộng tối đa bề ngang cho danh sách cài đặt, trung tâm đồng bộ và các bảng chi tiết để không lãng phí không gian hiển thị trên điện thoại.
+- **Ràng Buộc Flexbox Khắc Phục Thu Nhỏ Tiêu Đề & Huy Hiệu Trạng Thái:**
+  - Hàng tiêu đề hub item `.settings-item-title-row`: Phải có `display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 6px !important; min-width: 0 !important; width: 100% !important;`.
+  - Tiêu đề mục cài đặt `.settings-item-title`: Bắt buộc có `min-width: 0 !important; flex: 1 1 0% !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important;`. Khi văn bản quá dài, tự động ẩn phẳng (clip) các ký tự vượt ngưỡng, tuyệt đối không chèn `...` và không được đẩy dồn pill trạng thái (`.settings-status-pill`) ra ngoài màn hình.
+  - Huy hiệu trạng thái `.settings-status-pill`: Có `flex-shrink: 0 !important; white-space: nowrap !important;`.
+  - Tiêu đề header trang con `.settings-detail-header-title`: Bắt buộc có `min-width: 0 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important;`.
+- **Thẻ Tài Khoản Đồng Bộ & Danh Sách Sổ Đa Người Dùng:**
+  - Thông tin người dùng (`.server-user-name`, `.server-user-email`): Có `min-width: 0 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important;`.
+  - Huy hiệu vai trò (`.sync-vault-role-pill`): Có `flex-shrink: 0 !important; white-space: nowrap !important;` (Chủ sổ / Chỉ xem / Chỉnh sửa).
+  - Tên sổ đồng bộ (`.server-vault-name-text`): Có `flex: 1 1 0% !important; min-width: 0 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important;`.
+  - Cụm nút hành động trên mỗi sổ (`.server-vault-icon-actions`): Có `flex-shrink: 0 !important;` bảo toàn kích thước các nút bấm thao tác nhanh.
+- **Thẻ Giao Dịch Trong Thùng Rác (`renderTrashPanel`):**
+  - Tên tài khoản / nguồn tiền (`accInfo`): Giới hạn hiển thị với `text-overflow: clip` để không làm vỡ bố cục thẻ hoặc chèn dấu ba chấm.
+
 ---
 
 ## 3. NGUYÊN TẮC VIẾT CODE & BẢO TRÌ

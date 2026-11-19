@@ -3060,7 +3060,7 @@ const UISettings = {
                   <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                     <span>${tx.date || ''} ${tx.time || ''}</span>
                     <span>•</span>
-                    <span>${esc(accInfo)}</span>
+                    <span style="max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: clip; display: inline-block; vertical-align: middle;" title="${esc(accInfo)}">${esc(accInfo)}</span>
                     ${accDeletedWarning}
                   </div>
                 </div>

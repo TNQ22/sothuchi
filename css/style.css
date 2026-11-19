@@ -10847,6 +10847,8 @@ body.dark .account-report-badge.excluded {
   line-height: 1.35 !important;
   display: inline-flex !important;
   align-items: center !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
 }
 
 /* 1. Chủ sổ: Màu xanh lục */
@@ -11376,6 +11378,8 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   align-items: center !important;
   justify-content: space-between !important;
   gap: 6px !important;
+  min-width: 0 !important;
+  width: 100% !important;
 }
 
 .settings-item-title {
@@ -11385,6 +11389,8 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: clip !important;
+  min-width: 0 !important;
+  flex: 1 1 0% !important;
 }
 
 .settings-item-desc {
@@ -11540,6 +11546,10 @@ body:not(.dark):not([data-theme="dark"]) .sync-vault-role-pill.viewer {
   gap: 6px !important;
   flex: 1 !important;
   text-align: center !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
 }
 
 .settings-detail-panel {
@@ -13351,6 +13361,7 @@ body.light .ptr-circle-badge,
   overflow: hidden !important;
   text-overflow: clip !important;
   line-height: 1.25 !important;
+  min-width: 0 !important;
 }
 
 .server-user-email {
@@ -13499,6 +13510,7 @@ body.light .ptr-circle-badge,
   display: flex;
   align-items: center;
   gap: 3px;
+  flex-shrink: 0 !important;
 }
 
 /* Các nút hành động trên mỗi sổ có MÀU SẮC NỔI BẬT & ĐỒNG BỘ */
@@ -13585,6 +13597,8 @@ body.light .ptr-circle-badge,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
 }
 
 .server-vault-name-text.active-name {
@@ -13704,17 +13718,25 @@ body.light .ptr-circle-badge,
 /* Viền bao sát màn hình trên di động */
 @media (max-width: 768px) {
   #view-settings.page-view {
-    padding: 10px 7px 8px 7px !important;
+    padding: 8px 3px 20px 3px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
   }
   .settings-container {
-    padding: 0 4px 4px 4px !important;
+    padding: 0 2px 4px 2px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
   }
   .settings-card-clean {
-    padding: 14px 12px !important;
+    padding: 12px 8px !important;
     border-radius: var(--radius-md) !important;
   }
   .server-vault-section-box {
-    padding: 12px 10px !important;
+    padding: 10px 8px !important;
   }
 
   /* Mở rộng các vòng bao xát viền màn hình trong modal chia sẻ & cài đặt */
