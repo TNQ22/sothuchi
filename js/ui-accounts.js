@@ -6289,6 +6289,25 @@ const UIAccounts = {
     let loans = db.loans ? (await db.loans.toArray()).filter(l => !l.isDeleted || l.isDeleted === 0) : [];
     let assets = db.assets ? (await db.assets.toArray()).filter(a => !a.isDeleted || a.isDeleted === 0) : [];
 
+    // Calculate total shared items balance/value
+    const sharedAccounts = accounts.filter(a => !!a._isSharedItem && !a.isArchived);
+    const sharedSavings = savings.filter(s => !!s._isSharedItem && s.status === 'active');
+    const sharedAccums = accumulations.filter(a => !!a._isSharedItem);
+    const sharedLoans = loans.filter(l => !!l._isSharedItem && l.status !== 'settled');
+    const sharedAssets = assets.filter(a => !!a._isSharedItem);
+
+    let totalSharedVal = 0;
+    sharedAccounts.forEach(a => { totalSharedVal += (a.balance || 0); });
+    sharedSavings.forEach(s => { totalSharedVal += (s.balance || s.depositAmount || 0); });
+    sharedAccums.forEach(a => { totalSharedVal += (a.currentAmount || 0); });
+    sharedLoans.forEach(l => {
+      const rem = l.remainingAmount !== undefined ? l.remainingAmount : (l.loanAmount || 0);
+      totalSharedVal -= rem;
+    });
+    sharedAssets.forEach(a => {
+      totalSharedVal += Math.round((a.quantity || 1) * (a.currentPrice || 0));
+    });
+
     if (this.currentFilterTab === 'personal') {
       accounts = accounts.filter(a => !a._isSharedItem);
       savings = savings.filter(s => !s._isSharedItem);
@@ -6335,6 +6354,17 @@ const UIAccounts = {
 
     const loanEl = document.getElementById('networth-mini-loans');
     if (loanEl) loanEl.textContent = `${new Intl.NumberFormat('vi-VN').format(totalLoans)}đ`;
+
+    const sharedEl = document.getElementById('networth-mini-shared');
+    if (sharedEl) {
+      const displaySharedVal = this.currentFilterTab === 'personal' ? 0 : totalSharedVal;
+      sharedEl.textContent = `${new Intl.NumberFormat('vi-VN').format(displaySharedVal)}đ`;
+    }
+
+    const labelShared = document.getElementById('label-shared-items-total');
+    if (labelShared && this.currentFilterTab !== 'shared') {
+      labelShared.textContent = `${new Intl.NumberFormat('vi-VN').format(totalSharedVal)}đ`;
+    }
 
     const labelLoan = document.getElementById('label-loans-total');
     if (labelLoan) labelLoan.textContent = `${new Intl.NumberFormat('vi-VN').format(totalLoans)}đ`;
