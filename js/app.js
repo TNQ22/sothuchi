@@ -742,7 +742,7 @@ class App {
 
     const mobileBottomNav = document.querySelector('.mobile-bottom-nav');
     if (mobileBottomNav) {
-      const hideNavViews = ['budget-form', 'budget-category-form', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-cat-history', 'finance-detail', 'trips-manager', 'trip-detail', 'bill-split'];
+      const hideNavViews = ['budget-form', 'budget-category-form', 'category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-cat-history', 'finance-detail'];
       if (hideNavViews.includes(viewId)) {
         mobileBottomNav.style.setProperty('display', 'none', 'important');
       } else {
@@ -813,6 +813,8 @@ class App {
     document.body.classList.toggle('view-template-manager', viewId === 'template-manager');
     document.body.classList.toggle('view-template-editor', viewId === 'template-editor');
     document.body.classList.toggle('view-bill-split', viewId === 'bill-split');
+    document.body.classList.toggle('view-trips-manager', viewId === 'trips-manager');
+    document.body.classList.toggle('view-trip-detail', viewId === 'trip-detail');
 
 
     // Update active nav links

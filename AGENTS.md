@@ -206,6 +206,48 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
 - **Thẻ Giao Dịch Trong Thùng Rác (`renderTrashPanel`):**
   - Tên tài khoản / nguồn tiền (`accInfo`): Giới hạn hiển thị với `text-overflow: clip` để không làm vỡ bố cục thẻ hoặc chèn dấu ba chấm.
 
+### 2.12. Quy Chuẩn Giữ Thanh Menu Dưới (Mobile Bottom Navigation Bar) Cố Định Cho Các Tiện Ích Chuyên Biệt (BẮT BUỘC)
+- **Nguyên Tắc & Mục Tiêu:**
+  - Thanh menu điều hướng dưới (`.mobile-bottom-nav`) phải **luôn hiển thị cố định ở đáy màn hình** khi người dùng mở các tiện ích chuyên biệt:
+    - **Chia tiền nhóm** (`#view-bill-split`, `viewId = 'bill-split'`)
+    - **Quản lý Chuyến đi & Sự kiện** (`#view-trips-manager`, `viewId = 'trips-manager'`)
+    - **Chi tiết Chuyến đi & Sự kiện** (`#view-trip-detail`, `viewId = 'trip-detail'`)
+    - **Mẫu ghi chép** (`#view-template-manager`, `#view-template-editor`)
+  - Cho phép người dùng chuyển nhanh giữa các tab chính (Tổng quan, Tài khoản, Ghi chép, Ngân sách, Cài đặt) tức thì mà không bị cô lập hoặc mất thanh điều hướng cơ sở.
+- **Ràng Buộc CSS (`css/style.css`):**
+  - **Hiển thị menu dưới cố định:** Bắt buộc khai báo cả body class và `:has()` selector:
+    ```css
+    body.view-trips-manager .mobile-bottom-nav,
+    body.view-trip-detail .mobile-bottom-nav,
+    body.view-bill-split .mobile-bottom-nav,
+    body:has(#view-trips-manager.active) .mobile-bottom-nav,
+    body:has(#view-trip-detail.active) .mobile-bottom-nav,
+    body:has(#view-bill-split.active) .mobile-bottom-nav {
+      display: flex !important;
+    }
+    ```
+  - **Khớp chuẩn khung cuộn trên menu dưới (Tuyệt đối không tràn ngầm hay che khuất nút):**
+    Vì các view này là `.tx-page-view` (`position: fixed`), đáy của view phải kết thúc chính xác ngay phía trên thanh menu dưới để không bị che khuất nội dung:
+    ```css
+    body.view-trips-manager #view-trips-manager,
+    body.view-trip-detail #view-trip-detail,
+    body.view-bill-split #view-bill-split,
+    body:has(#view-trips-manager.active) #view-trips-manager,
+    body:has(#view-trip-detail.active) #view-trip-detail,
+    body:has(#view-bill-split.active) #view-bill-split {
+      bottom: calc(65px + max(16px, env(safe-area-inset-bottom, 0px))) !important;
+      height: calc(100dvh - 65px - max(16px, env(safe-area-inset-bottom, 0px))) !important;
+      max-height: calc(100dvh - 65px - max(16px, env(safe-area-inset-bottom, 0px))) !important;
+      padding-bottom: 0 !important;
+    }
+    ```
+  - Thẻ bao bọc bên trong `.tx-page-card-wrapper` phải có `min-height: auto !important;` để tránh sinh thanh cuộn giả khi nội dung ngắn.
+  - Padding đáy của container nội dung đặt vừa vặn (`padding: 12px 6px 24px 6px;`), bảo đảm các nút thao tác cuối trang ("Lưu đợt chia tiền", "Sao chép gửi Zalo", v.v.) luôn lộ rõ ràng, không bị cấn hay che lấp.
+- **Ràng Buộc Logic JS (`js/app.js`):**
+  - **Tuyệt đối KHÔNG** đưa `'trips-manager'`, `'trip-detail'`, `'bill-split'` vào danh sách `hideNavViews` trong `switchView()`.
+  - Luôn kích hoạt toggle body class tương ứng (`view-trips-manager`, `view-trip-detail`, `view-bill-split`) khi chuyển view.
+  - Bảo toàn đầy đủ cử chỉ vuốt trở về (Swipe-to-back), nút quay lại header và lưu vị trí cuộn khi người dùng rời hoặc quay lại view.
+
 ---
 
 ## 3. NGUYÊN TẮC VIẾT CODE & BẢO TRÌ
