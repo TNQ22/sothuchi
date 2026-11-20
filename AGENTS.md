@@ -246,7 +246,10 @@ Tài liệu này định nghĩa toàn bộ quy chuẩn thiết kế UI/UX và qu
 - **Ràng Buộc Logic JS (`js/app.js`):**
   - **Tuyệt đối KHÔNG** đưa `'trips-manager'`, `'trip-detail'`, `'bill-split'` vào danh sách `hideNavViews` trong `switchView()`.
   - Luôn kích hoạt toggle body class tương ứng (`view-trips-manager`, `view-trip-detail`, `view-bill-split`) khi chuyển view.
-  - Bảo toàn đầy đủ cử chỉ vuốt trở về (Swipe-to-back), nút quay lại header và lưu vị trí cuộn khi người dùng rời hoặc quay lại view.
+  - **Bảo toàn vị trí cuộn khi bấm thanh menu dưới:**
+    - Khi người dùng đang ở tiện ích con (`trips-manager`, `trip-detail`, `bill-split`, `template-manager`, v.v.) và bấm vào một tab trên thanh menu dưới (đặc biệt là tab cha đã mở trước đó như Cài đặt hoặc Tổng quan), hệ thống phải nhận diện đây là thao tác quay lại và truyền `isBack = true` (hoặc kiểm tra `previousView === viewId && scrollPositions[viewId] > 0`).
+    - Khôi phục chính xác toạ độ cuộn đã lưu (`activeView.scrollTop = savedY`) thay vì nhảy lên đầu trang (`scrollTop = 0`). Chỉ cuộn lên đầu khi người dùng bấm vào chính tab đang hoạt động sẵn.
+  - Bảo toàn đầy đủ cử chỉ vuốt trở về (Swipe-to-back), nút quay lại header (dùng `window.app.goBack()`) và lưu vị trí cuộn khi người dùng rời hoặc quay lại view.
 
 ---
 

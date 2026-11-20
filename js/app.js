@@ -495,12 +495,16 @@ class App {
       }
 
       // 2. Chuyển sang view khác:
+      const subViews = ['category-picker', 'borrow-select', 'account-form', 'account-provider', 'savings-form', 'accumulation-form', 'asset-form', 'loan-form', 'budget-form', 'budget-category-form', 'budget-cat-history', 'finance-detail', 'trips-manager', 'trip-detail', 'bill-split', 'template-manager', 'template-editor'];
+      const isFromSubView = subViews.includes(this.currentView);
+      const isBack = isFromSubView && (this.previousView === view || (this.scrollPositions[view] !== undefined && this.scrollPositions[view] > 0));
+
       if (view === 'budgets') {
-        this.handleBudgetTabClick();
+        this.handleBudgetTabClick(isBack);
         return;
       }
       if (view === 'settings') {
-        this.handleSettingsTabClick();
+        this.handleSettingsTabClick(isBack);
         return;
       }
       if (view === 'transactions') {
@@ -511,7 +515,7 @@ class App {
         }
       }
       this.activePrimaryView = view; // Track which primary tab is active
-      this.switchView(view);
+      this.switchView(view, isBack);
     };
 
     // Desktop Nav Items
@@ -604,7 +608,7 @@ class App {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  handleSettingsTabClick() {
+  handleSettingsTabClick(isBack = false) {
     // Nếu đang ở sẵn trang Cài đặt:
     if (this.currentView === 'settings') {
       if (window.UISettings) {
@@ -623,10 +627,10 @@ class App {
 
     // Chuyển vào trang Cài Đặt
     this.activePrimaryView = 'settings';
-    this.switchView('settings');
+    this.switchView('settings', isBack);
   }
 
-  handleBudgetTabClick() {
+  handleBudgetTabClick(isBack = false) {
     const now = Date.now();
     const timeSinceLastClick = now - (this.lastBudgetTabClickTime || 0);
 
@@ -649,7 +653,7 @@ class App {
 
     // Nếu đang ở màn hình khác -> chuyển vào trang Ngân sách
     this.activePrimaryView = 'budgets';
-    this.switchView('budgets');
+    this.switchView('budgets', isBack);
   }
 
   async handleInputTabClick() {
@@ -990,12 +994,10 @@ class App {
     }
 
     const activeView = document.getElementById(`view-${viewId}`);
-    if (activeView) {
-      activeView.scrollTop = 0;
-    }
+    const shouldRestoreScroll = isBack || (this.previousView === viewId && this.scrollPositions[viewId] !== undefined && this.scrollPositions[viewId] > 0);
 
-    // Khôi phục vị trí cuộn khi trở về (isBack = true)
-    if (isBack && this.scrollPositions[viewId] !== undefined) {
+    // Khôi phục vị trí cuộn khi trở về (isBack = true hoặc quay lại previousView đã lưu tọa độ)
+    if (shouldRestoreScroll && this.scrollPositions[viewId] !== undefined) {
       const savedY = this.scrollPositions[viewId] || 0;
       if (activeView) {
         activeView.scrollTop = savedY;
