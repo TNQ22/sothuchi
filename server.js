@@ -44,7 +44,7 @@ const PORT = parseInt(process.env.PORT || '8081', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const JWT_SECRET = process.env.JWT_SECRET || 'sothuchi_vault_secret_' + crypto.randomBytes(16).toString('hex');
-const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || '').trim();
+const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || '').trim();
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 
 // Cấu hình Email quản trị viên máy chủ sao lưu (Admin Dashboard) - Chỉ xác thực qua ADMIN_EMAIL
@@ -3129,15 +3129,15 @@ async function handleApiRequest(req, res, pathname, url) {
   // 2.1 Cung cấp cấu hình PWA cấp sẵn cho người dùng (Google Drive, Dropbox, v.v...)
   if (req.method === 'GET' && pathname === '/api/config') {
     return sendJson(res, 200, {
-      VITE_GOOGLE_CLIENT_ID: process.env.VITE_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '',
-      VITE_GOOGLE_API_KEY: process.env.VITE_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || '',
-      VITE_GOOGLE_STORAGE_LOCATION: process.env.VITE_GOOGLE_STORAGE_LOCATION || 'appDataFolder',
-      VITE_GOOGLE_CUSTOM_FOLDER_NAME: process.env.VITE_GOOGLE_CUSTOM_FOLDER_NAME || 'Sổ Thu Chi',
-      VITE_GOOGLE_DRIVE_FULL_ACCESS: process.env.VITE_GOOGLE_DRIVE_FULL_ACCESS === 'true' || process.env.GOOGLE_DRIVE_FULL_ACCESS === 'true',
-      VITE_GOOGLE_WORKER_URL: process.env.VITE_GOOGLE_WORKER_URL || process.env.GOOGLE_WORKER_URL || '',
-      VITE_GOOGLE_CLIENT_SECRET: process.env.VITE_GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '',
-      VITE_DROPBOX_APP_KEY: process.env.VITE_DROPBOX_APP_KEY || process.env.DROPBOX_APP_KEY || '',
-      VITE_AUTO_SYNC_ENABLED: process.env.VITE_AUTO_SYNC_ENABLED !== 'false'
+      GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+      GOOGLE_API_KEY: process.env.GOOGLE_API_KEY || '',
+      GOOGLE_STORAGE_LOCATION: process.env.GOOGLE_STORAGE_LOCATION || 'appDataFolder',
+      GOOGLE_CUSTOM_FOLDER_NAME: process.env.GOOGLE_CUSTOM_FOLDER_NAME || 'Sổ Thu Chi',
+      GOOGLE_DRIVE_FULL_ACCESS: process.env.GOOGLE_DRIVE_FULL_ACCESS === 'true',
+      GOOGLE_WORKER_URL: process.env.GOOGLE_WORKER_URL || '',
+      GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+      DROPBOX_APP_KEY: process.env.DROPBOX_APP_KEY || '',
+      AUTO_SYNC_ENABLED: process.env.AUTO_SYNC_ENABLED !== 'false'
     });
   }
 

@@ -101,11 +101,6 @@ const EnvConfig = {
     if (this.data[key] !== undefined && this.data[key] !== '') {
       return this.data[key];
     }
-    // Hỗ trợ cả tiền tố VITE_ hoặc không có VITE_
-    const altKey = key.startsWith('VITE_') ? key.replace('VITE_', '') : `VITE_${key}`;
-    if (this.data[altKey] !== undefined && this.data[altKey] !== '') {
-      return this.data[altKey];
-    }
     return defaultValue;
   }
 };

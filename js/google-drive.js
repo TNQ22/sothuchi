@@ -58,7 +58,7 @@ class GoogleDriveSync {
       if (savedApiKey && savedApiKey.value) {
         this.apiKey = savedApiKey.value.trim();
       } else if (window.EnvConfig) {
-        this.apiKey = (window.EnvConfig.get('GOOGLE_API_KEY', '') || window.EnvConfig.get('VITE_GOOGLE_API_KEY', '')).trim();
+        this.apiKey = window.EnvConfig.get('GOOGLE_API_KEY', '').trim();
       }
 
       const autoSyncSetting = await db.settings.get('autoSyncEnabled');
@@ -134,7 +134,7 @@ class GoogleDriveSync {
       if (fullDriveSetting !== undefined && fullDriveSetting.value !== undefined) {
         this.fullDriveAccess = !!fullDriveSetting.value;
       } else if (window.EnvConfig) {
-        const envVal = window.EnvConfig.get('GOOGLE_DRIVE_FULL_ACCESS') ?? window.EnvConfig.get('VITE_GOOGLE_DRIVE_FULL_ACCESS');
+        const envVal = window.EnvConfig.get('GOOGLE_DRIVE_FULL_ACCESS');
         this.fullDriveAccess = envVal === true || envVal === 'true';
       }
 
@@ -2835,7 +2835,7 @@ class GoogleDriveSync {
       if (savedKey?.value) {
         this.apiKey = savedKey.value.trim();
       } else if (window.EnvConfig) {
-        this.apiKey = (window.EnvConfig.get('GOOGLE_API_KEY', '') || window.EnvConfig.get('VITE_GOOGLE_API_KEY', '')).trim();
+        this.apiKey = window.EnvConfig.get('GOOGLE_API_KEY', '').trim();
       }
     }
 
@@ -3189,7 +3189,7 @@ class GoogleDriveSync {
       if (savedKey?.value) {
         this.apiKey = savedKey.value.trim();
       } else if (window.EnvConfig) {
-        this.apiKey = (window.EnvConfig.get('GOOGLE_API_KEY', '') || window.EnvConfig.get('VITE_GOOGLE_API_KEY', '')).trim();
+        this.apiKey = window.EnvConfig.get('GOOGLE_API_KEY', '').trim();
       }
     }
 
@@ -3302,7 +3302,7 @@ class GoogleDriveSync {
       if (savedKey?.value) {
         this.apiKey = savedKey.value.trim();
       } else if (window.EnvConfig) {
-        this.apiKey = (window.EnvConfig.get('GOOGLE_API_KEY', '') || window.EnvConfig.get('VITE_GOOGLE_API_KEY', '')).trim();
+        this.apiKey = window.EnvConfig.get('GOOGLE_API_KEY', '').trim();
       }
     }
 

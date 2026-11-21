@@ -356,8 +356,8 @@ const UISettings = {
     if (apiKeyInput) {
       if (apiKeySetting && apiKeySetting.value) {
         apiKeyInput.value = apiKeySetting.value;
-      } else if (window.EnvConfig && (window.EnvConfig.get('GOOGLE_API_KEY') || window.EnvConfig.get('VITE_GOOGLE_API_KEY'))) {
-        apiKeyInput.value = window.EnvConfig.get('GOOGLE_API_KEY') || window.EnvConfig.get('VITE_GOOGLE_API_KEY');
+      } else if (window.EnvConfig && window.EnvConfig.get('GOOGLE_API_KEY')) {
+        apiKeyInput.value = window.EnvConfig.get('GOOGLE_API_KEY');
       }
     }
 
@@ -372,7 +372,7 @@ const UISettings = {
       } else if (window.googleDriveService && window.googleDriveService.fullDriveAccess !== undefined) {
         isFullAccess = !!window.googleDriveService.fullDriveAccess;
       } else if (window.EnvConfig) {
-        const envVal = window.EnvConfig.get('GOOGLE_DRIVE_FULL_ACCESS') ?? window.EnvConfig.get('VITE_GOOGLE_DRIVE_FULL_ACCESS');
+        const envVal = window.EnvConfig.get('GOOGLE_DRIVE_FULL_ACCESS');
         isFullAccess = envVal === true || envVal === 'true';
       }
       fullAccessToggle.checked = isFullAccess;

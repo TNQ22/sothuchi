@@ -138,7 +138,7 @@ Sau khi chạy lệnh trên:
 | `TZ` | `Asia/Ho_Chi_Minh` | Múi giờ của container (log server & quản trị). Người dùng nước ngoài có thể đổi theo timezone địa phương |
 | `DATA_DIR` | `/app/data` | Thư mục lưu file SQLite (`sothuchi.sqlite`) và bản sao lưu |
 | `JWT_SECRET` | Chuỗi ngẫu nhiên | Khóa bí mật bảo vệ phiên đăng nhập token của người dùng |
-| `GOOGLE_CLIENT_ID` / `VITE_GOOGLE_CLIENT_ID` | *(Tùy chọn)* | Client ID từ Google Cloud Console để máy chủ tự động cung cấp cho client |
+| `GOOGLE_CLIENT_ID` | *(Tùy chọn)* | Client ID từ Google Cloud Console để máy chủ tự động cung cấp cho client |
 | `CORS_ORIGIN` | `*` | Cho phép ứng dụng PWA từ bất kỳ domain nào (hoặc GitHub Pages) kết nối vào |
 
 ### 3. Đăng nhập và Chia sẻ Sổ qua Email Google
