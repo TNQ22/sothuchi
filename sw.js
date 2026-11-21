@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sothuchi-pwa-v3.3.6';
+const CACHE_NAME = 'sothuchi-pwa-v3.3.7';
 
 const PRECACHE_ASSETS = [
   './',
@@ -113,7 +113,7 @@ self.addEventListener('fetch', (event) => {
 
   // Bỏ qua các API nội bộ (/api/...) và dịch vụ bên ngoài (để mạng xử lý trực tiếp)
   if (
-    url.pathname.startsWith('/api/') ||
+    url.pathname.includes('/api/') ||
     (url.origin !== self.location.origin && (
       url.hostname.includes('googleapis.com') ||
       url.hostname.includes('google.com') ||

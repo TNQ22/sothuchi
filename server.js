@@ -3137,8 +3137,64 @@ async function handleApiRequest(req, res, pathname, url) {
       GOOGLE_WORKER_URL: process.env.GOOGLE_WORKER_URL || '',
       GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
       DROPBOX_APP_KEY: process.env.DROPBOX_APP_KEY || '',
-      AUTO_SYNC_ENABLED: process.env.AUTO_SYNC_ENABLED !== 'false'
+      AUTO_SYNC_ENABLED: process.env.AUTO_SYNC_ENABLED !== 'false',
+      OCR_AI_ENABLED: process.env.OCR_AI_ENABLED || '',
+      OCR_AI_TIMEOUT: process.env.OCR_AI_TIMEOUT || '',
+      OCR_ENGINE: process.env.OCR_ENGINE || '',
+      CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID || '',
+      CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN || '',
+      GEMINI_API_KEY: process.env.GEMINI_API_KEY || ''
     });
+  }
+
+  // 2.2 Proxy cho Cloudflare Workers AI (Tránh lỗi CORS: "Load failed" trên trình duyệt Web/PWA)
+  if (req.method === 'POST' && pathname === '/api/ai/cloudflare-proxy') {
+    try {
+      const body = await parseJsonBody(req);
+      const accountId = body.accountId || process.env.CLOUDFLARE_ACCOUNT_ID;
+      const apiToken = body.apiToken || process.env.CLOUDFLARE_API_TOKEN;
+      const payload = body.payload;
+
+      if (!accountId || !apiToken) {
+        return sendJson(res, 400, { error: 'Thiếu Cloudflare Account ID hoặc API Token' });
+      }
+      if (!payload) {
+        return sendJson(res, 400, { error: 'Thiếu dữ liệu payload' });
+      }
+
+      const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/meta/llama-3.2-11b-vision-instruct`;
+      let cfRes = await fetch(cfUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      let cfData = await cfRes.json().catch(() => ({}));
+
+      // Tự động đồng ý điều khoản Meta nếu cần (lỗi 5016 / 403)
+      if (cfRes.status === 403 || (cfData.errors && cfData.errors.some(e => e.code === 5016 || /agree|terms/i.test(e.message || '')))) {
+        console.log('[Cloudflare Proxy] Tự động đồng ý điều khoản Meta và thử lại...');
+        await fetch(cfUrl, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${apiToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: 'agree' })
+        });
+        cfRes = await fetch(cfUrl, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${apiToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        cfData = await cfRes.json().catch(() => ({}));
+      }
+
+      return sendJson(res, cfRes.status, cfData);
+    } catch (err) {
+      console.error('[Cloudflare Proxy Error]', err);
+      return sendJson(res, 500, { error: err.message || 'Lỗi kết nối tới Cloudflare Workers AI' });
+    }
   }
 
   // 3. Google Login / Authenticate

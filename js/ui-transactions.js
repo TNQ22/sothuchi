@@ -7326,42 +7326,69 @@ Quy tắc:
 - category: chọn 1 trong các danh mục: Ăn uống, Mua sắm, Di chuyển, Đi chợ / Siêu thị, Hoá đơn & Tiện ích, Sức khoẻ, Giải trí, Khác.
 - items: danh sách các món/hàng hoá kèm giá và số lượng nếu đọc được.`;
 
-      const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/meta/llama-3.2-11b-vision-instruct`;
+      let res;
+      let data;
+      let usedProxy = false;
 
-      let res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-          image: processedBase64
-        }),
-        signal: controller.signal
-      });
-
-      let data = await res.json().catch(() => ({}));
-
-      // Tự động kích hoạt Meta Terms agreement nếu chưa xác nhận (lỗi 5016 / 403)
-      if (res.status === 403 || (data.errors && data.errors.some(e => e.code === 5016 || /agree|terms/i.test(e.message || '')))) {
-        await fetch(url, {
+      // 1. Thử gọi qua endpoint proxy của server để tránh bị trình duyệt chặn CORS ("Load failed")
+      try {
+        const proxyRes = await fetch('./api/ai/cloudflare-proxy', {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: 'agree' }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accountId,
+            apiToken: token,
+            payload: { prompt: prompt, image: processedBase64 }
+          }),
           signal: controller.signal
         });
+        if (proxyRes.status !== 404) {
+          res = proxyRes;
+          data = await proxyRes.json().catch(() => ({}));
+          usedProxy = true;
+        }
+      } catch (proxyErr) {
+        if (proxyErr.name === 'AbortError') throw proxyErr;
+      }
+
+      // 2. Dự phòng gọi trực tiếp nếu server không có proxy
+      if (!usedProxy) {
+        const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/meta/llama-3.2-11b-vision-instruct`;
         res = await fetch(url, {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: prompt, image: processedBase64 }),
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            image: processedBase64
+          }),
           signal: controller.signal
         });
         data = await res.json().catch(() => ({}));
+
+        // Tự động kích hoạt Meta Terms agreement nếu chưa xác nhận (lỗi 5016 / 403)
+        if (res.status === 403 || (data.errors && data.errors.some(e => e.code === 5016 || /agree|terms/i.test(e.message || '')))) {
+          console.log('[Cloudflare AI] Kích hoạt Meta Terms agreement và thử lại...');
+          await fetch(url, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: 'agree' }),
+            signal: controller.signal
+          });
+          res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: prompt, image: processedBase64 }),
+            signal: controller.signal
+          });
+          data = await res.json().catch(() => ({}));
+        }
       }
 
       if (!res.ok || !data.success) {
-        const errMsg = (data.errors && data.errors[0] && data.errors[0].message) || `HTTP ${res.status}`;
+        const errMsg = (data.errors && data.errors[0] && data.errors[0].message) || (data.error) || `HTTP ${res.status}`;
         throw new Error(errMsg);
       }
 

@@ -118,8 +118,8 @@ const UISettings = {
       'backup-restore': '<i data-lucide="database" style="color: #ec4899; width: 20px; height: 20px;"></i> Sao Lưu & Khôi Phục File',
       'trash': '<i data-lucide="trash-2" style="color: #ef4444; width: 20px; height: 20px;"></i> Thùng Rác & Khôi Phục',
       'export-csv': '<i data-lucide="file-spreadsheet" style="color: #10b981; width: 20px; height: 20px;"></i> Xuất Dữ Liệu Excel (CSV)',
-      'ocr-scanner': '<i data-lucide="scan-text" style="color: var(--primary); width: 20px; height: 20px;"></i> Nhận Diện Hoá Đơn (OCR Offline)',
-      'ai-gemini': '<i data-lucide="scan-text" style="color: var(--primary); width: 20px; height: 20px;"></i> Nhận Diện Hoá Đơn (OCR Offline)',
+      'ocr-scanner': '<i data-lucide="scan-text" style="color: var(--primary); width: 20px; height: 20px;"></i> Nhận Diện Hoá Đơn',
+      'ai-gemini': '<i data-lucide="scan-text" style="color: var(--primary); width: 20px; height: 20px;"></i> Nhận Diện Hoá Đơn',
       'bill-split': '<i data-lucide="arrow-right-left" style="color: #14b8a6; width: 20px; height: 20px;"></i> Chia Tiền Nhóm',
       'appearance': '<i data-lucide="palette" style="color: #6366f1; width: 20px; height: 20px;"></i> Giao Diện & Hệ Thống',
       'server-admin': '<i data-lucide="shield-check" style="color: var(--primary); width: 20px; height: 20px;"></i> Quản Trị Máy Chủ'
@@ -3498,15 +3498,42 @@ const UISettings = {
     return 'cloudflare';
   },
 
+  isDummyPlaceholder(val) {
+    if (!val || typeof val !== 'string') return true;
+    const s = val.trim().toLowerCase();
+    return (
+      s.includes('d9a8b7c6') ||
+      s.includes('your_api_token') ||
+      s.includes('your_gemini_key') ||
+      s.endsWith('...') ||
+      s.includes('abcdef1234567890') ||
+      s === 'example' ||
+      s.includes('token_here') ||
+      s.includes('your_key_here')
+    );
+  },
+
   async getCloudflareAccountId() {
     try {
       const setting = await db.settings.get('ocrCloudflareAccountId');
-      if (setting && setting.value) return setting.value;
+      if (setting && setting.value) {
+        if (this.isDummyPlaceholder(setting.value)) {
+          await db.settings.delete('ocrCloudflareAccountId');
+        } else {
+          return setting.value.trim();
+        }
+      }
       const ls = localStorage.getItem('ocr_cf_account_id');
-      if (ls) return ls;
+      if (ls) {
+        if (this.isDummyPlaceholder(ls)) {
+          localStorage.removeItem('ocr_cf_account_id');
+        } else {
+          return ls.trim();
+        }
+      }
       if (typeof EnvConfig !== 'undefined') {
         const envVal = EnvConfig.get('CLOUDFLARE_ACCOUNT_ID') || EnvConfig.get('VITE_CLOUDFLARE_ACCOUNT_ID');
-        if (envVal) return envVal;
+        if (envVal && !this.isDummyPlaceholder(envVal)) return envVal.trim();
       }
     } catch (_) {}
     return '';
@@ -3515,12 +3542,24 @@ const UISettings = {
   async getCloudflareApiToken() {
     try {
       const setting = await db.settings.get('ocrCloudflareApiToken');
-      if (setting && setting.value) return setting.value;
+      if (setting && setting.value) {
+        if (this.isDummyPlaceholder(setting.value)) {
+          await db.settings.delete('ocrCloudflareApiToken');
+        } else {
+          return setting.value.trim();
+        }
+      }
       const ls = localStorage.getItem('ocr_cf_api_token');
-      if (ls) return ls;
+      if (ls) {
+        if (this.isDummyPlaceholder(ls)) {
+          localStorage.removeItem('ocr_cf_api_token');
+        } else {
+          return ls.trim();
+        }
+      }
       if (typeof EnvConfig !== 'undefined') {
         const envVal = EnvConfig.get('CLOUDFLARE_API_TOKEN') || EnvConfig.get('VITE_CLOUDFLARE_API_TOKEN');
-        if (envVal) return envVal;
+        if (envVal && !this.isDummyPlaceholder(envVal)) return envVal.trim();
       }
     } catch (_) {}
     return '';
@@ -3529,12 +3568,24 @@ const UISettings = {
   async getGeminiApiKey() {
     try {
       const setting = await db.settings.get('ocrGeminiApiKey');
-      if (setting && setting.value) return setting.value;
+      if (setting && setting.value) {
+        if (this.isDummyPlaceholder(setting.value)) {
+          await db.settings.delete('ocrGeminiApiKey');
+        } else {
+          return setting.value.trim();
+        }
+      }
       const ls = localStorage.getItem('ocr_gemini_api_key');
-      if (ls) return ls;
+      if (ls) {
+        if (this.isDummyPlaceholder(ls)) {
+          localStorage.removeItem('ocr_gemini_api_key');
+        } else {
+          return ls.trim();
+        }
+      }
       if (typeof EnvConfig !== 'undefined') {
         const envVal = EnvConfig.get('GEMINI_API_KEY') || EnvConfig.get('VITE_GEMINI_API_KEY');
-        if (envVal) return envVal;
+        if (envVal && !this.isDummyPlaceholder(envVal)) return envVal.trim();
       }
     } catch (_) {}
     return '';
@@ -3597,7 +3648,7 @@ const UISettings = {
       const ls = localStorage.getItem('ocr_auto_scan');
       if (ls !== null) return ls === 'true';
     } catch (_) {}
-    return false;
+    return true; // Mặc định bật tự động quét khi chụp / tải ảnh
   },
 
   toggleOCRAIEnabled(enabled, save = true) {
@@ -3723,11 +3774,14 @@ const UISettings = {
 
     // Badges if loaded from Env
     if (cfEnvBadge && typeof EnvConfig !== 'undefined') {
-      const hasEnv = !!(EnvConfig.get('CLOUDFLARE_ACCOUNT_ID') || EnvConfig.get('CLOUDFLARE_API_TOKEN'));
+      const cfEnvAcc = EnvConfig.get('CLOUDFLARE_ACCOUNT_ID');
+      const cfEnvTok = EnvConfig.get('CLOUDFLARE_API_TOKEN');
+      const hasEnv = !!((cfEnvAcc && !this.isDummyPlaceholder(cfEnvAcc)) || (cfEnvTok && !this.isDummyPlaceholder(cfEnvTok)));
       cfEnvBadge.style.display = hasEnv ? 'inline-block' : 'none';
     }
     if (geminiEnvBadge && typeof EnvConfig !== 'undefined') {
-      const hasEnv = !!EnvConfig.get('GEMINI_API_KEY');
+      const geminiEnv = EnvConfig.get('GEMINI_API_KEY');
+      const hasEnv = !!(geminiEnv && !this.isDummyPlaceholder(geminiEnv));
       geminiEnvBadge.style.display = hasEnv ? 'inline-block' : 'none';
     }
 
@@ -3776,7 +3830,7 @@ const UISettings = {
     const autoCategory = autoCategoryToggle ? autoCategoryToggle.checked : true;
     const autoItems = autoItemsToggle ? autoItemsToggle.checked : true;
     const offlineQr = offlineQrToggle ? offlineQrToggle.checked : true;
-    const autoScan = autoScanToggle ? autoScanToggle.checked : false;
+    const autoScan = autoScanToggle ? autoScanToggle.checked : true;
 
     const now = Date.now();
 
@@ -3784,9 +3838,30 @@ const UISettings = {
       await db.settings.put({ key: 'ocrAiEnabled', value: aiEnabled, updatedAt: now });
       await db.settings.put({ key: 'ocrAiTimeout', value: aiTimeout, updatedAt: now });
       await db.settings.put({ key: 'ocrEngine', value: engine, updatedAt: now });
-      await db.settings.put({ key: 'ocrCloudflareAccountId', value: cfAccId, updatedAt: now });
-      await db.settings.put({ key: 'ocrCloudflareApiToken', value: cfToken, updatedAt: now });
-      await db.settings.put({ key: 'ocrGeminiApiKey', value: geminiKey, updatedAt: now });
+
+      if (this.isDummyPlaceholder(cfAccId)) {
+        await db.settings.delete('ocrCloudflareAccountId');
+        localStorage.removeItem('ocr_cf_account_id');
+      } else {
+        await db.settings.put({ key: 'ocrCloudflareAccountId', value: cfAccId, updatedAt: now });
+        localStorage.setItem('ocr_cf_account_id', cfAccId);
+      }
+
+      if (this.isDummyPlaceholder(cfToken)) {
+        await db.settings.delete('ocrCloudflareApiToken');
+        localStorage.removeItem('ocr_cf_api_token');
+      } else {
+        await db.settings.put({ key: 'ocrCloudflareApiToken', value: cfToken, updatedAt: now });
+        localStorage.setItem('ocr_cf_api_token', cfToken);
+      }
+
+      if (this.isDummyPlaceholder(geminiKey)) {
+        await db.settings.delete('ocrGeminiApiKey');
+        localStorage.removeItem('ocr_gemini_api_key');
+      } else {
+        await db.settings.put({ key: 'ocrGeminiApiKey', value: geminiKey, updatedAt: now });
+        localStorage.setItem('ocr_gemini_api_key', geminiKey);
+      }
 
       await db.settings.put({ key: 'ocrAutoAmount', value: autoAmount, updatedAt: now });
       await db.settings.put({ key: 'ocrAutoDateTime', value: autoDateTime, updatedAt: now });
@@ -3798,9 +3873,6 @@ const UISettings = {
       localStorage.setItem('ocr_ai_enabled', aiEnabled ? 'true' : 'false');
       localStorage.setItem('ocr_ai_timeout', String(aiTimeout));
       localStorage.setItem('ocr_engine', engine);
-      localStorage.setItem('ocr_cf_account_id', cfAccId);
-      localStorage.setItem('ocr_cf_api_token', cfToken);
-      localStorage.setItem('ocr_gemini_api_key', geminiKey);
 
       localStorage.setItem('ocr_auto_amount', autoAmount ? 'true' : 'false');
       localStorage.setItem('ocr_auto_datetime', autoDateTime ? 'true' : 'false');
@@ -3834,6 +3906,11 @@ const UISettings = {
       return;
     }
 
+    if (this.isDummyPlaceholder(accountId) || this.isDummyPlaceholder(token)) {
+      showToast('Account ID hoặc API Token hiện tại là chuỗi ví dụ mẫu. Vui lòng nhập thông tin thật của bạn!', 'warning', 4500);
+      return;
+    }
+
     const testBtn = document.getElementById('btn-test-cf-api');
     const origHtml = testBtn ? testBtn.innerHTML : '';
     if (testBtn) {
@@ -3846,29 +3923,56 @@ const UISettings = {
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
-      const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/meta/llama-3.2-11b-vision-instruct`;
-      let res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ prompt: 'ping' }),
-        signal: controller.signal
-      });
+      let res;
+      let data;
+      let usedProxy = false;
 
-      let data = await res.json().catch(() => ({}));
-
-      // Nếu cần đồng ý điều khoản Meta (lỗi 5016 / 403)
-      if (res.status === 403 || (data.errors && data.errors.some(e => e.code === 5016 || /agree|terms/i.test(e.message || '')))) {
-        await fetch(url, {
+      // 1. Thử gọi qua endpoint proxy của server để tránh bị trình duyệt chặn CORS ("Load failed")
+      try {
+        const proxyRes = await fetch('./api/ai/cloudflare-proxy', {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: 'agree' }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accountId,
+            apiToken: token,
+            payload: { prompt: 'ping' }
+          }),
           signal: controller.signal
         });
-        showToast('Kết nối Cloudflare Workers AI thành công! (Đã tự động kích hoạt điều khoản Meta)', 'success', 3500);
-        return;
+        if (proxyRes.status !== 404) {
+          res = proxyRes;
+          data = await proxyRes.json().catch(() => ({}));
+          usedProxy = true;
+        }
+      } catch (proxyErr) {
+        if (proxyErr.name === 'AbortError') throw proxyErr;
+      }
+
+      // 2. Dự phòng gọi trực tiếp nếu server không có proxy (môi trường static/offline)
+      if (!usedProxy) {
+        const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/meta/llama-3.2-11b-vision-instruct`;
+        res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ prompt: 'ping' }),
+          signal: controller.signal
+        });
+        data = await res.json().catch(() => ({}));
+
+        // Nếu cần đồng ý điều khoản Meta (lỗi 5016 / 403)
+        if (res.status === 403 || (data.errors && data.errors.some(e => e.code === 5016 || /agree|terms/i.test(e.message || '')))) {
+          await fetch(url, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: 'agree' }),
+            signal: controller.signal
+          });
+          showToast('Kết nối Cloudflare Workers AI thành công! (Đã tự động kích hoạt điều khoản Meta)', 'success', 3500);
+          return;
+        }
       }
 
       if (res.ok && data.success) {
@@ -3881,7 +3985,11 @@ const UISettings = {
       if (err.name === 'AbortError') {
         showToast('Hết thời gian chờ kết nối Cloudflare AI (10s). Vui lòng kiểm tra lại mạng!', 'warning', 3500);
       } else {
-        showToast(`Lỗi kết nối: ${err.message}`, 'error', 4000);
+        let msg = err.message || '';
+        if (msg === 'Load failed' || msg.includes('Failed to fetch')) {
+          msg = 'Trình duyệt bị chặn CORS (Load failed) khi kết nối trực tiếp Cloudflare. Vui lòng kiểm tra lại Account ID, Token hoặc đảm bảo server NodeJS đang chạy!';
+        }
+        showToast(`Lỗi kết nối: ${msg}`, 'error', 4500);
       }
     } finally {
       clearTimeout(timeoutId);
@@ -3900,6 +4008,11 @@ const UISettings = {
 
     if (!apiKey) {
       showToast('Vui lòng nhập Gemini API Key trước khi kiểm tra', 'warning');
+      return;
+    }
+
+    if (this.isDummyPlaceholder(apiKey)) {
+      showToast('Gemini API Key hiện tại là chuỗi ví dụ mẫu. Vui lòng nhập Key thật của bạn!', 'warning', 4500);
       return;
     }
 

@@ -635,7 +635,7 @@ const UIOverviewFinance = {
               <i data-lucide="scan-text"></i>
             </div>
             <div class="action-sheet-info">
-              <h4 class="action-sheet-title">Quét Hoá Đơn (OCR Offline)</h4>
+              <h4 class="action-sheet-title">Quét Hoá Đơn</h4>
               <p class="action-sheet-subtitle">Nhận diện tự động số tiền & nội dung</p>
             </div>
             <button type="button" class="btn-icon" onclick="UIOverviewFinance.closeOCRScannerSheet()"><i data-lucide="x"></i></button>
