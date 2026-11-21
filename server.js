@@ -3151,16 +3151,43 @@ async function handleApiRequest(req, res, pathname, url) {
   if (req.method === 'POST' && pathname === '/api/ai/cloudflare-proxy') {
     try {
       const body = await parseJsonBody(req);
-      const accountId = body.accountId || process.env.CLOUDFLARE_ACCOUNT_ID;
-      const apiToken = body.apiToken || process.env.CLOUDFLARE_API_TOKEN;
+      const accountId = (body.accountId || process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+      const apiToken = (body.apiToken || process.env.CLOUDFLARE_API_TOKEN || '').trim();
       const payload = body.payload;
+      const action = body.action;
 
       if (!accountId || !apiToken) {
         return sendJson(res, 400, { error: 'Thiếu Cloudflare Account ID hoặc API Token' });
       }
+
+      // 1. Nếu là action test_connection, kiểm tra nhanh token qua endpoint verify của Cloudflare
+      if (action === 'test_connection') {
+        try {
+          const verifyController = new AbortController();
+          const verifyTimeout = setTimeout(() => verifyController.abort(), 8000);
+          const verifyRes = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', {
+            headers: { 'Authorization': `Bearer ${apiToken}` },
+            signal: verifyController.signal
+          }).catch(() => null);
+          clearTimeout(verifyTimeout);
+
+          if (verifyRes && verifyRes.ok) {
+            const verifyData = await verifyRes.json().catch(() => ({}));
+            if (verifyData.success === false) {
+              const msg = (verifyData.errors && verifyData.errors[0] && verifyData.errors[0].message) || 'API Token không hợp lệ';
+              return sendJson(res, 401, { error: `Cloudflare API Token không hợp lệ: ${msg}`, success: false });
+            }
+          }
+        } catch (_) {}
+      }
+
       if (!payload) {
         return sendJson(res, 400, { error: 'Thiếu dữ liệu payload' });
       }
+
+      // 2. Gọi tới AI model với timeout 30s
+      const cfController = new AbortController();
+      const cfTimeout = setTimeout(() => cfController.abort(), 30000);
 
       const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/meta/llama-3.2-11b-vision-instruct`;
       let cfRes = await fetch(cfUrl, {
@@ -3169,8 +3196,13 @@ async function handleApiRequest(req, res, pathname, url) {
           'Authorization': `Bearer ${apiToken}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: cfController.signal
+      }).catch(err => {
+        clearTimeout(cfTimeout);
+        throw err;
       });
+      clearTimeout(cfTimeout);
 
       let cfData = await cfRes.json().catch(() => ({}));
 
@@ -3181,7 +3213,8 @@ async function handleApiRequest(req, res, pathname, url) {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${apiToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt: 'agree' })
-        });
+        }).catch(() => null);
+
         cfRes = await fetch(cfUrl, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${apiToken}`, 'Content-Type': 'application/json' },
@@ -3193,7 +3226,11 @@ async function handleApiRequest(req, res, pathname, url) {
       return sendJson(res, cfRes.status, cfData);
     } catch (err) {
       console.error('[Cloudflare Proxy Error]', err);
-      return sendJson(res, 500, { error: err.message || 'Lỗi kết nối tới Cloudflare Workers AI' });
+      const isTimeout = err.name === 'AbortError' || (err.message && err.message.includes('aborted'));
+      return sendJson(res, isTimeout ? 504 : 500, {
+        error: isTimeout ? 'Hết thời gian chờ phản hồi từ Cloudflare AI (30s). Mô hình AI đang khởi động lại (Cold Start) hoặc mạng chậm, vui lòng thử lại!' : (err.message || 'Lỗi kết nối tới Cloudflare Workers AI'),
+        isTimeout
+      });
     }
   }
 

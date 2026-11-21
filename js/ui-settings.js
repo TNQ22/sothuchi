@@ -3915,12 +3915,12 @@ const UISettings = {
     const origHtml = testBtn ? testBtn.innerHTML : '';
     if (testBtn) {
       testBtn.disabled = true;
-      testBtn.innerHTML = '<i data-lucide="loader-2" class="spin-animation" style="width: 14px; height: 14px;"></i> <span>Đang kiểm tra...</span>';
+      testBtn.innerHTML = '<i data-lucide="loader-2" class="spin-animation" style="width: 14px; height: 14px;"></i> <span>Đang kết nối Cloudflare AI...</span>';
       if (window.lucide) lucide.createIcons();
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
       let res;
@@ -3933,9 +3933,10 @@ const UISettings = {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            action: 'test_connection',
             accountId,
             apiToken: token,
-            payload: { prompt: 'ping' }
+            payload: { prompt: '1+1=', max_tokens: 1 }
           }),
           signal: controller.signal
         });
@@ -3957,7 +3958,7 @@ const UISettings = {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ prompt: 'ping' }),
+          body: JSON.stringify({ prompt: '1+1=', max_tokens: 1 }),
           signal: controller.signal
         });
         data = await res.json().catch(() => ({}));
@@ -3978,12 +3979,12 @@ const UISettings = {
       if (res.ok && data.success) {
         showToast('Kết nối Cloudflare Workers AI thành công! Sẵn sàng quét hoá đơn.', 'success', 3500);
       } else {
-        const errMsg = (data.errors && data.errors[0] && data.errors[0].message) || `HTTP ${res.status}`;
-        showToast(`Kết nối thất bại: ${errMsg}`, 'error', 4000);
+        const errMsg = data.error || (data.errors && data.errors[0] && data.errors[0].message) || `HTTP ${res.status}`;
+        showToast(`Kết nối thất bại: ${errMsg}`, 'error', 4500);
       }
     } catch (err) {
       if (err.name === 'AbortError') {
-        showToast('Hết thời gian chờ kết nối Cloudflare AI (10s). Vui lòng kiểm tra lại mạng!', 'warning', 3500);
+        showToast('Hết thời gian chờ kết nối Cloudflare AI (30s). Mô hình AI đang khởi động lại (Cold Start) trên máy chủ Cloudflare hoặc mạng quốc tế chậm. Vui lòng bấm thử lại lần nữa!', 'warning', 5000);
       } else {
         let msg = err.message || '';
         if (msg === 'Load failed' || msg.includes('Failed to fetch')) {
