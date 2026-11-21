@@ -2096,9 +2096,9 @@
                   <div class="settings-item-content">
                     <div class="settings-item-title-row">
                       <span class="settings-item-title">Nhận Diện Hoá Đơn</span>
-                      <span id="hub-ai-badge" class="settings-status-pill pill-green">Sẵn sàng</span>
+                      <span id="hub-ai-badge" class="settings-status-pill pill-green">Ngoại tuyến</span>
                     </div>
-                    <div class="settings-item-desc">Cloudflare Workers AI, Gemini hoặc OCR ngoại tuyến</div>
+                    <div class="settings-item-desc">Tesseract OCR &amp; VietQR ngoại tuyến 100%</div>
                   </div>
                   <i data-lucide="chevron-right" class="settings-item-arrow"></i>
                 </div>
@@ -3110,220 +3110,30 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
             </div>
 
             <!-- ==========================================
-                 PANEL 7.5: NHẬN DIỆN HOÁ ĐƠN (AI VISION & OCR)
+                 PANEL 7.5: NHẬN DIỆN HOÁ ĐƠN (OCR OFFLINE)
                  ========================================== -->
             <div id="panel-ocr-scanner" class="settings-detail-panel">
               <!-- Chú thích dưới tiêu đề -->
               <p class="settings-lead-text" style="font-size: 0.82rem; margin: 0 4px 14px 4px; line-height: 1.5; color: var(--text-secondary);">
-                Tự động bóc tách hoá đơn thông minh (OXR): Đọc tổng tiền, ngày giờ, danh mục & từng món chi tiết. Hỗ trợ <strong>Cloudflare Workers AI</strong> (Llama 3.2 Vision), <strong>Google Gemini</strong> hoặc chạy <strong>100% Offline</strong> bảo mật tuyệt đối.
+                Nhận diện hoá đơn và mã QR trực tiếp trên thiết bị (100% Ngoại tuyến): Tự động trích xuất tổng tiền, ngày giờ, danh mục &amp; từng món chi tiết bằng <strong>Tesseract OCR</strong> và <strong>bộ giải mã VietQR</strong>. Hoàn toàn bảo mật, không cần internet và không gửi dữ liệu ra bên ngoài.
               </p>
 
-              <!-- THẺ 0: CÔNG TẮC BẬT/TẮT AI VISION CHÍNH -->
-              <div class="settings-card-clean" style="margin-bottom: 14px;">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                  <div>
-                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
-                      <i data-lucide="brain-circuit" style="width: 18px; height: 18px; color: var(--primary);"></i>
-                      <span>Sử Dụng AI Vision Quét Hoá Đơn</span>
-                    </div>
-                    <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 2px;">
-                      Bật để phân tích hoá đơn thông minh bằng Cloudflare / Gemini. Tắt để vô hiệu hoá AI và dùng 100% Tesseract OCR ngoại tuyến.
-                    </div>
-                  </div>
-                  <label class="app-switch switch switch-sm" style="margin: 0; flex-shrink: 0;">
-                    <input type="checkbox" id="settings-ocr-ai-enabled" checked onchange="UISettings.toggleOCRAIEnabled(this.checked)">
-                    <span class="app-switch-slider slider round"></span>
-                  </label>
-                </div>
-              </div>
-
-              <!-- BANNER KHI VÔ HIỆU HOÁ AI VISION -->
-              <div id="ocr-ai-disabled-banner" class="settings-card-clean" style="display: none; margin-bottom: 14px; background: rgba(100, 116, 139, 0.08); border: 1px solid rgba(100, 116, 139, 0.25);">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <i data-lucide="shield" style="width: 20px; height: 20px; color: #64748b; flex-shrink: 0;"></i>
-                  <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
-                    <strong style="color: var(--text-primary); display: block;">Đang Vô Hiệu Hoá AI Vision</strong>
-                    Hệ thống sẽ chạy hoàn toàn bằng bộ quét ký tự Tesseract OCR và mã VietQR ngoại tuyến. Không gửi bất kỳ dữ liệu nào ra ngoài thiết bị của bạn.
-                  </div>
-                </div>
-              </div>
-
-              <div id="ocr-ai-config-section">
-                <!-- THẺ 1: CHỌN ĐỘNG CƠ NHẬN DIỆN -->
-                <div class="settings-card-clean" style="margin-bottom: 14px;">
-                  <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
-                    <span>Công Cụ Nhận Diện Hoá Đơn</span>
-                    <span id="ocr-active-engine-badge" class="badge" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: rgba(13, 148, 136, 0.15); color: var(--primary); font-weight: 600;">Cloudflare AI</span>
-                  </div>
-
-                  <div class="ocr-engine-selector-grid" style="display: grid; grid-template-columns: 1fr; gap: 8px;">
-                    <!-- Cloudflare Workers AI -->
-                    <label class="ocr-engine-option-card" id="card-engine-cloudflare" onclick="UISettings.selectOCREngine('cloudflare')" style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: var(--radius-md); border: 2px solid var(--primary); background: rgba(13, 148, 136, 0.05); cursor: pointer; transition: all 0.2s ease;">
-                      <input type="radio" name="ocr_engine_choice" id="engine-choice-cloudflare" value="cloudflare" checked style="margin-top: 3px; accent-color: var(--primary);">
-                      <div style="flex: 1; min-width: 0;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
-                          <strong style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.3;">Cloudflare Workers AI (Llama 3.2 Vision)</strong>
-                          <span style="font-size: 0.68rem; padding: 2px 7px; border-radius: 4px; background: rgba(245, 158, 11, 0.15); color: #d97706; font-weight: 700; white-space: nowrap; flex-shrink: 0;">Khuyên dùng</span>
-                        </div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; line-height: 1.4;">
-                          Nhận diện cực nhanh & chính xác, bóc tách từng món ăn & giá tiền. Hoàn toàn <strong>miễn phí 10.000 yêu cầu/ngày</strong>.
-                        </div>
-                      </div>
-                    </label>
-
-                    <!-- Google Gemini AI -->
-                    <label class="ocr-engine-option-card" id="card-engine-gemini" onclick="UISettings.selectOCREngine('gemini')" style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); cursor: pointer; transition: all 0.2s ease;">
-                      <input type="radio" name="ocr_engine_choice" id="engine-choice-gemini" value="gemini" style="margin-top: 3px; accent-color: var(--primary);">
-                      <div style="flex: 1; min-width: 0;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
-                          <strong style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.3;">Google Gemini AI (1.5 Flash)</strong>
-                          <span style="font-size: 0.68rem; padding: 2px 7px; border-radius: 4px; background: rgba(59, 130, 246, 0.15); color: #2563eb; font-weight: 600; white-space: nowrap; flex-shrink: 0;">Google AI</span>
-                        </div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; line-height: 1.4;">
-                          Trí tuệ nhân tạo nhận diện tiếng Việt xuất sắc, miễn phí qua Google AI Studio.
-                        </div>
-                      </div>
-                    </label>
-
-                    <!-- Tesseract OCR Offline -->
-                    <label class="ocr-engine-option-card" id="card-engine-offline" onclick="UISettings.selectOCREngine('offline')" style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); cursor: pointer; transition: all 0.2s ease;">
-                      <input type="radio" name="ocr_engine_choice" id="engine-choice-offline" value="offline" style="margin-top: 3px; accent-color: var(--primary);">
-                      <div style="flex: 1; min-width: 0;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
-                          <strong style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.3;">Tesseract OCR (100% Ngoại Tuyến)</strong>
-                          <span style="font-size: 0.68rem; padding: 2px 7px; border-radius: 4px; background: rgba(16, 185, 129, 0.15); color: #059669; font-weight: 600; white-space: nowrap; flex-shrink: 0;">Offline</span>
-                        </div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; line-height: 1.4;">
-                          Xử lý hoàn toàn trên thiết bị của bạn, không cần internet, không gửi ảnh ra ngoài máy chủ.
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-              <!-- THẺ 2: CẤU HÌNH API KEY & KẾT NỐI -->
-              <!-- 2.1 Cấu hình Cloudflare Workers AI -->
-              <div id="ocr-config-cloudflare-card" class="settings-card-clean" style="margin-bottom: 14px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
-                  <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
-                    <i data-lucide="zap" style="width: 17px; height: 17px; color: #f59e0b;"></i>
-                    <span>Cấu Hình Cloudflare Workers AI</span>
-                  </div>
-                  <span id="cf-env-badge" class="badge" style="display: none; font-size: 0.7rem; padding: 2px 7px; background: rgba(16, 185, 129, 0.15); color: #10b981; border-radius: 9999px; font-weight: 600; white-space: nowrap; flex-shrink: 0;">
-                    🌿 Từ Docker (.env)
-                  </span>
-                </div>
-
-                <!-- Ô nhập Cloudflare Account ID -->
-                <div style="margin-bottom: 12px;">
-                  <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">
-                    Cloudflare Account ID:
-                  </label>
-                  <input type="text" id="settings-cf-account-id" class="form-control" placeholder="vd: a1b2c3d4e5f67890abcdef1234567890" style="width: 100%; box-sizing: border-box; font-family: monospace; font-size: 0.84rem; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color);">
-                  <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">
-                    Lấy tại mục Workers &amp; Pages hoặc trong URL Cloudflare Dashboard.
-                  </div>
-                </div>
-
-                <!-- Ô nhập Cloudflare API Token -->
-                <div style="margin-bottom: 14px;">
-                  <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">
-                    Cloudflare API Token:
-                  </label>
-                  <div style="display: flex; gap: 6px; align-items: center;">
-                    <input type="password" id="settings-cf-api-token" class="form-control" placeholder="vd: vLg_abcd1234567890xyz..." style="flex: 1; box-sizing: border-box; font-family: monospace; font-size: 0.84rem; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color);">
-                    <button type="button" class="btn-secondary" onclick="UISettings.togglePasswordVisibility('settings-cf-api-token')" title="Hiện / Ẩn Token" style="padding: 0 12px; height: 42px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: var(--radius-md);">
-                      <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
-                    </button>
-                  </div>
-                  <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">
-                    Token cần có quyền <strong>Account &gt; Workers AI &gt; Read</strong>.
-                  </div>
-                </div>
-
-                <!-- Nút hành động Cloudflare -->
-                <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
-                  <button type="button" id="btn-test-cf-api" class="btn-secondary" onclick="UISettings.testCloudflareConnection()" style="font-size: 0.82rem; padding: 7px 12px; display: inline-flex; align-items: center; gap: 5px;">
-                    <i data-lucide="wifi" style="width: 14px; height: 14px;"></i>
-                    <span>Kiểm tra kết nối</span>
-                  </button>
-                  <button type="button" class="btn-primary" onclick="UISettings.saveOCRSettings(true)" style="font-size: 0.82rem; padding: 7px 14px; display: inline-flex; align-items: center; gap: 5px;">
-                    <i data-lucide="check" style="width: 14px; height: 14px;"></i>
-                    <span>Lưu Cài Đặt</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- 2.2 Cấu hình Google Gemini AI -->
-              <div id="ocr-config-gemini-card" class="settings-card-clean" style="display: none; margin-bottom: 14px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
-                  <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
-                    <i data-lucide="sparkles" style="width: 17px; height: 17px; color: #3b82f6;"></i>
-                    <span>Cấu Hình Google Gemini AI</span>
-                  </div>
-                  <span id="gemini-env-badge" class="badge" style="display: none; font-size: 0.7rem; padding: 2px 7px; background: rgba(16, 185, 129, 0.15); color: #10b981; border-radius: 9999px; font-weight: 600; white-space: nowrap; flex-shrink: 0;">
-                    🌿 Từ Docker (.env)
-                  </span>
-                </div>
-
-                <!-- Ô nhập Gemini API Key -->
-                <div style="margin-bottom: 14px;">
-                  <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">
-                    Gemini API Key:
-                  </label>
-                  <div style="display: flex; gap: 6px; align-items: center;">
-                    <input type="password" id="settings-gemini-api-key" class="form-control" placeholder="vd: AIzaSy..." style="flex: 1; box-sizing: border-box; font-family: monospace; font-size: 0.84rem; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color);">
-                    <button type="button" class="btn-secondary" onclick="UISettings.togglePasswordVisibility('settings-gemini-api-key')" title="Hiện / Ẩn Key" style="padding: 0 12px; height: 42px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: var(--radius-md);">
-                      <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
-                    </button>
-                  </div>
-                  <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">
-                    Lấy miễn phí tại Google AI Studio (aistudio.google.com).
-                  </div>
-                </div>
-
-                <!-- Nút hành động Gemini -->
-                <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
-                  <button type="button" id="btn-test-gemini-api" class="btn-secondary" onclick="UISettings.testGeminiConnection()" style="font-size: 0.82rem; padding: 7px 12px; display: inline-flex; align-items: center; gap: 5px;">
-                    <i data-lucide="wifi" style="width: 14px; height: 14px;"></i>
-                    <span>Kiểm tra kết nối</span>
-                  </button>
-                  <button type="button" class="btn-primary" onclick="UISettings.saveOCRSettings(true)" style="font-size: 0.82rem; padding: 7px 14px; display: inline-flex; align-items: center; gap: 5px;">
-                    <i data-lucide="check" style="width: 14px; height: 14px;"></i>
-                    <span>Lưu Cài Đặt</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- 2.3 Thông báo chế độ Tesseract Offline -->
-              <div id="ocr-config-offline-card" class="settings-card-clean" style="display: none; margin-bottom: 14px; background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.25);">
+              <!-- THẺ TRẠNG THÁI: 100% OFFLINE SẴN SÀNG -->
+              <div class="settings-card-clean" style="margin-bottom: 14px; background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.25);">
                 <div style="display: flex; align-items: flex-start; gap: 10px;">
-                  <i data-lucide="shield-check" style="width: 20px; height: 20px; color: #10b981; flex-shrink: 0; margin-top: 2px;"></i>
-                  <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
-                    <strong style="color: #059669; display: block; margin-bottom: 2px;">Chế Độ Ngoại Tuyến Đã Sẵn Sàng</strong>
-                    Ứng dụng sẽ sử dụng thư viện Tesseract OCR và bộ giải mã VietQR tích hợp sẵn trong máy. Bạn có thể quét hoá đơn ở bất kỳ đâu ngay cả khi không có mạng và không tốn bất kỳ chi phí nào!
+                  <i data-lucide="shield-check" style="width: 22px; height: 22px; color: #10b981; flex-shrink: 0; margin-top: 2px;"></i>
+                  <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.55;">
+                    <strong style="color: #059669; display: block; margin-bottom: 2px; font-size: 0.88rem;">Chế Độ Nhận Diện Ngoại Tuyến (100% Offline)</strong>
+                    Ứng dụng sử dụng công nghệ nhận diện ký tự quang học <strong>Tesseract.js</strong> và bộ giải mã <strong>VietQR</strong> chạy trực tiếp trong trình duyệt trên thiết bị của bạn. Không cần tài khoản, không cần API Key và hoàn toàn miễn phí!
                   </div>
                 </div>
               </div>
-              </div> <!-- Hết #ocr-ai-config-section -->
 
-              <!-- THẺ 3: TUỲ CHỌN QUÉT & TỰ ĐỘNG ĐIỀN -->
+              <!-- THẺ: TUỲ CHỌN QUÉT & TỰ ĐỘNG ĐIỀN -->
               <div class="settings-card-clean" style="margin-bottom: 14px;">
-                <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 12px;">Tuỳ Chọn Quét &amp; Tự Động Điền</div>
-
-                <!-- Thời gian chờ AI tối đa (Timeout) -->
-                <div id="ocr-timeout-row" style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
-                  <div>
-                    <div style="font-weight: 600; font-size: 0.86rem;">Thời gian chờ AI tối đa (Timeout)</div>
-                    <div style="font-size: 0.74rem; color: var(--text-muted);">Quá thời gian này sẽ tự chuyển sang Tesseract OCR ngoại tuyến</div>
-                  </div>
-                  <select id="settings-ocr-ai-timeout" class="form-control" onchange="UISettings.saveOCRSettings(false)" style="font-size: 0.8rem; padding: 6px 10px; width: auto; min-width: 120px; border-radius: var(--radius-sm); font-weight: 500; background: var(--bg-card); color: var(--text-primary);">
-                    <option value="5">5 giây (Nhanh)</option>
-                    <option value="7">7 giây</option>
-                    <option value="8" selected>8 giây (Chuẩn)</option>
-                    <option value="10">10 giây</option>
-                    <option value="15">15 giây</option>
-                  </select>
+                <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                  <span>Tuỳ Chọn Quét &amp; Tự Động Điền</span>
+                  <span class="settings-status-pill pill-green" style="font-size: 0.68rem;">Tự động</span>
                 </div>
 
                 <!-- Tự động điền số tiền -->
@@ -3350,7 +3160,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                   </label>
                 </div>
 
-                <!-- Tự động chọn danh mục bằng OCR/AI -->
+                <!-- Tự động chọn danh mục bằng OCR -->
                 <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
                   <div>
                     <div style="font-weight: 600; font-size: 0.86rem;">Tự động phân loại danh mục</div>
@@ -3402,115 +3212,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
               <!-- Mẹo chụp ảnh OCR -->
               <div class="settings-card-clean" style="margin-bottom: 14px; background: rgba(13, 148, 136, 0.08); border: 1px solid rgba(13, 148, 136, 0.25);">
                 <div style="font-size: 0.8rem; color: var(--primary); font-weight: 500; line-height: 1.55;">
-                  💡 <strong>Mẹo chụp ảnh:</strong> Chụp hoá đơn thẳng góc, đủ ánh sáng và dùng công cụ Cắt &amp; Căn Chỉnh kiểu iPhone để xoay ngay ngắn giúp AI đọc chuẩn xác 100%!
-                </div>
-              </div>
-
-              <!-- ========================================================
-                   CÁC MỤC HƯỚNG DẪN SỔ XUỐNG (ACCORDIONS) TẠO API & COMPOSE
-                   ======================================================== -->
-
-              <!-- Accordion 1: Hướng Dẫn Lấy API Cloudflare Workers AI Miễn Phí -->
-              <div class="settings-accordion" style="margin-bottom: 10px;">
-                <div class="settings-accordion-header" onclick="UISettings.toggleAccordion(this)">
-                  <div class="settings-accordion-title">
-                    <i data-lucide="zap" style="color: #f59e0b;"></i>
-                    <span>⚡ Hướng Dẫn Lấy API Cloudflare Workers AI (Miễn Phí)</span>
-                  </div>
-                  <i data-lucide="chevron-down" class="settings-accordion-arrow"></i>
-                </div>
-
-                <div class="settings-accordion-content" style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6;">
-                  <ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
-                    <li>
-                      <strong>Đăng ký tài khoản:</strong> Truy cập <a href="https://dash.cloudflare.com" target="_blank" rel="noopener" style="color: var(--primary); font-weight: 600; text-decoration: underline;">dash.cloudflare.com</a> và đăng ký một tài khoản miễn phí (không cần thẻ tín dụng).
-                    </li>
-                    <li>
-                      <strong>Lấy Account ID:</strong> Tại thanh điều hướng bên trái, bấm vào <strong>Workers &amp; Pages</strong>. Nhìn sang cột thông tin bên phải màn hình, bạn sẽ thấy mục <strong>Account ID</strong>. Bấm nút <em>Click to copy</em> để sao chép.
-                    </li>
-                    <li>
-                      <strong>Tạo API Token:</strong> Bấm vào biểu tượng ảnh đại diện ở góc trên cùng bên phải &gt; chọn <strong>My Profile</strong> &gt; chọn thẻ <strong>API Tokens</strong> (hoặc mở trực tiếp <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener" style="color: var(--primary); text-decoration: underline;">trang API Tokens</a>).
-                    </li>
-                    <li>
-                      <strong>Phân quyền Token:</strong> Bấm nút <strong>Create Token</strong> &gt; cuộn xuống mục <em>Custom Token</em> bấm <strong>Get started</strong>:
-                      <ul style="margin: 4px 0 4px 0; padding-left: 18px;">
-                        <li><strong>Token name:</strong> Đặt tên tuỳ ý, ví dụ: <code>SoThuChi_Vision_AI</code></li>
-                        <li><strong>Permissions:</strong> Chọn <code>Account</code> &gt; <code>Workers AI</code> &gt; <code>Read</code></li>
-                      </ul>
-                      Cuộn xuống cuối trang bấm <strong>Continue to summary</strong> &gt; bấm <strong>Create Token</strong>.
-                    </li>
-                    <li>
-                      <strong>Sử dụng Token:</strong> Sao chép chuỗi mã Token vừa tạo, dán vào ô <em>Cloudflare API Token</em> ở trên (hoặc khai báo vào file <code>.env</code> trên máy chủ Docker).
-                    </li>
-                  </ol>
-                  <div style="margin-top: 10px; padding: 8px 12px; background: rgba(245, 158, 11, 0.1); border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 0.78rem;">
-                    <strong>Lưu ý về Llama 3.2 Vision:</strong> Lần đầu tiên sử dụng, Meta yêu cầu tài khoản Cloudflare chấp thuận điều khoản dịch vụ (Terms). Bạn chỉ cần bấm nút <strong>"Kiểm tra kết nối"</strong> ở trên, ứng dụng sẽ tự động kích hoạt điều khoản Meta giúp bạn ngay lập tức!
-                  </div>
-                </div>
-              </div>
-
-              <!-- Accordion 2: Hướng Dẫn Lấy Google Gemini API Key Miễn Phí -->
-              <div class="settings-accordion" style="margin-bottom: 10px;">
-                <div class="settings-accordion-header" onclick="UISettings.toggleAccordion(this)">
-                  <div class="settings-accordion-title">
-                    <i data-lucide="sparkles" style="color: #3b82f6;"></i>
-                    <span>🔮 Hướng Dẫn Lấy Google Gemini API Key (Miễn Phí)</span>
-                  </div>
-                  <i data-lucide="chevron-down" class="settings-accordion-arrow"></i>
-                </div>
-
-                <div class="settings-accordion-content" style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6;">
-                  <ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
-                    <li>
-                      <strong>Truy cập Google AI Studio:</strong> Mở trang <a href="https://aistudio.google.com" target="_blank" rel="noopener" style="color: var(--primary); font-weight: 600; text-decoration: underline;">aistudio.google.com</a> và đăng nhập bằng tài khoản Google bất kỳ.
-                    </li>
-                    <li>
-                      <strong>Vào mục API Key:</strong> Bấm vào nút <strong>Get API key</strong> ở thanh menu bên trái màn hình.
-                    </li>
-                    <li>
-                      <strong>Tạo khóa mới:</strong> Bấm nút <strong>Create API key</strong> &gt; Chọn một dự án Google Cloud có sẵn (hoặc chọn <em>Create new project</em>) &gt; Bấm xác nhận tạo khóa.
-                    </li>
-                    <li>
-                      <strong>Dán vào ứng dụng:</strong> Sao chép chuỗi khóa API (bắt đầu bằng <code>AIzaSy...</code>) và dán vào ô <em>Gemini API Key</em> ở trên.
-                    </li>
-                  </ol>
-                  <div style="margin-top: 10px; padding: 8px 12px; background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; border-radius: 4px; font-size: 0.78rem;">
-                    <strong>Hạn mức miễn phí:</strong> Google Gemini 1.5 Flash hoàn toàn miễn phí 15 yêu cầu/phút và 1.500 yêu cầu/ngày, quá thoải mái cho việc quét hoá đơn cá nhân và gia đình.
-                  </div>
-                </div>
-              </div>
-
-              <!-- Accordion 3: Hướng Dẫn Khai Báo Biến Môi Trường Trên Docker Compose (.env) -->
-              <div class="settings-accordion" style="margin-bottom: 14px;">
-                <div class="settings-accordion-header" onclick="UISettings.toggleAccordion(this)">
-                  <div class="settings-accordion-title">
-                    <i data-lucide="box" style="color: #10b981;"></i>
-                    <span>🐳 Hướng Dẫn Cấu Hình Trên Docker Compose / File .env</span>
-                  </div>
-                  <i data-lucide="chevron-down" class="settings-accordion-arrow"></i>
-                </div>
-
-                <div class="settings-accordion-content" style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6;">
-                  <p style="margin-top: 0; margin-bottom: 8px;">
-                    Nếu bạn tự host Sổ Thu Chi qua <strong>Docker Compose</strong>, bạn có thể truyền thẳng API Token vào file <code>docker-compose.yml</code> hoặc file <code>.env</code> trên máy chủ.
-                  </p>
-                  <p style="margin-bottom: 6px; font-weight: 600;">Ví dụ cấu hình trong file <code>.env</code> trên máy chủ:</p>
-                  <pre style="background: rgba(0,0,0,0.15); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; font-size: 0.76rem; overflow-x: auto; color: var(--text-primary); font-family: monospace; line-height: 1.5; margin: 0 0 10px 0;"># Chọn công cụ: 'cloudflare' | 'gemini' | 'offline'
-OCR_ENGINE=cloudflare
-
-# Cấu hình Cloudflare Workers AI
-CLOUDFLARE_ACCOUNT_ID=d9a8b7c6e5f43210abcdef...
-CLOUDFLARE_API_TOKEN=vLg_your_api_token_here...
-
-# Cấu hình Google Gemini AI (nếu dùng Gemini)
-GEMINI_API_KEY=AIzaSy_your_gemini_key_here...</pre>
-
-                  <p style="margin-bottom: 6px; font-weight: 600;">Lợi ích khi cấu hình qua Docker Compose:</p>
-                  <ul style="margin: 0; padding-left: 20px;">
-                    <li>Ứng dụng sẽ tự động tải các giá trị này làm mặc định qua API <code>/api/config</code>.</li>
-                    <li>Bạn <strong>không cần phải nhập lại Token/Key</strong> trên từng chiếc điện thoại, iPad hay máy tính mỗi khi mở web!</li>
-                    <li>Biểu tượng <span style="display: inline-block; font-size: 0.72rem; padding: 1px 6px; border-radius: 9999px; background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600;">🌿 Từ Docker (.env)</span> sẽ tự động xuất hiện để thông báo cho bạn.</li>
-                  </ul>
+                  💡 <strong>Mẹo chụp ảnh:</strong> Chụp hoá đơn thẳng góc, đủ ánh sáng và dùng công cụ Cắt &amp; Căn Chỉnh để xoay ngay ngắn giúp OCR đọc chuẩn xác 100%!
                 </div>
               </div>
             </div>
