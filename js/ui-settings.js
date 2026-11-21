@@ -521,6 +521,50 @@ const UISettings = {
       lastSyncDisplay.textContent = new Date(lastSyncSetting.value).toLocaleString('vi-VN');
     }
 
+    const dbxLastSyncSetting = await db.settings.get('dropboxLastSyncTime');
+    const dbxLastSyncDisplay = document.getElementById('settings-dropbox-last-sync-time');
+    if (dbxLastSyncSetting && dbxLastSyncDisplay) {
+      dbxLastSyncDisplay.textContent = new Date(dbxLastSyncSetting.value).toLocaleString('vi-VN');
+    }
+
+    // 8b. Load Dropbox Advanced Settings & E2EE
+    const dbxFilePathInput = document.getElementById('settings-dropbox-file-path');
+    if (dbxFilePathInput && window.dropboxService) {
+      dbxFilePathInput.value = window.dropboxService.filePath || '/sothuchi_vault.json';
+    }
+    const dbxFolderPathInput = document.getElementById('settings-dropbox-folder-path');
+    if (dbxFolderPathInput && window.dropboxService) {
+      dbxFolderPathInput.value = window.dropboxService.folderPath || '';
+    }
+    if (dbxKeyInput && window.dropboxService && window.dropboxService.appKey) {
+      dbxKeyInput.value = window.dropboxService.appKey;
+    }
+
+    const dbxPassInput = document.getElementById('settings-dropbox-vault-password');
+    const dbxEncBadge = document.getElementById('dropbox-encryption-badge');
+    const dbxDisableEncBtn = document.getElementById('btn-disable-dropbox-encryption');
+    const dbxSaveEncText = document.getElementById('btn-save-dropbox-vault-password-text');
+    const dbxHasEnc = !!(window.dropboxService && window.dropboxService.encryptionPassword);
+    if (dbxPassInput) {
+      if (document.activeElement !== dbxPassInput) dbxPassInput.value = '';
+      dbxPassInput.placeholder = dbxHasEnc ? 'Nhập mới để đổi mật khẩu' : 'Để trống nếu không mã hóa';
+    }
+    if (dbxEncBadge) {
+      if (dbxHasEnc) {
+        dbxEncBadge.textContent = 'Đã bật E2EE';
+        dbxEncBadge.style.background = 'rgba(16, 185, 129, 0.15)';
+        dbxEncBadge.style.color = '#10b981';
+        if (dbxDisableEncBtn) dbxDisableEncBtn.style.display = 'inline-flex';
+        if (dbxSaveEncText) dbxSaveEncText.textContent = 'Đổi mật khẩu';
+      } else {
+        dbxEncBadge.textContent = 'Chưa mã hóa';
+        dbxEncBadge.style.background = 'rgba(100, 116, 139, 0.12)';
+        dbxEncBadge.style.color = 'var(--text-muted)';
+        if (dbxDisableEncBtn) dbxDisableEncBtn.style.display = 'none';
+        if (dbxSaveEncText) dbxSaveEncText.textContent = 'Lưu';
+      }
+    }
+
     // 9. Load Dropbox Account UI
     this.updateDropboxAccountUI();
 
@@ -632,17 +676,42 @@ const UISettings = {
     const emailEl = document.getElementById('dropbox-user-email');
     const avatarEl = document.getElementById('dropbox-user-avatar');
     const connectBtn = document.getElementById('btn-dropbox-connect');
+    const roleBadge = document.getElementById('dropbox-vault-role-badge');
+    const lastSyncDisplay = document.getElementById('settings-dropbox-last-sync-time');
 
     const dbx = window.dropboxService;
-    if (dbx && (dbx.refreshToken || dbx.accessToken) && dbx.userProfile) {
+    const isConnected = !!(dbx && (dbx.refreshToken || dbx.accessToken) && dbx.userProfile);
+
+    if (isConnected) {
       if (infoBox) infoBox.style.display = 'block';
       if (nameEl) nameEl.textContent = dbx.userProfile.name || 'Dropbox User';
       if (emailEl) emailEl.textContent = dbx.userProfile.email || '';
-      if (avatarEl && dbx.userProfile.picture) avatarEl.src = dbx.userProfile.picture;
-      if (connectBtn) connectBtn.style.display = 'none';
+      if (avatarEl) avatarEl.src = dbx.userProfile.picture || './assets/icons/dropbox.svg';
+
+      const isOwner = dbx.role !== 'member';
+      if (roleBadge) {
+        roleBadge.textContent = isOwner ? 'Chủ sổ' : 'Thành viên';
+        roleBadge.className = isOwner ? 'sync-vault-role-pill owner' : 'sync-vault-role-pill editor';
+      }
+
+      if (connectBtn) {
+        connectBtn.innerHTML = '<i data-lucide="check-circle" style="width: 16px; height: 16px; color: #10b981;"></i> <span>Đã Kết Nối</span>';
+        connectBtn.className = 'btn-secondary';
+        connectBtn.style.background = '';
+        connectBtn.style.borderColor = '';
+      }
     } else {
       if (infoBox) infoBox.style.display = 'none';
-      if (connectBtn) connectBtn.style.display = 'inline-flex';
+      if (connectBtn) {
+        connectBtn.innerHTML = '<i data-lucide="box" style="width: 16px; height: 16px;"></i> <span>Kết Nối Dropbox</span>';
+        connectBtn.className = 'btn-primary';
+        connectBtn.style.background = '#0061ff';
+        connectBtn.style.borderColor = '#0061ff';
+      }
+    }
+
+    if (dbx && dbx.lastSyncTime && lastSyncDisplay) {
+      lastSyncDisplay.textContent = new Date(dbx.lastSyncTime).toLocaleString('vi-VN');
     }
 
     this.updateHubBadges();
@@ -2250,6 +2319,121 @@ const UISettings = {
         if (window.dropboxService) {
           await window.dropboxService.setFolderPath(folder);
           showToast('Đã lưu cấu hình thư mục Dropbox! Bấm Đồng Bộ để kiểm tra.', 'success');
+        }
+      });
+    }
+
+    // Dropbox Reauth / Switch Account
+    const dbxReauthBtn = document.getElementById('btn-dropbox-reauth');
+    if (dbxReauthBtn) {
+      dbxReauthBtn.addEventListener('click', async () => {
+        try {
+          if (!window.dropboxService) return;
+          showToast('Đang mở màn hình xác thực để chuyển tài khoản Dropbox...', 'info');
+          await window.dropboxService.requestAuth({ forceReauth: true });
+          showToast('Đổi tài khoản Dropbox thành công! Đang đồng bộ...', 'info');
+          await window.dropboxService.sync();
+          this.updateDropboxAccountUI();
+          if (window.app && window.app.refreshAll) await window.app.refreshAll();
+        } catch (err) {
+          if (err.message && (err.message.includes('Đã đóng') || err.message.includes('popup_closed') || err.message.includes('hủy'))) {
+            showToast('Đã hủy đổi tài khoản Dropbox', 'info');
+          } else {
+            showToast('Đổi tài khoản Dropbox thất bại: ' + err.message, 'error');
+          }
+        }
+      });
+    }
+
+    // Dropbox Share Vault with Email
+    const dbxInviteBtn = document.getElementById('btn-dropbox-share-invite');
+    if (dbxInviteBtn) {
+      dbxInviteBtn.addEventListener('click', async () => {
+        const emailInput = document.getElementById('settings-dropbox-share-email');
+        const roleSelect = document.getElementById('settings-dropbox-share-role');
+        const email = (emailInput ? emailInput.value : '').trim();
+        const role = roleSelect ? roleSelect.value : 'editor';
+
+        if (!email || !email.includes('@')) {
+          showToast('Vui lòng nhập địa chỉ email Dropbox hợp lệ', 'warning');
+          return;
+        }
+
+        if (!window.dropboxService || !window.dropboxService.hasValidToken()) {
+          showToast('Vui lòng kết nối Dropbox trước khi chia sẻ', 'warning');
+          return;
+        }
+
+        try {
+          dbxInviteBtn.disabled = true;
+          showToast(`Đang cấp quyền chia sẻ sổ cho ${email}...`, 'info');
+          await window.dropboxService.shareVaultWithEmail(email, role);
+          showToast(`Đã chia sẻ sổ Dropbox thành công cho ${email}!`, 'success');
+          if (emailInput) emailInput.value = '';
+        } catch (err) {
+          showToast('Chia sẻ thất bại: ' + err.message, 'error');
+        } finally {
+          dbxInviteBtn.disabled = false;
+        }
+      });
+    }
+
+    // Dropbox E2EE Vault Password Save
+    const saveDbxPassBtn = document.getElementById('btn-save-dropbox-vault-password');
+    if (saveDbxPassBtn) {
+      saveDbxPassBtn.addEventListener('click', async () => {
+        const input = document.getElementById('settings-dropbox-vault-password');
+        const newPass = (input ? input.value : '').trim();
+        if (!window.dropboxService) return;
+
+        if (!newPass) {
+          showToast('Vui lòng nhập mật khẩu mã hóa (hoặc bấm Tắt nếu muốn hủy mã hóa)', 'warning');
+          return;
+        }
+
+        try {
+          await window.dropboxService.setEncryptionPassword(newPass);
+          showToast('Đã lưu mật khẩu mã hóa Sổ Dropbox (E2EE)!', 'success');
+          await this.loadSettings();
+        } catch (err) {
+          showToast('Lỗi lưu mật khẩu: ' + err.message, 'error');
+        }
+      });
+    }
+
+    // Dropbox E2EE Disable
+    const disableDbxEncBtn = document.getElementById('btn-disable-dropbox-encryption');
+    if (disableDbxEncBtn) {
+      disableDbxEncBtn.addEventListener('click', async () => {
+        const ok = await showConfirm({
+          title: 'Tắt Mã Hóa Sổ Dropbox',
+          message: 'Bạn có chắc chắn muốn tắt mã hóa E2EE cho sổ trên Dropbox? Dữ liệu đẩy lên sau này sẽ ở dạng thông thường.',
+          confirmText: 'Tắt Mã Hóa',
+          cancelText: 'Hủy',
+          danger: true,
+          icon: 'unlock'
+        });
+        if (!ok) return;
+
+        try {
+          await window.dropboxService.setEncryptionPassword('');
+          showToast('Đã tắt mã hóa E2EE cho Dropbox!', 'info');
+          await this.loadSettings();
+        } catch (err) {
+          showToast('Lỗi khi tắt mã hóa: ' + err.message, 'error');
+        }
+      });
+    }
+
+    // Dropbox Save Custom File Path
+    const saveDbxFilePathBtn = document.getElementById('btn-save-dropbox-file-path');
+    if (saveDbxFilePathBtn) {
+      saveDbxFilePathBtn.addEventListener('click', async () => {
+        const input = document.getElementById('settings-dropbox-file-path');
+        const path = input ? input.value.trim() : '';
+        if (window.dropboxService) {
+          await window.dropboxService.setFilePath(path);
+          showToast('Đã lưu đường dẫn tệp sao lưu Dropbox!', 'success');
         }
       });
     }

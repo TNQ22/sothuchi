@@ -346,6 +346,20 @@ class PullToRefresh {
         }
       }
 
+      // 1.6 Cập nhật danh sách chia sẻ từ Dropbox (nếu đang kết nối)
+      if (window.dropboxService && (window.dropboxService.userProfile || window.dropboxService.accessToken || window.dropboxService.refreshToken) && window.dropboxService.autoSync !== false) {
+        try {
+          if (typeof window.dropboxService.syncReceivedSharedItems === 'function') {
+            await window.dropboxService.syncReceivedSharedItems();
+          }
+          if (typeof window.dropboxService.pullAndMergeOwnedSharedProjections === 'function') {
+            await window.dropboxService.pullAndMergeOwnedSharedProjections();
+          }
+        } catch (dbxErr) {
+          console.warn('[PullToRefresh] Cập nhật chia sẻ Dropbox:', dbxErr);
+        }
+      }
+
       // 2. Kích hoạt đồng bộ dữ liệu giao dịch / tài chính hai chiều
       if (window.syncCoordinator) {
         await window.syncCoordinator.syncAll(false);

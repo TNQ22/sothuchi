@@ -24,14 +24,17 @@ const UniversalShareModal = {
   async getPreferredService(type, id) {
     const sService = window.serverSyncService;
     const gService = window.googleDriveService;
+    const dService = window.dropboxService;
 
     // 1. Kiểm tra trạng thái khả dụng thực tế của từng dịch vụ (đang kích hoạt / có thể chia sẻ):
     // - Máy Chủ Riêng (Self-Hosted): Đang có URL kết nối, có token xác thực người dùng và autoSync !== false
     const isServerActive = Boolean(sService && sService.serverUrl && sService.token && sService.userProfile && sService.autoSync !== false);
     // - Google Drive: Đang kết nối OAuth với tài khoản Google (có accessToken) và autoSync !== false
     const isDriveActive = Boolean(gService && gService.isConnected && gService.accessToken && gService.autoSync !== false);
+    // - Dropbox: Đang kết nối OAuth với tài khoản Dropbox (có accessToken / refreshToken / userProfile) và autoSync !== false
+    const isDropboxActive = Boolean(dService && (dService.userProfile || dService.accessToken || dService.refreshToken) && dService.autoSync !== false);
 
-    // 2. Nếu mục này ĐÃ có liên kết / tệp chia sẻ trên Google Drive và Google Drive đang kích hoạt:
+    // 2. Nếu mục này ĐÃ có liên kết / tệp chia sẻ trên Google Drive hoặc Dropbox:
     if (isDriveActive && gService && typeof gService.getSharedFileId === 'function') {
       try {
         const gDriveFileId = await gService.getSharedFileId(type, id);
@@ -40,15 +43,27 @@ const UniversalShareModal = {
         }
       } catch (_) {}
     }
+    if (isDropboxActive && dService && typeof dService.getSharedFileId === 'function') {
+      try {
+        const dbxFileId = await dService.getSharedFileId(type, id);
+        if (dbxFileId) {
+          return 'dropbox';
+        }
+      } catch (_) {}
+    }
 
     // 3. Tự chọn dịch vụ đang khả dụng gần nhất theo thứ tự danh sách từ trên xuống dưới (đang kích hoạt):
     // [1] Máy Chủ Riêng (Self-Hosted)
     // [2] Google Drive
+    // [3] Dropbox
     if (isServerActive) {
       return 'server';
     }
     if (isDriveActive) {
       return 'google-drive';
+    }
+    if (isDropboxActive) {
+      return 'dropbox';
     }
 
     // Nếu không có dịch vụ nào đang kích hoạt: Mặc định chọn dịch vụ đầu danh sách ('server')
@@ -56,7 +71,9 @@ const UniversalShareModal = {
   },
 
   getActiveService() {
-    return this.currentService === 'google-drive' ? window.googleDriveService : window.serverSyncService;
+    if (this.currentService === 'google-drive') return window.googleDriveService;
+    if (this.currentService === 'dropbox') return window.dropboxService;
+    return window.serverSyncService;
   },
 
   async open(type, id) {
@@ -101,7 +118,9 @@ const UniversalShareModal = {
       emailInput.value = '';
       emailInput.placeholder = this.currentService === 'google-drive'
         ? 'Nhập Email Google của người nhận...'
-        : 'Email người dùng hoặc chọn từ máy chủ...';
+        : (this.currentService === 'dropbox'
+          ? 'Nhập Email Dropbox của người nhận (hoặc tạo link chia sẻ)...'
+          : 'Email người dùng hoặc chọn từ máy chủ...');
     }
 
     this.renderHeader();
@@ -212,7 +231,9 @@ const UniversalShareModal = {
     if (emailInput) {
       emailInput.placeholder = serviceId === 'google-drive'
         ? 'Nhập Email Google của người nhận...'
-        : 'Email người dùng hoặc chọn từ máy chủ...';
+        : (serviceId === 'dropbox'
+          ? 'Nhập Email Dropbox của người nhận (hoặc tạo link chia sẻ)...'
+          : 'Email người dùng hoặc chọn từ máy chủ...');
     }
     this.renderServices();
     this.loadShareData();
@@ -277,6 +298,29 @@ const UniversalShareModal = {
       gdrivePill.style.border = gSt.border;
     }
 
+    // Cập nhật badge trên menu option của Dropbox
+    const dService = window.dropboxService;
+    const isDropboxConnected = Boolean(dService && (dService.userProfile || dService.accessToken || dService.refreshToken));
+    let dropboxStatusText = 'Chưa kết nối';
+    let dropboxStatusClass = 'not-connected';
+    if (isDropboxConnected && dService.autoSync !== false) {
+      dropboxStatusText = 'Đã kết nối';
+      dropboxStatusClass = 'connected';
+    } else if (isDropboxConnected) {
+      dropboxStatusText = 'Đã tắt đồng bộ';
+      dropboxStatusClass = 'ready';
+    }
+
+    const dbxPill = document.getElementById('share-service-option-dropbox-pill');
+    if (dbxPill) {
+      dbxPill.textContent = dropboxStatusText;
+      dbxPill.className = `share-service-status-pill ${dropboxStatusClass}`;
+      const dSt = statusStyles[dropboxStatusClass] || statusStyles['ready'];
+      dbxPill.style.background = dSt.bg;
+      dbxPill.style.color = dSt.color;
+      dbxPill.style.border = dSt.border;
+    }
+
     const configs = {
       'server': {
         label: 'Máy Chủ Riêng (Self-Hosted)',
@@ -293,8 +337,8 @@ const UniversalShareModal = {
       'dropbox': {
         label: 'Dropbox',
         iconHtml: '<i data-lucide="box" style="width: 18px; height: 18px; color: #0061ff;"></i>',
-        statusText: 'Sắp hỗ trợ',
-        statusClass: 'planned'
+        statusText: dropboxStatusText,
+        statusClass: dropboxStatusClass
       }
     };
 
@@ -543,41 +587,82 @@ const UniversalShareModal = {
 
     // 3. DROPBOX
     if (this.currentService === 'dropbox') {
-      if (serverSection) serverSection.style.display = 'none';
-      const isDropboxConnected = Boolean(window.dropboxService && (window.dropboxService.userProfile || window.dropboxService.isConnected));
+      const dService = window.dropboxService;
+      const isDropboxConnected = Boolean(dService && (dService.userProfile || dService.accessToken || dService.refreshToken));
 
       if (!isDropboxConnected) {
+        if (serverSection) serverSection.style.display = 'none';
         if (cloudNoticeSection) {
           cloudNoticeSection.style.display = 'block';
           cloudNoticeSection.innerHTML = `
             <div class="share-auth-prompt-card not-configured" style="text-align: center; padding: 24px 18px;">
-              <div class="share-auth-icon-wrap warn" style="margin: 0 auto 12px; width: 48px; height: 48px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); display: flex; align-items: center; justify-content: center;">
-                <i data-lucide="cloud-off" style="width: 24px; height: 24px; color: #f59e0b;"></i>
+              <div class="share-auth-icon-wrap" style="margin: 0 auto 12px; width: 48px; height: 48px; border-radius: 50%; background: rgba(0, 97, 255, 0.15); display: flex; align-items: center; justify-content: center;">
+                <i data-lucide="box" style="width: 24px; height: 24px; color: #0061ff;"></i>
               </div>
-              <h4 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-bottom: 6px;">Cần kết nối tới dịch vụ sao lưu để có thể bắt đầu chia sẻ.</h4>
+              <h4 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-bottom: 6px;">Cần kết nối tới Dropbox để có thể bắt đầu chia sẻ.</h4>
               <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 18px; line-height: 1.45;">Vui lòng kết nối tài khoản Dropbox trong phần Cài đặt.</p>
-              <button type="button" class="btn-primary" style="padding: 10px 22px; font-size: 0.84rem; display: inline-flex; align-items: center; gap: 8px; margin: 0 auto; border-radius: 8px; font-weight: 600;" onclick="UniversalShareModal.goToSettings('dropbox')">
+              <button type="button" class="btn-primary" style="background: #0061ff; border-color: #0061ff; padding: 10px 22px; font-size: 0.84rem; display: inline-flex; align-items: center; gap: 8px; margin: 0 auto; border-radius: 8px; font-weight: 600;" onclick="UniversalShareModal.goToSettings('dropbox')">
                 <i data-lucide="settings" style="width: 15px; height: 15px;"></i> Chuyển đến Cài đặt
               </button>
             </div>
           `;
         }
-      } else {
-        if (cloudNoticeSection) {
-          cloudNoticeSection.style.display = 'block';
-          cloudNoticeSection.innerHTML = `
-            <div class="share-cloud-notice-box">
-              <div class="share-notice-icon">
-                <i data-lucide="info" style="width: 28px; height: 28px;"></i>
-              </div>
-              <h4>Dịch vụ Dropbox</h4>
-              <p>Hiện tại Dropbox hỗ trợ sao lưu dự phòng toàn bộ sổ vào đám mây. Cơ chế chia sẻ độc lập từng tài khoản/sổ qua Dropbox đang được hoàn thiện.</p>
-              <p style="margin-top: 10px; font-weight: 500; color: var(--primary-color);">Vui lòng chọn <strong>Máy Chủ Riêng (Self-Hosted)</strong> để phân quyền và chia sẻ tức thì.</p>
-            </div>
-          `;
-        }
+        if (window.lucide) lucide.createIcons();
+        this.renderSharedServicesSummary();
+        return;
       }
+
+      // Đã kết nối Dropbox thành công
+      if (cloudNoticeSection) cloudNoticeSection.style.display = 'none';
+      if (serverSection) serverSection.style.display = 'block';
+      if (notConnectedBox) notConnectedBox.style.display = 'none';
+      if (mainBox) mainBox.style.display = 'block';
+
+      // Cập nhật banner trạng thái Dropbox
+      const dEmail = dService.userProfile?.email || 'Dropbox';
+      const existingStatus = document.getElementById('share-server-active-pill');
+      const pillHtml = `
+        <span class="status-dot"></span>
+        <span>Dropbox: <strong>${escapeHTML(dEmail)}</strong> (Trực tiếp Dropbox API)</span>
+      `;
+      if (!existingStatus) {
+        const pillDiv = document.createElement('div');
+        pillDiv.id = 'share-server-active-pill';
+        pillDiv.className = 'share-server-status-pill';
+        pillDiv.style.marginBottom = '12px';
+        pillDiv.innerHTML = pillHtml;
+        mainBox.insertBefore(pillDiv, mainBox.firstChild);
+      } else {
+        existingStatus.innerHTML = pillHtml;
+      }
+
+      const emailListEl = document.getElementById('share-email-members-list');
+      const linkListEl = document.getElementById('share-active-links-list');
+
+      if (emailListEl) emailListEl.innerHTML = '<div class="share-loading-spinner"><i data-lucide="loader-2" class="spin"></i> Đang tải danh sách phân quyền từ Dropbox...</div>';
+      if (linkListEl) linkListEl.innerHTML = '<div class="share-loading-spinner"><i data-lucide="loader-2" class="spin"></i> Đang tải danh sách liên kết...</div>';
       if (window.lucide) lucide.createIcons();
+
+      try {
+        const res = await window.dropboxService.getItemShares(this.currentType, this.currentId);
+        this.shares = res.shares || [];
+        const rawLinks = res.links || [];
+        for (const l of rawLinks) {
+          l.shareKey = (await window.dropboxService.getItemShareKey(l.token)) || null;
+        }
+        this.links = rawLinks;
+
+        this.renderEmailShares();
+        this.renderShareLinks();
+
+        const totalShares = (this.shares.length || 0) + (this.links.length || 0);
+        await this.updateItemSharedState(totalShares > 0 ? 1 : 0);
+      } catch (err) {
+        console.warn('[ShareModal] Lỗi tải dữ liệu chia sẻ Dropbox:', err);
+        if (emailListEl) emailListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
+        if (linkListEl) linkListEl.innerHTML = `<div class="share-empty-box text-danger">${escapeHTML(err.message)}</div>`;
+      }
+      this.renderSharedServicesSummary();
       return;
     }
   },
@@ -819,6 +904,22 @@ const UniversalShareModal = {
       } catch (_) {}
     }
 
+    // Lấy thông tin chia sẻ từ Dropbox
+    let dbxSharesCount = 0;
+    let dbxLinksCount = 0;
+    let dbxStatus = 'not-connected';
+    let dbxStatusText = 'Chưa kết nối';
+    const dService = window.dropboxService;
+    if (dService && (dService.userProfile || dService.accessToken || dService.refreshToken)) {
+      dbxStatus = dService.autoSync !== false ? 'connected' : 'disabled';
+      dbxStatusText = dService.autoSync !== false ? 'Đã kết nối' : 'Đã vô hiệu hóa';
+      try {
+        const dRes = await dService.getItemShares(this.currentType, this.currentId);
+        dbxSharesCount = dRes?.shares?.length || 0;
+        dbxLinksCount = dRes?.links?.length || 0;
+      } catch (_) {}
+    }
+
     const services = [
       {
         id: 'server',
@@ -844,18 +945,18 @@ const UniversalShareModal = {
         id: 'dropbox',
         name: 'Dropbox',
         iconHtml: '<i data-lucide="box" style="width: 15px; height: 15px; color: #0061ff;"></i>',
-        status: 'planned',
-        statusText: 'Sắp hỗ trợ',
-        sharesCount: 0,
-        linksCount: 0,
+        status: dbxStatus,
+        statusText: dbxStatusText,
+        sharesCount: dbxSharesCount,
+        linksCount: dbxLinksCount,
         isCurrent: this.currentService === 'dropbox',
-        isPlanned: true
+        isPlanned: false
       }
     ];
 
-    let totalActiveMembers = serverSharesCount + driveSharesCount;
-    let totalActiveLinks = serverLinksCount + driveLinksCount;
-    let activePlatformsCount = (serverSharesCount + serverLinksCount > 0 ? 1 : 0) + (driveSharesCount + driveLinksCount > 0 ? 1 : 0);
+    let totalActiveMembers = serverSharesCount + driveSharesCount + dbxSharesCount;
+    let totalActiveLinks = serverLinksCount + driveLinksCount + dbxLinksCount;
+    let activePlatformsCount = (serverSharesCount + serverLinksCount > 0 ? 1 : 0) + (driveSharesCount + driveLinksCount > 0 ? 1 : 0) + (dbxSharesCount + dbxLinksCount > 0 ? 1 : 0);
 
     if (badgeEl) {
       if (activePlatformsCount > 0) {
@@ -1226,6 +1327,10 @@ const ReceiveShareModal = {
     } else if (token.includes('drive.google.com')) {
       const matchDrive = token.match(/\/d\/([a-zA-Z0-9_-]+)/) || token.match(/[?&]id=([a-zA-Z0-9_-]+)/);
       if (matchDrive) token = `gdrive_${matchDrive[1]}`;
+    } else if (token.includes('dropbox.com') || token.includes('dropboxusercontent.com') || token.startsWith('dropbox_')) {
+      if (!token.startsWith('dropbox_')) {
+        token = `dropbox_${encodeURIComponent(token)}`;
+      }
     }
     const matchKey = input.match(/[#&?]key=([^&]+)/);
     const key = matchKey ? decodeURIComponent(matchKey[1]) : null;
@@ -1416,18 +1521,19 @@ const ReceiveShareModal = {
 
     try {
       const isGDrive = token.startsWith('gdrive_');
-      const syncService = isGDrive ? window.googleDriveService : window.serverSyncService;
+      const isDropbox = token.startsWith('dropbox_') || token.includes('dropbox.com') || token.includes('dropboxusercontent.com');
+      const syncService = isGDrive ? window.googleDriveService : (isDropbox ? window.dropboxService : window.serverSyncService);
       if (!syncService) throw new Error('Dịch vụ đồng bộ chưa sẵn sàng.');
 
       const info = await syncService.getShareLinkInfo(token);
       this.shareData = info;
 
       // KIỂM TRA QUAN TRỌNG: Nếu người dùng hiện tại chính là chủ sở hữu tạo ra mục này
-      const fileId = token.replace(/^gdrive_/, '');
+      const fileId = token.replace(/^gdrive_/, '').replace(/^dropbox_/, '');
       const remoteItemId = info.itemId || fileId;
       const itemType = info.itemType || 'account';
 
-      const myEmail = (window.googleDriveService?.userProfile?.email || window.serverSyncService?.userProfile?.email || '').trim().toLowerCase();
+      const myEmail = (window.googleDriveService?.userProfile?.email || window.dropboxService?.userProfile?.email || window.serverSyncService?.userProfile?.email || '').trim().toLowerCase();
       const ownerEmail = (info.ownerEmail || '').trim().toLowerCase();
       const isOwnerByEmail = ownerEmail && myEmail && ownerEmail === myEmail;
 
@@ -1493,6 +1599,8 @@ const ReceiveShareModal = {
         let typeBadgeHtml = UniversalShareModal.getTypeLabel(info.itemType);
         if (info.service === 'google-drive') {
           typeBadgeHtml += ' &bull; <span style="color:#2563eb; font-weight:600;"><i data-lucide="cloud" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Google Drive</span>';
+        } else if (info.service === 'dropbox') {
+          typeBadgeHtml += ' &bull; <span style="color:#0061ff; font-weight:600;"><i data-lucide="box" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Dropbox</span>';
         }
         if (info.isEncrypted) {
           typeBadgeHtml += ' &bull; <span style="color:#10b981; font-weight:600;"><i data-lucide="shield-check" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Mã Hóa Đầu Cuối (E2EE)</span>';
@@ -1571,18 +1679,24 @@ const ReceiveShareModal = {
 
     try {
       const isGDrive = this.currentToken.startsWith('gdrive_');
+      const isDropbox = this.currentToken.startsWith('dropbox_') || this.currentToken.includes('dropbox.com') || this.currentToken.includes('dropboxusercontent.com');
       if (isGDrive && window.googleDriveService && !window.googleDriveService.hasValidToken(60000)) {
         await window.googleDriveService.ensureToken(true).catch(() => {});
       }
-      const syncService = isGDrive ? window.googleDriveService : window.serverSyncService;
+      if (isDropbox && window.dropboxService && !window.dropboxService.hasValidToken()) {
+        if (window.dropboxService.refreshToken) {
+          await window.dropboxService.refreshAccessToken().catch(() => {});
+        }
+      }
+      const syncService = isGDrive ? window.googleDriveService : (isDropbox ? window.dropboxService : window.serverSyncService);
       if (!syncService) throw new Error('Dịch vụ đồng bộ chưa sẵn sàng.');
 
       // Kiểm tra an toàn: nếu chính người dùng là chủ sở hữu
-      const fileId = this.currentToken.replace(/^gdrive_/, '');
+      const fileId = this.currentToken.replace(/^gdrive_/, '').replace(/^dropbox_/, '');
       const remoteItemId = this.shareData?.itemId || fileId;
       const itemType = this.shareData?.itemType || 'account';
 
-      const myEmail = (window.googleDriveService?.userProfile?.email || window.serverSyncService?.userProfile?.email || '').trim().toLowerCase();
+      const myEmail = (window.googleDriveService?.userProfile?.email || window.dropboxService?.userProfile?.email || window.serverSyncService?.userProfile?.email || '').trim().toLowerCase();
       const ownerEmail = (this.shareData?.ownerEmail || '').trim().toLowerCase();
       const isOwnerByEmail = ownerEmail && myEmail && ownerEmail === myEmail;
 

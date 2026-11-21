@@ -5430,12 +5430,15 @@ const UIAccounts = {
     });
 
     if (tab === 'shared') {
-      const { isServerDockerActive, isGoogleDriveFullActive } = this.canAutoSyncSharedItems();
+      const { isServerDockerActive, isGoogleDriveFullActive, isDropboxActive } = this.canAutoSyncSharedItems();
       if (isServerDockerActive && window.serverSyncService) {
         window.serverSyncService.syncReceivedSharedItems().catch(() => {});
       }
       if (isGoogleDriveFullActive && window.googleDriveService) {
         window.googleDriveService.syncReceivedSharedItems().catch(() => {});
+      }
+      if (isDropboxActive && window.dropboxService) {
+        window.dropboxService.syncReceivedSharedItems().catch(() => {});
       }
     }
 
@@ -6058,6 +6061,7 @@ const UIAccounts = {
   canAutoSyncSharedItems() {
     const sService = window.serverSyncService;
     const gService = window.googleDriveService;
+    const dService = window.dropboxService;
 
     // Máy chủ Docker chỉ được coi là sẵn sàng đồng bộ nếu:
     // 1. Có URL máy chủ và đã đăng nhập (có token)
@@ -6080,10 +6084,18 @@ const UIAccounts = {
       gService.autoSync !== false
     );
 
+    // Dropbox: đã kết nối (có token hoặc profile) và autoSync !== false
+    const isDropboxActive = Boolean(
+      dService &&
+      (dService.accessToken || dService.refreshToken || dService.userProfile) &&
+      dService.autoSync !== false
+    );
+
     return {
-      canSync: isServerDockerActive || isGoogleDriveFullActive,
+      canSync: isServerDockerActive || isGoogleDriveFullActive || isDropboxActive,
       isServerDockerActive,
-      isGoogleDriveFullActive
+      isGoogleDriveFullActive,
+      isDropboxActive
     };
   },
 
@@ -6258,6 +6270,24 @@ const UIAccounts = {
         }
       }
 
+      // 3. Kiểm tra Dropbox (nếu đang kết nối)
+      const isDropboxActive = Boolean(window.dropboxService && (window.dropboxService.accessToken || window.dropboxService.refreshToken || window.dropboxService.userProfile) && window.dropboxService.autoSync !== false);
+      if (isDropboxActive && window.dropboxService) {
+        try {
+          if (!window.dropboxService.hasValidToken() && window.dropboxService.refreshToken) {
+            await window.dropboxService.refreshAccessToken().catch(() => {});
+          }
+          let dOwnedChanged = false;
+          if (typeof window.dropboxService.pullAndMergeOwnedSharedProjections === 'function') {
+            dOwnedChanged = await window.dropboxService.pullAndMergeOwnedSharedProjections();
+          }
+          const dChanged = await window.dropboxService.syncReceivedSharedItems();
+          if (dOwnedChanged || dChanged) hasAnyChange = true;
+        } catch (dErr) {
+          console.warn('[manualSyncSharedItems] Dropbox sync error:', dErr);
+        }
+      }
+
       if (hasAnyChange) {
         await this.render();
       }
@@ -6265,9 +6295,9 @@ const UIAccounts = {
         if (hasAnyChange) {
           showToast('Đã tải thành công các mục chia sẻ mới!', 'success');
         } else if (gStats && gStats.count > 0) {
-          showToast(`Đã đồng bộ ${gStats.count} tài khoản chia sẻ từ Google Drive.`, 'info');
+          showToast(`Đã đồng bộ ${gStats.count} tài khoản chia sẻ.`, 'info');
         } else {
-          showToast('Chưa tìm thấy sổ nào được chia sẻ với email Google của bạn.', 'info');
+          showToast('Đã kiểm tra đồng bộ các mục chia sẻ.', 'info');
         }
       }
     } catch (err) {
