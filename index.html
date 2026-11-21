@@ -3115,7 +3115,7 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
             <div id="panel-ocr-scanner" class="settings-detail-panel">
               <!-- Chú thích dưới tiêu đề -->
               <p class="settings-lead-text" style="font-size: 0.82rem; margin: 0 4px 14px 4px; line-height: 1.5; color: var(--text-secondary);">
-                Nhận diện hoá đơn và mã QR trực tiếp trên thiết bị (100% Ngoại tuyến): Tự động trích xuất tổng tiền, ngày giờ, danh mục &amp; từng món chi tiết bằng <strong>Tesseract OCR</strong> và <strong>bộ giải mã VietQR</strong>. Hoàn toàn bảo mật, không cần internet và không gửi dữ liệu ra bên ngoài.
+                Tự động nhận diện số tiền, ngày giờ &amp; danh mục từ ảnh chụp hoá đơn hoặc mã chuyển khoản QR.
               </p>
 
               <!-- THẺ TRẠNG THÁI: 100% OFFLINE SẴN SÀNG -->
@@ -3123,8 +3123,8 @@ docker run -d -p 8081:8081 -v ./data:/app/data --name sothuchi ghcr.io/tnq22/sot
                 <div style="display: flex; align-items: flex-start; gap: 10px;">
                   <i data-lucide="shield-check" style="width: 22px; height: 22px; color: #10b981; flex-shrink: 0; margin-top: 2px;"></i>
                   <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.55;">
-                    <strong style="color: #059669; display: block; margin-bottom: 2px; font-size: 0.88rem;">Chế Độ Nhận Diện Ngoại Tuyến (100% Offline)</strong>
-                    Ứng dụng sử dụng công nghệ nhận diện ký tự quang học <strong>Tesseract.js</strong> và bộ giải mã <strong>VietQR</strong> chạy trực tiếp trong trình duyệt trên thiết bị của bạn. Không cần tài khoản, không cần API Key và hoàn toàn miễn phí!
+                    <strong style="color: #059669; display: block; margin-bottom: 2px; font-size: 0.88rem;">Chế Độ Ngoại Tuyến (100% Offline)</strong>
+                    Xử lý trực tiếp trên thiết bị bằng <strong>Tesseract OCR</strong> &amp; <strong>VietQR</strong>. Hoàn toàn bảo mật, không cần internet, không cần tài khoản hay API Key.
                   </div>
                 </div>
               </div>
