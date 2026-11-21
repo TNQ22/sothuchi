@@ -262,9 +262,14 @@ const BackupService = {
             }
           });
 
-          // Khôi phục cài đặt đồng bộ (Ngân sách, Theme...)
+          // Khôi phục cài đặt đồng bộ (Ngân sách, Theme, Cấu hình OCR/AI...)
           if (settings && Array.isArray(settings)) {
-            const SYNCABLE_SETTINGS_KEYS = ['budget_mode', 'budget_applicable_accounts', 'budget_rollover_enabled', 'budget_auto_rollover', 'theme', 'currency', 'privacyMode', 'syncOwnedSharedProjections', 'googleDriveSharedFileMap'];
+            const SYNCABLE_SETTINGS_KEYS = [
+              'budget_mode', 'budget_applicable_accounts', 'budget_rollover_enabled', 'budget_auto_rollover',
+              'theme', 'currency', 'privacyMode', 'syncOwnedSharedProjections', 'googleDriveSharedFileMap',
+              'ocrAiEnabled', 'ocrAiTimeout', 'ocrEngine', 'ocrCloudflareAccountId', 'ocrCloudflareApiToken', 'ocrGeminiApiKey',
+              'ocrAutoAmount', 'ocrAutoDateTime', 'ocrAutoCategory', 'ocrAutoItems', 'ocrOfflineQr', 'ocrAutoScan'
+            ];
             for (const s of settings) {
               if (SYNCABLE_SETTINGS_KEYS.includes(s.key)) {
                 await db.settings.put(s);

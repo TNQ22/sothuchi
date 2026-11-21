@@ -1734,7 +1734,19 @@ class GoogleDriveSync {
       'currency',
       'privacyMode',
       'syncOwnedSharedProjections',
-      'googleDriveSharedFileMap'
+      'googleDriveSharedFileMap',
+      'ocrAiEnabled',
+      'ocrAiTimeout',
+      'ocrEngine',
+      'ocrCloudflareAccountId',
+      'ocrCloudflareApiToken',
+      'ocrGeminiApiKey',
+      'ocrAutoAmount',
+      'ocrAutoDateTime',
+      'ocrAutoCategory',
+      'ocrAutoItems',
+      'ocrOfflineQr',
+      'ocrAutoScan'
     ];
 
     const leftItems = await this.getLeftSharedItems();

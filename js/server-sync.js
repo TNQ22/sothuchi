@@ -694,7 +694,19 @@ class ServerSyncService {
       'budget_auto_rollover',
       'theme',
       'currency',
-      'privacyMode'
+      'privacyMode',
+      'ocrAiEnabled',
+      'ocrAiTimeout',
+      'ocrEngine',
+      'ocrCloudflareAccountId',
+      'ocrCloudflareApiToken',
+      'ocrGeminiApiKey',
+      'ocrAutoAmount',
+      'ocrAutoDateTime',
+      'ocrAutoCategory',
+      'ocrAutoItems',
+      'ocrOfflineQr',
+      'ocrAutoScan'
     ];
     const localSettings = [];
     for (const k of SYNCABLE_SETTINGS_KEYS) {
@@ -1419,7 +1431,19 @@ class ServerSyncService {
       'budget_auto_rollover',
       'theme',
       'currency',
-      'privacyMode'
+      'privacyMode',
+      'ocrAiEnabled',
+      'ocrAiTimeout',
+      'ocrEngine',
+      'ocrCloudflareAccountId',
+      'ocrCloudflareApiToken',
+      'ocrGeminiApiKey',
+      'ocrAutoAmount',
+      'ocrAutoDateTime',
+      'ocrAutoCategory',
+      'ocrAutoItems',
+      'ocrOfflineQr',
+      'ocrAutoScan'
     ];
     const localSettings = [];
     for (const k of SYNCABLE_SETTINGS_KEYS) {

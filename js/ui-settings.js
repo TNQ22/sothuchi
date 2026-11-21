@@ -330,8 +330,23 @@ const UISettings = {
     // 5.2 Nhận diện Hoá Đơn OCR Badge
     const aiBadge = document.getElementById('hub-ai-badge');
     if (aiBadge) {
-      aiBadge.textContent = 'OCR Sẵn sàng';
-      aiBadge.className = 'settings-status-pill pill-green';
+      const aiEnabled = await this.getOCRAIEnabled();
+      if (!aiEnabled) {
+        aiBadge.textContent = 'OCR Offline';
+        aiBadge.className = 'settings-status-pill pill-gray';
+      } else {
+        const ocrEngine = await this.getOCREngine();
+        if (ocrEngine === 'cloudflare') {
+          aiBadge.textContent = 'Cloudflare AI';
+          aiBadge.className = 'settings-status-pill pill-amber';
+        } else if (ocrEngine === 'gemini') {
+          aiBadge.textContent = 'Gemini AI';
+          aiBadge.className = 'settings-status-pill pill-teal';
+        } else {
+          aiBadge.textContent = 'OCR Offline';
+          aiBadge.className = 'settings-status-pill pill-green';
+        }
+      }
     }
 
     // 6. Quản trị máy chủ (Đồng bộ hiển thị item trên Hub)
@@ -526,6 +541,9 @@ const UISettings = {
 
     // 10. Load Server Sync UI
     this.renderServerSyncUI();
+
+    // 10.5 Load OCR & AI Vision Settings
+    await this.loadOCRSettings();
 
     // 11. Cập nhật các badge tóm tắt trên Hub
     this.updateHubBadges();
@@ -3412,6 +3430,126 @@ const UISettings = {
     return true;
   },
 
+  // ==========================================
+  // NHẬN DIỆN HOÁ ĐƠN (AI VISION & OCR OFFLINE)
+  // ==========================================
+  togglePasswordVisibility(inputId, btnEl) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isPass = input.type === 'password';
+    input.type = isPass ? 'text' : 'password';
+    const btn = btnEl || (typeof event !== 'undefined' && event && event.currentTarget) || input.parentElement?.querySelector('button');
+    if (btn) {
+      btn.innerHTML = isPass
+        ? '<i data-lucide="eye-off" style="width: 16px; height: 16px;"></i>'
+        : '<i data-lucide="eye" style="width: 16px; height: 16px;"></i>';
+      if (window.lucide) lucide.createIcons();
+    }
+  },
+
+  async getOCRAIEnabled() {
+    try {
+      const setting = await db.settings.get('ocrAiEnabled');
+      if (setting && setting.value !== undefined) return !!setting.value;
+      const ls = localStorage.getItem('ocr_ai_enabled');
+      if (ls !== null) return ls === 'true';
+      if (typeof EnvConfig !== 'undefined') {
+        const envVal = EnvConfig.get('OCR_AI_ENABLED');
+        if (envVal !== undefined && envVal !== '') return envVal === 'true';
+      }
+    } catch (_) {}
+    return true;
+  },
+
+  async getOCRAITimeout() {
+    try {
+      const setting = await db.settings.get('ocrAiTimeout');
+      if (setting && setting.value) {
+        const num = parseInt(setting.value, 10);
+        if (!isNaN(num) && num >= 3 && num <= 60) return num;
+      }
+      const ls = localStorage.getItem('ocr_ai_timeout');
+      if (ls) {
+        const num = parseInt(ls, 10);
+        if (!isNaN(num) && num >= 3 && num <= 60) return num;
+      }
+      if (typeof EnvConfig !== 'undefined') {
+        const envVal = EnvConfig.get('OCR_AI_TIMEOUT');
+        if (envVal) {
+          const num = parseInt(envVal, 10);
+          if (!isNaN(num) && num >= 3 && num <= 60) return num;
+        }
+      }
+    } catch (_) {}
+    return 8; // Mặc định 8 giây (trong khoảng 5-10s)
+  },
+
+  async getOCREngine() {
+    try {
+      const setting = await db.settings.get('ocrEngine');
+      if (setting && setting.value) return setting.value;
+      const ls = localStorage.getItem('ocr_engine');
+      if (ls) return ls;
+      if (typeof EnvConfig !== 'undefined') {
+        const envVal = EnvConfig.get('OCR_ENGINE');
+        if (envVal) return envVal;
+      }
+    } catch (_) {}
+    return 'cloudflare';
+  },
+
+  async getCloudflareAccountId() {
+    try {
+      const setting = await db.settings.get('ocrCloudflareAccountId');
+      if (setting && setting.value) return setting.value;
+      const ls = localStorage.getItem('ocr_cf_account_id');
+      if (ls) return ls;
+      if (typeof EnvConfig !== 'undefined') {
+        const envVal = EnvConfig.get('CLOUDFLARE_ACCOUNT_ID') || EnvConfig.get('VITE_CLOUDFLARE_ACCOUNT_ID');
+        if (envVal) return envVal;
+      }
+    } catch (_) {}
+    return '';
+  },
+
+  async getCloudflareApiToken() {
+    try {
+      const setting = await db.settings.get('ocrCloudflareApiToken');
+      if (setting && setting.value) return setting.value;
+      const ls = localStorage.getItem('ocr_cf_api_token');
+      if (ls) return ls;
+      if (typeof EnvConfig !== 'undefined') {
+        const envVal = EnvConfig.get('CLOUDFLARE_API_TOKEN') || EnvConfig.get('VITE_CLOUDFLARE_API_TOKEN');
+        if (envVal) return envVal;
+      }
+    } catch (_) {}
+    return '';
+  },
+
+  async getGeminiApiKey() {
+    try {
+      const setting = await db.settings.get('ocrGeminiApiKey');
+      if (setting && setting.value) return setting.value;
+      const ls = localStorage.getItem('ocr_gemini_api_key');
+      if (ls) return ls;
+      if (typeof EnvConfig !== 'undefined') {
+        const envVal = EnvConfig.get('GEMINI_API_KEY') || EnvConfig.get('VITE_GEMINI_API_KEY');
+        if (envVal) return envVal;
+      }
+    } catch (_) {}
+    return '';
+  },
+
+  async getOCRAutoAmount() {
+    try {
+      const setting = await db.settings.get('ocrAutoAmount');
+      if (setting && setting.value !== undefined) return !!setting.value;
+      const ls = localStorage.getItem('ocr_auto_amount');
+      if (ls !== null) return ls === 'true';
+    } catch (_) {}
+    return true;
+  },
+
   async getOCRAutoDateTime() {
     try {
       const setting = await db.settings.get('ocrAutoDateTime');
@@ -3462,7 +3600,97 @@ const UISettings = {
     return false;
   },
 
+  toggleOCRAIEnabled(enabled, save = true) {
+    const isEnabled = !!enabled;
+    const toggle = document.getElementById('settings-ocr-ai-enabled');
+    if (toggle) toggle.checked = isEnabled;
+
+    const banner = document.getElementById('ocr-ai-disabled-banner');
+    const configSection = document.getElementById('ocr-ai-config-section');
+    const timeoutRow = document.getElementById('ocr-timeout-row');
+
+    if (banner) banner.style.display = isEnabled ? 'none' : 'block';
+    if (configSection) configSection.style.display = isEnabled ? 'block' : 'none';
+    if (timeoutRow) timeoutRow.style.display = isEnabled ? 'flex' : 'none';
+
+    if (save) {
+      db.settings.put({ key: 'ocrAiEnabled', value: isEnabled, updatedAt: Date.now() });
+      localStorage.setItem('ocr_ai_enabled', isEnabled ? 'true' : 'false');
+      this.updateHubBadges();
+      showToast(
+        isEnabled
+          ? 'Đã bật AI Vision phân tích hoá đơn!'
+          : 'Đã vô hiệu hoá AI Vision. Chuyển sang 100% OCR ngoại tuyến.',
+        'info',
+        2500
+      );
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
+  selectOCREngine(engine, save = true) {
+    const validEngines = ['cloudflare', 'gemini', 'offline'];
+    if (!validEngines.includes(engine)) engine = 'cloudflare';
+
+    // 1. Radio check
+    const radio = document.getElementById(`engine-choice-${engine}`);
+    if (radio) radio.checked = true;
+
+    // 2. Card highlight styles
+    ['cloudflare', 'gemini', 'offline'].forEach(e => {
+      const card = document.getElementById(`card-engine-${e}`);
+      if (card) {
+        if (e === engine) {
+          card.style.border = '2px solid var(--primary)';
+          card.style.background = 'rgba(13, 148, 136, 0.05)';
+        } else {
+          card.style.border = '1px solid var(--border-color)';
+          card.style.background = 'var(--bg-card)';
+        }
+      }
+    });
+
+    // 3. Show/hide corresponding config card
+    const cfCard = document.getElementById('ocr-config-cloudflare-card');
+    const geminiCard = document.getElementById('ocr-config-gemini-card');
+    const offlineCard = document.getElementById('ocr-config-offline-card');
+    if (cfCard) cfCard.style.display = (engine === 'cloudflare') ? 'block' : 'none';
+    if (geminiCard) geminiCard.style.display = (engine === 'gemini') ? 'block' : 'none';
+    if (offlineCard) offlineCard.style.display = (engine === 'offline') ? 'block' : 'none';
+
+    // 4. Update badge
+    const badge = document.getElementById('ocr-active-engine-badge');
+    if (badge) {
+      if (engine === 'cloudflare') {
+        badge.textContent = 'Cloudflare AI';
+        badge.style.background = 'rgba(245, 158, 11, 0.15)';
+        badge.style.color = '#d97706';
+      } else if (engine === 'gemini') {
+        badge.textContent = 'Google Gemini';
+        badge.style.background = 'rgba(59, 130, 246, 0.15)';
+        badge.style.color = '#2563eb';
+      } else {
+        badge.textContent = 'Tesseract Offline';
+        badge.style.background = 'rgba(16, 185, 129, 0.15)';
+        badge.style.color = '#059669';
+      }
+    }
+
+    if (save) {
+      db.settings.put({ key: 'ocrEngine', value: engine, updatedAt: Date.now() });
+      localStorage.setItem('ocr_engine', engine);
+      this.updateHubBadges();
+    }
+    if (window.lucide) lucide.createIcons();
+  },
+
   async loadOCRSettings() {
+    const aiEnabledToggle = document.getElementById('settings-ocr-ai-enabled');
+    const aiTimeoutSelect = document.getElementById('settings-ocr-ai-timeout');
+    const cfAccInput = document.getElementById('settings-cf-account-id');
+    const cfTokenInput = document.getElementById('settings-cf-api-token');
+    const geminiKeyInput = document.getElementById('settings-gemini-api-key');
+
     const autoAmountToggle = document.getElementById('settings-ocr-auto-amount');
     const autoDateTimeToggle = document.getElementById('settings-ocr-auto-datetime');
     const autoCategoryToggle = document.getElementById('settings-ocr-auto-category');
@@ -3470,6 +3698,40 @@ const UISettings = {
     const offlineQrToggle = document.getElementById('settings-ocr-offline-qr');
     const autoScanToggle = document.getElementById('settings-ocr-auto-scan');
 
+    const cfEnvBadge = document.getElementById('cf-env-badge');
+    const geminiEnvBadge = document.getElementById('gemini-env-badge');
+
+    // 1. AI Enabled & Timeout
+    const aiEnabled = await this.getOCRAIEnabled();
+    const aiTimeout = await this.getOCRAITimeout();
+    if (aiEnabledToggle) aiEnabledToggle.checked = aiEnabled;
+    if (aiTimeoutSelect) aiTimeoutSelect.value = String(aiTimeout);
+    this.toggleOCRAIEnabled(aiEnabled, false);
+
+    // 2. OCR Engine selection
+    const engine = await this.getOCREngine();
+    this.selectOCREngine(engine, false);
+
+    // 3. Credentials
+    const cfAccId = await this.getCloudflareAccountId();
+    const cfToken = await this.getCloudflareApiToken();
+    const geminiKey = await this.getGeminiApiKey();
+
+    if (cfAccInput) cfAccInput.value = cfAccId;
+    if (cfTokenInput) cfTokenInput.value = cfToken;
+    if (geminiKeyInput) geminiKeyInput.value = geminiKey;
+
+    // Badges if loaded from Env
+    if (cfEnvBadge && typeof EnvConfig !== 'undefined') {
+      const hasEnv = !!(EnvConfig.get('CLOUDFLARE_ACCOUNT_ID') || EnvConfig.get('CLOUDFLARE_API_TOKEN'));
+      cfEnvBadge.style.display = hasEnv ? 'inline-block' : 'none';
+    }
+    if (geminiEnvBadge && typeof EnvConfig !== 'undefined') {
+      const hasEnv = !!EnvConfig.get('GEMINI_API_KEY');
+      geminiEnvBadge.style.display = hasEnv ? 'inline-block' : 'none';
+    }
+
+    // 4. Auto fill toggles
     const autoAmount = await this.getOCRAutoAmount();
     const autoDateTime = await this.getOCRAutoDateTime();
     const autoCategory = await this.getOCRAutoCategory();
@@ -3488,12 +3750,26 @@ const UISettings = {
   },
 
   async saveOCRSettings(showToastMsg = true) {
+    const aiEnabledToggle = document.getElementById('settings-ocr-ai-enabled');
+    const aiTimeoutSelect = document.getElementById('settings-ocr-ai-timeout');
+    const cfAccInput = document.getElementById('settings-cf-account-id');
+    const cfTokenInput = document.getElementById('settings-cf-api-token');
+    const geminiKeyInput = document.getElementById('settings-gemini-api-key');
+
+    const selectedRadio = document.querySelector('input[name="ocr_engine_choice"]:checked');
     const autoAmountToggle = document.getElementById('settings-ocr-auto-amount');
     const autoDateTimeToggle = document.getElementById('settings-ocr-auto-datetime');
     const autoCategoryToggle = document.getElementById('settings-ocr-auto-category');
     const autoItemsToggle = document.getElementById('settings-ocr-auto-items');
     const offlineQrToggle = document.getElementById('settings-ocr-offline-qr');
     const autoScanToggle = document.getElementById('settings-ocr-auto-scan');
+
+    const aiEnabled = aiEnabledToggle ? aiEnabledToggle.checked : true;
+    const aiTimeout = aiTimeoutSelect ? parseInt(aiTimeoutSelect.value, 10) || 8 : 8;
+    const engine = selectedRadio ? selectedRadio.value : 'cloudflare';
+    const cfAccId = cfAccInput ? cfAccInput.value.trim() : '';
+    const cfToken = cfTokenInput ? cfTokenInput.value.trim() : '';
+    const geminiKey = geminiKeyInput ? geminiKeyInput.value.trim() : '';
 
     const autoAmount = autoAmountToggle ? autoAmountToggle.checked : true;
     const autoDateTime = autoDateTimeToggle ? autoDateTimeToggle.checked : true;
@@ -3502,13 +3778,29 @@ const UISettings = {
     const offlineQr = offlineQrToggle ? offlineQrToggle.checked : true;
     const autoScan = autoScanToggle ? autoScanToggle.checked : false;
 
+    const now = Date.now();
+
     try {
-      await db.settings.put({ key: 'ocrAutoAmount', value: autoAmount });
-      await db.settings.put({ key: 'ocrAutoDateTime', value: autoDateTime });
-      await db.settings.put({ key: 'ocrAutoCategory', value: autoCategory });
-      await db.settings.put({ key: 'ocrAutoItems', value: autoItems });
-      await db.settings.put({ key: 'ocrOfflineQr', value: offlineQr });
-      await db.settings.put({ key: 'ocrAutoScan', value: autoScan });
+      await db.settings.put({ key: 'ocrAiEnabled', value: aiEnabled, updatedAt: now });
+      await db.settings.put({ key: 'ocrAiTimeout', value: aiTimeout, updatedAt: now });
+      await db.settings.put({ key: 'ocrEngine', value: engine, updatedAt: now });
+      await db.settings.put({ key: 'ocrCloudflareAccountId', value: cfAccId, updatedAt: now });
+      await db.settings.put({ key: 'ocrCloudflareApiToken', value: cfToken, updatedAt: now });
+      await db.settings.put({ key: 'ocrGeminiApiKey', value: geminiKey, updatedAt: now });
+
+      await db.settings.put({ key: 'ocrAutoAmount', value: autoAmount, updatedAt: now });
+      await db.settings.put({ key: 'ocrAutoDateTime', value: autoDateTime, updatedAt: now });
+      await db.settings.put({ key: 'ocrAutoCategory', value: autoCategory, updatedAt: now });
+      await db.settings.put({ key: 'ocrAutoItems', value: autoItems, updatedAt: now });
+      await db.settings.put({ key: 'ocrOfflineQr', value: offlineQr, updatedAt: now });
+      await db.settings.put({ key: 'ocrAutoScan', value: autoScan, updatedAt: now });
+
+      localStorage.setItem('ocr_ai_enabled', aiEnabled ? 'true' : 'false');
+      localStorage.setItem('ocr_ai_timeout', String(aiTimeout));
+      localStorage.setItem('ocr_engine', engine);
+      localStorage.setItem('ocr_cf_account_id', cfAccId);
+      localStorage.setItem('ocr_cf_api_token', cfToken);
+      localStorage.setItem('ocr_gemini_api_key', geminiKey);
 
       localStorage.setItem('ocr_auto_amount', autoAmount ? 'true' : 'false');
       localStorage.setItem('ocr_auto_datetime', autoDateTime ? 'true' : 'false');
@@ -3517,15 +3809,142 @@ const UISettings = {
       localStorage.setItem('ocr_offline_qr', offlineQr ? 'true' : 'false');
       localStorage.setItem('ocr_auto_scan', autoScan ? 'true' : 'false');
 
-      await this.loadOCRSettings();
       await this.updateHubBadges();
 
       if (showToastMsg) {
-        showToast('Đã lưu cài đặt nhận diện OCR ngoại tuyến!', 'success');
+        showToast('Đã lưu cài đặt nhận diện hoá đơn thành công!', 'success');
       }
     } catch (err) {
       console.error('Lỗi lưu cài đặt OCR:', err);
       showToast('Lỗi khi lưu cài đặt: ' + err.message, 'error');
+    }
+  },
+
+  async testCloudflareConnection() {
+    const accInput = document.getElementById('settings-cf-account-id');
+    const tokenInput = document.getElementById('settings-cf-api-token');
+    let accountId = accInput ? accInput.value.trim() : '';
+    let token = tokenInput ? tokenInput.value.trim() : '';
+
+    if (!accountId) accountId = await this.getCloudflareAccountId();
+    if (!token) token = await this.getCloudflareApiToken();
+
+    if (!accountId || !token) {
+      showToast('Vui lòng nhập Cloudflare Account ID và API Token trước khi kiểm tra', 'warning');
+      return;
+    }
+
+    const testBtn = document.getElementById('btn-test-cf-api');
+    const origHtml = testBtn ? testBtn.innerHTML : '';
+    if (testBtn) {
+      testBtn.disabled = true;
+      testBtn.innerHTML = '<i data-lucide="loader-2" class="spin-animation" style="width: 14px; height: 14px;"></i> <span>Đang kiểm tra...</span>';
+      if (window.lucide) lucide.createIcons();
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/meta/llama-3.2-11b-vision-instruct`;
+      let res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ prompt: 'ping' }),
+        signal: controller.signal
+      });
+
+      let data = await res.json().catch(() => ({}));
+
+      // Nếu cần đồng ý điều khoản Meta (lỗi 5016 / 403)
+      if (res.status === 403 || (data.errors && data.errors.some(e => e.code === 5016 || /agree|terms/i.test(e.message || '')))) {
+        await fetch(url, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: 'agree' }),
+          signal: controller.signal
+        });
+        showToast('Kết nối Cloudflare Workers AI thành công! (Đã tự động kích hoạt điều khoản Meta)', 'success', 3500);
+        return;
+      }
+
+      if (res.ok && data.success) {
+        showToast('Kết nối Cloudflare Workers AI thành công! Sẵn sàng quét hoá đơn.', 'success', 3500);
+      } else {
+        const errMsg = (data.errors && data.errors[0] && data.errors[0].message) || `HTTP ${res.status}`;
+        showToast(`Kết nối thất bại: ${errMsg}`, 'error', 4000);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        showToast('Hết thời gian chờ kết nối Cloudflare AI (10s). Vui lòng kiểm tra lại mạng!', 'warning', 3500);
+      } else {
+        showToast(`Lỗi kết nối: ${err.message}`, 'error', 4000);
+      }
+    } finally {
+      clearTimeout(timeoutId);
+      if (testBtn) {
+        testBtn.disabled = false;
+        testBtn.innerHTML = origHtml || '<i data-lucide="wifi" style="width: 14px; height: 14px;"></i> <span>Kiểm tra kết nối</span>';
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+  },
+
+  async testGeminiConnection() {
+    const keyInput = document.getElementById('settings-gemini-api-key');
+    let apiKey = keyInput ? keyInput.value.trim() : '';
+    if (!apiKey) apiKey = await this.getGeminiApiKey();
+
+    if (!apiKey) {
+      showToast('Vui lòng nhập Gemini API Key trước khi kiểm tra', 'warning');
+      return;
+    }
+
+    const testBtn = document.getElementById('btn-test-gemini-api');
+    const origHtml = testBtn ? testBtn.innerHTML : '';
+    if (testBtn) {
+      testBtn.disabled = true;
+      testBtn.innerHTML = '<i data-lucide="loader-2" class="spin-animation" style="width: 14px; height: 14px;"></i> <span>Đang kiểm tra...</span>';
+      if (window.lucide) lucide.createIcons();
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'Hello' }] }]
+        }),
+        signal: controller.signal
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.candidates && data.candidates.length > 0) {
+        showToast('Kết nối Google Gemini AI thành công! Sẵn sàng quét hoá đơn.', 'success', 3500);
+      } else {
+        const errMsg = (data.error && data.error.message) || `HTTP ${res.status}`;
+        showToast(`Kết nối Gemini thất bại: ${errMsg}`, 'error', 4000);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        showToast('Hết thời gian chờ kết nối Google Gemini (10s). Vui lòng kiểm tra lại mạng!', 'warning', 3500);
+      } else {
+        showToast(`Lỗi kết nối Gemini: ${err.message}`, 'error', 4000);
+      }
+    } finally {
+      clearTimeout(timeoutId);
+      if (testBtn) {
+        testBtn.disabled = false;
+        testBtn.innerHTML = origHtml || '<i data-lucide="wifi" style="width: 14px; height: 14px;"></i> <span>Kiểm tra kết nối</span>';
+        if (window.lucide) lucide.createIcons();
+      }
     }
   },
 
@@ -3537,8 +3956,7 @@ const UISettings = {
   async getGeminiOfflineQr() { return this.getOCROfflineQr(); },
   async getGeminiAutoScan() { return this.getOCRAutoScan(); },
   async getGeminiAutoCrop() { return true; },
-  async getGeminiEnabled() { return true; },
-  async getGeminiApiKey() { return ''; },
+  async getGeminiEnabled() { return this.getOCRAIEnabled(); },
   async getGeminiModel() { return 'offline-ocr'; },
   async loadGeminiSettings() { return this.loadOCRSettings(); },
   async saveGeminiSettings(showToast = true) { return this.saveOCRSettings(showToast); }

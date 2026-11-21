@@ -7232,7 +7232,221 @@ const UITransactions = {
     return null;
   },
 
-  /* ==================== OFFLINE RECEIPT SCANNER (QR + TESSERACT OCR) ==================== */
+  /* ==================== AI RECEIPT SCANNER (CLOUDFLARE & GEMINI) ==================== */
+  async prepareImageForAI(dataUrl, maxDim = 1280) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  },
+
+  parseAIReceiptResponse(rawText) {
+    if (!rawText) return null;
+    let clean = rawText.trim();
+    clean = clean.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```$/s, '').trim();
+    const jsonMatch = clean.match(/\{[\s\S]*\}/);
+    if (jsonMatch) clean = jsonMatch[0];
+
+    let json;
+    try {
+      json = JSON.parse(clean);
+    } catch (_) {
+      return null;
+    }
+
+    let amount = null;
+    if (json.totalAmount !== undefined && json.totalAmount !== null) {
+      const parsed = typeof json.totalAmount === 'number' ? json.totalAmount : parseFloat(String(json.totalAmount).replace(/[^\d.]/g, ''));
+      if (!isNaN(parsed) && parsed > 0) amount = parsed;
+    }
+
+    let items = [];
+    if (Array.isArray(json.items)) {
+      items = json.items
+        .filter(it => it && (it.name || it.item))
+        .map(it => {
+          const name = (it.name || it.item || '').trim();
+          const price = it.price ? ` - ${new Intl.NumberFormat('vi-VN').format(it.price)}đ` : '';
+          const qty = it.qty && it.qty > 1 ? ` (x${it.qty})` : '';
+          return `${name}${qty}${price}`;
+        });
+    }
+
+    return {
+      amount: amount,
+      date: json.date || null,
+      time: json.time || null,
+      category: json.category || null,
+      items: items,
+      text: items.join('\n')
+    };
+  },
+
+  async scanReceiptWithCloudflareAI(dataUrl, accountId, token, timeoutMs = 8000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(new Error(`Timeout (${Math.round(timeoutMs / 1000)}s)`)), timeoutMs);
+
+    try {
+      const processedBase64 = await this.prepareImageForAI(dataUrl, 1280);
+
+      const prompt = `Bạn là chuyên gia trích xuất hoá đơn (OXR / Receipt OCR). Hãy phân tích ảnh hoá đơn này và trả về JSON thuần tuý (không kèm markdown \`\`\`json, không giải thích) theo cấu trúc:
+{
+  "totalAmount": 125000,
+  "date": "YYYY-MM-DD",
+  "time": "HH:MM",
+  "category": "Ăn uống",
+  "items": [
+    { "name": "Tên món / hàng hoá", "price": 35000, "qty": 1 }
+  ]
+}
+Quy tắc:
+- totalAmount: số tiền tổng thanh toán cuối cùng (number, không chứa ký tự lạ).
+- date: định dạng YYYY-MM-DD nếu thấy trên hoá đơn, nếu không có để null.
+- time: định dạng HH:MM (24h) nếu có, nếu không để null.
+- category: chọn 1 trong các danh mục: Ăn uống, Mua sắm, Di chuyển, Đi chợ / Siêu thị, Hoá đơn & Tiện ích, Sức khoẻ, Giải trí, Khác.
+- items: danh sách các món/hàng hoá kèm giá và số lượng nếu đọc được.`;
+
+      const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/meta/llama-3.2-11b-vision-instruct`;
+
+      let res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          image: processedBase64
+        }),
+        signal: controller.signal
+      });
+
+      let data = await res.json().catch(() => ({}));
+
+      // Tự động kích hoạt Meta Terms agreement nếu chưa xác nhận (lỗi 5016 / 403)
+      if (res.status === 403 || (data.errors && data.errors.some(e => e.code === 5016 || /agree|terms/i.test(e.message || '')))) {
+        await fetch(url, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: 'agree' }),
+          signal: controller.signal
+        });
+        res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt, image: processedBase64 }),
+          signal: controller.signal
+        });
+        data = await res.json().catch(() => ({}));
+      }
+
+      if (!res.ok || !data.success) {
+        const errMsg = (data.errors && data.errors[0] && data.errors[0].message) || `HTTP ${res.status}`;
+        throw new Error(errMsg);
+      }
+
+      const rawResponse = (data.result && (data.result.response || data.result.text)) || '';
+      return this.parseAIReceiptResponse(rawResponse);
+    } catch (err) {
+      if (err.name === 'AbortError' || /Timeout/i.test(err.message)) {
+        throw new Error(`AI không phản hồi sau ${Math.round(timeoutMs / 1000)}s`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  },
+
+  async scanReceiptWithGeminiAI(dataUrl, apiKey, timeoutMs = 8000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(new Error(`Timeout (${Math.round(timeoutMs / 1000)}s)`)), timeoutMs);
+
+    try {
+      const processedBase64 = await this.prepareImageForAI(dataUrl, 1280);
+      const mimeMatch = processedBase64.match(/^data:([^;]+);base64,(.+)$/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const base64Data = mimeMatch ? mimeMatch[2] : processedBase64;
+
+      const prompt = `Bạn là chuyên gia trích xuất hoá đơn (OXR / Receipt OCR). Hãy phân tích ảnh hoá đơn này và trả về JSON thuần tuý (không kèm markdown \`\`\`json, không giải thích) theo cấu trúc:
+{
+  "totalAmount": 125000,
+  "date": "YYYY-MM-DD",
+  "time": "HH:MM",
+  "category": "Ăn uống",
+  "items": [
+    { "name": "Tên món / hàng hoá", "price": 35000, "qty": 1 }
+  ]
+}
+Quy tắc:
+- totalAmount: số tiền tổng thanh toán cuối cùng (number, không chứa ký tự lạ).
+- date: định dạng YYYY-MM-DD nếu thấy trên hoá đơn, nếu không có để null.
+- time: định dạng HH:MM (24h) nếu có, nếu không để null.
+- category: chọn 1 trong các danh mục: Ăn uống, Mua sắm, Di chuyển, Đi chợ / Siêu thị, Hoá đơn & Tiện ích, Sức khoẻ, Giải trí, Khác.
+- items: danh sách các món/hàng hoá kèm giá và số lượng nếu đọc được.`;
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              {
+                inline_data: {
+                  mime_type: mimeType,
+                  data: base64Data
+                }
+              }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            response_mime_type: "application/json"
+          }
+        }),
+        signal: controller.signal
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.candidates || !data.candidates[0]) {
+        const errMsg = (data.error && data.error.message) || `HTTP ${res.status}`;
+        throw new Error(errMsg);
+      }
+
+      const rawResponse = data.candidates[0].content.parts[0].text || '';
+      return this.parseAIReceiptResponse(rawResponse);
+    } catch (err) {
+      if (err.name === 'AbortError' || /Timeout/i.test(err.message)) {
+        throw new Error(`AI không phản hồi sau ${Math.round(timeoutMs / 1000)}s`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  },
+
+  /* ==================== HYBRID RECEIPT SCANNER (AI VISION + QR + TESSERACT OCR) ==================== */
   async scanReceiptWithOCR() {
     if (this.attachedImages.length === 0) {
       showToast('Vui lòng chụp hoặc chọn ảnh hoá đơn trước khi quét', 'warning');
@@ -7244,6 +7458,8 @@ const UITransactions = {
     let autoItems = true;
     let autoCategory = true;
     let offlineQrEnabled = true;
+    let aiEnabled = true;
+    let aiTimeoutSec = 8;
 
     if (window.UISettings) {
       try {
@@ -7252,11 +7468,14 @@ const UITransactions = {
         autoItems = await window.UISettings.getOCRAutoItems();
         autoCategory = await window.UISettings.getOCRAutoCategory();
         offlineQrEnabled = await window.UISettings.getOCROfflineQr();
+        aiEnabled = await window.UISettings.getOCRAIEnabled();
+        aiTimeoutSec = await window.UISettings.getOCRAITimeout();
       } catch (e) {
         console.warn('[scanReceiptWithOCR] Lỗi đọc cài đặt:', e);
       }
     }
 
+    const aiTimeoutMs = (parseInt(aiTimeoutSec, 10) || 8) * 1000;
     this._userAbortedAI = false;
     const isMultiBill = this.attachedImages.length > 1;
 
@@ -7266,7 +7485,11 @@ const UITransactions = {
       let firstDate = null;
       let firstTime = null;
       let allTexts = [];
+      let suggestedCategories = [];
       let scannedSuccessCount = 0;
+      let lastEngineUsed = 'offline';
+
+      const configuredEngine = window.UISettings ? await window.UISettings.getOCREngine() : 'cloudflare';
 
       for (let idx = 0; idx < this.attachedImages.length; idx++) {
         if (this._userAbortedAI) break;
@@ -7280,6 +7503,7 @@ const UITransactions = {
         let billDate = null;
         let billTime = null;
         let billText = '';
+        let aiSuccess = false;
 
         // 1. Thử quét mã VietQR / hoá đơn điện tử QR trên ảnh này
         if (offlineQrEnabled) {
@@ -7291,16 +7515,69 @@ const UITransactions = {
                 billItems = [qrResult.note];
                 billText = qrResult.note;
               }
+              lastEngineUsed = 'qr';
             }
           } catch (_) {}
         }
 
-        // 2. Quét bằng Tesseract OCR nếu chưa có hoặc bổ sung
-        if (!billAmount || billItems.length === 0) {
+        // 2. Quét bằng AI Vision (Cloudflare Workers AI hoặc Google Gemini) nếu bật AI
+        if (aiEnabled && (!billAmount || billItems.length === 0)) {
+          // 2.1 Thử Cloudflare Workers AI
+          if (configuredEngine === 'cloudflare') {
+            const accId = window.UISettings ? await window.UISettings.getCloudflareAccountId() : '';
+            const token = window.UISettings ? await window.UISettings.getCloudflareApiToken() : '';
+            if (accId && token) {
+              try {
+                this.setAIScanningState(true, `Cloudflare AI đang phân tích ${billLabel}... (tối đa ${aiTimeoutSec}s)`);
+                const cfRes = await this.scanReceiptWithCloudflareAI(imgDataUrl, accId, token, aiTimeoutMs);
+                if (cfRes) {
+                  if (!billAmount && cfRes.amount) billAmount = cfRes.amount;
+                  if (cfRes.items && cfRes.items.length > 0) billItems = cfRes.items;
+                  if (cfRes.date) billDate = cfRes.date;
+                  if (cfRes.time) billTime = cfRes.time;
+                  if (cfRes.category) suggestedCategories.push(cfRes.category);
+                  if (cfRes.text) billText = (billText ? billText + '\n' : '') + cfRes.text;
+                  aiSuccess = true;
+                  lastEngineUsed = 'cloudflare';
+                }
+              } catch (cfErr) {
+                console.warn('[scanReceiptWithOCR] Cloudflare AI thất bại / timeout, chuyển về Tesseract OCR:', cfErr);
+                showToast(`Cloudflare AI: ${cfErr.message}. Tự động chuyển sang OCR ngoại tuyến...`, 'info', 3000);
+              }
+            }
+          }
+          // 2.2 Thử Google Gemini AI
+          else if (configuredEngine === 'gemini') {
+            const geminiKey = window.UISettings ? await window.UISettings.getGeminiApiKey() : '';
+            if (geminiKey) {
+              try {
+                this.setAIScanningState(true, `Gemini AI đang phân tích ${billLabel}... (tối đa ${aiTimeoutSec}s)`);
+                const geminiRes = await this.scanReceiptWithGeminiAI(imgDataUrl, geminiKey, aiTimeoutMs);
+                if (geminiRes) {
+                  if (!billAmount && geminiRes.amount) billAmount = geminiRes.amount;
+                  if (geminiRes.items && geminiRes.items.length > 0) billItems = geminiRes.items;
+                  if (geminiRes.date) billDate = geminiRes.date;
+                  if (geminiRes.time) billTime = geminiRes.time;
+                  if (geminiRes.category) suggestedCategories.push(geminiRes.category);
+                  if (geminiRes.text) billText = (billText ? billText + '\n' : '') + geminiRes.text;
+                  aiSuccess = true;
+                  lastEngineUsed = 'gemini';
+                }
+              } catch (geminiErr) {
+                console.warn('[scanReceiptWithOCR] Gemini AI thất bại / timeout, chuyển về Tesseract OCR:', geminiErr);
+                showToast(`Gemini AI: ${geminiErr.message}. Tự động chuyển sang OCR ngoại tuyến...`, 'info', 3000);
+              }
+            }
+          }
+        }
+
+        // 2.3 Fallback Tesseract OCR nếu chưa có kết quả (hoặc AI bị tắt / lỗi)
+        if (!aiSuccess && (!billAmount || billItems.length === 0)) {
           if (typeof Tesseract === 'undefined') {
             showToast('Thư viện OCR chưa sẵn sàng hoặc đang tải trong nền', 'warning');
             return;
           }
+          this.setAIScanningState(true, `Đang quét OCR ngoại tuyến ${billLabel}...`);
           const ocrRes = await this.scanReceiptWithOfflineOCR(imgDataUrl);
           if (ocrRes) {
             if (!billAmount && ocrRes.amount) billAmount = ocrRes.amount;
@@ -7308,6 +7585,7 @@ const UITransactions = {
             if (ocrRes.date) billDate = ocrRes.date;
             if (ocrRes.time) billTime = ocrRes.time;
             if (ocrRes.text) billText = (billText ? billText + '\n' : '') + ocrRes.text;
+            lastEngineUsed = 'offline';
           }
         }
 
