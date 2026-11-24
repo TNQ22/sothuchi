@@ -2152,12 +2152,57 @@ const UISettings = {
       });
     }
 
-    // Toggle Dropbox Help Box
+    // Toggle Dropbox Help Box & Populate URIs
     const dbxHelpBtn = document.getElementById('btn-toggle-dropbox-help');
     const dbxHelpBox = document.getElementById('dropbox-help-box');
+    const dbxUriRootEl = document.getElementById('dropbox-help-redirect-uri-root');
+    const dbxUriHtmlEl = document.getElementById('dropbox-help-redirect-uri-html');
+    const copyDbxRootBtn = document.getElementById('btn-copy-dropbox-redirect-root');
+    const copyDbxHtmlBtn = document.getElementById('btn-copy-dropbox-redirect-html');
+
+    const updateDbxHelpUris = () => {
+      const rootUri = window.dropboxService && typeof window.dropboxService.getRedirectUri === 'function'
+        ? window.dropboxService.getRedirectUri()
+        : (window.location.origin + '/');
+      let htmlUri = rootUri;
+      if (!htmlUri.endsWith('/')) htmlUri += '/';
+      htmlUri += 'index.html';
+      if (dbxUriRootEl) dbxUriRootEl.textContent = rootUri;
+      if (dbxUriHtmlEl) dbxUriHtmlEl.textContent = htmlUri;
+    };
+
     if (dbxHelpBtn && dbxHelpBox) {
       dbxHelpBtn.addEventListener('click', () => {
-        dbxHelpBox.style.display = dbxHelpBox.style.display === 'none' ? 'block' : 'none';
+        const isOpening = dbxHelpBox.style.display === 'none';
+        dbxHelpBox.style.display = isOpening ? 'block' : 'none';
+        if (isOpening) {
+          updateDbxHelpUris();
+          if (window.lucide) lucide.createIcons();
+        }
+      });
+    }
+
+    if (copyDbxRootBtn) {
+      copyDbxRootBtn.addEventListener('click', async () => {
+        const text = dbxUriRootEl?.textContent || (window.location.origin + '/');
+        try {
+          await navigator.clipboard.writeText(text);
+          showToast('Đã sao chép URI: ' + text, 'success');
+        } catch (_) {
+          showToast('Đã sao chép: ' + text, 'info');
+        }
+      });
+    }
+
+    if (copyDbxHtmlBtn) {
+      copyDbxHtmlBtn.addEventListener('click', async () => {
+        const text = dbxUriHtmlEl?.textContent || (window.location.origin + '/index.html');
+        try {
+          await navigator.clipboard.writeText(text);
+          showToast('Đã sao chép URI: ' + text, 'success');
+        } catch (_) {
+          showToast('Đã sao chép: ' + text, 'info');
+        }
       });
     }
 

@@ -101,7 +101,13 @@ class DropboxSync {
 
   setAppKey(key) {
     this.appKey = (key || '').trim();
-    db.settings.put({ key: 'dropboxAppKey', value: this.appKey });
+    if (typeof db !== 'undefined' && db.settings) {
+      db.settings.put({ key: 'dropboxAppKey', value: this.appKey });
+    }
+    try {
+      localStorage.setItem('dropbox_app_key', this.appKey);
+      sessionStorage.setItem('dropbox_app_key', this.appKey);
+    } catch (_) {}
   }
 
   hasValidToken() {
@@ -139,18 +145,55 @@ class DropboxSync {
       .replace(/=+$/, '');
   }
 
+  // Chuẩn hoá Redirect URI: luôn loại bỏ index.html/index.htm để đồng nhất hoàn hảo giữa máy tính và điện thoại
+  getRedirectUri() {
+    let pathname = window.location.pathname || '/';
+    if (pathname.endsWith('/index.html')) {
+      pathname = pathname.slice(0, -10) || '/';
+    } else if (pathname.endsWith('/index.htm')) {
+      pathname = pathname.slice(0, -9) || '/';
+    } else if (pathname === 'index.html' || pathname === 'index.htm') {
+      pathname = '/';
+    }
+    if (!pathname.startsWith('/')) {
+      pathname = '/' + pathname;
+    }
+    if (!pathname.endsWith('/')) {
+      pathname = pathname + '/';
+    }
+    return window.location.origin + pathname;
+  }
+
   // Khởi động quá trình đăng nhập Dropbox PKCE
   async requestAuth(opts = {}) {
+    if (!this.appKey) {
+      this.appKey = sessionStorage.getItem('dropbox_app_key') || localStorage.getItem('dropbox_app_key') || '';
+      if (!this.appKey && typeof db !== 'undefined' && db.settings) {
+        const keySetting = await db.settings.get('dropboxAppKey');
+        if (keySetting && keySetting.value) this.appKey = keySetting.value.trim();
+      }
+      if (!this.appKey && window.EnvConfig) {
+        this.appKey = window.EnvConfig.get('DROPBOX_APP_KEY', '').trim();
+      }
+    }
+
     if (!this.appKey) {
       throw new Error('Vui lòng nhập Dropbox App Key trong mục Cài đặt trước khi kết nối.');
     }
 
     const verifier = this.generateCodeVerifier();
     sessionStorage.setItem('dropbox_code_verifier', verifier);
-    await db.settings.put({ key: 'dropboxCodeVerifier', value: verifier });
+    try { localStorage.setItem('dropbox_code_verifier', verifier); } catch (_) {}
+    try {
+      sessionStorage.setItem('dropbox_app_key', this.appKey);
+      localStorage.setItem('dropbox_app_key', this.appKey);
+    } catch (_) {}
+    if (typeof db !== 'undefined' && db.settings) {
+      await db.settings.put({ key: 'dropboxCodeVerifier', value: verifier });
+    }
 
     const challenge = await this.generateCodeChallenge(verifier);
-    const redirectUri = window.location.origin + window.location.pathname;
+    const redirectUri = this.getRedirectUri();
 
     let authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${encodeURIComponent(this.appKey)}&response_type=code&code_challenge=${encodeURIComponent(challenge)}&code_challenge_method=S256&token_access_type=offline&redirect_uri=${encodeURIComponent(redirectUri)}`;
     if (opts.forceReauth) {
@@ -162,39 +205,137 @@ class DropboxSync {
     const left = (window.innerWidth - width) / 2 + window.screenX;
     const top = (window.innerHeight - height) / 2 + window.screenY;
 
-    const popup = window.open(
-      authUrl,
-      'dropbox_oauth',
-      `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no`
-    );
+    // Dọn dẹp dữ liệu giao tiếp OAuth cũ trong localStorage
+    try {
+      localStorage.removeItem('dropbox_auth_code_event');
+      localStorage.removeItem('dropbox_auth_ack');
+      localStorage.removeItem('dropbox_auth_error');
+    } catch (_) {}
+
+    // Chuẩn bị kênh BroadcastChannel trước khi mở popup
+    const channel = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('dropbox_oauth_channel') : null;
+
+    let popup = null;
+    try {
+      popup = window.open(
+        authUrl,
+        'dropbox_oauth',
+        `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no`
+      );
+    } catch (_) {
+      popup = null;
+    }
 
     if (!popup) {
+      // Bị chặn popup hoặc trình duyệt di động chuyển hướng thẳng
       window.location.href = authUrl;
       return;
     }
 
     return new Promise((resolve, reject) => {
-      const handler = async (event) => {
-        if (event.data && event.data.type === 'dropbox-auth-code') {
-          window.removeEventListener('message', handler);
-          try {
-            const tokenData = await this.exchangeCodeForToken(event.data.code, verifier, redirectUri);
-            resolve(tokenData);
-          } catch (e) {
-            reject(e);
-          }
+      let settled = false;
+
+      const cleanup = () => {
+        if (settled) return;
+        settled = true;
+        if (checkTimer) clearInterval(checkTimer);
+        window.removeEventListener('message', messageHandler);
+        window.removeEventListener('storage', storageHandler);
+        if (channel) {
+          try { channel.close(); } catch (_) {}
         }
       };
 
-      window.addEventListener('message', handler);
+      const handleAuthSuccess = async (code) => {
+        if (settled) return;
+        cleanup();
 
-      const checkTimer = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(checkTimer);
-          window.removeEventListener('message', handler);
-          if (!this.accessToken) {
-            reject(new Error('Đã đóng cửa sổ đăng nhập Dropbox'));
+        // Gửi ACK lại cho cửa sổ popup biết cửa sổ mẹ đã tiếp nhận thành công
+        try {
+          const ackChannel = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('dropbox_oauth_channel') : null;
+          if (ackChannel) {
+            ackChannel.postMessage({ type: 'dropbox-auth-ack' });
+            setTimeout(() => { try { ackChannel.close(); } catch(_) {} }, 1000);
           }
+          localStorage.setItem('dropbox_auth_ack', Date.now().toString());
+        } catch (_) {}
+
+        // Đóng popup từ phía cửa sổ mẹ (nếu popup còn mở)
+        if (popup && !popup.closed) {
+          try { popup.close(); } catch (_) {}
+        }
+
+        try {
+          const tokenData = await this.exchangeCodeForToken(code, verifier, redirectUri);
+          resolve(tokenData);
+        } catch (e) {
+          reject(e);
+        }
+      };
+
+      const handleAuthError = (errMsg) => {
+        if (settled) return;
+        cleanup();
+        if (popup && !popup.closed) {
+          try { popup.close(); } catch (_) {}
+        }
+        reject(new Error(errMsg || 'Đăng nhập Dropbox bị từ chối hoặc thất bại.'));
+      };
+
+      // 1. Kênh BroadcastChannel (truyền thông tin xuyên cửa sổ cùng origin mượt mà)
+      if (channel) {
+        channel.onmessage = (event) => {
+          if (event.data) {
+            if (event.data.type === 'dropbox-auth-code' && event.data.code) {
+              handleAuthSuccess(event.data.code);
+            } else if (event.data.type === 'dropbox-auth-error') {
+              handleAuthError(event.data.error);
+            }
+          }
+        };
+      }
+
+      // 2. Kênh Storage Event (hỗ trợ 100% trình duyệt ngay cả khi window.opener bị mất bởi COOP)
+      const storageHandler = (e) => {
+        if (e.key === 'dropbox_auth_code_event' && e.newValue) {
+          try {
+            const data = JSON.parse(e.newValue);
+            if (data && data.code) {
+              handleAuthSuccess(data.code);
+            }
+          } catch (_) {}
+        } else if (e.key === 'dropbox_auth_error' && e.newValue) {
+          try {
+            const data = JSON.parse(e.newValue);
+            if (data && data.error) {
+              handleAuthError(data.error);
+            }
+          } catch (_) {}
+        }
+      };
+      window.addEventListener('storage', storageHandler);
+
+      // 3. Kênh postMessage (window.opener cổ điển)
+      const messageHandler = (event) => {
+        if (event.data) {
+          if (event.data.type === 'dropbox-auth-code' && event.data.code) {
+            handleAuthSuccess(event.data.code);
+          } else if (event.data.type === 'dropbox-auth-error') {
+            handleAuthError(event.data.error);
+          }
+        }
+      };
+      window.addEventListener('message', messageHandler);
+
+      // 4. Theo dõi khi người dùng chủ động đóng cửa sổ popup
+      const checkTimer = setInterval(() => {
+        if (popup && popup.closed) {
+          setTimeout(() => {
+            if (!settled && !this.accessToken) {
+              cleanup();
+              reject(new Error('Đã đóng cửa sổ đăng nhập Dropbox'));
+            }
+          }, 800);
         }
       }, 500);
     });
@@ -202,34 +343,146 @@ class DropboxSync {
 
   // Xử lý khi URL có code (được redirect từ Dropbox)
   async handleOAuthRedirect() {
+    if (this._oauthRedirectHandled) return;
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
-    if (!code) return;
+    const error = params.get('error');
 
-    if (window.opener) {
-      window.opener.postMessage({ type: 'dropbox-auth-code', code }, '*');
-      window.close();
+    if (!code && !error) return;
+    this._oauthRedirectHandled = true;
+
+    if (error) {
+      const errorDesc = params.get('error_description') || error;
+      console.warn('[Dropbox] OAuth redirect error:', errorDesc);
+      if (typeof BroadcastChannel !== 'undefined') {
+        try {
+          const ch = new BroadcastChannel('dropbox_oauth_channel');
+          ch.postMessage({ type: 'dropbox-auth-error', error: errorDesc });
+          setTimeout(() => { try { ch.close(); } catch(_) {} }, 500);
+        } catch (_) {}
+      }
+      try {
+        localStorage.setItem('dropbox_auth_error', JSON.stringify({ error: errorDesc, time: Date.now() }));
+      } catch (_) {}
+      if (window.opener) {
+        try { window.opener.postMessage({ type: 'dropbox-auth-error', error: errorDesc }, '*'); } catch (_) {}
+      }
+      try { window.close(); } catch (_) {}
       return;
     }
 
+    let ackReceived = false;
+    let channel = null;
+
+    const onHandledByParent = () => {
+      if (channel) {
+        try { channel.close(); } catch (_) {}
+      }
+      window.removeEventListener('storage', storageAckHandler);
+      // Dọn sạch URL ngay lập tức
+      try {
+        const cleanUrl = this.getRedirectUri();
+        window.history.replaceState({}, document.title, cleanUrl);
+      } catch (_) {}
+      // Cố gắng đóng cửa sổ popup
+      try { window.close(); } catch (_) {}
+      // Nếu trình duyệt chặn window.close(), hiển thị giao diện báo hoàn tất đẹp mắt
+      showSuccessPopupUI();
+    };
+
+    const storageAckHandler = (e) => {
+      if (e.key === 'dropbox_auth_ack') {
+        ackReceived = true;
+        onHandledByParent();
+      }
+    };
+    window.addEventListener('storage', storageAckHandler);
+
+    function showSuccessPopupUI() {
+      setTimeout(() => {
+        if (!document.body) return;
+        document.body.innerHTML = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; box-sizing: border-box; background: #0a0f1d; color: #f8fafc; text-align: center;">
+            <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(13, 148, 136, 0.2); border: 2px solid #0d9488; color: #14b8a6; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 18px;">✓</div>
+            <h2 style="margin: 0 0 8px 0; font-size: 1.25rem; font-weight: 700; color: #ffffff;">Đã kết nối Dropbox thành công!</h2>
+            <p style="margin: 0 0 20px 0; font-size: 0.9rem; color: #94a3b8; line-height: 1.5; max-width: 340px;">Xác thực hoàn tất. Bạn có thể đóng cửa sổ này để quay lại trang làm việc chính của Sổ Thu Chi.</p>
+            <button onclick="window.close()" type="button" style="-webkit-touch-callout: none !important; user-select: none; background: #0d9488; color: #ffffff; border: none; padding: 10px 24px; border-radius: 12px; font-weight: 600; font-size: 0.9rem; cursor: pointer; box-shadow: 0 4px 14px rgba(13, 148, 136, 0.35);">Đóng cửa sổ này</button>
+          </div>
+        `;
+      }, 300);
+    }
+
     try {
-      let verifier = sessionStorage.getItem('dropbox_code_verifier');
-      if (!verifier) {
+      if (typeof BroadcastChannel !== 'undefined') {
+        channel = new BroadcastChannel('dropbox_oauth_channel');
+        channel.onmessage = (event) => {
+          if (event.data && event.data.type === 'dropbox-auth-ack') {
+            ackReceived = true;
+            onHandledByParent();
+          }
+        };
+        channel.postMessage({ type: 'dropbox-auth-code', code });
+      }
+    } catch (_) {}
+
+    try {
+      localStorage.setItem('dropbox_auth_code_event', JSON.stringify({ code, time: Date.now() }));
+    } catch (_) {}
+
+    if (window.opener) {
+      try {
+        window.opener.postMessage({ type: 'dropbox-auth-code', code }, '*');
+      } catch (_) {}
+    }
+
+    // Đợi tối đa 700ms xem có cửa sổ mẹ nào xác nhận (ACK) không
+    await new Promise(r => setTimeout(r, 700));
+
+    if (ackReceived) {
+      return;
+    }
+
+    // Nếu không có cửa sổ mẹ nào phản hồi (trường hợp di động chuyển hướng ngay trong tab hiện tại)
+    try {
+      let verifier = sessionStorage.getItem('dropbox_code_verifier') || localStorage.getItem('dropbox_code_verifier');
+      if (!verifier && typeof db !== 'undefined' && db.settings) {
         const stored = await db.settings.get('dropboxCodeVerifier');
         verifier = stored?.value;
       }
+      if (!this.appKey) {
+        this.appKey = sessionStorage.getItem('dropbox_app_key') || localStorage.getItem('dropbox_app_key') || '';
+        if (!this.appKey && typeof db !== 'undefined' && db.settings) {
+          const keySetting = await db.settings.get('dropboxAppKey');
+          if (keySetting?.value) this.appKey = keySetting.value.trim();
+        }
+      }
       if (verifier && this.appKey) {
-        const redirectUri = window.location.origin + window.location.pathname;
+        const redirectUri = this.getRedirectUri();
         await this.exchangeCodeForToken(code, verifier, redirectUri);
-        window.history.replaceState({}, document.title, window.location.pathname);
+        const cleanUrl = this.getRedirectUri();
+        window.history.replaceState({}, document.title, cleanUrl);
+        if (typeof showToast === 'function') {
+          showToast('Đăng nhập Dropbox thành công!', 'success');
+        }
       }
     } catch (e) {
-      console.warn('OAuth redirect exchange error:', e);
+      console.warn('OAuth redirect exchange fallback error:', e);
     }
   }
 
   // Đổi Auth Code lấy Access Token + Refresh Token
   async exchangeCodeForToken(code, verifier, redirectUri) {
+    if (!this.appKey) {
+      this.appKey = sessionStorage.getItem('dropbox_app_key') || localStorage.getItem('dropbox_app_key') || '';
+      if (!this.appKey && typeof db !== 'undefined' && db.settings) {
+        const keySetting = await db.settings.get('dropboxAppKey');
+        if (keySetting?.value) this.appKey = keySetting.value.trim();
+      }
+      if (!this.appKey && window.EnvConfig) {
+        this.appKey = window.EnvConfig.get('DROPBOX_APP_KEY', '').trim();
+      }
+    }
+
     const bodyParams = new URLSearchParams({
       code,
       grant_type: 'authorization_code',
@@ -1687,3 +1940,11 @@ class DropboxSync {
 }
 
 window.dropboxService = new DropboxSync();
+
+// Nếu trang hiện tại được mở từ redirect của Dropbox OAuth (chứa ?code= hoặc ?error=)
+// Tự động kích hoạt xử lý ngay lập tức để gửi code về cửa sổ mẹ và đóng popup thần tốc
+if (typeof window !== 'undefined' && window.location && window.location.search) {
+  if (window.location.search.includes('code=') || window.location.search.includes('error=')) {
+    window.dropboxService.handleOAuthRedirect();
+  }
+}
